@@ -1,0 +1,36 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="..\Source\rFactor2SharedMemoryMap.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\Include\InternalsPlugin.hpp">
+      <Filter>rf2_includes</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Include\PluginObjects.hpp">
+      <Filter>rf2_includes</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Include\rFactor2SharedMemoryMap.hpp">
+      <Filter>includes</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Include\rF2State.h">
+      <Filter>includes</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="rf2_includes">
+      <UniqueIdentifier>{34840d6d-c063-44e4-b500-d70edb6917bc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="includes">
+      <UniqueIdentifier>{79e81626-698a-4723-adea-817fd98c4996}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="resources">
+      <UniqueIdentifier>{b3238dee-bbaf-456b-ae5b-e7906bba32e8}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\Resources\rf2smmp.ini">
+      <Filter>resources</Filter>
+    </None>
+  </ItemGroup>
+</Project>
