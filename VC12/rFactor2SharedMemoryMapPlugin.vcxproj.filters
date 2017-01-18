@@ -32,5 +32,8 @@
     <None Include="..\Resources\rf2smmp.ini">
       <Filter>resources</Filter>
     </None>
+    <None Include="..\.gitignore" />
+    <None Include="..\LICENSE" />
+    <None Include="..\README.md" />
   </ItemGroup>
 </Project>
