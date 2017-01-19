@@ -6,7 +6,14 @@ Author: The Iron Wolf (vleonavicius@hotmail.com)
 
 #pragma once
 
+#pragma warning(push)
+#pragma warning(disable : 4263)   // UpdateGraphics virtual incorrect signature
+#pragma warning(disable : 4264)   // UpdateGraphics virtual incorrect signature
+#pragma warning(disable : 4121)  // Alignment sensitivity (ISI sets 4bytes pack)
+#pragma warning(disable : 4100)  // Unreferenced params
 #include "InternalsPlugin.hpp"
+#pragma warning(pop)
+
 #include "rF2State.h"
 #include <time.h>
 
@@ -37,7 +44,7 @@ public:
   static DebugLevel msDebugOutputLevel;
   static bool msDebugISIInternals;
   static int msMillisRefresh;
-  static int msMillisMutexWait;
+  static DWORD msMillisMutexWait;
 
   static void LoadConfig();
 
