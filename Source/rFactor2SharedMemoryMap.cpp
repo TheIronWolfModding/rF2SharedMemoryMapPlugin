@@ -554,37 +554,37 @@ void SharedMemoryPlugin::UpdateTelemetryHelper(double const ticksNow, TelemInfoV
 
   // TelemWheelV01
   for (int i = 0; i < 4; ++i) {
-    pBuf->mWheel[i].mSuspensionDeflection = info.mWheel[i].mSuspensionDeflection;
-    pBuf->mWheel[i].mRideHeight = info.mWheel[i].mRideHeight;
-    pBuf->mWheel[i].mSuspForce = info.mWheel[i].mSuspForce;
-    pBuf->mWheel[i].mBrakeTemp = info.mWheel[i].mBrakeTemp;
-    pBuf->mWheel[i].mBrakePressure = info.mWheel[i].mBrakePressure;
+    pBuf->mWheels[i].mSuspensionDeflection = info.mWheel[i].mSuspensionDeflection;
+    pBuf->mWheels[i].mRideHeight = info.mWheel[i].mRideHeight;
+    pBuf->mWheels[i].mSuspForce = info.mWheel[i].mSuspForce;
+    pBuf->mWheels[i].mBrakeTemp = info.mWheel[i].mBrakeTemp;
+    pBuf->mWheels[i].mBrakePressure = info.mWheel[i].mBrakePressure;
 
-    pBuf->mWheel[i].mRotation = info.mWheel[i].mRotation;
-    pBuf->mWheel[i].mLateralPatchVel = info.mWheel[i].mLateralPatchVel;
-    pBuf->mWheel[i].mLongitudinalPatchVel = info.mWheel[i].mLongitudinalPatchVel;
-    pBuf->mWheel[i].mLateralGroundVel = info.mWheel[i].mLateralGroundVel;
-    pBuf->mWheel[i].mLongitudinalGroundVel = info.mWheel[i].mLongitudinalGroundVel;
-    pBuf->mWheel[i].mCamber = info.mWheel[i].mCamber;
-    pBuf->mWheel[i].mLateralForce = info.mWheel[i].mLateralForce;
-    pBuf->mWheel[i].mLongitudinalForce = info.mWheel[i].mLongitudinalForce;
-    pBuf->mWheel[i].mTireLoad = info.mWheel[i].mTireLoad;
+    pBuf->mWheels[i].mRotation = info.mWheel[i].mRotation;
+    pBuf->mWheels[i].mLateralPatchVel = info.mWheel[i].mLateralPatchVel;
+    pBuf->mWheels[i].mLongitudinalPatchVel = info.mWheel[i].mLongitudinalPatchVel;
+    pBuf->mWheels[i].mLateralGroundVel = info.mWheel[i].mLateralGroundVel;
+    pBuf->mWheels[i].mLongitudinalGroundVel = info.mWheel[i].mLongitudinalGroundVel;
+    pBuf->mWheels[i].mCamber = info.mWheel[i].mCamber;
+    pBuf->mWheels[i].mLateralForce = info.mWheel[i].mLateralForce;
+    pBuf->mWheels[i].mLongitudinalForce = info.mWheel[i].mLongitudinalForce;
+    pBuf->mWheels[i].mTireLoad = info.mWheel[i].mTireLoad;
 
-    pBuf->mWheel[i].mGripFract = info.mWheel[i].mGripFract;
-    pBuf->mWheel[i].mPressure = info.mWheel[i].mPressure;
-    memcpy(pBuf->mWheel[i].mTemperature, info.mWheel[i].mTemperature, sizeof(pBuf->mWheel[i].mTemperature));
-    pBuf->mWheel[i].mWear = info.mWheel[i].mWear;
-    strcpy_s(pBuf->mWheel[i].mTerrainName, info.mWheel[i].mTerrainName);
-    pBuf->mWheel[i].mSurfaceType = info.mWheel[i].mSurfaceType;
-    pBuf->mWheel[i].mFlat = info.mWheel[i].mFlat;
-    pBuf->mWheel[i].mDetached = info.mWheel[i].mDetached;
+    pBuf->mWheels[i].mGripFract = info.mWheel[i].mGripFract;
+    pBuf->mWheels[i].mPressure = info.mWheel[i].mPressure;
+    memcpy(pBuf->mWheels[i].mTemperature, info.mWheel[i].mTemperature, sizeof(pBuf->mWheels[i].mTemperature));
+    pBuf->mWheels[i].mWear = info.mWheel[i].mWear;
+    strcpy_s(pBuf->mWheels[i].mTerrainName, info.mWheel[i].mTerrainName);
+    pBuf->mWheels[i].mSurfaceType = info.mWheel[i].mSurfaceType;
+    pBuf->mWheels[i].mFlat = info.mWheel[i].mFlat;
+    pBuf->mWheels[i].mDetached = info.mWheel[i].mDetached;
 
-    pBuf->mWheel[i].mVerticalTireDeflection = info.mWheel[i].mVerticalTireDeflection;
-    pBuf->mWheel[i].mWheelYLocation = info.mWheel[i].mWheelYLocation;
-    pBuf->mWheel[i].mToe = info.mWheel[i].mToe;
+    pBuf->mWheels[i].mVerticalTireDeflection = info.mWheel[i].mVerticalTireDeflection;
+    pBuf->mWheels[i].mWheelYLocation = info.mWheel[i].mWheelYLocation;
+    pBuf->mWheels[i].mToe = info.mWheel[i].mToe;
 
-    pBuf->mWheel[i].mTireCarcassTemperature = info.mWheel[i].mTireCarcassTemperature;
-    memcpy(pBuf->mWheel[i].mTireInnerLayerTemperature, info.mWheel[i].mTireInnerLayerTemperature, sizeof(pBuf->mWheel[i].mTireInnerLayerTemperature));
+    pBuf->mWheels[i].mTireCarcassTemperature = info.mWheel[i].mTireCarcassTemperature;
+    memcpy(pBuf->mWheels[i].mTireInnerLayerTemperature, info.mWheel[i].mTireInnerLayerTemperature, sizeof(pBuf->mWheels[i].mTireInnerLayerTemperature));
   }
 
   double interTicksBegin = 0.0;

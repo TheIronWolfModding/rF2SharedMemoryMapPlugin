@@ -667,7 +667,7 @@ struct rF2State
   unsigned char mExpansionTelem[152]; // for future use (note that the slot ID has been moved to mID above)
 
                                  // keeping this at the end of the structure to make it easier to replace in future versions
-  rF2Wheel mWheel[4];            // wheel info (front left, front right, rear left, rear right)
+  rF2Wheel mWheels[4];            // wheel info (front left, front right, rear left, rear right)
 
   ////////////////////////////////////////////////////////////
   // ScoringInfoV01
