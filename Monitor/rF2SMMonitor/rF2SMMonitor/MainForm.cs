@@ -46,6 +46,9 @@ namespace rF2SMMonitor
     // Interpolation debugging
     InterpolationStats interpolationStats = new InterpolationStats();
 
+    // Track rF2 transitions.
+    TransitionTracker tracker = new TransitionTracker();
+
     // Config
     IniFile config = new IniFile();
     float scale = 2.0f;
@@ -338,9 +341,13 @@ namespace rF2SMMonitor
         var currX = 3.0f;
         var currY = 3.0f;
         float yStep = SystemFonts.DefaultFont.Height;
-        g.DrawString(string.Format("FPS: {0}", this.fps), SystemFonts.DefaultFont, brush, currX, currY);
-        g.DrawString(string.Format("mDetlaTime: {0:n4}", this.currrF2State.mDeltaTime), SystemFonts.DefaultFont, brush, currX, currY += yStep);
-        g.DrawString(string.Format("mPos: x = {0:n3} y = {1:n3} z = {2:n3}", this.currrF2State.mPos.x, this.currrF2State.mPos.y, this.currrF2State.mPos.z), SystemFonts.DefaultFont, brush, currX, currY += yStep);
+        var gameStateText = new StringBuilder();
+        gameStateText.Append(string.Format("FPS: {0}", this.fps));
+        gameStateText.Append(string.Format("    mDetlaTime: {0:n4}\n", this.currrF2State.mDeltaTime));
+        g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, brush, currX, currY);
+
+
+        this.tracker.TrackPhase(ref this.currrF2State, g);
 
         Interpolator.RenderDebugInfo(ref this.currrF2State, g);
 
@@ -356,9 +363,7 @@ namespace rF2SMMonitor
         var zVeh = (float)this.currrF2State.mPos.z;
         var yawVeh = Math.Atan2(this.currrF2State.mOri[2].x, this.currrF2State.mOri[2].z);
 
-        g.DrawString(string.Format("yaw: {0:n3}", yawVeh), SystemFonts.DefaultFont, brush, currX, currY += yStep);
-
-        // View center
+         // View center
         var xScrOrigin = this.view.Width / 2.0f;
         var yScrOrigin = this.view.Height / 2.0f;
         if (!this.centerOnVehicle)

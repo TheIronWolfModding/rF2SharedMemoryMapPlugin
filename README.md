@@ -11,7 +11,7 @@ Plugin uses double buffering and offers optional synchronization on global mutex
 
 Opponent positions in between updates are interpolated using quaternion nlerp.  Plugin has default refresh rate of  ~30FPS.
 
-Plugin is build using VS 2015 Community Edition, targeting VC12 (VS 2013) runtime, since this rF2 comes with VC12 redist.
+Plugin is build using VS 2015 Community Edition, targeting VC12 (VS 2013) runtime, since rF2 comes with VC12 redist.
 
 ## Uses
   * Recommended: Simply copy rF2StateHeader part of the buffer, and check mCurrentRead variable.  If it's true, use this buffer, otherwise use the other buffer.  See `Monitor\rF2SMMonitor\rF2SMMonitor\MainForm.cs MainUpdate` method for example of use in C# (ignore mutex).
