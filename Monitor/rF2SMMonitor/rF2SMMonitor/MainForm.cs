@@ -342,8 +342,7 @@ namespace rF2SMMonitor
         var currY = 3.0f;
         float yStep = SystemFonts.DefaultFont.Height;
         var gameStateText = new StringBuilder();
-        gameStateText.Append(string.Format("FPS: {0}", this.fps));
-        gameStateText.Append(string.Format("    mDetlaTime: {0:n4}\n", this.currrF2State.mDeltaTime));
+        gameStateText.Append(string.Format("FPS: {0}     mDetlaTime: {1:n4}\n", this.fps, this.currrF2State.mDeltaTime));
         g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, brush, currX, currY);
 
 
