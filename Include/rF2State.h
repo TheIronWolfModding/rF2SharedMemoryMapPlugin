@@ -118,6 +118,28 @@ enum rF2WheelIndex {
   RearRight = 3
 };
 
+// 0=none, 1=request, 2=entering, 3=stopped, 4=exiting
+enum rF2PitState {
+  PitState_None = 0,
+  Request = 1,
+  Entering = 2,
+  Stopped = 3,
+  Exiting = 4
+};
+
+// primary flag being shown to vehicle (currently only 0=green or 6=blue)
+enum rF2PrimaryFlag {
+  Green = 0,
+  Blue = 6
+};
+
+// 0 = do not count lap or time, 1 = count lap but not time, 2 = count lap and time
+enum rF2CountLapFlag {
+  DoNotCountLap = 0,
+  CountLapButNotTime = 1,
+  CountLapAndTime = 2
+};
+
 
 // MM_NEW
 struct Euler
@@ -637,6 +659,9 @@ struct rF2State
   double mLastImpactET;          // time of last impact
   double mLastImpactMagnitude;   // magnitude of last impact
   rF2Vec3 mLastImpactPos;        // location of last impact
+  
+  // MM_NEW
+  double mMaxImpactMagnitude;    // Max impact magnitude.  Updated on every telemetry call, and reset on visit to pits or Session restart.
 
                                  // Expanded
   double mEngineTorque;          // current engine torque (including additive torque) (used to be mEngineTq, but there's little reason to abbreviate it)
@@ -724,6 +749,9 @@ struct rF2State
   rF2Vec3 mWind;                   // wind speed
   double mMinPathWetness;          // minimum wetness on main path 0.0-1.0
   double mMaxPathWetness;          // maximum wetness on main path 0.0-1.0
+
+  // MM_NEW
+  unsigned char mInvulnerable;     // Indicates invulnerability 0 (off), 1 (on)
 
   // Future use
   unsigned char mExpansionScoring[256];

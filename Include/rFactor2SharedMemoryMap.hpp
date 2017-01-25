@@ -29,7 +29,7 @@ enum DebugLevel
 };
 
 // This is used for the app to use the plugin for its intended purpose
-class SharedMemoryPlugin : public InternalsPluginV01  // REMINDER: exported function GetPluginVersion() should return 1 if you are deriving from this InternalsPluginV01, 2 for InternalsPluginV02, etc.
+class SharedMemoryPlugin : public InternalsPluginV07  // REMINDER: exported function GetPluginVersion() should return 1 if you are deriving from this InternalsPluginV01, 2 for InternalsPluginV02, etc.
 {
 public:
   static char const* const MM_FILE_NAME1;
@@ -97,11 +97,16 @@ public:
   // whether we want telemetry updates (0=no 1=player-only 2=all vehicles)
   void UpdateTelemetry(TelemInfoV01 const& info ) override;
 
-  
-
   // SCORING OUTPUT
   bool WantsScoringUpdates() override { return true; }
   void UpdateScoring(ScoringInfoV01 const& info) override; // update plugin with scoring info (approximately five times per second)
+
+
+  void SetPhysicsOptions(PhysicsOptionsV01 &options) override 
+  {
+    mInvulnerable = options.mInvulnerable;
+  }
+
 
 private:
   void UpdateTelemetryHelper(double const ticksNow, TelemInfoV01 const& info);
@@ -118,6 +123,9 @@ private:
   // Timings are in microseconds.
   double mLastTelUpdate = 0.0;
   double mLastScoringUpdate = 0.0;
+
+  // Physics settings:
+  unsigned char mInvulnerable = 0;
 
   // Frame delta is in seconds.
   double mDelta = 0.0;

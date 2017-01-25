@@ -102,7 +102,7 @@ extern "C" __declspec(dllexport)
 PluginObjectType __cdecl GetPluginType() { return(PO_INTERNALS); }
 
 extern "C" __declspec(dllexport)
-int __cdecl GetPluginVersion() { return(1); } // InternalsPluginV01 functionality (if you change this return value, you must derive from the appropriate class!)
+int __cdecl GetPluginVersion() { return(7); } // InternalsPluginV01 functionality (if you change this return value, you must derive from the appropriate class!)
 
 extern "C" __declspec(dllexport)
 PluginObject * __cdecl CreatePluginObject() { return((PluginObject *) new SharedMemoryPlugin); }
@@ -334,6 +334,9 @@ double TicksNow() {
 void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
 {
   if (mIsMapped) {
+     // Update mMaxImactMagnitude.
+     mpBufCurWrite->mMaxImpactMagnitude = max(mpBufCurWrite->mMaxImpactMagnitude, info.mLastImpactMagnitude);
+
     // Delta will have to be capped to some max value (refresh rate)?
     auto const ticksNow = TicksNow();
     auto const delta = ticksNow - mLastTelUpdate;
@@ -771,6 +774,9 @@ void SharedMemoryPlugin::UpdateScoringHelper(double const ticksNow, ScoringInfoV
   pBuf->mWind = { info.mWind.x, info.mWind.y, info.mWind.z };
   pBuf->mMinPathWetness = info.mMinPathWetness;
   pBuf->mMaxPathWetness = info.mMaxPathWetness;
+
+  // Physics options received via SetPhysicsOptions.
+  pBuf->mInvulnerable = mInvulnerable;
 
   ///////////////////////////////////////
   // VehicleScoringInfoV01

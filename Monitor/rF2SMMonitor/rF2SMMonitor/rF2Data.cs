@@ -123,7 +123,7 @@ namespace rF2SMMonitor
 
     // 0=none, 1=request, 2=entering, 3=stopped, 4=exiting
     internal enum rF2PitState {
-      None = 0,
+      PitState_None = 0,
       Request = 1,
       Entering = 2,
       Stopped = 3,
@@ -376,8 +376,9 @@ namespace rF2SMMonitor
       internal double mLastImpactET;          // time of last impact
       internal double mLastImpactMagnitude;   // magnitude of last impact
       internal rF2Vec3 mLastImpactPos;        // location of last impact
+      internal double mMaxImpactMagnitude;    // Max impact magnitude.  Updated on every telemetry call, and reset on visit to pits or Session restart.
 
-                                     // Expanded
+      // Expanded
       internal double mEngineTorque;          // current engine torque (including additive torque) (used to be mEngineTq, but there's little reason to abbreviate it)
       internal int mCurrentSector;            // the current sector (zero-based) with the pitlane stored in the sign bit (example: entering pits from third sector gives 0x80000002)
       internal byte mSpeedLimiter;   // whether speed limiter is on
@@ -461,6 +462,8 @@ namespace rF2SMMonitor
       internal rF2Vec3 mWind;                   // wind speed
       internal double mMinPathWetness;          // minimum wetness on main path 0.0-1.0
       internal double mMaxPathWetness;          // maximum wetness on main path 0.0-1.0
+
+      internal byte mInvulnerable;              // Indicates invulnerability 0 (off), 1 (on)
 
       [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = 256)]
       byte[] mExpansionScoring;                 // Future use.

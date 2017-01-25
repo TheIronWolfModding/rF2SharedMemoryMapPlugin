@@ -342,11 +342,12 @@ namespace rF2SMMonitor
         var currY = 3.0f;
         float yStep = SystemFonts.DefaultFont.Height;
         var gameStateText = new StringBuilder();
-        gameStateText.Append(string.Format("FPS: {0}     mDetlaTime: {1:n4}\n", this.fps, this.currrF2State.mDeltaTime));
+        gameStateText.Append(string.Format("FPS: {0}    mDetlaTime: {1:n4}    Invulnerability: {2}\n", this.fps, this.currrF2State.mDeltaTime, this.currrF2State.mInvulnerable == 0 ? "off" : "on"));
         g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, brush, currX, currY);
 
 
         this.tracker.TrackPhase(ref this.currrF2State, g);
+        this.tracker.TrackDamage(ref this.currrF2State, g);
 
         Interpolator.RenderDebugInfo(ref this.currrF2State, g);
 
