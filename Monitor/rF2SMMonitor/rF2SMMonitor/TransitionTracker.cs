@@ -237,6 +237,7 @@ namespace rF2SMMonitor
     {
       internal byte[] mDentSeverity = new byte[8];         // dent severity at 8 locations around the car (0=none, 1=some, 2=more)
       internal double mLastImpactMagnitude = -1.0;   // magnitude of last impact
+      internal double mAccumulatedImpactMagnitude = -1.0;   // magnitude of last impact
       internal double mMaxImpactMagnitude = -1.0;   // magnitude of last impact
       internal rF2Vec3 mLastImpactPos;        // location of last impact
       internal double mLastImpactET = -1.0;          // time of last impact
@@ -271,6 +272,7 @@ namespace rF2SMMonitor
       var di = new DamageInfo();
       di.mDentSeverity = state.mDentSeverity;
       di.mLastImpactMagnitude = state.mLastImpactMagnitude;
+      di.mAccumulatedImpactMagnitude = state.mAccumulatedImpactMagnitude;
       di.mMaxImpactMagnitude = state.mMaxImpactMagnitude;
       di.mLastImpactPos = state.mLastImpactPos;
       di.mLastImpactET = state.mLastImpactET;
@@ -300,6 +302,7 @@ namespace rF2SMMonitor
       // Only refresh UI if there's change.
       if (dentSevChanged
         || di.mLastImpactMagnitude != this.prevDamageInfo.mLastImpactMagnitude
+        || di.mAccumulatedImpactMagnitude != this.prevDamageInfo.mAccumulatedImpactMagnitude
         || di.mMaxImpactMagnitude != this.prevDamageInfo.mMaxImpactMagnitude
         || lastImpactPosChanged
         || di.mLastImpactET != this.prevDamageInfo.mLastImpactET
@@ -317,6 +320,7 @@ namespace rF2SMMonitor
         this.sbDamageChanged = new StringBuilder();
         sbDamageChanged.Append((dentSevChanged ? "***\n" : "\n")
           + (di.mLastImpactMagnitude != this.prevDamageInfo.mLastImpactMagnitude ? "***\n" : "\n")
+          + (di.mAccumulatedImpactMagnitude != this.prevDamageInfo.mAccumulatedImpactMagnitude ? "***\n" : "\n")
           + (di.mMaxImpactMagnitude != this.prevDamageInfo.mMaxImpactMagnitude ? "***\n" : "\n")
           + (lastImpactPosChanged ? "***\n" : "\n")
           + (di.mLastImpactET != this.prevDamageInfo.mLastImpactET ? "***\n" : "\n")
@@ -338,6 +342,7 @@ namespace rF2SMMonitor
         sbDamageLabel.Append(
           "mDentSeverity:\n"
           + "mLastImpactMagnitude:\n"
+          + "mAccumulatedImpactMagnitude:\n"
           + "mMaxImpactMagnitude:\n"
           + "mLastImpactPos:\n"
           + "mLastImpactET:\n"
@@ -350,6 +355,7 @@ namespace rF2SMMonitor
         sbDamageValues.Append(
           $"{di.mDentSeverity[0]},{di.mDentSeverity[1]},{di.mDentSeverity[2]},{di.mDentSeverity[3]},{di.mDentSeverity[4]},{di.mDentSeverity[5]},{di.mDentSeverity[6]},{di.mDentSeverity[7]}\n"
           + $"{di.mLastImpactMagnitude:N5}\n"
+          + $"{di.mAccumulatedImpactMagnitude:N5}\n"
           + $"{di.mMaxImpactMagnitude:N5}\n"
           + $"x={di.mLastImpactPos.x:N4} y={di.mLastImpactPos.y:N4} z={di.mLastImpactPos.z:N4}\n"
           + $"{di.mLastImpactET}\n"
@@ -385,7 +391,7 @@ namespace rF2SMMonitor
 
       g.DrawString(this.sbDamageChanged.ToString(), SystemFonts.DefaultFont, Brushes.Orange, 3.0f, 303.0f);
       g.DrawString(this.sbDamageLabel.ToString(), SystemFonts.DefaultFont, Brushes.Green, 30.0f, 300.0f);
-      g.DrawString(this.sbDamageValues.ToString(), SystemFonts.DefaultFont, Brushes.Purple, 160.0f, 300.0f);
+      g.DrawString(this.sbDamageValues.ToString(), SystemFonts.DefaultFont, Brushes.Purple, 200.0f, 300.0f);
     }
   }
 }

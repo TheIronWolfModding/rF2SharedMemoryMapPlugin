@@ -69,7 +69,6 @@ Sample consumption:
 #include "rFactor2SharedMemoryMap.hpp"          // corresponding header file
 #include <stdio.h>                              // for sample output
 #include <stdlib.h>
-#include <assert.h>
 #include <cstddef>                              // offsetof
 
 #define PLUGIN_VERSION_MAJOR "0.5"
@@ -272,6 +271,7 @@ void SharedMemoryPlugin::ClearState()
 
   ClearTimings();
   mScoringInfo = {};
+  mExtStateTracker.ResetDamageState();
 }
 
 void SharedMemoryPlugin::StartSession()
@@ -334,8 +334,10 @@ double TicksNow() {
 void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
 {
   if (mIsMapped) {
-     // Update mMaxImactMagnitude.
-     mpBufCurWrite->mMaxImpactMagnitude = max(mpBufCurWrite->mMaxImpactMagnitude, info.mLastImpactMagnitude);
+    // Update extended state.
+    // Since I do not want to miss impact data, and it is not accumulated in any way
+    // I am aware of in rF2 internals, process on every call.
+    mExtStateTracker.ProcessTelemetryUpdate(info);
 
     // Delta will have to be capped to some max value (refresh rate)?
     auto const ticksNow = TicksNow();
@@ -599,7 +601,7 @@ void SharedMemoryPlugin::UpdateTelemetryHelper(double const ticksNow, TelemInfoV
   // Interpolation of scoring info
   //
   // In rF2 scoring update happens roughly every 200ms,
-  // so only interpolate if we're roughly within that time delta.
+  // so only interpolate if we're approximately within that time delta.
   // Longer delta means a pause or a hiccup, and interpolation will go
   // through the roof if there are no bounds.
   //
@@ -641,7 +643,10 @@ void SharedMemoryPlugin::UpdateTelemetryHelper(double const ticksNow, TelemInfoV
         continue;
       }
     }
-    
+
+    // Update Extended state.
+    mExtStateTracker.FlushToBuffer(pBuf);
+
     if (msDebugOutputLevel >= DebugLevel::Perf) {
       static double interTicksTotal = 0.0;
       static int interUpdates = 1;
@@ -775,9 +780,6 @@ void SharedMemoryPlugin::UpdateScoringHelper(double const ticksNow, ScoringInfoV
   pBuf->mMinPathWetness = info.mMinPathWetness;
   pBuf->mMaxPathWetness = info.mMaxPathWetness;
 
-  // Physics options received via SetPhysicsOptions.
-  pBuf->mInvulnerable = mInvulnerable;
-
   ///////////////////////////////////////
   // VehicleScoringInfoV01
   ///////////////////////////////////////
@@ -858,6 +860,9 @@ void SharedMemoryPlugin::UpdateScoringHelper(double const ticksNow, ScoringInfoV
     pBuf->mVehicles[i].mCountLapFlag = info.mVehicle[i].mCountLapFlag;
     pBuf->mVehicles[i].mInGarageStall = info.mVehicle[i].mInGarageStall;
   }
+
+  // Update Extended state.
+  mExtStateTracker.FlushToBuffer(pBuf);
 }
 
 
@@ -904,6 +909,9 @@ void SharedMemoryPlugin::UpdateScoring(ScoringInfoV01 const& info)
       SyncBuffers(true /*telemetryOnly*/);
     else
       DEBUG_MSG(DebugLevel::Synchronization, "Skipped initial write buffer sync due to retry mode.");
+
+    // Update extended state.
+    mExtStateTracker.ProcessScoringUpdate(info);
 
     // Update write buffer with scoring info.
     UpdateScoringHelper(ticksNow, info);

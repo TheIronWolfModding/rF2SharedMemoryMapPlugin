@@ -16,6 +16,7 @@ Author: The Iron Wolf (vleonavicius@hotmail.com)
 
 #include "rF2State.h"
 #include <time.h>
+#include <assert.h>
 
 enum DebugLevel
 {
@@ -75,6 +76,62 @@ private:
     InternalVehScoringInfo mVehicles[rF2State::MAX_VSI_SIZE];
   };
 
+  struct ExtendedStateTracker
+  {
+    unsigned char mInvulnerable = 0;
+    double mMaxImpactMagnitude = 0.0;
+    double mAccumulatedImpactMagnitude = 0.0;
+    
+    double mLastImpactProcessedET = 0.0;
+    double mLastPitStopET = 0.0;
+
+    void ProcessTelemetryUpdate(TelemInfoV01 const& info)
+    {
+      if (info.mLastImpactET > mLastPitStopET  // Is this new impact since last pit stop?
+        && info.mLastImpactET > mLastImpactProcessedET) { // Is this new impact?
+        // Ok, this is either new impact, or first impact since pit stop.
+        // Update max and accumulated impact magnitudes.
+        mMaxImpactMagnitude = max(mMaxImpactMagnitude, info.mLastImpactMagnitude);
+        mAccumulatedImpactMagnitude += info.mLastImpactMagnitude;
+        mLastImpactProcessedET = info.mLastImpactET;
+      }
+    }
+
+    void ProcessScoringUpdate(ScoringInfoV01 const& info)
+    {
+      // This code bravely assumes that car at 0 is player.
+      // Not sure how correct this is.
+      if (info.mNumVehicles > 0 
+        && info.mVehicle[0].mPitState == rF2PitState::Stopped) {
+        ResetDamageState();
+        mLastPitStopET = info.mCurrentET;
+      }
+    }
+
+    void ProcessPhysicsOptions(PhysicsOptionsV01 &options)
+    {
+      mInvulnerable = options.mInvulnerable;
+    }
+
+    void ResetDamageState()
+    {
+      mMaxImpactMagnitude = 0.0;
+      mAccumulatedImpactMagnitude = 0.0;
+      mLastImpactProcessedET = 0.0;
+      mLastPitStopET = 0.0;
+    }
+
+    void FlushToBuffer(rF2State* pBuf) const
+    {
+      assert(pBuf != nullptr);
+      assert(pBuf->mCurrentRead != true);
+
+      pBuf->mMaxImpactMagnitude = mMaxImpactMagnitude;
+      pBuf->mAccumulatedImpactMagnitude = mAccumulatedImpactMagnitude;
+      pBuf->mInvulnerable = mInvulnerable;
+    }
+  };
+
 public:
   SharedMemoryPlugin() {}
   ~SharedMemoryPlugin() override {}
@@ -95,7 +152,7 @@ public:
   // GAME OUTPUT
   long WantsTelemetryUpdates() override { return 1L; }
   // whether we want telemetry updates (0=no 1=player-only 2=all vehicles)
-  void UpdateTelemetry(TelemInfoV01 const& info ) override;
+  void UpdateTelemetry(TelemInfoV01 const& info) override;
 
   // SCORING OUTPUT
   bool WantsScoringUpdates() override { return true; }
@@ -104,7 +161,7 @@ public:
 
   void SetPhysicsOptions(PhysicsOptionsV01 &options) override 
   {
-    mInvulnerable = options.mInvulnerable;
+    mExtStateTracker.ProcessPhysicsOptions(options);
   }
 
 
@@ -124,12 +181,12 @@ private:
   double mLastTelUpdate = 0.0;
   double mLastScoringUpdate = 0.0;
 
-  // Physics settings:
-  unsigned char mInvulnerable = 0;
-
   // Frame delta is in seconds.
   double mDelta = 0.0;
   double mET = 0.0;
+
+  // Extended state tracker
+  ExtendedStateTracker mExtStateTracker;
 
   HANDLE mhMutex = nullptr;
   HANDLE mhMap1 = nullptr;

@@ -659,9 +659,10 @@ struct rF2State
   double mLastImpactET;          // time of last impact
   double mLastImpactMagnitude;   // magnitude of last impact
   rF2Vec3 mLastImpactPos;        // location of last impact
-  
+
   // MM_NEW
-  double mMaxImpactMagnitude;    // Max impact magnitude.  Updated on every telemetry call, and reset on visit to pits or Session restart.
+  double mMaxImpactMagnitude;    // Max impact magnitude.  Tracked on every telemetry call, and reset on visit to pits or Session restart.
+  double mAccumulatedImpactMagnitude;  // Accumulated impact magnitude.  Tracked on every telemetry call, and reset on visit to pits or Session restart.
 
                                  // Expanded
   double mEngineTorque;          // current engine torque (including additive torque) (used to be mEngineTq, but there's little reason to abbreviate it)
