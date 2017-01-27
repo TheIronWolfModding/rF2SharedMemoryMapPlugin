@@ -28,9 +28,14 @@
       this.yOffsetLabel = new System.Windows.Forms.Label();
       this.xOffsetTextBox = new System.Windows.Forms.TextBox();
       this.xOffsetLabel = new System.Windows.Forms.Label();
+      this.groupBoxLogging = new System.Windows.Forms.GroupBox();
+      this.checkBoxLogPhaseAndState = new System.Windows.Forms.CheckBox();
+      this.checkBoxLogDamage = new System.Windows.Forms.CheckBox();
+      this.checkBoxLightMode = new System.Windows.Forms.CheckBox();
       ((System.ComponentModel.ISupportInitialize)(this.view)).BeginInit();
       this.groupBoxFocus.SuspendLayout();
       this.globalGroupBox.SuspendLayout();
+      this.groupBoxLogging.SuspendLayout();
       this.SuspendLayout();
       // 
       // view
@@ -46,7 +51,7 @@
       this.scaleLabel.AutoSize = true;
       this.scaleLabel.Location = new System.Drawing.Point(6, 17);
       this.scaleLabel.Name = "scaleLabel";
-      this.scaleLabel.Size = new System.Drawing.Size(41, 15);
+      this.scaleLabel.Size = new System.Drawing.Size(37, 13);
       this.scaleLabel.TabIndex = 1;
       this.scaleLabel.Text = "Scale:";
       // 
@@ -63,7 +68,7 @@
       this.focusVehLabel.AutoSize = true;
       this.focusVehLabel.Location = new System.Drawing.Point(7, 18);
       this.focusVehLabel.Name = "focusVehLabel";
-      this.focusVehLabel.Size = new System.Drawing.Size(60, 15);
+      this.focusVehLabel.Size = new System.Drawing.Size(55, 13);
       this.focusVehLabel.TabIndex = 3;
       this.focusVehLabel.Text = "Vehicle #:";
       // 
@@ -77,9 +82,9 @@
       // setAsOriginCheckBox
       // 
       this.setAsOriginCheckBox.AutoSize = true;
-      this.setAsOriginCheckBox.Location = new System.Drawing.Point(129, 10);
+      this.setAsOriginCheckBox.Location = new System.Drawing.Point(129, 13);
       this.setAsOriginCheckBox.Name = "setAsOriginCheckBox";
-      this.setAsOriginCheckBox.Size = new System.Drawing.Size(99, 19);
+      this.setAsOriginCheckBox.Size = new System.Drawing.Size(86, 17);
       this.setAsOriginCheckBox.TabIndex = 6;
       this.setAsOriginCheckBox.Text = "Set as Origin";
       this.setAsOriginCheckBox.UseVisualStyleBackColor = true;
@@ -102,7 +107,7 @@
       this.rotateAroundCheckBox.AutoSize = true;
       this.rotateAroundCheckBox.Location = new System.Drawing.Point(129, 32);
       this.rotateAroundCheckBox.Name = "rotateAroundCheckBox";
-      this.rotateAroundCheckBox.Size = new System.Drawing.Size(148, 19);
+      this.rotateAroundCheckBox.Size = new System.Drawing.Size(129, 17);
       this.rotateAroundCheckBox.TabIndex = 8;
       this.rotateAroundCheckBox.Text = "Set as Rotation Origin";
       this.rotateAroundCheckBox.UseVisualStyleBackColor = true;
@@ -134,7 +139,7 @@
       this.yOffsetLabel.AutoSize = true;
       this.yOffsetLabel.Location = new System.Drawing.Point(226, 18);
       this.yOffsetLabel.Name = "yOffsetLabel";
-      this.yOffsetLabel.Size = new System.Drawing.Size(47, 15);
+      this.yOffsetLabel.Size = new System.Drawing.Size(44, 13);
       this.yOffsetLabel.TabIndex = 5;
       this.yOffsetLabel.Text = "y offset:";
       // 
@@ -150,15 +155,58 @@
       this.xOffsetLabel.AutoSize = true;
       this.xOffsetLabel.Location = new System.Drawing.Point(123, 18);
       this.xOffsetLabel.Name = "xOffsetLabel";
-      this.xOffsetLabel.Size = new System.Drawing.Size(48, 15);
+      this.xOffsetLabel.Size = new System.Drawing.Size(44, 13);
       this.xOffsetLabel.TabIndex = 3;
       this.xOffsetLabel.Text = "x offset:";
+      // 
+      // groupBoxLogging
+      // 
+      this.groupBoxLogging.Controls.Add(this.checkBoxLightMode);
+      this.groupBoxLogging.Controls.Add(this.checkBoxLogDamage);
+      this.groupBoxLogging.Controls.Add(this.checkBoxLogPhaseAndState);
+      this.groupBoxLogging.Location = new System.Drawing.Point(641, -1);
+      this.groupBoxLogging.Name = "groupBoxLogging";
+      this.groupBoxLogging.Size = new System.Drawing.Size(256, 54);
+      this.groupBoxLogging.TabIndex = 9;
+      this.groupBoxLogging.TabStop = false;
+      this.groupBoxLogging.Text = "File Logging";
+      // 
+      // checkBoxLogPhaseAndState
+      // 
+      this.checkBoxLogPhaseAndState.AutoSize = true;
+      this.checkBoxLogPhaseAndState.Location = new System.Drawing.Point(7, 13);
+      this.checkBoxLogPhaseAndState.Name = "checkBoxLogPhaseAndState";
+      this.checkBoxLogPhaseAndState.Size = new System.Drawing.Size(129, 17);
+      this.checkBoxLogPhaseAndState.TabIndex = 9;
+      this.checkBoxLogPhaseAndState.Text = "Phase and State";
+      this.checkBoxLogPhaseAndState.UseVisualStyleBackColor = true;
+      // 
+      // checkBoxLogDamage
+      // 
+      this.checkBoxLogDamage.AutoSize = true;
+      this.checkBoxLogDamage.Location = new System.Drawing.Point(7, 32);
+      this.checkBoxLogDamage.Name = "checkBoxLogDamage";
+      this.checkBoxLogDamage.Size = new System.Drawing.Size(129, 17);
+      this.checkBoxLogDamage.TabIndex = 10;
+      this.checkBoxLogDamage.Text = "Damage";
+      this.checkBoxLogDamage.UseVisualStyleBackColor = true;
+      // 
+      // checkBoxLightMode
+      // 
+      this.checkBoxLightMode.AutoSize = true;
+      this.checkBoxLightMode.Location = new System.Drawing.Point(142, 13);
+      this.checkBoxLightMode.Name = "checkBoxLightMode";
+      this.checkBoxLightMode.Size = new System.Drawing.Size(129, 17);
+      this.checkBoxLightMode.TabIndex = 11;
+      this.checkBoxLightMode.Text = "Light mode";
+      this.checkBoxLightMode.UseVisualStyleBackColor = true;
       // 
       // MainForm
       // 
       this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
       this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
       this.ClientSize = new System.Drawing.Size(1902, 1033);
+      this.Controls.Add(this.groupBoxLogging);
       this.Controls.Add(this.globalGroupBox);
       this.Controls.Add(this.groupBoxFocus);
       this.Controls.Add(this.view);
@@ -171,6 +219,8 @@
       this.groupBoxFocus.PerformLayout();
       this.globalGroupBox.ResumeLayout(false);
       this.globalGroupBox.PerformLayout();
+      this.groupBoxLogging.ResumeLayout(false);
+      this.groupBoxLogging.PerformLayout();
       this.ResumeLayout(false);
 
         }
@@ -191,6 +241,10 @@
     private System.Windows.Forms.Label xOffsetLabel;
     private System.Windows.Forms.TextBox yOffsetTextBox;
     private System.Windows.Forms.Label yOffsetLabel;
+    private System.Windows.Forms.GroupBox groupBoxLogging;
+    private System.Windows.Forms.CheckBox checkBoxLogPhaseAndState;
+    private System.Windows.Forms.CheckBox checkBoxLightMode;
+    private System.Windows.Forms.CheckBox checkBoxLogDamage;
   }
 }
 

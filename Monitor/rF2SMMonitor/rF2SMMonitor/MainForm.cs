@@ -25,6 +25,7 @@ namespace rF2SMMonitor
     private const int CONNECTION_RETRY_INTERVAL_MS = 1000;
     private const int DISCONNECTED_CHECK_INTERVAL_MS = 15000;
     private const float DEGREES_IN_RADIAN = 57.2957795f;
+    private const int LIGHT_MODE_REFRESH_MS = 500;
     System.Windows.Forms.Timer connectTimer = new System.Windows.Forms.Timer();
     System.Windows.Forms.Timer disconnectTimer = new System.Windows.Forms.Timer();
     bool connected = false;
@@ -57,6 +58,9 @@ namespace rF2SMMonitor
     int focusVehicle = 0;
     bool centerOnVehicle = true;
     bool rotateAroundVehicle = true;
+    bool logPhaseAndState = true;
+    bool logDamage = true;
+    bool logLightMode = false;
 
     [StructLayout(LayoutKind.Sequential)]
     public struct NativeMessage
@@ -91,6 +95,9 @@ namespace rF2SMMonitor
       this.focusVehTextBox.LostFocus += FocusVehTextBox_LostFocus;
       this.setAsOriginCheckBox.CheckedChanged += SetAsOriginCheckBox_CheckedChanged;
       this.rotateAroundCheckBox.CheckedChanged += RotateAroundCheckBox_CheckedChanged;
+      this.checkBoxLogPhaseAndState.CheckedChanged += CheckBoxLogPhaseAndState_CheckedChanged;
+      this.checkBoxLogDamage.CheckedChanged += CheckBoxLogDamage_CheckedChanged;
+      this.checkBoxLightMode.CheckedChanged += CheckBoxLightMode_CheckedChanged;
       this.MouseWheel += MainForm_MouseWheel;
 
       this.LoadConfig();
@@ -107,6 +114,29 @@ namespace rF2SMMonitor
       this.view.MouseClick += MainForm_MouseClick;
 
       Application.Idle += HandleApplicationIdle;
+    }
+
+    private void CheckBoxLightMode_CheckedChanged(object sender, EventArgs e)
+    {
+      this.logLightMode = this.checkBoxLightMode.Checked;
+      
+      // Disable/enable rendering options
+      this.globalGroupBox.Enabled = !this.logLightMode;
+      this.groupBoxFocus.Enabled = !this.logLightMode;
+
+      this.config.Write("logLightMode", this.logLightMode ? "1" : "0");
+    }
+
+    private void CheckBoxLogDamage_CheckedChanged(object sender, EventArgs e)
+    {
+      this.logDamage = this.checkBoxLogDamage.Checked;
+      this.config.Write("logDamage", this.logDamage ? "1" : "0");
+    }
+
+    private void CheckBoxLogPhaseAndState_CheckedChanged(object sender, EventArgs e)
+    {
+      this.logPhaseAndState = this.checkBoxLogPhaseAndState.Checked;
+      this.config.Write("logPhaseAndState", this.logPhaseAndState ? "1" : "0");
     }
 
     private void MainForm_MouseClick(object sender, MouseEventArgs e)
@@ -231,6 +261,9 @@ namespace rF2SMMonitor
       {
         this.MainUpdate();
         this.MainRender();
+
+        if (this.logLightMode)
+          Thread.Sleep(LIGHT_MODE_REFRESH_MS);
       }
     }
 
@@ -326,9 +359,17 @@ namespace rF2SMMonitor
     // If I don't flip z, the projection will look from below.
     void View_Paint(object sender, PaintEventArgs e)
     {
+      var g = e.Graphics;
+
+      this.tracker.TrackPhase(ref this.currrF2State, g, this.logPhaseAndState);
+      this.tracker.TrackDamage(ref this.currrF2State, g, this.logDamage);
+
+      if (this.logLightMode)
+        return;
+
       this.UpdateFPS();
 
-      var g = e.Graphics;
+      
       if (!this.connected)
       {
         var brush = new SolidBrush(System.Drawing.Color.Black);
@@ -344,10 +385,6 @@ namespace rF2SMMonitor
         var gameStateText = new StringBuilder();
         gameStateText.Append(string.Format("FPS: {0}    mDetlaTime: {1:n4}    Invulnerability: {2}\n", this.fps, this.currrF2State.mDeltaTime, this.currrF2State.mInvulnerable == 0 ? "off" : "on"));
         g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, brush, currX, currY);
-
-
-        this.tracker.TrackPhase(ref this.currrF2State, g);
-        this.tracker.TrackDamage(ref this.currrF2State, g);
 
         Interpolator.RenderDebugInfo(ref this.currrF2State, g);
 
@@ -550,6 +587,7 @@ namespace rF2SMMonitor
     {
       this.globalGroupBox.Enabled = enable;
       this.groupBoxFocus.Enabled = enable;
+      this.groupBoxLogging.Enabled = enable;
 
       this.focusVehLabel.Enabled = false;
       this.focusVehTextBox.Enabled = false;
@@ -558,8 +596,13 @@ namespace rF2SMMonitor
       this.yOffsetLabel.Enabled = false;
       this.yOffsetTextBox.Enabled = false;
 
+
       if (enable)
+      {
         this.rotateAroundCheckBox.Enabled = this.setAsOriginCheckBox.Checked;
+        this.globalGroupBox.Enabled = !this.logLightMode;
+        this.groupBoxFocus.Enabled = !this.logLightMode;
+      }
     }
 
     void LoadConfig()
@@ -608,6 +651,28 @@ namespace rF2SMMonitor
         this.rotateAroundVehicle = false;
 
       this.rotateAroundCheckBox.Checked = this.rotateAroundVehicle;
+
+      intResult = 0;
+      this.logLightMode = false;
+      if (int.TryParse(this.config.Read("logLightMode"), out intResult) && intResult == 1)
+        this.logLightMode = true;
+
+      this.checkBoxLightMode.Checked = this.logLightMode;
+
+      intResult = 0;
+      this.logPhaseAndState = true;
+      if (int.TryParse(this.config.Read("logPhaseAndState"), out intResult) && intResult == 0)
+        this.logPhaseAndState = false;
+
+      this.checkBoxLogPhaseAndState.Checked = this.logPhaseAndState;
+
+      intResult = 0;
+      this.logDamage = true;
+      if (int.TryParse(this.config.Read("logDamage"), out intResult) && intResult == 0)
+        this.logDamage = false;
+
+      this.checkBoxLogDamage.Checked = this.logDamage;
+
     }
   }
 }

@@ -13,13 +13,12 @@ namespace rF2SMMonitor
 {
   internal class TransitionTracker
   {
-    private static readonly string fileTimesTampString = DateTime.Now.ToString("yyyyMMddHHmmssfff");
+    private static readonly string fileTimesTampString = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
     private static readonly string basePath = Path.GetDirectoryName(System.Reflection.Assembly.GetEntryAssembly().Location);
-    private static readonly string phaseAndStateTrackingFilePath = $"{basePath}\\PhaseAndStateTracking_{fileTimesTampString}.log";
-    private static readonly string damageTrackingFilePath = $"{basePath}\\DamageTracking_{fileTimesTampString}.log";
-    private static readonly string phaseAndStateDeltaTrackingFilePath = $"{basePath}\\PhaseAndStateTrackingDelta_{fileTimesTampString}.log";
-    private static readonly string damageTrackingDeltaFilePath = $"{basePath}\\DamageTrackingDelta_{fileTimesTampString}.log";
-
+    private static readonly string phaseAndStateTrackingFilePath = $"{basePath}\\{fileTimesTampString}___PhaseAndStateTracking.log";
+    private static readonly string damageTrackingFilePath = $"{basePath}\\{fileTimesTampString}___DamageTracking.log";
+    private static readonly string phaseAndStateDeltaTrackingFilePath = $"{basePath}\\{fileTimesTampString}___PhaseAndStateTrackingDelta.log";
+    private static readonly string damageTrackingDeltaFilePath = $"{basePath}\\{fileTimesTampString}___DamageTrackingDelta.log";
 
     private string GetEnumString<T>(sbyte value)
     {
@@ -82,7 +81,7 @@ namespace rF2SMMonitor
     internal StringBuilder sbPhaseLabel = new StringBuilder();
     internal StringBuilder sbPhaseValues = new StringBuilder();
 
-    internal void TrackPhase(ref rF2State state, Graphics g)
+    internal void TrackPhase(ref rF2State state, Graphics g, bool logToFile)
     {
       if (state.mNumVehicles == 0)
         return;
@@ -201,30 +200,33 @@ namespace rF2SMMonitor
           GetEnumString<rF2CountLapFlag>(playerVeh.mCountLapFlag),
           ps.inGarageStall == 0 ? $"false({ps.inGarageStall})" : $"true({ps.inGarageStall})"));
 
-        var changed = this.sbPhaseChanged.ToString().Split('\n');
-        var labels = this.sbPhaseLabel.ToString().Split('\n');
-        var values = this.sbPhaseValues.ToString().Split('\n');
-        Debug.Assert(changed.Length == labels.Length && values.Length == labels.Length);
-
-        var lines = new List<string>();
-        var updateTime = DateTime.Now.ToString();
-
-        lines.Add($"\n{updateTime}");
-        for (int i = 0; i < changed.Length; ++i)
-          lines.Add($"{changed[i]}{labels[i]}{values[i]}");
-
-        File.AppendAllLines(phaseAndStateTrackingFilePath, lines);
-
-        lines.Clear();
-
-        lines.Add($"\n{updateTime}");
-        for (int i = 0; i < changed.Length; ++i)
+        if (logToFile)
         {
-          if (changed[i].StartsWith("***"))
-            lines.Add($"{changed[i]}{labels[i]}{values[i]}");
-        }
+          var changed = this.sbPhaseChanged.ToString().Split('\n');
+          var labels = this.sbPhaseLabel.ToString().Split('\n');
+          var values = this.sbPhaseValues.ToString().Split('\n');
+          Debug.Assert(changed.Length == labels.Length && values.Length == labels.Length);
 
-        File.AppendAllLines(phaseAndStateDeltaTrackingFilePath, lines);
+          var lines = new List<string>();
+          var updateTime = DateTime.Now.ToString();
+
+          lines.Add($"\n{updateTime}");
+          for (int i = 0; i < changed.Length; ++i)
+            lines.Add($"{changed[i]}{labels[i]}{values[i]}");
+
+          File.AppendAllLines(phaseAndStateTrackingFilePath, lines);
+
+          lines.Clear();
+
+          lines.Add($"\n{updateTime}");
+          for (int i = 0; i < changed.Length; ++i)
+          {
+            if (changed[i].StartsWith("***"))
+              lines.Add($"{changed[i]}{labels[i]}{values[i]}");
+          }
+
+          File.AppendAllLines(phaseAndStateDeltaTrackingFilePath, lines);
+        }
       }
 
       g.DrawString(this.sbPhaseChanged.ToString(), SystemFonts.DefaultFont, Brushes.Orange, 3.0f, 33.0f);
@@ -261,7 +263,7 @@ namespace rF2SMMonitor
     internal StringBuilder sbDamageLabel = new StringBuilder();
     internal StringBuilder sbDamageValues = new StringBuilder();
 
-    internal void TrackDamage(ref rF2State state, Graphics g)
+    internal void TrackDamage(ref rF2State state, Graphics g, bool logToFile)
     {
       if (state.mNumVehicles == 0)
         return;
@@ -354,9 +356,9 @@ namespace rF2SMMonitor
         this.sbDamageValues = new StringBuilder();
         sbDamageValues.Append(
           $"{di.mDentSeverity[0]},{di.mDentSeverity[1]},{di.mDentSeverity[2]},{di.mDentSeverity[3]},{di.mDentSeverity[4]},{di.mDentSeverity[5]},{di.mDentSeverity[6]},{di.mDentSeverity[7]}\n"
-          + $"{di.mLastImpactMagnitude:N5}\n"
-          + $"{di.mAccumulatedImpactMagnitude:N5}\n"
-          + $"{di.mMaxImpactMagnitude:N5}\n"
+          + $"{di.mLastImpactMagnitude:N1}\n"
+          + $"{di.mAccumulatedImpactMagnitude:N1}\n"
+          + $"{di.mMaxImpactMagnitude:N1}\n"
           + $"x={di.mLastImpactPos.x:N4} y={di.mLastImpactPos.y:N4} z={di.mLastImpactPos.z:N4}\n"
           + $"{di.mLastImpactET}\n"
           + $"{di.mOverheating}\n"
@@ -365,28 +367,31 @@ namespace rF2SMMonitor
           + $"Left Flat:{di.mRearLeftFlat}    Left Detached:{di.mRearLeftDetached}        Right Flat:{di.mRearRightFlat}    Right Detached:{di.mRearRightDetached}\n"
           );
 
-        var changed = this.sbDamageChanged.ToString().Split('\n');
-        var labels = this.sbDamageLabel.ToString().Split('\n');
-        var values = this.sbDamageValues.ToString().Split('\n');
-        Debug.Assert(changed.Length == labels.Length && values.Length == labels.Length);
-
-        var lines = new List<string>();
-        var updateTime = DateTime.Now.ToString();
-        lines.Add($"\n{updateTime}");
-        for (int i = 0; i < changed.Length; ++i)
-          lines.Add($"{changed[i]}{labels[i]}{values[i]}");
-
-        File.AppendAllLines(damageTrackingFilePath, lines);
-
-        lines.Clear();
-        lines.Add($"\n{updateTime}");
-        for (int i = 0; i < changed.Length; ++i)
+        if (logToFile)
         {
-          if (changed[i].StartsWith("***"))
-            lines.Add($"{changed[i]}{labels[i]}{values[i]}");
-        }
+          var changed = this.sbDamageChanged.ToString().Split('\n');
+          var labels = this.sbDamageLabel.ToString().Split('\n');
+          var values = this.sbDamageValues.ToString().Split('\n');
+          Debug.Assert(changed.Length == labels.Length && values.Length == labels.Length);
 
-        File.AppendAllLines(damageTrackingDeltaFilePath, lines);
+          var lines = new List<string>();
+          var updateTime = DateTime.Now.ToString();
+          lines.Add($"\n{updateTime}");
+          for (int i = 0; i < changed.Length; ++i)
+            lines.Add($"{changed[i]}{labels[i]}{values[i]}");
+
+          File.AppendAllLines(damageTrackingFilePath, lines);
+
+          lines.Clear();
+          lines.Add($"\n{updateTime}");
+          for (int i = 0; i < changed.Length; ++i)
+          {
+            if (changed[i].StartsWith("***"))
+              lines.Add($"{changed[i]}{labels[i]}{values[i]}");
+          }
+
+          File.AppendAllLines(damageTrackingDeltaFilePath, lines);
+        }
       }
 
       g.DrawString(this.sbDamageChanged.ToString(), SystemFonts.DefaultFont, Brushes.Orange, 3.0f, 303.0f);
