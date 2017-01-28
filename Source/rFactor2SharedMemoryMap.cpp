@@ -28,6 +28,14 @@ State updates:
   reduces refresh rate to ~30FPS by default (to reduce CPU load).
 
 
+Extended state:
+  Plugin also tracks and tries to make sense of updates with the goal of exposing additional info not currently available
+  via internals model (see SharedMemoryPlugin::ExtendedStateTracker struct).  Tracking happens on _every_ telemetry/scoring
+  update for highest precision.
+
+  Currently, damage and invulnerability changes are tracked.
+
+
 Interpolation:
   Plugin interpolates opponent vehicle positions using quaternion nlerp.  Exact positions are received via
   SharedMemoryPlugin::UpdateScoring and are interpolated during telemetry refreshes.  Future version might instead request
@@ -71,7 +79,7 @@ Sample consumption:
 #include <stdlib.h>
 #include <cstddef>                              // offsetof
 
-#define PLUGIN_VERSION_MAJOR "0.5"
+#define PLUGIN_VERSION_MAJOR "1.0"
 #define PLUGIN_VERSION_MINOR "0.0"
 #define PLUGIN_NAME_AND_VERSION "rFactor 2 Shared Memory Map Plugin - v" PLUGIN_VERSION_MAJOR
 #define SHARED_MEMORY_VERSION PLUGIN_VERSION_MAJOR "." PLUGIN_VERSION_MINOR
