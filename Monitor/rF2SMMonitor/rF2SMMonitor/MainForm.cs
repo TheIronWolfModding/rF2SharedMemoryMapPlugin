@@ -260,7 +260,17 @@ namespace rF2SMMonitor
       while (this.IsApplicationIdle())
       {
         this.MainUpdate();
-        this.MainRender();
+
+        if (base.WindowState == FormWindowState.Minimized)
+        {
+          // being lazy lazy lazy.
+          this.tracker.TrackPhase(ref this.currrF2State, null, this.logPhaseAndState);
+          this.tracker.TrackDamage(ref this.currrF2State, null, this.logDamage);
+        }
+        else
+        {
+          this.MainRender();
+        }
 
         if (this.logLightMode)
           Thread.Sleep(LIGHT_MODE_REFRESH_MS);
