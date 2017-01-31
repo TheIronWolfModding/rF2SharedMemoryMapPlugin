@@ -14,11 +14,17 @@ namespace rF2SMMonitor
   internal class TransitionTracker
   {
     private static readonly string fileTimesTampString = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
-    private static readonly string basePath = Path.GetDirectoryName(System.Reflection.Assembly.GetEntryAssembly().Location);
+    private static readonly string basePath = Path.GetDirectoryName(System.Reflection.Assembly.GetEntryAssembly().Location) + "\\logs";
     private static readonly string phaseAndStateTrackingFilePath = $"{basePath}\\{fileTimesTampString}___PhaseAndStateTracking.log";
     private static readonly string damageTrackingFilePath = $"{basePath}\\{fileTimesTampString}___DamageTracking.log";
     private static readonly string phaseAndStateDeltaTrackingFilePath = $"{basePath}\\{fileTimesTampString}___PhaseAndStateTrackingDelta.log";
     private static readonly string damageTrackingDeltaFilePath = $"{basePath}\\{fileTimesTampString}___DamageTrackingDelta.log";
+
+    internal TransitionTracker()
+    {
+      if (!Directory.Exists(basePath))
+        Directory.CreateDirectory(basePath);
+    }
 
     private string GetEnumString<T>(sbyte value)
     {
@@ -81,8 +87,35 @@ namespace rF2SMMonitor
     internal StringBuilder sbPhaseLabel = new StringBuilder();
     internal StringBuilder sbPhaseValues = new StringBuilder();
 
+    rF2GamePhase lastDamageTrackingGamePhase = (rF2GamePhase)Enum.ToObject(typeof(rF2GamePhase), -255);
+    rF2GamePhase lastPhaseTrackingGamePhase = (rF2GamePhase)Enum.ToObject(typeof(rF2GamePhase), -255);
+
     internal void TrackPhase(ref rF2State state, Graphics g, bool logToFile)
     {
+      if (logToFile)
+      {
+        if ((this.lastPhaseTrackingGamePhase == rF2GamePhase.Garage
+              || this.lastPhaseTrackingGamePhase == rF2GamePhase.SessionOver
+              || this.lastPhaseTrackingGamePhase == rF2GamePhase.SessionStopped
+              || (int)this.lastPhaseTrackingGamePhase == 9)  // What is 9? 
+            && ((rF2GamePhase)state.mGamePhase == rF2GamePhase.Countdown
+              || (rF2GamePhase)state.mGamePhase == rF2GamePhase.Formation
+              || (rF2GamePhase)state.mGamePhase == rF2GamePhase.GridWalk
+              || (rF2GamePhase)state.mGamePhase == rF2GamePhase.GreenFlag))
+        {
+          var lines = new List<string>();
+          lines.Add("\n");
+          lines.Add("************************************************************************************");
+          lines.Add("* NEW SESSION **********************************************************************");
+          lines.Add("************************************************************************************");
+          File.AppendAllLines(phaseAndStateTrackingFilePath, lines);
+          File.AppendAllLines(phaseAndStateDeltaTrackingFilePath, lines);
+        }
+      }
+
+      this.lastPhaseTrackingGamePhase = (rF2GamePhase)state.mGamePhase;
+
+
       if (state.mNumVehicles == 0)
         return;
 
@@ -268,6 +301,29 @@ namespace rF2SMMonitor
 
     internal void TrackDamage(ref rF2State state, Graphics g, bool logToFile)
     {
+      if (logToFile)
+      {
+        if ((this.lastDamageTrackingGamePhase == rF2GamePhase.Garage
+              || this.lastDamageTrackingGamePhase == rF2GamePhase.SessionOver
+              || this.lastDamageTrackingGamePhase == rF2GamePhase.SessionStopped
+              || (int)this.lastDamageTrackingGamePhase == 9)  // What is 9? 
+            && ((rF2GamePhase)state.mGamePhase == rF2GamePhase.Countdown
+              || (rF2GamePhase)state.mGamePhase == rF2GamePhase.Formation
+              || (rF2GamePhase)state.mGamePhase == rF2GamePhase.GridWalk
+              || (rF2GamePhase)state.mGamePhase == rF2GamePhase.GreenFlag))
+        {
+          var lines = new List<string>();
+          lines.Add("\n");
+          lines.Add("************************************************************************************");
+          lines.Add("* NEW SESSION **********************************************************************");
+          lines.Add("************************************************************************************");
+          File.AppendAllLines(damageTrackingFilePath, lines);
+          File.AppendAllLines(damageTrackingDeltaFilePath, lines);
+        }
+      }
+
+      this.lastDamageTrackingGamePhase = (rF2GamePhase)state.mGamePhase;
+
       if (state.mNumVehicles == 0)
         return;
 
@@ -378,6 +434,7 @@ namespace rF2SMMonitor
           Debug.Assert(changed.Length == labels.Length && values.Length == labels.Length);
 
           var lines = new List<string>();
+
           var updateTime = DateTime.Now.ToString();
           lines.Add($"\n{updateTime}");
           for (int i = 0; i < changed.Length; ++i)
