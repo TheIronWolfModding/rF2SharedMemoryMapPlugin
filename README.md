@@ -7,7 +7,7 @@ This plugin writes out telemetry and scoring updates into shared memory.  Readin
   * rF1 Shared Memory Map Plugin by Dan Allongo found at: https://github.com/dallongo/rFactorSharedMemoryMap
 
 ## Features
-Plugin uses double buffering and offers optional synchronization on global mutex. 
+Plugin uses double buffering and offers optional synchronization on global mutex.
 
 Opponent positions in between updates are interpolated using quaternion nlerp.  Plugin has default refresh rate of  ~30FPS.
 
