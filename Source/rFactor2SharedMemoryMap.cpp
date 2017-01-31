@@ -79,6 +79,7 @@ Sample consumption:
 #include <stdlib.h>
 #include <cstddef>                              // offsetof
 
+// Each component can be in [0:99] range.
 #define PLUGIN_VERSION_MAJOR "1.0"
 #define PLUGIN_VERSION_MINOR "0.0"
 #define PLUGIN_NAME_AND_VERSION "rFactor 2 Shared Memory Map Plugin - v" PLUGIN_VERSION_MAJOR
