@@ -23,4 +23,9 @@ Plugin comes with rF2SMMonitor program that is useful in visualizing of shared m
 
 # Release history
 
+01/31/2017 - v1.0.0.0
+    Plugin: Added damage and invulnerability tracking
+    Monitor: Added phase and damage tracking and logging
+
+
 1/18/2017 v0.5.0.0 - Initial release
