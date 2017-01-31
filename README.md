@@ -13,6 +13,9 @@ Opponent positions in between updates are interpolated using quaternion nlerp.  
 
 Plugin is build using VS 2015 Community Edition, targeting VC12 (VS 2013) runtime, since rF2 comes with VC12 redist.
 
+## Monitor
+Plugin comes with rF2SMMonitor program that is useful in visualizing of shared memory contents.
+
 ## Uses
   * Recommended: Simply copy rF2StateHeader part of the buffer, and check mCurrentRead variable.  If it's true, use this buffer, otherwise use the other buffer.  See `Monitor\rF2SMMonitor\rF2SMMonitor\MainForm.cs MainUpdate` method for example of use in C# (ignore mutex).
   * Synchronized: use mutex to make sure buffer is not overwritten. This use requires full understanding of how plugin works, and could cause FPS drop if not done right.  See `Monitor\rF2SMMonitor\rF2SMMonitor\MainForm.cs MainUpdate` method for example of use in C#
