@@ -461,5 +461,248 @@ namespace rF2SMMonitor
         g.DrawString(this.sbDamageValues.ToString(), SystemFonts.DefaultFont, Brushes.Purple, 200.0f, 300.0f);
       }
     }
+
+    internal class PlayerTimingInfo
+    {
+      internal string name = null;
+      internal double lastS1Time = -1.0;
+      internal double lastS2Time = -1.0;
+      internal double lastS3Time = -1.0;
+
+      internal double currS1Time = -1.0;
+      internal double currS2Time = -1.0;
+      internal double currS3Time = -1.0;
+
+      internal double bestS1Time = -1.0;
+      internal double bestS2Time = -1.0;
+      internal double bestS3Time = -1.0;
+
+      internal double currLapET = -1.0;
+      internal double lastLapTime = -1.0;
+      internal double currLapTime = -1.0;
+      internal double bestLapTime = -1.0;
+
+      internal int currLap = -1;
+    }
+
+    internal class OpponentTimingInfo
+    {
+      internal string name = null;
+      internal int position = -1;
+      internal double lastS1Time = -1.0;
+      internal double lastS2Time = -1.0;
+      internal double lastS3Time = -1.0;
+
+      internal double currS1Time = -1.0;
+      internal double currS2Time = -1.0;
+      internal double currS3Time = -1.0;
+
+      internal double bestS1Time = -1.0;
+      internal double bestS2Time = -1.0;
+      internal double bestS3Time = -1.0;
+
+      internal double currLapET = -1.0;
+      internal double lastLapTime = -1.0;
+      internal double currLapTime = -1.0;
+      internal double bestLapTime = -1.0;
+
+      internal int currLap = -1;
+    }
+
+    int lastTimingSector = -1;
+
+    private int getSector(int rf2Sector) { return rf2Sector == 0 ? 3 : rf2Sector; }
+    private string lapTimeStr(double time)
+    {
+      return time > 0.0 ? TimeSpan.FromSeconds(time).ToString(@"mm\:ss\:fff") : time.ToString();
+    }
+
+    internal void TrackTimings(ref rF2State state, Graphics g, bool logToFile)
+    {
+      if (logToFile)
+      {
+        /*if ((this.lastDamageTrackingGamePhase == rF2GamePhase.Garage
+              || this.lastDamageTrackingGamePhase == rF2GamePhase.SessionOver
+              || this.lastDamageTrackingGamePhase == rF2GamePhase.SessionStopped
+              || (int)this.lastDamageTrackingGamePhase == 9)  // What is 9? 
+            && ((rF2GamePhase)state.mGamePhase == rF2GamePhase.Countdown
+              || (rF2GamePhase)state.mGamePhase == rF2GamePhase.Formation
+              || (rF2GamePhase)state.mGamePhase == rF2GamePhase.GridWalk
+              || (rF2GamePhase)state.mGamePhase == rF2GamePhase.GreenFlag))
+        {
+          var lines = new List<string>();
+          lines.Add("\n");
+          lines.Add("************************************************************************************");
+          lines.Add("* NEW SESSION **********************************************************************");
+          lines.Add("************************************************************************************");
+          File.AppendAllLines(damageTrackingFilePath, lines);
+          File.AppendAllLines(damageTrackingDeltaFilePath, lines);
+        }*/
+      }
+
+
+
+      if (state.mNumVehicles == 0)
+      {
+        this.lastTimingSector = -1;
+        return;
+      }
+
+      this.lastTimingSector = this.getSector(state.mCurrentSector);
+
+      var playerVeh = state.mVehicles[0];
+      Debug.Assert(state.mID == playerVeh.mID);
+
+
+      StringBuilder sbPlayer = null;
+      PlayerTimingInfo ptiPlayer = null;
+      this.getDetailedVehTiming("Player:", ref playerVeh, ref state, out sbPlayer, out ptiPlayer);
+
+      var opponentInfos = new List<OpponentTimingInfo>();
+      for (int i = 0; i < state.mNumVehicles; ++i)
+      {
+        var veh = state.mVehicles[i];
+        var o = new OpponentTimingInfo();
+        o.name = this.getStringFromBytes(veh.mDriverName);
+        o.position = veh.mPlace;
+
+        o.lastS1Time = veh.mLastSector1 > 0.0 ? veh.mLastSector1 : -1.0;
+        o.lastS2Time = veh.mLastSector1 > 0.0 && veh.mLastSector2 > 0.0
+          ? veh.mLastSector2 - veh.mLastSector1 : -1.0;
+        o.lastS3Time = veh.mLastSector2 > 0.0 && veh.mLastLapTime > 0.0
+          ? veh.mLastLapTime - veh.mLastSector2 : -1.0;
+
+        o.currS1Time = o.lastS1Time;
+        o.currS2Time = o.lastS2Time;
+        o.currS3Time = o.lastS3Time;
+
+        // Check if we have more current values for S1 and S2.
+        // S3 always equals to lastS3Time.
+        if (veh.mCurSector1 > 0.0)
+          o.currS1Time = veh.mCurSector1;
+
+        if (veh.mCurSector1 > 0.0 && veh.mCurSector2 > 0.0)
+          o.currS2Time = veh.mCurSector2 - veh.mCurSector1;
+
+        o.bestS1Time = veh.mBestSector1 > 0.0 ? veh.mBestSector1 : -1.0;
+        o.bestS2Time = veh.mBestSector1 > 0.0 && veh.mBestSector2 > 0.0 ? veh.mBestSector2 - veh.mBestSector1 : -1.0;
+        o.bestS3Time = veh.mBestSector2 > 0.0 && veh.mBestLapTime > 0.0 ? veh.mBestLapTime - veh.mBestSector2 : -1.0;
+
+        o.currLapET = veh.mLapStartET;
+        o.lastLapTime = veh.mLastLapTime;
+        o.currLapTime = state.mCurrentET - veh.mLapStartET;
+        o.bestLapTime = veh.mBestLapTime;
+        o.currLap = veh.mTotalLaps;
+
+        opponentInfos.Add(o);
+      }
+
+      // Order by pos, ascending.
+      opponentInfos.Sort((o1, o2) => o1.position.CompareTo(o2.position));
+      var sbOpponentNames = new StringBuilder();
+      sbOpponentNames.Append("Name:\n");
+      foreach (var o in opponentInfos)
+        sbOpponentNames.Append($"{o.name}\n");
+
+      var sbOpponentStats = new StringBuilder();
+      sbOpponentStats.Append("Pos:  Lap:      Best Lap:      Best S1:      Best S2:      Best S3:\n");
+      foreach (var o in opponentInfos)
+        sbOpponentStats.Append($"{o.position,5}{o.currLap,8}{this.lapTimeStr(o.bestLapTime),14:N3}{this.lapTimeStr(o.bestS1Time),14:N3}{this.lapTimeStr(o.bestS2Time),14:N3}{this.lapTimeStr(o.bestS3Time),14:N3} \n");
+
+      // Find fastest vehicle (todo: in class)
+      double bestLapTime = -1;
+      int fastestIndex = -1;
+      for (int i = 0; i < state.mNumVehicles; ++i)
+      {
+        var veh = state.mVehicles[i];
+        if (bestLapTime < 0.0 || veh.mBestLapTime < bestLapTime)
+        {
+          bestLapTime = veh.mBestLapTime;
+          fastestIndex = i;
+        }
+      }
+
+      var fastestVeh = state.mVehicles[fastestIndex];
+      var sbFastest = new StringBuilder("");
+      PlayerTimingInfo ptiFastest = null;
+      if (fastestVeh.mBestLapTime > 0.0)
+        this.getDetailedVehTiming("Fastest:", ref fastestVeh, ref state, out sbFastest, out ptiFastest);
+
+      var sbPlayerDeltas = new StringBuilder("");
+      if (ptiFastest != null)
+      {
+        var deltaLapTime = ptiPlayer.bestLapTime - ptiFastest.bestLapTime;
+        var deltaS1Time = ptiPlayer.bestS1Time - ptiFastest.bestS1Time;
+        var deltaS2Time = ptiPlayer.bestS2Time - ptiFastest.bestS2Time;
+        var deltaS3Time = ptiPlayer.bestS3Time - ptiFastest.bestS3Time;
+
+        var deltaLapStr = deltaLapTime > 0.0 ? "+" : "";
+        deltaLapStr = deltaLapStr + $"{deltaLapTime:N3}";
+
+        var deltaS1Str = deltaS1Time > 0.0 ? "+" : "";
+        deltaS1Str = deltaS1Str + $"{deltaS1Time:N3}";
+
+        var deltaS2Str = deltaS2Time > 0.0 ? "+" : "";
+        deltaS2Str = deltaS2Str + $"{deltaS2Time:N3}";
+
+        var deltaS3Str = deltaS3Time > 0.0 ? "+" : "";
+        deltaS3Str = deltaS3Str + $"{deltaS3Time:N3}";
+
+        sbPlayerDeltas.Append($"Player delta best:    deltaBestLapTime: {deltaLapStr}\ndeltaBestS1: {deltaS1Str}    deltaBestS2: {deltaS2Str}    deltaBestS3: {deltaS3Str}");
+      }
+
+      if (g != null)
+      {
+        g.DrawString(sbPlayer.ToString(), SystemFonts.DefaultFont, Brushes.Magenta, 3.0f, 430.0f);
+        g.DrawString(sbPlayerDeltas.ToString(), SystemFonts.DefaultFont, Brushes.Black, 3.0f, 500.0f);
+        g.DrawString(sbFastest.ToString(), SystemFonts.DefaultFont, Brushes.OrangeRed, 3.0f, 530.0f);
+        g.DrawString(sbOpponentNames.ToString(), SystemFonts.DefaultFont, Brushes.Green, 560.0f, 30.0f);
+        g.DrawString(sbOpponentStats.ToString(), SystemFonts.DefaultFont, Brushes.Purple, 670.0f, 30.0f);
+      }
+    }
+
+    private string getStringFromBytes(byte[] name)
+    {
+      return Encoding.UTF8.GetString(name).TrimEnd('\0').Trim();
+    }
+
+    private void getDetailedVehTiming(string name, ref rF2VehScoringInfo vehicle, ref rF2State state, out StringBuilder sbDetails, out PlayerTimingInfo pti)
+    {
+      pti = new PlayerTimingInfo();
+      pti.name = this.getStringFromBytes(vehicle.mDriverName);
+      pti.lastS1Time = vehicle.mLastSector1 > 0.0 ? vehicle.mLastSector1 : -1.0;
+      pti.lastS2Time = vehicle.mLastSector1 > 0.0 && vehicle.mLastSector2 > 0.0
+        ? vehicle.mLastSector2 - vehicle.mLastSector1 : -1.0;
+      pti.lastS3Time = vehicle.mLastSector2 > 0.0 && vehicle.mLastLapTime > 0.0
+        ? vehicle.mLastLapTime - vehicle.mLastSector2 : -1.0;
+
+      pti.currS1Time = pti.lastS1Time;
+      pti.currS2Time = pti.lastS2Time;
+      pti.currS3Time = pti.lastS3Time;
+
+      // Check if we have more current values for S1 and S2.
+      // S3 always equals to lastS3Time.
+      if (vehicle.mCurSector1 > 0.0)
+        pti.currS1Time = vehicle.mCurSector1;
+
+      if (vehicle.mCurSector1 > 0.0 && vehicle.mCurSector2 > 0.0)
+        pti.currS2Time = vehicle.mCurSector2 - vehicle.mCurSector1;
+
+      pti.bestS1Time = vehicle.mBestSector1 > 0.0 ? vehicle.mBestSector1 : -1.0;
+      pti.bestS2Time = vehicle.mBestSector1 > 0.0 && vehicle.mBestSector2 > 0.0 ? vehicle.mBestSector2 - vehicle.mBestSector1 : -1.0;
+      pti.bestS3Time = vehicle.mBestSector2 > 0.0 && vehicle.mBestLapTime > 0.0 ? vehicle.mBestLapTime - vehicle.mBestSector2 : -1.0;
+
+      pti.currLapET = vehicle.mLapStartET;
+      pti.lastLapTime = vehicle.mLastLapTime;
+      pti.currLapTime = state.mCurrentET - vehicle.mLapStartET;
+      pti.bestLapTime = vehicle.mBestLapTime;
+      pti.currLap = vehicle.mTotalLaps;
+
+      sbDetails = new StringBuilder();
+      sbDetails.Append($"{name} {pti.name}\ncurrLapET: {this.lapTimeStr(pti.currLapET)}    lastLapTime: {this.lapTimeStr(pti.lastLapTime)}    currLapTime: {this.lapTimeStr(pti.currLapTime)}    bestLapTime: {this.lapTimeStr(pti.bestLapTime)}\n");
+      sbDetails.Append($"lastS1: {this.lapTimeStr(pti.lastS1Time)}    lastS2: {this.lapTimeStr(pti.lastS2Time)}    lastS3: {this.lapTimeStr(pti.lastS3Time)}\n");
+      sbDetails.Append($"currS1: {this.lapTimeStr(pti.currS1Time)}    currS2: {this.lapTimeStr(pti.currS2Time)}    currS3: {this.lapTimeStr(pti.currS3Time)}\n");
+      sbDetails.Append($"bestS1: {this.lapTimeStr(pti.bestS1Time)}    bestS2: {this.lapTimeStr(pti.bestS2Time)}    bestS3: {this.lapTimeStr(pti.bestS3Time)}    bestTotal: {this.lapTimeStr(pti.bestS1Time + pti.bestS2Time + pti.bestS3Time)}\n");
+    }
   }
 }

@@ -266,6 +266,7 @@ namespace rF2SMMonitor
           // being lazy lazy lazy.
           this.tracker.TrackPhase(ref this.currrF2State, null, this.logPhaseAndState);
           this.tracker.TrackDamage(ref this.currrF2State, null, this.logDamage);
+          this.tracker.TrackTimings(ref this.currrF2State, null, false);
         }
         else
         {
@@ -373,6 +374,7 @@ namespace rF2SMMonitor
 
       this.tracker.TrackPhase(ref this.currrF2State, g, this.logPhaseAndState);
       this.tracker.TrackDamage(ref this.currrF2State, g, this.logDamage);
+      this.tracker.TrackTimings(ref this.currrF2State, g, false);
 
       if (this.logLightMode)
         return;
