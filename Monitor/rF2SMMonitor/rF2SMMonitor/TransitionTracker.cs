@@ -90,6 +90,7 @@ namespace rF2SMMonitor
 
     rF2GamePhase lastDamageTrackingGamePhase = (rF2GamePhase)Enum.ToObject(typeof(rF2GamePhase), -255);
     rF2GamePhase lastPhaseTrackingGamePhase = (rF2GamePhase)Enum.ToObject(typeof(rF2GamePhase), -255);
+    rF2GamePhase lastTimingTrackingGamePhase = (rF2GamePhase)Enum.ToObject(typeof(rF2GamePhase), -255);
 
     internal void TrackPhase(ref rF2State state, Graphics g, bool logToFile)
     {
@@ -522,10 +523,10 @@ namespace rF2SMMonitor
     {
       if (logToFile)
       {
-        /*if ((this.lastDamageTrackingGamePhase == rF2GamePhase.Garage
-              || this.lastDamageTrackingGamePhase == rF2GamePhase.SessionOver
-              || this.lastDamageTrackingGamePhase == rF2GamePhase.SessionStopped
-              || (int)this.lastDamageTrackingGamePhase == 9)  // What is 9? 
+        if ((this.lastTimingTrackingGamePhase == rF2GamePhase.Garage
+              || this.lastTimingTrackingGamePhase == rF2GamePhase.SessionOver
+              || this.lastTimingTrackingGamePhase == rF2GamePhase.SessionStopped
+              || (int)this.lastTimingTrackingGamePhase == 9)  // What is 9? 
             && ((rF2GamePhase)state.mGamePhase == rF2GamePhase.Countdown
               || (rF2GamePhase)state.mGamePhase == rF2GamePhase.Formation
               || (rF2GamePhase)state.mGamePhase == rF2GamePhase.GridWalk
@@ -536,18 +537,19 @@ namespace rF2SMMonitor
           lines.Add("************************************************************************************");
           lines.Add("* NEW SESSION **********************************************************************");
           lines.Add("************************************************************************************");
-          File.AppendAllLines(damageTrackingFilePath, lines);
-          File.AppendAllLines(damageTrackingDeltaFilePath, lines);
-        }*/
+          File.AppendAllLines(timingTrackingFilePath, lines);
+        }
       }
 
-
+      this.lastTimingTrackingGamePhase = (rF2GamePhase)state.mGamePhase;
 
       if (state.mNumVehicles == 0)
       {
         this.lastTimingSector = -1;
         return;
       }
+
+      bool sectorChanged = this.lastTimingSector != this.getSector(state.mCurrentSector);
 
       this.lastTimingSector = this.getSector(state.mCurrentSector);
 
@@ -688,6 +690,26 @@ namespace rF2SMMonitor
         deltaS3Str = deltaS3Str + $"{deltaS3Time:N3}";
 
         sbPlayerDeltas.Append($"Player delta best vs session best:    deltaBestLapTime: {deltaLapStr}\ndeltaBestS1: {deltaS1Str}    deltaBestS2: {deltaS2Str}    deltaBestS3: {deltaS3Str}\n\n");
+      }
+
+      if (logToFile && sectorChanged)
+      {
+        var updateTime = DateTime.Now.ToString();
+        File.AppendAllText(timingTrackingFilePath, $"\n\n{updateTime}    Sector: {this.lastTimingSector}  ***************************************************** \n\n");
+
+        File.AppendAllText(timingTrackingFilePath, sbPlayer.ToString() + "\n");
+        File.AppendAllText(timingTrackingFilePath, sbPlayerDeltas.ToString() + "\n");
+        File.AppendAllText(timingTrackingFilePath, sbFastest.ToString() + "\n");
+
+        var names = sbOpponentNames.ToString().Split('\n');
+        var stats = sbOpponentStats.ToString().Split('\n');
+        var lines = new List<string>();
+        Debug.Assert(names.Count() == stats.Count());
+
+        for (int i = 0; i < names.Count(); ++i)
+          lines.Add($"{stats[i]}    {names[i]}");
+
+        File.AppendAllLines(timingTrackingFilePath, lines);
       }
 
       if (g != null)
