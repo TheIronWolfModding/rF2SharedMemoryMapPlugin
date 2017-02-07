@@ -19,6 +19,7 @@ namespace rF2SMMonitor
     private static readonly string damageTrackingFilePath = $"{basePath}\\{fileTimesTampString}___DamageTracking.log";
     private static readonly string phaseAndStateDeltaTrackingFilePath = $"{basePath}\\{fileTimesTampString}___PhaseAndStateTrackingDelta.log";
     private static readonly string damageTrackingDeltaFilePath = $"{basePath}\\{fileTimesTampString}___DamageTrackingDelta.log";
+    private static readonly string timingTrackingFilePath = $"{basePath}\\{fileTimesTampString}___TimingTracking.log";
 
     internal TransitionTracker()
     {
@@ -636,6 +637,44 @@ namespace rF2SMMonitor
         var deltaS2Time = ptiPlayer.bestS2Time - ptiFastest.bestS2Time;
         var deltaS3Time = ptiPlayer.bestS3Time - ptiFastest.bestS3Time;
 
+        var deltaSelfLapTime = ptiPlayer.lastLapTime - ptiPlayer.bestLapTime;
+        var deltaSelfS1Time = ptiPlayer.currS1Time - ptiPlayer.bestS1Time;
+        var deltaSelfS2Time = ptiPlayer.currS2Time - ptiPlayer.bestS2Time;
+        var deltaSelfS3Time = ptiPlayer.currS3Time - ptiPlayer.bestS3Time;
+
+        var deltaCurrSelfLapTime = ptiPlayer.lastLapTime - ptiFastest.bestLapTime;
+        var deltaCurrSelfS1Time = ptiPlayer.currS1Time - ptiFastest.bestS1Time;
+        var deltaCurrSelfS2Time = ptiPlayer.currS2Time - ptiFastest.bestS2Time;
+        var deltaCurrSelfS3Time = ptiPlayer.currS3Time - ptiFastest.bestS3Time;
+
+        var deltaCurrSelfLapStr = deltaCurrSelfLapTime > 0.0 ? "+" : "";
+        deltaCurrSelfLapStr = deltaCurrSelfLapStr + $"{deltaCurrSelfLapTime:N3}";
+
+        var deltaCurrSelfS1Str = deltaCurrSelfS1Time > 0.0 ? "+" : "";
+        deltaCurrSelfS1Str = deltaCurrSelfS1Str + $"{deltaCurrSelfS1Time:N3}";
+
+        var deltaCurrSelfS2Str = deltaCurrSelfS2Time > 0.0 ? "+" : "";
+        deltaCurrSelfS2Str = deltaCurrSelfS2Str + $"{deltaCurrSelfS2Time:N3}";
+
+        var deltaCurrSelfS3Str = deltaCurrSelfS3Time > 0.0 ? "+" : "";
+        deltaCurrSelfS3Str = deltaCurrSelfS3Str + $"{deltaCurrSelfS3Time:N3}";
+
+        sbPlayerDeltas.Append($"Player delta current vs session best:    deltaCurrSelfBestLapTime: {deltaCurrSelfLapStr}\ndeltaCurrSelfBestS1: {deltaCurrSelfS1Str}    deltaCurrSelfBestS2: {deltaCurrSelfS2Str}    deltaBestS3: {deltaCurrSelfS3Str}\n\n");
+
+        var deltaSelfLapStr = deltaSelfLapTime > 0.0 ? "+" : "";
+        deltaSelfLapStr = deltaSelfLapStr + $"{deltaSelfLapTime:N3}";
+
+        var deltaSelfS1Str = deltaSelfS1Time > 0.0 ? "+" : "";
+        deltaSelfS1Str = deltaSelfS1Str + $"{deltaSelfS1Time:N3}";
+
+        var deltaSelfS2Str = deltaSelfS2Time > 0.0 ? "+" : "";
+        deltaSelfS2Str = deltaSelfS2Str + $"{deltaSelfS2Time:N3}";
+
+        var deltaSelfS3Str = deltaSelfS3Time > 0.0 ? "+" : "";
+        deltaSelfS3Str = deltaSelfS3Str + $"{deltaSelfS3Time:N3}";
+
+        sbPlayerDeltas.Append($"Player delta current vs self best:    deltaSelfBestLapTime: {deltaSelfLapStr}\ndeltaSelfBestS1: {deltaSelfS1Str}    deltaSelfBestS2: {deltaSelfS2Str}    deltaBestS3: {deltaSelfS3Str}\n\n");
+
         var deltaLapStr = deltaLapTime > 0.0 ? "+" : "";
         deltaLapStr = deltaLapStr + $"{deltaLapTime:N3}";
 
@@ -648,14 +687,14 @@ namespace rF2SMMonitor
         var deltaS3Str = deltaS3Time > 0.0 ? "+" : "";
         deltaS3Str = deltaS3Str + $"{deltaS3Time:N3}";
 
-        sbPlayerDeltas.Append($"Player delta best:    deltaBestLapTime: {deltaLapStr}\ndeltaBestS1: {deltaS1Str}    deltaBestS2: {deltaS2Str}    deltaBestS3: {deltaS3Str}");
+        sbPlayerDeltas.Append($"Player delta best vs session best:    deltaBestLapTime: {deltaLapStr}\ndeltaBestS1: {deltaS1Str}    deltaBestS2: {deltaS2Str}    deltaBestS3: {deltaS3Str}\n\n");
       }
 
       if (g != null)
       {
         g.DrawString(sbPlayer.ToString(), SystemFonts.DefaultFont, Brushes.Magenta, 3.0f, 430.0f);
-        g.DrawString(sbPlayerDeltas.ToString(), SystemFonts.DefaultFont, Brushes.Black, 3.0f, 500.0f);
-        g.DrawString(sbFastest.ToString(), SystemFonts.DefaultFont, Brushes.OrangeRed, 3.0f, 530.0f);
+        g.DrawString(sbPlayerDeltas.ToString(), SystemFonts.DefaultFont, Brushes.Black, 3.0f, 520.0f);
+        g.DrawString(sbFastest.ToString(), SystemFonts.DefaultFont, Brushes.OrangeRed, 3.0f, 640.0f);
         g.DrawString(sbOpponentNames.ToString(), SystemFonts.DefaultFont, Brushes.Green, 560.0f, 30.0f);
         g.DrawString(sbOpponentStats.ToString(), SystemFonts.DefaultFont, Brushes.Purple, 670.0f, 30.0f);
       }

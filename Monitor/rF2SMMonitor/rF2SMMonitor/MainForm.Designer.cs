@@ -29,9 +29,10 @@
       this.xOffsetTextBox = new System.Windows.Forms.TextBox();
       this.xOffsetLabel = new System.Windows.Forms.Label();
       this.groupBoxLogging = new System.Windows.Forms.GroupBox();
-      this.checkBoxLogPhaseAndState = new System.Windows.Forms.CheckBox();
-      this.checkBoxLogDamage = new System.Windows.Forms.CheckBox();
       this.checkBoxLightMode = new System.Windows.Forms.CheckBox();
+      this.checkBoxLogDamage = new System.Windows.Forms.CheckBox();
+      this.checkBoxLogPhaseAndState = new System.Windows.Forms.CheckBox();
+      this.checkBoxLogTiming = new System.Windows.Forms.CheckBox();
       ((System.ComponentModel.ISupportInitialize)(this.view)).BeginInit();
       this.groupBoxFocus.SuspendLayout();
       this.globalGroupBox.SuspendLayout();
@@ -95,7 +96,7 @@
       this.groupBoxFocus.Controls.Add(this.focusVehTextBox);
       this.groupBoxFocus.Controls.Add(this.setAsOriginCheckBox);
       this.groupBoxFocus.Controls.Add(this.focusVehLabel);
-      this.groupBoxFocus.Location = new System.Drawing.Point(344, -1);
+      this.groupBoxFocus.Location = new System.Drawing.Point(433, -1);
       this.groupBoxFocus.Name = "groupBoxFocus";
       this.groupBoxFocus.Size = new System.Drawing.Size(290, 54);
       this.groupBoxFocus.TabIndex = 7;
@@ -120,7 +121,7 @@
       this.globalGroupBox.Controls.Add(this.xOffsetLabel);
       this.globalGroupBox.Controls.Add(this.scaleTextBox);
       this.globalGroupBox.Controls.Add(this.scaleLabel);
-      this.globalGroupBox.Location = new System.Drawing.Point(0, -1);
+      this.globalGroupBox.Location = new System.Drawing.Point(89, -1);
       this.globalGroupBox.Name = "globalGroupBox";
       this.globalGroupBox.Size = new System.Drawing.Size(335, 54);
       this.globalGroupBox.TabIndex = 8;
@@ -161,51 +162,62 @@
       // 
       // groupBoxLogging
       // 
-      this.groupBoxLogging.Controls.Add(this.checkBoxLightMode);
+      this.groupBoxLogging.Controls.Add(this.checkBoxLogTiming);
       this.groupBoxLogging.Controls.Add(this.checkBoxLogDamage);
       this.groupBoxLogging.Controls.Add(this.checkBoxLogPhaseAndState);
-      this.groupBoxLogging.Location = new System.Drawing.Point(641, -1);
+      this.groupBoxLogging.Location = new System.Drawing.Point(730, -1);
       this.groupBoxLogging.Name = "groupBoxLogging";
       this.groupBoxLogging.Size = new System.Drawing.Size(256, 54);
       this.groupBoxLogging.TabIndex = 9;
       this.groupBoxLogging.TabStop = false;
       this.groupBoxLogging.Text = "File Logging";
       // 
-      // checkBoxLogPhaseAndState
+      // checkBoxLightMode
       // 
-      this.checkBoxLogPhaseAndState.AutoSize = true;
-      this.checkBoxLogPhaseAndState.Location = new System.Drawing.Point(7, 13);
-      this.checkBoxLogPhaseAndState.Name = "checkBoxLogPhaseAndState";
-      this.checkBoxLogPhaseAndState.Size = new System.Drawing.Size(129, 17);
-      this.checkBoxLogPhaseAndState.TabIndex = 9;
-      this.checkBoxLogPhaseAndState.Text = "Phase and State";
-      this.checkBoxLogPhaseAndState.UseVisualStyleBackColor = true;
+      this.checkBoxLightMode.AutoSize = true;
+      this.checkBoxLightMode.Location = new System.Drawing.Point(5, 6);
+      this.checkBoxLightMode.Name = "checkBoxLightMode";
+      this.checkBoxLightMode.Size = new System.Drawing.Size(78, 17);
+      this.checkBoxLightMode.TabIndex = 11;
+      this.checkBoxLightMode.Text = "Light mode";
+      this.checkBoxLightMode.UseVisualStyleBackColor = true;
       // 
       // checkBoxLogDamage
       // 
       this.checkBoxLogDamage.AutoSize = true;
       this.checkBoxLogDamage.Location = new System.Drawing.Point(7, 32);
       this.checkBoxLogDamage.Name = "checkBoxLogDamage";
-      this.checkBoxLogDamage.Size = new System.Drawing.Size(129, 17);
+      this.checkBoxLogDamage.Size = new System.Drawing.Size(66, 17);
       this.checkBoxLogDamage.TabIndex = 10;
       this.checkBoxLogDamage.Text = "Damage";
       this.checkBoxLogDamage.UseVisualStyleBackColor = true;
       // 
-      // checkBoxLightMode
+      // checkBoxLogPhaseAndState
       // 
-      this.checkBoxLightMode.AutoSize = true;
-      this.checkBoxLightMode.Location = new System.Drawing.Point(142, 13);
-      this.checkBoxLightMode.Name = "checkBoxLightMode";
-      this.checkBoxLightMode.Size = new System.Drawing.Size(129, 17);
-      this.checkBoxLightMode.TabIndex = 11;
-      this.checkBoxLightMode.Text = "Light mode";
-      this.checkBoxLightMode.UseVisualStyleBackColor = true;
+      this.checkBoxLogPhaseAndState.AutoSize = true;
+      this.checkBoxLogPhaseAndState.Location = new System.Drawing.Point(7, 13);
+      this.checkBoxLogPhaseAndState.Name = "checkBoxLogPhaseAndState";
+      this.checkBoxLogPhaseAndState.Size = new System.Drawing.Size(105, 17);
+      this.checkBoxLogPhaseAndState.TabIndex = 9;
+      this.checkBoxLogPhaseAndState.Text = "Phase and State";
+      this.checkBoxLogPhaseAndState.UseVisualStyleBackColor = true;
+      // 
+      // checkBox1
+      // 
+      this.checkBoxLogTiming.AutoSize = true;
+      this.checkBoxLogTiming.Location = new System.Drawing.Point(109, 13);
+      this.checkBoxLogTiming.Name = "checkBoxLogTiming";
+      this.checkBoxLogTiming.Size = new System.Drawing.Size(66, 17);
+      this.checkBoxLogTiming.TabIndex = 11;
+      this.checkBoxLogTiming.Text = "Timing";
+      this.checkBoxLogTiming.UseVisualStyleBackColor = true;
       // 
       // MainForm
       // 
       this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
       this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
       this.ClientSize = new System.Drawing.Size(1902, 1033);
+      this.Controls.Add(this.checkBoxLightMode);
       this.Controls.Add(this.groupBoxLogging);
       this.Controls.Add(this.globalGroupBox);
       this.Controls.Add(this.groupBoxFocus);
@@ -222,6 +234,7 @@
       this.groupBoxLogging.ResumeLayout(false);
       this.groupBoxLogging.PerformLayout();
       this.ResumeLayout(false);
+      this.PerformLayout();
 
         }
 
@@ -245,6 +258,7 @@
     private System.Windows.Forms.CheckBox checkBoxLogPhaseAndState;
     private System.Windows.Forms.CheckBox checkBoxLightMode;
     private System.Windows.Forms.CheckBox checkBoxLogDamage;
+    private System.Windows.Forms.CheckBox checkBoxLogTiming;
   }
 }
 

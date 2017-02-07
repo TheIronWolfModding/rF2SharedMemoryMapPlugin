@@ -60,6 +60,7 @@ namespace rF2SMMonitor
     bool rotateAroundVehicle = true;
     bool logPhaseAndState = true;
     bool logDamage = true;
+    bool logTiming = true;
     bool logLightMode = false;
 
     [StructLayout(LayoutKind.Sequential)]
@@ -97,6 +98,7 @@ namespace rF2SMMonitor
       this.rotateAroundCheckBox.CheckedChanged += RotateAroundCheckBox_CheckedChanged;
       this.checkBoxLogPhaseAndState.CheckedChanged += CheckBoxLogPhaseAndState_CheckedChanged;
       this.checkBoxLogDamage.CheckedChanged += CheckBoxLogDamage_CheckedChanged;
+      this.checkBoxLogTiming.CheckedChanged += CheckBoxLogTiming_CheckedChanged;
       this.checkBoxLightMode.CheckedChanged += CheckBoxLightMode_CheckedChanged;
       this.MouseWheel += MainForm_MouseWheel;
 
@@ -131,6 +133,12 @@ namespace rF2SMMonitor
     {
       this.logDamage = this.checkBoxLogDamage.Checked;
       this.config.Write("logDamage", this.logDamage ? "1" : "0");
+    }
+
+    private void CheckBoxLogTiming_CheckedChanged(object sender, EventArgs e)
+    {
+      this.logTiming = this.checkBoxLogTiming.Checked;
+      this.config.Write("logTiming", this.logTiming ? "1" : "0");
     }
 
     private void CheckBoxLogPhaseAndState_CheckedChanged(object sender, EventArgs e)
@@ -266,7 +274,7 @@ namespace rF2SMMonitor
           // being lazy lazy lazy.
           this.tracker.TrackPhase(ref this.currrF2State, null, this.logPhaseAndState);
           this.tracker.TrackDamage(ref this.currrF2State, null, this.logDamage);
-          this.tracker.TrackTimings(ref this.currrF2State, null, false);
+          this.tracker.TrackTimings(ref this.currrF2State, null, this.logTiming);
         }
         else
         {
@@ -374,7 +382,7 @@ namespace rF2SMMonitor
 
       this.tracker.TrackPhase(ref this.currrF2State, g, this.logPhaseAndState);
       this.tracker.TrackDamage(ref this.currrF2State, g, this.logDamage);
-      this.tracker.TrackTimings(ref this.currrF2State, g, false);
+      this.tracker.TrackTimings(ref this.currrF2State, g, this.logTiming);
 
       if (this.logLightMode)
         return;
@@ -684,6 +692,13 @@ namespace rF2SMMonitor
         this.logDamage = false;
 
       this.checkBoxLogDamage.Checked = this.logDamage;
+
+      intResult = 0;
+      this.logTiming = true;
+      if (int.TryParse(this.config.Read("logTiming"), out intResult) && intResult == 0)
+        this.logTiming = false;
+
+      this.checkBoxLogTiming.Checked = this.logTiming;
 
     }
   }
