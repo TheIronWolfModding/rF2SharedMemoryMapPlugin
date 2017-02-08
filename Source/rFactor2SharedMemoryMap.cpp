@@ -693,6 +693,9 @@ void SharedMemoryPlugin::UpdateScoringHelper(double const ticksNow, ScoringInfoV
   // Update current player vehicle speeds, position and orientation
   if (info.mNumVehicles > 0) {
     assert(pBuf->mID == info.mVehicle[0].mID);
+    // TODO: Review all fields, debug
+    pBuf->mElapsedTime = info.mCurrentET;
+    pBuf->mLapStartET = info.mVehicle[0].mLapStartET;
     pBuf->mPos = { info.mVehicle[0].mPos.x, info.mVehicle[0].mPos.y, info.mVehicle[0].mPos.z };
     pBuf->mLocalVel = { info.mVehicle[0].mLocalVel.x, info.mVehicle[0].mLocalVel.y, info.mVehicle[0].mLocalVel.z };
     pBuf->mLocalAccel = { info.mVehicle[0].mLocalAccel.x, info.mVehicle[0].mLocalAccel.y, info.mVehicle[0].mLocalAccel.z };
