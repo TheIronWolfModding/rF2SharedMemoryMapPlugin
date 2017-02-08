@@ -614,9 +614,9 @@ void SharedMemoryPlugin::UpdateTelemetryHelper(double const ticksNow, TelemInfoV
   // Longer delta means a pause or a hiccup, and interpolation will go
   // through the roof if there are no bounds.
   //
+  pBuf->mCurrentET = mScoringInfo.mCurrentET + mDelta;
   if (mDelta > 0.0 && mDelta < 0.22) {
     // ScoringInfoV01
-    pBuf->mCurrentET = mScoringInfo.mCurrentET + mDelta;
     pBuf->mInRealtime = mInRealtime;
 
     for (int i = 0; i < rF2State::MAX_VSI_SIZE; ++i) {
@@ -696,6 +696,10 @@ void SharedMemoryPlugin::UpdateScoringHelper(double const ticksNow, ScoringInfoV
     // TODO: Review all fields, debug
     pBuf->mElapsedTime = info.mCurrentET;
     pBuf->mLapStartET = info.mVehicle[0].mLapStartET;
+
+    assert(pBuf->mLapNumber == info.mVehicle[0].mTotalLaps);
+    pBuf->mLapNumber = info.mVehicle[0].mTotalLaps;
+
     pBuf->mPos = { info.mVehicle[0].mPos.x, info.mVehicle[0].mPos.y, info.mVehicle[0].mPos.z };
     pBuf->mLocalVel = { info.mVehicle[0].mLocalVel.x, info.mVehicle[0].mLocalVel.y, info.mVehicle[0].mLocalVel.z };
     pBuf->mLocalAccel = { info.mVehicle[0].mLocalAccel.x, info.mVehicle[0].mLocalAccel.y, info.mVehicle[0].mLocalAccel.z };
