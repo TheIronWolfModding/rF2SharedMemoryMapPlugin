@@ -36,7 +36,7 @@ Description:
 // 6 Full course yellow / safety car
 // 7 Session stopped
 // 8 Session over
-enum rF2GamePhase
+enum class rF2GamePhase
 {
   Garage = 0,
   WarmUp = 1,
@@ -59,7 +59,7 @@ enum rF2GamePhase
 //  5 Last lap
 //  6 Resume
 //  7 Race halt (not currently used)
-enum rF2YellowFlagState
+enum class rF2YellowFlagState
 {
   Invalid = -1,
   NoFlag = 0,
@@ -73,7 +73,7 @@ enum rF2YellowFlagState
 };
 
 // 0=dry, 1=wet, 2=grass, 3=dirt, 4=gravel, 5=rumblestrip, 6=special
-enum rF2SurfaceType
+enum class rF2SurfaceType
 {
   Dry = 0,
   Wet = 1,
@@ -85,7 +85,7 @@ enum rF2SurfaceType
 };
 
 // 0=sector3, 1=sector1, 2=sector2 (don't ask why)
-enum rF2Sector
+enum class rF2Sector
 {
   Sector3 = 0,
   Sector1 = 1,
@@ -93,7 +93,7 @@ enum rF2Sector
 };
 
 // 0=none, 1=finished, 2=dnf, 3=dq
-enum rF2FinishStatus
+enum class rF2FinishStatus
 {
   None = 0,
   Finished = 1,
@@ -102,7 +102,7 @@ enum rF2FinishStatus
 };
 
 // who's in control: -1=nobody (shouldn't get this), 0=local player, 1=local AI, 2=remote, 3=replay (shouldn't get this)
-enum rF2Control {
+enum class rF2Control {
   Nobody = -1,
   Player = 0,
   AI = 1,
@@ -111,7 +111,7 @@ enum rF2Control {
 };
 
 // wheel info (front left, front right, rear left, rear right)
-enum rF2WheelIndex {
+enum class rF2WheelIndex {
   FrontLeft = 0,
   FrontRight = 1,
   RearLeft = 2,
@@ -119,8 +119,8 @@ enum rF2WheelIndex {
 };
 
 // 0=none, 1=request, 2=entering, 3=stopped, 4=exiting
-enum rF2PitState {
-  PitState_None = 0,
+enum class rF2PitState {
+  None = 0,
   Request = 1,
   Entering = 2,
   Stopped = 3,
@@ -128,13 +128,13 @@ enum rF2PitState {
 };
 
 // primary flag being shown to vehicle (currently only 0=green or 6=blue)
-enum rF2PrimaryFlag {
+enum class rF2PrimaryFlag {
   Green = 0,
   Blue = 6
 };
 
 // 0 = do not count lap or time, 1 = count lap but not time, 2 = count lap and time
-enum rF2CountLapFlag {
+enum class rF2CountLapFlag {
   DoNotCountLap = 0,
   CountLapButNotTime = 1,
   CountLapAndTime = 2

@@ -123,7 +123,7 @@ namespace rF2SMMonitor
 
     // 0=none, 1=request, 2=entering, 3=stopped, 4=exiting
     internal enum rF2PitState {
-      PitState_None = 0,
+      None = 0,
       Request = 1,
       Entering = 2,
       Stopped = 3,
@@ -144,7 +144,7 @@ namespace rF2SMMonitor
     }
   }
 
-  namespace rFactor2Data
+    namespace rFactor2Data
   {
     [StructLayout(LayoutKind.Sequential, Pack = 16)]
     struct rF2Vec3

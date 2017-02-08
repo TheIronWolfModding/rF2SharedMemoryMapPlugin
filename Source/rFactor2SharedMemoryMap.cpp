@@ -81,7 +81,7 @@ Sample consumption:
 
 // Each component can be in [0:99] range.
 #define PLUGIN_VERSION_MAJOR "1.0"
-#define PLUGIN_VERSION_MINOR "0.0"
+#define PLUGIN_VERSION_MINOR "0.1"
 #define PLUGIN_NAME_AND_VERSION "rFactor 2 Shared Memory Map Plugin - v" PLUGIN_VERSION_MAJOR
 #define SHARED_MEMORY_VERSION PLUGIN_VERSION_MAJOR "." PLUGIN_VERSION_MINOR
 
@@ -693,13 +693,17 @@ void SharedMemoryPlugin::UpdateScoringHelper(double const ticksNow, ScoringInfoV
   // Update current player vehicle speeds, position and orientation
   if (info.mNumVehicles > 0) {
     assert(pBuf->mID == info.mVehicle[0].mID);
-    // TODO: Review all fields, debug
-    pBuf->mElapsedTime = info.mCurrentET;
-    pBuf->mLapStartET = info.mVehicle[0].mLapStartET;
 
-    assert(pBuf->mLapNumber == info.mVehicle[0].mTotalLaps);
+    // Since there's a gap between Telemetry and Scoring upates
+    // update elapsed time to match most current value.
+    pBuf->mElapsedTime = info.mCurrentET;
+
+    // Below members have identical meaning in TelelmInfoV01 and VehicleScoringInfoV01
+    // so update them.
+    pBuf->mLapStartET = info.mVehicle[0].mLapStartET;
     pBuf->mLapNumber = info.mVehicle[0].mTotalLaps;
 
+    // Update position and orientation.
     pBuf->mPos = { info.mVehicle[0].mPos.x, info.mVehicle[0].mPos.y, info.mVehicle[0].mPos.z };
     pBuf->mLocalVel = { info.mVehicle[0].mLocalVel.x, info.mVehicle[0].mLocalVel.y, info.mVehicle[0].mLocalVel.z };
     pBuf->mLocalAccel = { info.mVehicle[0].mLocalAccel.x, info.mVehicle[0].mLocalAccel.y, info.mVehicle[0].mLocalAccel.z };

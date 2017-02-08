@@ -102,7 +102,7 @@ private:
       // This code bravely assumes that car at 0 is player.
       // Not sure how correct this is.
       if (info.mNumVehicles > 0 
-        && info.mVehicle[0].mPitState == rF2PitState::Stopped) {
+        && info.mVehicle[0].mPitState == static_cast<unsigned char>(rF2PitState::Stopped)) {
         ResetDamageState();
         mLastPitStopET = info.mCurrentET;
       }
