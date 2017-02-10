@@ -618,6 +618,9 @@ namespace rF2SMMonitor
       for (int i = 0; i < state.mNumVehicles; ++i)
       {
         var veh = state.mVehicles[i];
+        if (veh.mBestLapTime < 0.0)
+          continue;
+
         if (bestLapTime < 0.0 || veh.mBestLapTime < bestLapTime)
         {
           bestLapTime = veh.mBestLapTime;
@@ -625,11 +628,15 @@ namespace rF2SMMonitor
         }
       }
 
-      var fastestVeh = state.mVehicles[fastestIndex];
-      var sbFastest = new StringBuilder("");
       PlayerTimingInfo ptiFastest = null;
-      if (fastestVeh.mBestLapTime > 0.0)
-        this.getDetailedVehTiming("Fastest:", ref fastestVeh, ref state, out sbFastest, out ptiFastest);
+      var sbFastest = new StringBuilder("");
+      if (fastestIndex != -1)
+      {
+        var fastestVeh = state.mVehicles[fastestIndex];
+        
+        if (fastestVeh.mBestLapTime > 0.0)
+            this.getDetailedVehTiming("Fastest:", ref fastestVeh, ref state, out sbFastest, out ptiFastest);
+      }
 
       var sbPlayerDeltas = new StringBuilder("");
       if (ptiFastest != null)
