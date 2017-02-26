@@ -23,6 +23,15 @@ Plugin comes with rF2SMMonitor program that is useful in visualizing of shared m
 
 # Release history
 
+2/26/2017 - v1.0.0.1
+
+  Fixed synchronization of:
+    rF2State::mCurrentET
+    rF2State::mLapStartET
+    rF2State::mLapNumber
+
+  This eliminates the gap those values had between telemetry and scoring updates.
+
 01/31/2017 - v1.0.0.0
   * Plugin: Added damage and invulnerability tracking
   * Monitor: Added phase and damage tracking and logging
