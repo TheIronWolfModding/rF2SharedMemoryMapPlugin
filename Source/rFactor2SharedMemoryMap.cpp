@@ -80,8 +80,8 @@ Sample consumption:
 #include <cstddef>                              // offsetof
 
 // Each component can be in [0:99] range.
-#define PLUGIN_VERSION_MAJOR "1.0"
-#define PLUGIN_VERSION_MINOR "0.1"
+#define PLUGIN_VERSION_MAJOR "1.1"
+#define PLUGIN_VERSION_MINOR "0.0"
 #define PLUGIN_NAME_AND_VERSION "rFactor 2 Shared Memory Map Plugin - v" PLUGIN_VERSION_MAJOR
 #define SHARED_MEMORY_VERSION PLUGIN_VERSION_MAJOR "." PLUGIN_VERSION_MINOR
 
@@ -299,13 +299,45 @@ void SharedMemoryPlugin::EndSession()
 }
 
 
+void SharedMemoryPlugin::UpdateInRealtimeFC(bool inRealTime)
+{
+  assert(mpBuf1->mInRealtimeFC == mpBuf2->mInRealtimeFC);
+  if (mIsMapped) {
+
+    // Make sure we're updating latest buffer (pickup telemetry update).
+    if (!mRetryFlip) // If flip wasn't successful, that means write buffer is already up to date.
+      SyncBuffers(true /*telemetryOnly*/);
+    else
+      DEBUG_MSG(DebugLevel::Synchronization, "Skipped initial write buffer sync due to retry mode.");
+
+    auto pBuf = mpBufCurWrite;
+    assert(!pBuf->mCurrentRead);
+
+    // Update current write buffer.
+    pBuf->mInRealtimeFC = inRealTime;
+
+    // Make it available to readers.
+    FlipBuffers();
+
+    assert(pBuf != mpBufCurWrite);
+
+    pBuf = mpBufCurWrite;
+    assert(!pBuf->mCurrentRead);
+
+    // Update current write buffer.
+    pBuf->mInRealtimeFC = inRealTime;
+
+    assert(mpBuf1->mInRealtimeFC == mpBuf2->mInRealtimeFC);
+  }
+}
+
+
 void SharedMemoryPlugin::EnterRealtime()
 {
   // start up timer every time we enter realtime
-  mET = 0.0;
   WriteToAllExampleOutputFiles("a", "---ENTERREALTIME---");
 
-  mInRealtime = true;
+  UpdateInRealtimeFC(true /*inRealtime*/);
 }
 
 
@@ -313,7 +345,7 @@ void SharedMemoryPlugin::ExitRealtime()
 {
   WriteToAllExampleOutputFiles("a", "---EXITREALTIME---");
 
-  mInRealtime = false;
+  UpdateInRealtimeFC(false /*inRealtime*/);
 }
 
 // Using GTC64 produces 7x larger average interpolation delta (roughly from 5cm to 35cm).
@@ -614,11 +646,8 @@ void SharedMemoryPlugin::UpdateTelemetryHelper(double const ticksNow, TelemInfoV
   // Longer delta means a pause or a hiccup, and interpolation will go
   // through the roof if there are no bounds.
   //
-  pBuf->mCurrentET = mScoringInfo.mCurrentET + mDelta;
   if (mDelta > 0.0 && mDelta < 0.22) {
     // ScoringInfoV01
-    pBuf->mInRealtime = mInRealtime;
-
     for (int i = 0; i < rF2State::MAX_VSI_SIZE; ++i) {
       if (i < mScoringInfo.mNumVehicles) {
         // nlerp between begin and end orientations.
@@ -722,7 +751,6 @@ void SharedMemoryPlugin::UpdateScoringHelper(double const ticksNow, ScoringInfoV
   ////////////////////////////////////////////////////
   // Update internal state (needed for interpolation).
   ////////////////////////////////////////////////////
-  mScoringInfo.mCurrentET = info.mCurrentET;
   mScoringInfo.mNumVehicles = info.mNumVehicles;
   strcpy(mScoringInfo.mPlrFileName, info.mPlrFileName);
   for (int i = 0; i < info.mNumVehicles; ++i) {
@@ -787,7 +815,7 @@ void SharedMemoryPlugin::UpdateScoringHelper(double const ticksNow, ScoringInfoV
   memcpy(pBuf->mSectorFlag, info.mSectorFlag, sizeof(pBuf->mSectorFlag));
   pBuf->mStartLight = info.mStartLight;
   pBuf->mNumRedLights = info.mNumRedLights;
-  pBuf->mInRealtime = mInRealtime;
+  pBuf->mInRealtimeSU = info.mInRealtime;
   strcpy_s(pBuf->mPlayerName, info.mPlayerName);
   strcpy_s(pBuf->mPlrFileName, info.mPlrFileName);
 

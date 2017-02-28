@@ -70,7 +70,6 @@ private:
 
   struct InternalScoringInfo
   {
-    double mCurrentET;
     int mNumVehicles;
     char mPlrFileName[64];
     InternalVehScoringInfo mVehicles[rF2State::MAX_VSI_SIZE];
@@ -166,6 +165,7 @@ public:
 
 
 private:
+  void UpdateInRealtimeFC(bool inRealTime);
   void UpdateTelemetryHelper(double const ticksNow, TelemInfoV01 const& info);
   void UpdateScoringHelper(double const ticksNow, ScoringInfoV01 const& info);
   void SyncBuffers(bool telemetryOnly);
@@ -183,7 +183,6 @@ private:
 
   // Frame delta is in seconds.
   double mDelta = 0.0;
-  double mET = 0.0;
 
   // Extended state tracker
   ExtendedStateTracker mExtStateTracker;
@@ -200,7 +199,6 @@ private:
   rF2State* mpBuf2 = nullptr;
 
   bool mIsMapped = false;
-  bool mInRealtime = false;
   InternalScoringInfo mScoringInfo = {};
 
   bool mRetryFlip = false;
