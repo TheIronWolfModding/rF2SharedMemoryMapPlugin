@@ -67,7 +67,8 @@ namespace rF2SMMonitor
       internal rF2YellowFlagState yellowFlagState = (rF2YellowFlagState)Enum.ToObject(typeof(rF2YellowFlagState), -255);
       internal int playerSector = -255;
       internal int currentSectorExtended = -255;
-      internal byte inRealTime = 255;
+      internal byte inRealTimeFC = 255;
+      internal byte inRealTimeSU = 255;
       internal rF2YellowFlagState sectorFlag1 = (rF2YellowFlagState)Enum.ToObject(typeof(rF2YellowFlagState), -255);
       internal rF2YellowFlagState sectorFlag2 = (rF2YellowFlagState)Enum.ToObject(typeof(rF2YellowFlagState), -255);
       internal rF2YellowFlagState sectorFlag3 = (rF2YellowFlagState)Enum.ToObject(typeof(rF2YellowFlagState), -255);
@@ -131,7 +132,8 @@ namespace rF2SMMonitor
       ps.yellowFlagState = (rF2YellowFlagState)state.mYellowFlagState;
       ps.playerSector = state.mVehicles[0].mSector == 0 ? 3 : state.mVehicles[0].mSector;
       ps.currentSectorExtended = state.mCurrentSector;
-      ps.inRealTime = state.mInRealtime;
+      ps.inRealTimeFC = state.mInRealtimeFC;
+      ps.inRealTimeSU = state.mInRealtimeSU;
       ps.sectorFlag1 = (rF2YellowFlagState)state.mSectorFlag[0];
       ps.sectorFlag2 = (rF2YellowFlagState)state.mSectorFlag[1];
       ps.sectorFlag3 = (rF2YellowFlagState)state.mSectorFlag[2];
@@ -152,7 +154,8 @@ namespace rF2SMMonitor
         || this.prevPhaseAndSate.yellowFlagState != ps.yellowFlagState
         || this.prevPhaseAndSate.playerSector != ps.playerSector
         || this.prevPhaseAndSate.currentSectorExtended != ps.currentSectorExtended
-        || this.prevPhaseAndSate.inRealTime != ps.inRealTime
+        || this.prevPhaseAndSate.inRealTimeFC != ps.inRealTimeFC
+        || this.prevPhaseAndSate.inRealTimeSU != ps.inRealTimeSU
         || this.prevPhaseAndSate.sectorFlag1 != ps.sectorFlag1
         || this.prevPhaseAndSate.sectorFlag2 != ps.sectorFlag2
         || this.prevPhaseAndSate.sectorFlag3 != ps.sectorFlag3
@@ -173,7 +176,8 @@ namespace rF2SMMonitor
           + (this.prevPhaseAndSate.yellowFlagState != ps.yellowFlagState ? "***\n" : "\n")
           + (this.prevPhaseAndSate.playerSector != ps.playerSector ? "***\n" : "\n")
           + (this.prevPhaseAndSate.currentSectorExtended != ps.currentSectorExtended ? "***\n" : "\n")
-          + (this.prevPhaseAndSate.inRealTime != ps.inRealTime ? "***\n" : "\n")
+          + (this.prevPhaseAndSate.inRealTimeFC != ps.inRealTimeFC ? "***\n" : "\n")
+          + (this.prevPhaseAndSate.inRealTimeSU != ps.inRealTimeSU ? "***\n" : "\n")
           + (this.prevPhaseAndSate.sectorFlag1 != ps.sectorFlag1 ? "***\n" : "\n")
           + (this.prevPhaseAndSate.sectorFlag2 != ps.sectorFlag2 ? "***\n" : "\n")
           + (this.prevPhaseAndSate.sectorFlag3 != ps.sectorFlag3 ? "***\n" : "\n")
@@ -197,7 +201,8 @@ namespace rF2SMMonitor
           + "mYellowFlagState:\n"
           + "mSector:\n"
           + "mCurrentSector:\n"
-          + "mInRealtime:\n"
+          + "mInRealtimeFC:\n"
+          + "mInRealtimeSU:\n"
           + "mSectorFlag[0]:\n"
           + "mSectorFlag[1]:\n"
           + "mSectorFlag[2]:\n"
@@ -214,13 +219,14 @@ namespace rF2SMMonitor
 
         this.sbPhaseValues = new StringBuilder();
         sbPhaseValues.Append(
-          string.Format("{0}\n{1}\n{2}\n{3}\n0x{4:X8}\n{5}\n{6}\n{7}\n{8}\n{9}\n{10}\n{11}\n{12}\n{13}\n{14}\n{15}\n{16}\n{17}\n{18}\n",
+          string.Format("{0}\n{1}\n{2}\n{3}\n0x{4:X8}\n{5}\n{6}\n{7}\n{8}\n{9}\n{10}\n{11}\n{12}\n{13}\n{14}\n{15}\n{16}\n{17}\n{18}\n{19}\n",
           GetEnumString<rF2GamePhase>(state.mGamePhase),
           GetSessionString(state.mSession),
           GetEnumString<rF2YellowFlagState>(state.mYellowFlagState),
           ps.playerSector,
           ps.currentSectorExtended, // {4:X} hexadecimal to see values
-          ps.inRealTime == 0 ? $"false({ps.inRealTime})" : $"true({ps.inRealTime})",
+          ps.inRealTimeFC == 0 ? $"false({ps.inRealTimeFC})" : $"true({ps.inRealTimeFC})",
+          ps.inRealTimeSU == 0 ? $"false({ps.inRealTimeSU})" : $"true({ps.inRealTimeSU})",
           GetEnumString<rF2YellowFlagState>(state.mSectorFlag[0]),
           GetEnumString<rF2YellowFlagState>(state.mSectorFlag[1]),
           GetEnumString<rF2YellowFlagState>(state.mSectorFlag[2]),
@@ -731,7 +737,7 @@ namespace rF2SMMonitor
 
     private string getStringFromBytes(byte[] name)
     {
-      return Encoding.UTF8.GetString(name).TrimEnd('\0').Trim();
+      return Encoding.Default.GetString(name).TrimEnd('\0').Trim();
     }
 
     private void getDetailedVehTiming(string name, ref rF2VehScoringInfo vehicle, ref rF2State state, out StringBuilder sbDetails, out PlayerTimingInfo pti)

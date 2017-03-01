@@ -701,7 +701,7 @@ struct rF2State
   // MM_NOT_USED Same as above
   // char mTrackName[64];           // current track name
   long mSession;                 // current session (0=testday 1-4=practice 5-8=qual 9=warmup 10-13=race)
-  double mCurrentET;             // current time (at last ScoringUpdate).
+  double mCurrentET;             // current time (at last ScoringUpdate)
   double mEndET;                 // ending time
   long  mMaxLaps;                // maximum laps
   double mLapDist;               // distance around track
@@ -738,8 +738,11 @@ struct rF2State
   signed char mSectorFlag[3];      // whether there are any local yellows at the moment in each sector (not sure if sector 0 is first or last, so test)
   unsigned char mStartLight;       // start light frame (number depends on track)
   unsigned char mNumRedLights;     // number of red lights in start sequence
-  bool mInRealtimeSU;              // in realtime as opposed to at the monitor (reported via ScoringUpdate).
-  bool mInRealtimeFC;              // in realtime as opposed to at the monitor (reported via EnterRealtime/ExitRealtime).
+
+  // MM_NEW
+  bool mInRealtimeSU;              // in realtime as opposed to at the monitor (reported via ScoringUpdate)
+  bool mInRealtimeFC;              // in realtime as opposed to at the monitor (reported via EnterRealtime/ExitRealtime)
+
   char mPlayerName[32];            // player name (including possible multiplayer override)
   char mPlrFileName[64];           // may be encoded to be a legal filename
 

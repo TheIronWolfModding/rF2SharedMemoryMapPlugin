@@ -414,7 +414,7 @@ namespace rF2SMMonitor
       internal rF2Wheel[] mWheels;            // wheel info (front left, front right, rear left, rear right)
 
       internal int mSession;                  // current session (0=testday 1-4=practice 5-8=qual 9=warmup 10-13=race)
-      internal double mCurrentET;             // current time
+      internal double mCurrentET;             // current time (at last ScoringUpdate)
       internal double mEndET;                 // ending time
       internal int mMaxLaps;                  // maximum laps
       internal double mLapDist;               // distance around track
@@ -449,7 +449,11 @@ namespace rF2SMMonitor
       internal sbyte[] mSectorFlag;             // whether there are any local yellows at the moment in each sector (not sure if sector 0 is first or last, so test)
       internal byte mStartLight;                // start light frame (number depends on track)
       internal byte mNumRedLights;              // number of red lights in start sequence
-      internal byte mInRealtime;                // in realtime as opposed to at the monitor
+
+      // MM_NEW
+      internal byte mInRealtimeSU;              // in realtime as opposed to at the monitor (reported via ScoringUpdate).
+      internal byte mInRealtimeFC;              // in realtime as opposed to at the monitor (reported via EnterRealtime/ExitRealtime).
+
       [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = 32)]
       internal byte[] mPlayerName;              // player name (including possible multiplayer override)
       [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = 64)]
