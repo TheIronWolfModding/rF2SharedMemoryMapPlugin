@@ -82,12 +82,16 @@ namespace rF2SMMonitor
       internal byte underYellow = 255;
       internal rF2CountLapFlag countLapFlag = (rF2CountLapFlag)Enum.ToObject(typeof(rF2CountLapFlag), -255);
       internal byte inGarageStall = 255;
+      internal rF2FinishStatus finishStatus = (rF2FinishStatus)Enum.ToObject(typeof(rF2FinishStatus), -255);
     }
 
     internal PhaseAndState prevPhaseAndSate = new PhaseAndState();
     internal StringBuilder sbPhaseChanged = new StringBuilder();
     internal StringBuilder sbPhaseLabel = new StringBuilder();
     internal StringBuilder sbPhaseValues = new StringBuilder();
+    internal StringBuilder sbPhaseChangedCol2 = new StringBuilder();
+    internal StringBuilder sbPhaseLabelCol2 = new StringBuilder();
+    internal StringBuilder sbPhaseValuesCol2 = new StringBuilder();
 
     rF2GamePhase lastDamageTrackingGamePhase = (rF2GamePhase)Enum.ToObject(typeof(rF2GamePhase), -255);
     rF2GamePhase lastPhaseTrackingGamePhase = (rF2GamePhase)Enum.ToObject(typeof(rF2GamePhase), -255);
@@ -147,6 +151,7 @@ namespace rF2SMMonitor
       ps.underYellow = playerVeh.mUnderYellow;
       ps.countLapFlag = (rF2CountLapFlag)playerVeh.mCountLapFlag;
       ps.inGarageStall = playerVeh.mInGarageStall;
+      ps.finishStatus = (rF2FinishStatus)playerVeh.mFinishStatus;
 
       // Only refresh UI if there's change.
       if (this.prevPhaseAndSate.gamePhase != ps.gamePhase
@@ -168,7 +173,8 @@ namespace rF2SMMonitor
         || this.prevPhaseAndSate.flag != ps.flag
         || this.prevPhaseAndSate.underYellow != ps.underYellow
         || this.prevPhaseAndSate.countLapFlag != ps.countLapFlag
-        || this.prevPhaseAndSate.inGarageStall != ps.inGarageStall)
+        || this.prevPhaseAndSate.inGarageStall != ps.inGarageStall
+        || this.prevPhaseAndSate.finishStatus != ps.finishStatus)
       {
         this.sbPhaseChanged = new StringBuilder();
         sbPhaseChanged.Append((this.prevPhaseAndSate.gamePhase != ps.gamePhase ? "***\n" : "\n")
@@ -191,6 +197,9 @@ namespace rF2SMMonitor
           + (this.prevPhaseAndSate.underYellow != ps.underYellow ? "***\n" : "\n")
           + (this.prevPhaseAndSate.countLapFlag != ps.countLapFlag ? "***\n" : "\n")
           + (this.prevPhaseAndSate.inGarageStall != ps.inGarageStall ? "***\n" : "\n"));
+
+        this.sbPhaseChangedCol2 = new StringBuilder();
+        sbPhaseChangedCol2.Append((this.prevPhaseAndSate.finishStatus != ps.finishStatus ? "***\n" : "\n"));
 
         // Save current phase and state.
         this.prevPhaseAndSate = ps;
@@ -217,35 +226,58 @@ namespace rF2SMMonitor
           + "mCountLapFlag:\n"
           + "mInGarageStall:\n");
 
+        this.sbPhaseLabelCol2 = new StringBuilder();
+        sbPhaseLabelCol2.Append("mFinishStatus:\n");
+
         this.sbPhaseValues = new StringBuilder();
         sbPhaseValues.Append(
-          string.Format("{0}\n{1}\n{2}\n{3}\n0x{4:X8}\n{5}\n{6}\n{7}\n{8}\n{9}\n{10}\n{11}\n{12}\n{13}\n{14}\n{15}\n{16}\n{17}\n{18}\n{19}\n",
-          GetEnumString<rF2GamePhase>(state.mGamePhase),
-          GetSessionString(state.mSession),
-          GetEnumString<rF2YellowFlagState>(state.mYellowFlagState),
-          ps.playerSector,
-          ps.currentSectorExtended, // {4:X} hexadecimal to see values
-          ps.inRealTimeFC == 0 ? $"false({ps.inRealTimeFC})" : $"true({ps.inRealTimeFC})",
-          ps.inRealTimeSU == 0 ? $"false({ps.inRealTimeSU})" : $"true({ps.inRealTimeSU})",
-          GetEnumString<rF2YellowFlagState>(state.mSectorFlag[0]),
-          GetEnumString<rF2YellowFlagState>(state.mSectorFlag[1]),
-          GetEnumString<rF2YellowFlagState>(state.mSectorFlag[2]),
-          GetEnumString<rF2Control>(playerVeh.mControl),
-          ps.inPits == 0 ? $"false({ps.inPits})" : $"true({ps.inPits})",
-          ps.isPlayer == 0 ? $"false({ps.isPlayer})" : $"true({ps.isPlayer})",
-          ps.place,
-          GetEnumString<rF2PitState>(playerVeh.mPitState),
-          GetEnumString<rF2GamePhase>(playerVeh.mIndividualPhase),
-          GetEnumString<rF2PrimaryFlag>(playerVeh.mFlag),
-          ps.underYellow,
-          GetEnumString<rF2CountLapFlag>(playerVeh.mCountLapFlag),
-          ps.inGarageStall == 0 ? $"false({ps.inGarageStall})" : $"true({ps.inGarageStall})"));
+          $"{GetEnumString<rF2GamePhase>(state.mGamePhase)}\n"
+          + $"{GetSessionString(state.mSession)}\n"
+          + $"{GetEnumString<rF2YellowFlagState>(state.mYellowFlagState)}\n"
+          + $"{ps.playerSector}\n"
+          + $"0x{ps.currentSectorExtended,4:X8}\n" // {4:X} hexadecimal to see values
+          + (ps.inRealTimeFC == 0 ? $"false({ps.inRealTimeFC})" : $"true({ps.inRealTimeFC})") + "\n"
+          + (ps.inRealTimeSU == 0 ? $"false({ps.inRealTimeSU})" : $"true({ps.inRealTimeSU})") + "\n"
+          + $"{GetEnumString<rF2YellowFlagState>(state.mSectorFlag[0])}\n"
+          + $"{GetEnumString<rF2YellowFlagState>(state.mSectorFlag[1])}\n"
+          + $"{GetEnumString<rF2YellowFlagState>(state.mSectorFlag[2])}\n"
+          + $"{GetEnumString<rF2Control>(playerVeh.mControl)}\n"
+          + (ps.inPits == 0 ? $"false({ps.inPits})" : $"true({ps.inPits})") + "\n"
+          + (ps.isPlayer == 0 ? $"false({ps.isPlayer})" : $"true({ps.isPlayer})") + "\n"
+          + $"{ps.place}\n"
+          + $"{GetEnumString<rF2PitState>(playerVeh.mPitState)}\n"
+          + $"{GetEnumString<rF2GamePhase>(playerVeh.mIndividualPhase)}\n"
+          + $"{GetEnumString<rF2PrimaryFlag>(playerVeh.mFlag)}\n"
+          + $"{ps.underYellow}\n"
+          + $"{GetEnumString<rF2CountLapFlag>(playerVeh.mCountLapFlag)}\n"
+          + (ps.inGarageStall == 0 ? $"false({ps.inGarageStall})" : $"true({ps.inGarageStall})") + "\n");
+
+        this.sbPhaseValuesCol2 = new StringBuilder();
+        sbPhaseValuesCol2.Append(
+          $"{GetEnumString<rF2FinishStatus>(playerVeh.mFinishStatus)}\n");
 
         if (logToFile)
         {
           var changed = this.sbPhaseChanged.ToString().Split('\n');
           var labels = this.sbPhaseLabel.ToString().Split('\n');
           var values = this.sbPhaseValues.ToString().Split('\n');
+
+          var changedCol2 = this.sbPhaseChangedCol2.ToString().Split('\n');
+          var labelsCol2 = this.sbPhaseLabelCol2.ToString().Split('\n');
+          var valuesCol2 = this.sbPhaseValuesCol2.ToString().Split('\n');
+
+          var list = new List<string>(changed);
+          list.AddRange(changedCol2);
+          changed = list.ToArray();
+
+          list = new List<string>(labels);
+          list.AddRange(labelsCol2);
+          labels = list.ToArray();
+
+          list = new List<string>(values);
+          list.AddRange(valuesCol2);
+          values = list.ToArray();
+
           Debug.Assert(changed.Length == labels.Length && values.Length == labels.Length);
 
           var lines = new List<string>();
@@ -275,6 +307,10 @@ namespace rF2SMMonitor
         g.DrawString(this.sbPhaseChanged.ToString(), SystemFonts.DefaultFont, Brushes.Orange, 3.0f, 33.0f);
         g.DrawString(this.sbPhaseLabel.ToString(), SystemFonts.DefaultFont, Brushes.Green, 30.0f, 30.0f);
         g.DrawString(this.sbPhaseValues.ToString(), SystemFonts.DefaultFont, Brushes.Purple, 130.0f, 30.0f);
+
+        g.DrawString(this.sbPhaseChangedCol2.ToString(), SystemFonts.DefaultFont, Brushes.Orange, 233.0f, 33.0f);
+        g.DrawString(this.sbPhaseLabelCol2.ToString(), SystemFonts.DefaultFont, Brushes.Green, 260.0f, 30.0f);
+        g.DrawString(this.sbPhaseValuesCol2.ToString(), SystemFonts.DefaultFont, Brushes.Purple, 360.0f, 30.0f);
       }
     }
 
