@@ -741,7 +741,7 @@ struct rF2State
 
   // MM_NEW
   bool mInRealtimeSU;              // in realtime as opposed to at the monitor (reported via ScoringUpdate)
-  bool mInRealtimeFC;              // in realtime as opposed to at the monitor (reported via EnterRealtime/ExitRealtime)
+  bool mInRealtimeFC;              // in realtime as opposed to at the monitor (reported via last EnterRealtime/ExitRealtime call)
 
   char mPlayerName[32];            // player name (including possible multiplayer override)
   char mPlrFileName[64];           // may be encoded to be a legal filename

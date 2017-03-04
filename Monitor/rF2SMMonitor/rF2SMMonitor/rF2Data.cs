@@ -451,8 +451,8 @@ namespace rF2SMMonitor
       internal byte mNumRedLights;              // number of red lights in start sequence
 
       // MM_NEW
-      internal byte mInRealtimeSU;              // in realtime as opposed to at the monitor (reported via ScoringUpdate).
-      internal byte mInRealtimeFC;              // in realtime as opposed to at the monitor (reported via EnterRealtime/ExitRealtime).
+      internal byte mInRealtimeSU;              // in realtime as opposed to at the monitor (reported via ScoringUpdate)
+      internal byte mInRealtimeFC;              // in realtime as opposed to at the monitor (reported via last EnterRealtime/ExitRealtime call)
 
       [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = 32)]
       internal byte[] mPlayerName;              // player name (including possible multiplayer override)

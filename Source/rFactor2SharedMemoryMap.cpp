@@ -81,7 +81,7 @@ Sample consumption:
 
 // Each component can be in [0:99] range.
 #define PLUGIN_VERSION_MAJOR "1.1"
-#define PLUGIN_VERSION_MINOR "0.0"
+#define PLUGIN_VERSION_MINOR "0.1"
 #define PLUGIN_NAME_AND_VERSION "rFactor 2 Shared Memory Map Plugin - v" PLUGIN_VERSION_MAJOR
 #define SHARED_MEMORY_VERSION PLUGIN_VERSION_MAJOR "." PLUGIN_VERSION_MINOR
 
@@ -301,8 +301,8 @@ void SharedMemoryPlugin::EndSession()
 
 void SharedMemoryPlugin::UpdateInRealtimeFC(bool inRealTime)
 {
-  assert(mpBuf1->mInRealtimeFC == mpBuf2->mInRealtimeFC);
   if (mIsMapped) {
+    assert(mpBuf1->mInRealtimeFC == mpBuf2->mInRealtimeFC);
 
     // Make sure we're updating latest buffer (pickup telemetry update).
     if (!mRetryFlip) // If flip wasn't successful, that means write buffer is already up to date.
@@ -338,6 +338,8 @@ void SharedMemoryPlugin::EnterRealtime()
   WriteToAllExampleOutputFiles("a", "---ENTERREALTIME---");
 
   UpdateInRealtimeFC(true /*inRealtime*/);
+
+  mInRealTimeLastFunctionCall = true;
 }
 
 
@@ -346,6 +348,8 @@ void SharedMemoryPlugin::ExitRealtime()
   WriteToAllExampleOutputFiles("a", "---EXITREALTIME---");
 
   UpdateInRealtimeFC(false /*inRealtime*/);
+
+  mInRealTimeLastFunctionCall = false;
 }
 
 // Using GTC64 produces 7x larger average interpolation delta (roughly from 5cm to 35cm).
@@ -816,6 +820,10 @@ void SharedMemoryPlugin::UpdateScoringHelper(double const ticksNow, ScoringInfoV
   pBuf->mStartLight = info.mStartLight;
   pBuf->mNumRedLights = info.mNumRedLights;
   pBuf->mInRealtimeSU = info.mInRealtime;
+
+  // Also set mInRealtimeFC.  On session restart, this value is lost.
+  pBuf->mInRealtimeFC = mInRealTimeLastFunctionCall;
+
   strcpy_s(pBuf->mPlayerName, info.mPlayerName);
   strcpy_s(pBuf->mPlrFileName, info.mPlrFileName);
 

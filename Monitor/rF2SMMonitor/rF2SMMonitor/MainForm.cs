@@ -411,7 +411,7 @@ namespace rF2SMMonitor
         gameStateText.Append($"FPS: {this.fps}    mElapsedTime: {this.currrF2State.mElapsedTime:N4}    mCurrentET: {this.currrF2State.mCurrentET:N4}"
           + $"    mElapsedTime-mCurrentET: {(this.currrF2State.mElapsedTime - this.currrF2State.mCurrentET):N4}    mDetlaTime: {this.currrF2State.mDeltaTime:N4}"
           + $"    Invulnerability: " + (this.currrF2State.mInvulnerable == 0 ? "off" : "on")
-          + $"\nPlugin Version:    Expected: 1.1.0.0    Actual: {MainForm.getStringFromBytes(this.currrF2State.mVersion)}");
+          + $"\nPlugin Version:    Expected: 1.1.0.1    Actual: {MainForm.getStringFromBytes(this.currrF2State.mVersion)}");
         g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, brush, currX, currY);
 
         Interpolator.RenderDebugInfo(ref this.currrF2State, g);

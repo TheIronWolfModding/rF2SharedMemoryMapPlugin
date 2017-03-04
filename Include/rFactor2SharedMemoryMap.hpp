@@ -199,6 +199,7 @@ private:
   rF2State* mpBuf2 = nullptr;
 
   bool mIsMapped = false;
+  bool mInRealTimeLastFunctionCall = false;
   InternalScoringInfo mScoringInfo = {};
 
   bool mRetryFlip = false;
