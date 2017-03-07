@@ -60,29 +60,59 @@ namespace rF2SMMonitor
       return $"Unknown({session})";
     }
 
+
+    // TODO: Telemetry section
+    // Telemetry values (separate section)
+
     internal class PhaseAndState
     {
-      internal rF2GamePhase gamePhase = (rF2GamePhase)Enum.ToObject(typeof(rF2GamePhase), -255);
-      internal int session = -255;
-      internal rF2YellowFlagState yellowFlagState = (rF2YellowFlagState)Enum.ToObject(typeof(rF2YellowFlagState), -255);
-      internal int playerSector = -255;
-      internal int currentSectorExtended = -255;
-      internal byte inRealTimeFC = 255;
-      internal byte inRealTimeSU = 255;
-      internal rF2YellowFlagState sectorFlag1 = (rF2YellowFlagState)Enum.ToObject(typeof(rF2YellowFlagState), -255);
-      internal rF2YellowFlagState sectorFlag2 = (rF2YellowFlagState)Enum.ToObject(typeof(rF2YellowFlagState), -255);
-      internal rF2YellowFlagState sectorFlag3 = (rF2YellowFlagState)Enum.ToObject(typeof(rF2YellowFlagState), -255);
-      internal rF2Control control;
-      internal byte inPits = 255;
-      internal byte isPlayer = 255;
-      internal int place = -255;
-      internal rF2PitState pitState = (rF2PitState)Enum.ToObject(typeof(rF2PitState), -255);
-      internal rF2GamePhase individualPhase = (rF2GamePhase)Enum.ToObject(typeof(rF2GamePhase), -255);
-      internal rF2PrimaryFlag flag = (rF2PrimaryFlag)Enum.ToObject(typeof(rF2PrimaryFlag), -255);
-      internal byte underYellow = 255;
-      internal rF2CountLapFlag countLapFlag = (rF2CountLapFlag)Enum.ToObject(typeof(rF2CountLapFlag), -255);
-      internal byte inGarageStall = 255;
-      internal rF2FinishStatus finishStatus = (rF2FinishStatus)Enum.ToObject(typeof(rF2FinishStatus), -255);
+      internal rF2GamePhase mGamePhase = (rF2GamePhase)Enum.ToObject(typeof(rF2GamePhase), -255);
+      internal int mSession = -255;
+      internal rF2YellowFlagState mYellowFlagState = (rF2YellowFlagState)Enum.ToObject(typeof(rF2YellowFlagState), -255);
+      internal int mSector = -255;
+      internal int mCurrentSector = -255;
+      internal byte mInRealTimeFC = 255;
+      internal byte mInRealTimeSU = 255;
+      internal rF2YellowFlagState mSector1Flag = (rF2YellowFlagState)Enum.ToObject(typeof(rF2YellowFlagState), -255);
+      internal rF2YellowFlagState mSector2Flag = (rF2YellowFlagState)Enum.ToObject(typeof(rF2YellowFlagState), -255);
+      internal rF2YellowFlagState mSector3Flag = (rF2YellowFlagState)Enum.ToObject(typeof(rF2YellowFlagState), -255);
+      internal rF2Control mControl;
+      internal byte mInPits = 255;
+      internal byte mIsPlayer = 255;
+      internal int mPlace = -255;
+      internal rF2PitState mPitState = (rF2PitState)Enum.ToObject(typeof(rF2PitState), -255);
+      internal rF2GamePhase mIndividualPhase = (rF2GamePhase)Enum.ToObject(typeof(rF2GamePhase), -255);
+      internal rF2PrimaryFlag mFlag = (rF2PrimaryFlag)Enum.ToObject(typeof(rF2PrimaryFlag), -255);
+      internal byte mUnderYellow = 255;
+      internal rF2CountLapFlag mCountLapFlag = (rF2CountLapFlag)Enum.ToObject(typeof(rF2CountLapFlag), -255);
+      internal byte mInGarageStall = 255;
+      internal rF2FinishStatus mFinishStatus = (rF2FinishStatus)Enum.ToObject(typeof(rF2FinishStatus), -255);
+      internal int mLapNumber = -255;
+      internal short mTotalLaps = -255;
+      internal int mMaxLaps = -1;
+      internal int mNumVehicles = -1;
+      internal byte mScheduledStops = 255;
+      internal byte mHeadlights = 255;
+      internal byte mSpeedLimiter = 255;
+      internal byte mFrontTireCompoundIndex = 255;
+      internal byte mRearTireCompoundIndex = 255;
+      internal string mFrontTireCompoundName = "Unknown";
+      internal string mRearTireCompoundName = "Unknown";
+      internal byte mFrontFlapActivated = 255;
+      internal byte mRearFlapActivated = 255;
+      internal rF2RearFlapLegalStatus mRearFlapLegalStatus = (rF2RearFlapLegalStatus)Enum.ToObject(typeof(rF2RearFlapLegalStatus), -255);
+      internal rF2IgnitionStarterStatus mIgnitionStarter = (rF2IgnitionStarterStatus)Enum.ToObject(typeof(rF2IgnitionStarterStatus), -255);
+      internal byte mSpeedLimiterAvailable = 255;
+      internal byte mAntiStallActivated = 255;
+      internal byte mStartLight = 255;
+      internal byte mNumRedLights = 255;
+      internal short mNumPitstops = -255;
+      internal short mNumPenalties = -255;
+      internal int mLapsBehindNext = -1;
+      internal int mLapsBehindLeader = -1;
+      internal byte mPlayerHeadlights = 255;
+      internal byte mServerScored = 255;
+      internal int mQualification = -1;
     }
 
     internal PhaseAndState prevPhaseAndSate = new PhaseAndState();
@@ -122,7 +152,6 @@ namespace rF2SMMonitor
 
       this.lastPhaseTrackingGamePhase = (rF2GamePhase)state.mGamePhase;
 
-
       if (state.mNumVehicles == 0)
         return;
 
@@ -131,75 +160,153 @@ namespace rF2SMMonitor
 
       var ps = new PhaseAndState();
 
-      ps.gamePhase = (rF2GamePhase)state.mGamePhase;
-      ps.session = state.mSession;
-      ps.yellowFlagState = (rF2YellowFlagState)state.mYellowFlagState;
-      ps.playerSector = state.mVehicles[0].mSector == 0 ? 3 : state.mVehicles[0].mSector;
-      ps.currentSectorExtended = state.mCurrentSector;
-      ps.inRealTimeFC = state.mInRealtimeFC;
-      ps.inRealTimeSU = state.mInRealtimeSU;
-      ps.sectorFlag1 = (rF2YellowFlagState)state.mSectorFlag[0];
-      ps.sectorFlag2 = (rF2YellowFlagState)state.mSectorFlag[1];
-      ps.sectorFlag3 = (rF2YellowFlagState)state.mSectorFlag[2];
-      ps.control = (rF2Control)playerVeh.mControl;
-      ps.inPits = playerVeh.mInPits;
-      ps.isPlayer = playerVeh.mIsPlayer;
-      ps.place = playerVeh.mPlace;
-      ps.pitState = (rF2PitState)playerVeh.mPitState;
-      ps.individualPhase = (rF2GamePhase)playerVeh.mIndividualPhase;
-      ps.flag = (rF2PrimaryFlag)playerVeh.mFlag;
-      ps.underYellow = playerVeh.mUnderYellow;
-      ps.countLapFlag = (rF2CountLapFlag)playerVeh.mCountLapFlag;
-      ps.inGarageStall = playerVeh.mInGarageStall;
-      ps.finishStatus = (rF2FinishStatus)playerVeh.mFinishStatus;
+      ps.mGamePhase = (rF2GamePhase)state.mGamePhase;
+      ps.mSession = state.mSession;
+      ps.mYellowFlagState = (rF2YellowFlagState)state.mYellowFlagState;
+      ps.mSector = state.mVehicles[0].mSector == 0 ? 3 : state.mVehicles[0].mSector;
+      ps.mCurrentSector = state.mCurrentSector;
+      ps.mInRealTimeFC = state.mInRealtimeFC;
+      ps.mInRealTimeSU = state.mInRealtimeSU;
+      ps.mSector1Flag = (rF2YellowFlagState)state.mSectorFlag[0];
+      ps.mSector2Flag = (rF2YellowFlagState)state.mSectorFlag[1];
+      ps.mSector3Flag = (rF2YellowFlagState)state.mSectorFlag[2];
+      ps.mControl = (rF2Control)playerVeh.mControl;
+      ps.mInPits = playerVeh.mInPits;
+      ps.mIsPlayer = playerVeh.mIsPlayer;
+      ps.mPlace = playerVeh.mPlace;
+      ps.mPitState = (rF2PitState)playerVeh.mPitState;
+      ps.mIndividualPhase = (rF2GamePhase)playerVeh.mIndividualPhase;
+      ps.mFlag = (rF2PrimaryFlag)playerVeh.mFlag;
+      ps.mUnderYellow = playerVeh.mUnderYellow;
+      ps.mCountLapFlag = (rF2CountLapFlag)playerVeh.mCountLapFlag;
+      ps.mInGarageStall = playerVeh.mInGarageStall;
+      ps.mFinishStatus = (rF2FinishStatus)playerVeh.mFinishStatus;
+      ps.mLapNumber = state.mLapNumber;
+      ps.mTotalLaps = playerVeh.mTotalLaps;
+      ps.mMaxLaps = state.mMaxLaps;
+      ps.mNumVehicles = state.mNumVehicles;
+      ps.mScheduledStops = state.mScheduledStops;
+      ps.mHeadlights = state.mHeadlights;
+      ps.mSpeedLimiter = state.mSpeedLimiter;
+      ps.mFrontTireCompoundIndex = state.mFrontTireCompoundIndex;
+      ps.mRearTireCompoundIndex = state.mRearTireCompoundIndex;
+      ps.mFrontTireCompoundName = this.getStringFromBytes(state.mFrontTireCompoundName);
+      ps.mRearTireCompoundName = this.getStringFromBytes(state.mRearTireCompoundName);
+      ps.mFrontFlapActivated = state.mFrontFlapActivated;
+      ps.mRearFlapActivated = state.mRearFlapActivated;
+      ps.mRearFlapLegalStatus = (rF2RearFlapLegalStatus)state.mRearFlapLegalStatus;
+      ps.mIgnitionStarter = (rF2IgnitionStarterStatus)state.mIgnitionStarter;
+      ps.mSpeedLimiterAvailable = state.mSpeedLimiterAvailable;
+      ps.mAntiStallActivated = state.mAntiStallActivated;
+      ps.mStartLight = state.mStartLight;
+      ps.mNumRedLights = state.mNumRedLights;
+      ps.mNumPitstops = playerVeh.mNumPitstops;
+      ps.mNumPenalties = playerVeh.mNumPenalties;
+      ps.mLapsBehindNext = playerVeh.mLapsBehindNext;
+      ps.mLapsBehindLeader = playerVeh.mLapsBehindLeader;
+      ps.mPlayerHeadlights = playerVeh.mHeadlights;
+      ps.mServerScored = playerVeh.mServerScored;
+      ps.mQualification = playerVeh.mQualification;
 
       // Only refresh UI if there's change.
-      if (this.prevPhaseAndSate.gamePhase != ps.gamePhase
-        || this.prevPhaseAndSate.session != ps.session
-        || this.prevPhaseAndSate.yellowFlagState != ps.yellowFlagState
-        || this.prevPhaseAndSate.playerSector != ps.playerSector
-        || this.prevPhaseAndSate.currentSectorExtended != ps.currentSectorExtended
-        || this.prevPhaseAndSate.inRealTimeFC != ps.inRealTimeFC
-        || this.prevPhaseAndSate.inRealTimeSU != ps.inRealTimeSU
-        || this.prevPhaseAndSate.sectorFlag1 != ps.sectorFlag1
-        || this.prevPhaseAndSate.sectorFlag2 != ps.sectorFlag2
-        || this.prevPhaseAndSate.sectorFlag3 != ps.sectorFlag3
-        || this.prevPhaseAndSate.control != ps.control
-        || this.prevPhaseAndSate.inPits != ps.inPits
-        || this.prevPhaseAndSate.isPlayer != ps.isPlayer
-        || this.prevPhaseAndSate.place != ps.place
-        || this.prevPhaseAndSate.pitState != ps.pitState
-        || this.prevPhaseAndSate.individualPhase != ps.individualPhase
-        || this.prevPhaseAndSate.flag != ps.flag
-        || this.prevPhaseAndSate.underYellow != ps.underYellow
-        || this.prevPhaseAndSate.countLapFlag != ps.countLapFlag
-        || this.prevPhaseAndSate.inGarageStall != ps.inGarageStall
-        || this.prevPhaseAndSate.finishStatus != ps.finishStatus)
+      if (this.prevPhaseAndSate.mGamePhase != ps.mGamePhase
+        || this.prevPhaseAndSate.mSession != ps.mSession
+        || this.prevPhaseAndSate.mYellowFlagState != ps.mYellowFlagState
+        || this.prevPhaseAndSate.mSector != ps.mSector
+        || this.prevPhaseAndSate.mCurrentSector != ps.mCurrentSector
+        || this.prevPhaseAndSate.mInRealTimeFC != ps.mInRealTimeFC
+        || this.prevPhaseAndSate.mInRealTimeSU != ps.mInRealTimeSU
+        || this.prevPhaseAndSate.mSector1Flag != ps.mSector1Flag
+        || this.prevPhaseAndSate.mSector2Flag != ps.mSector2Flag
+        || this.prevPhaseAndSate.mSector3Flag != ps.mSector3Flag
+        || this.prevPhaseAndSate.mControl != ps.mControl
+        || this.prevPhaseAndSate.mInPits != ps.mInPits
+        || this.prevPhaseAndSate.mIsPlayer != ps.mIsPlayer
+        || this.prevPhaseAndSate.mPlace != ps.mPlace
+        || this.prevPhaseAndSate.mPitState != ps.mPitState
+        || this.prevPhaseAndSate.mIndividualPhase != ps.mIndividualPhase
+        || this.prevPhaseAndSate.mFlag != ps.mFlag
+        || this.prevPhaseAndSate.mUnderYellow != ps.mUnderYellow
+        || this.prevPhaseAndSate.mCountLapFlag != ps.mCountLapFlag
+        || this.prevPhaseAndSate.mInGarageStall != ps.mInGarageStall
+        || this.prevPhaseAndSate.mFinishStatus != ps.mFinishStatus
+        || this.prevPhaseAndSate.mLapNumber != ps.mLapNumber
+        || this.prevPhaseAndSate.mTotalLaps != playerVeh.mTotalLaps
+        || this.prevPhaseAndSate.mMaxLaps != ps.mMaxLaps
+        || this.prevPhaseAndSate.mNumVehicles != ps.mNumVehicles
+        || this.prevPhaseAndSate.mScheduledStops != ps.mScheduledStops
+        || this.prevPhaseAndSate.mHeadlights != ps.mHeadlights
+        || this.prevPhaseAndSate.mSpeedLimiter != ps.mSpeedLimiter
+        || this.prevPhaseAndSate.mFrontTireCompoundIndex != ps.mFrontTireCompoundIndex
+        || this.prevPhaseAndSate.mRearTireCompoundIndex != ps.mRearTireCompoundIndex
+        || this.prevPhaseAndSate.mFrontTireCompoundName != ps.mFrontTireCompoundName
+        || this.prevPhaseAndSate.mRearTireCompoundName != ps.mRearTireCompoundName
+        || this.prevPhaseAndSate.mFrontFlapActivated != ps.mFrontFlapActivated
+        || this.prevPhaseAndSate.mRearFlapActivated != ps.mRearFlapActivated
+        || this.prevPhaseAndSate.mRearFlapLegalStatus != ps.mRearFlapLegalStatus
+        || this.prevPhaseAndSate.mIgnitionStarter != ps.mIgnitionStarter
+        || this.prevPhaseAndSate.mSpeedLimiterAvailable != ps.mSpeedLimiterAvailable
+        || this.prevPhaseAndSate.mAntiStallActivated != ps.mAntiStallActivated
+        || this.prevPhaseAndSate.mStartLight != ps.mStartLight
+        || this.prevPhaseAndSate.mNumRedLights != ps.mNumRedLights
+        || this.prevPhaseAndSate.mNumPitstops != ps.mNumPitstops
+        || this.prevPhaseAndSate.mNumPenalties != ps.mNumPenalties
+        || this.prevPhaseAndSate.mLapsBehindNext != ps.mLapsBehindNext
+        || this.prevPhaseAndSate.mLapsBehindLeader != ps.mLapsBehindLeader
+        || this.prevPhaseAndSate.mPlayerHeadlights != ps.mHeadlights
+        || this.prevPhaseAndSate.mServerScored != ps.mServerScored
+        || this.prevPhaseAndSate.mQualification != ps.mQualification)
       {
         this.sbPhaseChanged = new StringBuilder();
-        sbPhaseChanged.Append((this.prevPhaseAndSate.gamePhase != ps.gamePhase ? "***\n" : "\n")
-          + (this.prevPhaseAndSate.session != ps.session ? "***\n" : "\n")
-          + (this.prevPhaseAndSate.yellowFlagState != ps.yellowFlagState ? "***\n" : "\n")
-          + (this.prevPhaseAndSate.playerSector != ps.playerSector ? "***\n" : "\n")
-          + (this.prevPhaseAndSate.currentSectorExtended != ps.currentSectorExtended ? "***\n" : "\n")
-          + (this.prevPhaseAndSate.inRealTimeFC != ps.inRealTimeFC ? "***\n" : "\n")
-          + (this.prevPhaseAndSate.inRealTimeSU != ps.inRealTimeSU ? "***\n" : "\n")
-          + (this.prevPhaseAndSate.sectorFlag1 != ps.sectorFlag1 ? "***\n" : "\n")
-          + (this.prevPhaseAndSate.sectorFlag2 != ps.sectorFlag2 ? "***\n" : "\n")
-          + (this.prevPhaseAndSate.sectorFlag3 != ps.sectorFlag3 ? "***\n" : "\n")
-          + (this.prevPhaseAndSate.control != ps.control ? "***\n" : "\n")
-          + (this.prevPhaseAndSate.inPits != ps.inPits ? "***\n" : "\n")
-          + (this.prevPhaseAndSate.isPlayer != ps.isPlayer ? "***\n" : "\n")
-          + (this.prevPhaseAndSate.place != ps.place ? "***\n" : "\n")
-          + (this.prevPhaseAndSate.pitState != ps.pitState ? "***\n" : "\n")
-          + (this.prevPhaseAndSate.individualPhase != ps.individualPhase ? "***\n" : "\n")
-          + (this.prevPhaseAndSate.flag != ps.flag ? "***\n" : "\n")
-          + (this.prevPhaseAndSate.underYellow != ps.underYellow ? "***\n" : "\n")
-          + (this.prevPhaseAndSate.countLapFlag != ps.countLapFlag ? "***\n" : "\n")
-          + (this.prevPhaseAndSate.inGarageStall != ps.inGarageStall ? "***\n" : "\n"));
+        sbPhaseChanged.Append((this.prevPhaseAndSate.mGamePhase != ps.mGamePhase ? "***\n" : "\n")
+          + (this.prevPhaseAndSate.mSession != ps.mSession ? "***\n" : "\n")
+          + (this.prevPhaseAndSate.mYellowFlagState != ps.mYellowFlagState ? "***\n" : "\n")
+          + (this.prevPhaseAndSate.mSector != ps.mSector ? "***\n" : "\n")
+          + (this.prevPhaseAndSate.mCurrentSector != ps.mCurrentSector ? "***\n" : "\n")
+          + (this.prevPhaseAndSate.mInRealTimeFC != ps.mInRealTimeFC ? "***\n" : "\n")
+          + (this.prevPhaseAndSate.mInRealTimeSU != ps.mInRealTimeSU ? "***\n" : "\n")
+          + (this.prevPhaseAndSate.mSector1Flag != ps.mSector1Flag ? "***\n" : "\n")
+          + (this.prevPhaseAndSate.mSector2Flag != ps.mSector2Flag ? "***\n" : "\n")
+          + (this.prevPhaseAndSate.mSector3Flag != ps.mSector3Flag ? "***\n" : "\n")
+          + (this.prevPhaseAndSate.mControl != ps.mControl ? "***\n" : "\n")
+          + (this.prevPhaseAndSate.mInPits != ps.mInPits ? "***\n" : "\n")
+          + (this.prevPhaseAndSate.mIsPlayer != ps.mIsPlayer ? "***\n" : "\n")
+          + (this.prevPhaseAndSate.mPlace != ps.mPlace ? "***\n" : "\n")
+          + (this.prevPhaseAndSate.mPitState != ps.mPitState ? "***\n" : "\n")
+          + (this.prevPhaseAndSate.mIndividualPhase != ps.mIndividualPhase ? "***\n" : "\n")
+          + (this.prevPhaseAndSate.mFlag != ps.mFlag ? "***\n" : "\n")
+          + (this.prevPhaseAndSate.mUnderYellow != ps.mUnderYellow ? "***\n" : "\n")
+          + (this.prevPhaseAndSate.mCountLapFlag != ps.mCountLapFlag ? "***\n" : "\n")
+          + (this.prevPhaseAndSate.mInGarageStall != ps.mInGarageStall ? "***\n" : "\n")
+          + (this.prevPhaseAndSate.mFinishStatus != ps.mFinishStatus ? "***\n" : "\n")
+          + (this.prevPhaseAndSate.mLapNumber != ps.mLapNumber ? "***\n" : "\n")
+          + (this.prevPhaseAndSate.mTotalLaps != ps.mTotalLaps ? "***\n" : "\n")
+          + (this.prevPhaseAndSate.mMaxLaps != ps.mMaxLaps ? "***\n" : "\n"));
 
         this.sbPhaseChangedCol2 = new StringBuilder();
-        sbPhaseChangedCol2.Append((this.prevPhaseAndSate.finishStatus != ps.finishStatus ? "***\n" : "\n"));
+        sbPhaseChangedCol2.Append((this.prevPhaseAndSate.mNumVehicles != ps.mNumVehicles ? "***\n" : "\n")
+          + (this.prevPhaseAndSate.mScheduledStops != ps.mScheduledStops ? "***\n" : "\n")
+          + (this.prevPhaseAndSate.mHeadlights != ps.mHeadlights ? "***\n" : "\n")
+          + (this.prevPhaseAndSate.mSpeedLimiter != ps.mSpeedLimiter ? "***\n" : "\n")
+          + (this.prevPhaseAndSate.mFrontTireCompoundIndex != ps.mFrontTireCompoundIndex ? "***\n" : "\n")
+          + (this.prevPhaseAndSate.mRearTireCompoundIndex != ps.mRearTireCompoundIndex ? "***\n" : "\n")
+          + (this.prevPhaseAndSate.mFrontTireCompoundName != ps.mFrontTireCompoundName ? "***\n" : "\n")
+          + (this.prevPhaseAndSate.mRearTireCompoundName != ps.mRearTireCompoundName ? "***\n" : "\n")
+          + (this.prevPhaseAndSate.mFrontFlapActivated != ps.mFrontFlapActivated ? "***\n" : "\n")
+          + (this.prevPhaseAndSate.mRearFlapActivated != ps.mRearFlapActivated ? "***\n" : "\n")
+          + (this.prevPhaseAndSate.mRearFlapLegalStatus != ps.mRearFlapLegalStatus ? "***\n" : "\n")
+          + (this.prevPhaseAndSate.mIgnitionStarter != ps.mIgnitionStarter ? "***\n" : "\n")
+          + (this.prevPhaseAndSate.mSpeedLimiterAvailable != ps.mSpeedLimiter ? "***\n" : "\n")
+          + (this.prevPhaseAndSate.mAntiStallActivated != ps.mAntiStallActivated ? "***\n" : "\n")
+          + (this.prevPhaseAndSate.mStartLight != ps.mStartLight ? "***\n" : "\n")
+          + (this.prevPhaseAndSate.mNumRedLights != ps.mNumRedLights ? "***\n" : "\n")
+          + (this.prevPhaseAndSate.mNumPitstops != ps.mNumPitstops ? "***\n" : "\n")
+          + (this.prevPhaseAndSate.mNumPenalties != ps.mNumPenalties ? "***\n" : "\n")
+          + (this.prevPhaseAndSate.mLapsBehindNext != ps.mLapsBehindNext ? "***\n" : "\n")
+          + (this.prevPhaseAndSate.mLapsBehindLeader != ps.mLapsBehindLeader ? "***\n" : "\n")
+          + (this.prevPhaseAndSate.mPlayerHeadlights != ps.mPlayerHeadlights ? "***\n" : "\n")
+          + (this.prevPhaseAndSate.mServerScored != ps.mServerScored ? "***\n" : "\n")
+          + (this.prevPhaseAndSate.mQualification != ps.mQualification ? "***\n" : "\n"));
 
         // Save current phase and state.
         this.prevPhaseAndSate = ps;
@@ -224,37 +331,89 @@ namespace rF2SMMonitor
           + "mFlag:\n"
           + "mUnderYellow:\n"
           + "mCountLapFlag:\n"
-          + "mInGarageStall:\n");
+          + "mInGarageStall:\n"
+          + "mFinishStatus:\n"
+          + "mLapNumber:\n"
+          + "mTotalLaps:\n"
+          + "mMaxLaps:\n");
 
         this.sbPhaseLabelCol2 = new StringBuilder();
-        sbPhaseLabelCol2.Append("mFinishStatus:\n");
+        sbPhaseLabelCol2.Append("mNumVehicles:\n"
+          + "mScheduledStops:\n"
+          + "mHeadlights:\n"
+          + "mSpeedLimiter:\n"
+          + "mFrontTireCompoundIndex:\n"
+          + "mRearTireCompoundIndex:\n"
+          + "mFrontTireCompoundName:\n"
+          + "mRearTireCompoundName:\n"
+          + "mFrontFlapActivated:\n"
+          + "mRearFlapActivated:\n"
+          + "mRearFlapLegalStatus:\n"
+          + "mIgnitionStarter:\n"
+          + "mSpeedLimiterAvailable:\n"
+          + "mAntiStallActivated:\n"
+          + "mStartLight:\n"
+          + "mNumRedLights:\n"
+          + "mNumPitstops:\n"
+          + "mNumPenalties:\n"
+          + "mLapsBehindNext:\n"
+          + "mLapsBehindLeader:\n"
+          + "mPlayerHeadlights:\n"
+          + "mServerScored:\n"
+          + "mQualification:\n"
+        );
 
         this.sbPhaseValues = new StringBuilder();
         sbPhaseValues.Append(
           $"{GetEnumString<rF2GamePhase>(state.mGamePhase)}\n"
           + $"{GetSessionString(state.mSession)}\n"
           + $"{GetEnumString<rF2YellowFlagState>(state.mYellowFlagState)}\n"
-          + $"{ps.playerSector}\n"
-          + $"0x{ps.currentSectorExtended,4:X8}\n" // {4:X} hexadecimal to see values
-          + (ps.inRealTimeFC == 0 ? $"false({ps.inRealTimeFC})" : $"true({ps.inRealTimeFC})") + "\n"
-          + (ps.inRealTimeSU == 0 ? $"false({ps.inRealTimeSU})" : $"true({ps.inRealTimeSU})") + "\n"
+          + $"{ps.mSector}\n"
+          + $"0x{ps.mCurrentSector,4:X8}\n" // {4:X} hexadecimal to see values
+          + (ps.mInRealTimeFC == 0 ? $"false({ps.mInRealTimeFC})" : $"true({ps.mInRealTimeFC})") + "\n"
+          + (ps.mInRealTimeSU == 0 ? $"false({ps.mInRealTimeSU})" : $"true({ps.mInRealTimeSU})") + "\n"
           + $"{GetEnumString<rF2YellowFlagState>(state.mSectorFlag[0])}\n"
           + $"{GetEnumString<rF2YellowFlagState>(state.mSectorFlag[1])}\n"
           + $"{GetEnumString<rF2YellowFlagState>(state.mSectorFlag[2])}\n"
           + $"{GetEnumString<rF2Control>(playerVeh.mControl)}\n"
-          + (ps.inPits == 0 ? $"false({ps.inPits})" : $"true({ps.inPits})") + "\n"
-          + (ps.isPlayer == 0 ? $"false({ps.isPlayer})" : $"true({ps.isPlayer})") + "\n"
-          + $"{ps.place}\n"
+          + (ps.mInPits == 0 ? $"false({ps.mInPits})" : $"true({ps.mInPits})") + "\n"
+          + (ps.mIsPlayer == 0 ? $"false({ps.mIsPlayer})" : $"true({ps.mIsPlayer})") + "\n"
+          + $"{ps.mPlace}\n"
           + $"{GetEnumString<rF2PitState>(playerVeh.mPitState)}\n"
           + $"{GetEnumString<rF2GamePhase>(playerVeh.mIndividualPhase)}\n"
           + $"{GetEnumString<rF2PrimaryFlag>(playerVeh.mFlag)}\n"
-          + $"{ps.underYellow}\n"
+          + $"{ps.mUnderYellow}\n"
           + $"{GetEnumString<rF2CountLapFlag>(playerVeh.mCountLapFlag)}\n"
-          + (ps.inGarageStall == 0 ? $"false({ps.inGarageStall})" : $"true({ps.inGarageStall})") + "\n");
+          + (ps.mInGarageStall == 0 ? $"false({ps.mInGarageStall})" : $"true({ps.mInGarageStall})") + "\n"
+          + $"{GetEnumString<rF2FinishStatus>(playerVeh.mFinishStatus)}\n"
+          + $"{ps.mLapNumber}\n"
+          + $"{ps.mTotalLaps}\n"
+          + $"{ps.mMaxLaps}\n");
 
         this.sbPhaseValuesCol2 = new StringBuilder();
-        sbPhaseValuesCol2.Append(
-          $"{GetEnumString<rF2FinishStatus>(playerVeh.mFinishStatus)}\n");
+        sbPhaseValuesCol2.Append($"{ps.mNumVehicles}\n"
+          + (ps.mScheduledStops == 0 ? $"false({ps.mScheduledStops})" : $"true({ps.mScheduledStops})") + "\n"
+          + (ps.mHeadlights == 0 ? $"false({ps.mHeadlights})" : $"true({ps.mHeadlights})") + "\n"
+          + (ps.mSpeedLimiter == 0 ? $"false({ps.mSpeedLimiter})" : $"true({ps.mSpeedLimiter})") + "\n"
+          + (ps.mFrontTireCompoundIndex == 0 ? $"false({ps.mFrontTireCompoundIndex})" : $"true({ps.mFrontTireCompoundIndex})") + "\n"
+          + (ps.mRearTireCompoundIndex == 0 ? $"false({ps.mRearTireCompoundIndex})" : $"true({ps.mRearTireCompoundIndex})") + "\n"
+          + $"{ps.mFrontTireCompoundName}\n"
+          + $"{ps.mRearTireCompoundName}\n"
+          + (ps.mFrontFlapActivated == 0 ? $"false({ps.mFrontFlapActivated})" : $"true({ps.mFrontFlapActivated})") + "\n"
+          + (ps.mRearFlapActivated == 0 ? $"false({ps.mRearFlapActivated})" : $"true({ps.mRearFlapActivated})") + "\n"
+          + $"{GetEnumString<rF2RearFlapLegalStatus>(state.mRearFlapLegalStatus)}\n"
+          + $"{GetEnumString<rF2IgnitionStarterStatus>(state.mIgnitionStarter)}\n"
+          + (ps.mSpeedLimiterAvailable == 0 ? $"false({ps.mSpeedLimiterAvailable})" : $"true({ps.mSpeedLimiterAvailable})") + "\n"
+          + (ps.mAntiStallActivated == 0 ? $"false({ps.mAntiStallActivated})" : $"true({ps.mAntiStallActivated})") + "\n"
+          + $"{ps.mStartLight}\n"
+          + $"{ps.mNumRedLights}\n"
+          + $"{ps.mNumPitstops}\n"
+          + $"{ps.mNumPenalties}\n"
+          + $"{ps.mLapsBehindNext}\n"
+          + $"{ps.mLapsBehindLeader}\n"
+          + (ps.mPlayerHeadlights == 0 ? $"false({ps.mPlayerHeadlights})" : $"true({ps.mPlayerHeadlights})") + "\n"
+          + (ps.mServerScored == 0 ? $"false({ps.mServerScored})" : $"true({ps.mServerScored})") + "\n"
+          + $"{ps.mQualification}\n");
 
         if (logToFile)
         {
@@ -304,13 +463,13 @@ namespace rF2SMMonitor
 
       if (g != null)
       {
-        g.DrawString(this.sbPhaseChanged.ToString(), SystemFonts.DefaultFont, Brushes.Orange, 3.0f, 33.0f);
-        g.DrawString(this.sbPhaseLabel.ToString(), SystemFonts.DefaultFont, Brushes.Green, 30.0f, 30.0f);
-        g.DrawString(this.sbPhaseValues.ToString(), SystemFonts.DefaultFont, Brushes.Purple, 130.0f, 30.0f);
+        g.DrawString(this.sbPhaseChanged.ToString(), SystemFonts.DefaultFont, Brushes.Orange, 3.0f, 53.0f);
+        g.DrawString(this.sbPhaseLabel.ToString(), SystemFonts.DefaultFont, Brushes.Green, 30.0f, 50.0f);
+        g.DrawString(this.sbPhaseValues.ToString(), SystemFonts.DefaultFont, Brushes.Purple, 130.0f, 50.0f);
 
-        g.DrawString(this.sbPhaseChangedCol2.ToString(), SystemFonts.DefaultFont, Brushes.Orange, 233.0f, 33.0f);
-        g.DrawString(this.sbPhaseLabelCol2.ToString(), SystemFonts.DefaultFont, Brushes.Green, 260.0f, 30.0f);
-        g.DrawString(this.sbPhaseValuesCol2.ToString(), SystemFonts.DefaultFont, Brushes.Purple, 360.0f, 30.0f);
+        g.DrawString(this.sbPhaseChangedCol2.ToString(), SystemFonts.DefaultFont, Brushes.Orange, 253.0f, 53.0f);
+        g.DrawString(this.sbPhaseLabelCol2.ToString(), SystemFonts.DefaultFont, Brushes.Green, 280.0f, 50.0f);
+        g.DrawString(this.sbPhaseValuesCol2.ToString(), SystemFonts.DefaultFont, Brushes.Purple, 430.0f, 50.0f);
       }
     }
 
@@ -500,9 +659,9 @@ namespace rF2SMMonitor
 
       if (g != null)
       {
-        g.DrawString(this.sbDamageChanged.ToString(), SystemFonts.DefaultFont, Brushes.Orange, 3.0f, 303.0f);
-        g.DrawString(this.sbDamageLabel.ToString(), SystemFonts.DefaultFont, Brushes.Green, 30.0f, 300.0f);
-        g.DrawString(this.sbDamageValues.ToString(), SystemFonts.DefaultFont, Brushes.Purple, 200.0f, 300.0f);
+        g.DrawString(this.sbDamageChanged.ToString(), SystemFonts.DefaultFont, Brushes.Orange, 3.0f, 373.0f);
+        g.DrawString(this.sbDamageLabel.ToString(), SystemFonts.DefaultFont, Brushes.Green, 30.0f, 370.0f);
+        g.DrawString(this.sbDamageValues.ToString(), SystemFonts.DefaultFont, Brushes.Purple, 200.0f, 370.0f);
       }
     }
 
@@ -763,17 +922,22 @@ namespace rF2SMMonitor
 
       if (g != null)
       {
-        g.DrawString(sbPlayer.ToString(), SystemFonts.DefaultFont, Brushes.Magenta, 3.0f, 430.0f);
-        g.DrawString(sbPlayerDeltas.ToString(), SystemFonts.DefaultFont, Brushes.Black, 3.0f, 520.0f);
-        g.DrawString(sbFastest.ToString(), SystemFonts.DefaultFont, Brushes.OrangeRed, 3.0f, 640.0f);
-        g.DrawString(sbOpponentNames.ToString(), SystemFonts.DefaultFont, Brushes.Green, 560.0f, 30.0f);
-        g.DrawString(sbOpponentStats.ToString(), SystemFonts.DefaultFont, Brushes.Purple, 670.0f, 30.0f);
+        g.DrawString(sbPlayer.ToString(), SystemFonts.DefaultFont, Brushes.Magenta, 3.0f, 510.0f);
+        g.DrawString(sbPlayerDeltas.ToString(), SystemFonts.DefaultFont, Brushes.Black, 3.0f, 600.0f);
+        g.DrawString(sbFastest.ToString(), SystemFonts.DefaultFont, Brushes.OrangeRed, 3.0f, 720.0f);
+        g.DrawString(sbOpponentNames.ToString(), SystemFonts.DefaultFont, Brushes.Green, 560.0f, 50.0f);
+        g.DrawString(sbOpponentStats.ToString(), SystemFonts.DefaultFont, Brushes.Purple, 670.0f, 50.0f);
       }
     }
 
     private string getStringFromBytes(byte[] name)
     {
-      return Encoding.Default.GetString(name).TrimEnd('\0').Trim();
+      var str = Encoding.Default.GetString(name);
+      var eosChar = str.IndexOf('\0');
+      if (eosChar != -1)
+        str = str.Substring(0, eosChar);
+
+      return str;
     }
 
     private void getDetailedVehTiming(string name, ref rF2VehScoringInfo vehicle, ref rF2State state, out StringBuilder sbDetails, out PlayerTimingInfo pti)

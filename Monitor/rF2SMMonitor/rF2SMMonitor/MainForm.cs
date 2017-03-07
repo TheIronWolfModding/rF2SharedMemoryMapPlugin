@@ -389,30 +389,56 @@ namespace rF2SMMonitor
       this.tracker.TrackDamage(ref this.currrF2State, g, this.logDamage);
       this.tracker.TrackTimings(ref this.currrF2State, g, this.logTiming);
 
-      if (this.logLightMode)
-        return;
-
       this.UpdateFPS();
 
-      
       if (!this.connected)
       {
         var brush = new SolidBrush(System.Drawing.Color.Black);
         g.DrawString("Not connected", SystemFonts.DefaultFont, brush, 3.0f, 3.0f);
+
+        if (this.logLightMode)
+          return;
       }
       else
       {
         var brush = new SolidBrush(System.Drawing.Color.Green);
 
+        // TODO:Global:
+        // mLapStartET
+        // mVehicleName
+        // mTrackName
+        //internal double mEndET;                 // ending time
+        //internal double mLapDist;               // distance around track
+        //internal double mTimeBehindNext;        // time behind vehicle in next higher place
+        //internal double mTimeBehindLeader;      // time behind leader
+        //internal double mLapStartET;            // time this lap was started
+        // internal double mTimeIntoLap;           // estimated time into lap
+        //internal double mEstimatedLapTime;      // estimated laptime used for 'time behind' and 'time into lap' (note: this may changed based on vehicle and setup!?)
+
+        // Player:
+        //internal double mLapDist;               // current distance around track
+
+        // internal byte[] mPlayerName;              // player name (including possible multiplayer override)
+        //internal byte[] mPlrFileName;             // may be encoded to be a legal filename
+        // [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = 24)]
+        // internal byte[] mPitGroup;              // pit group (same as team name unless pit is shared)
+
         var currX = 3.0f;
         var currY = 3.0f;
         float yStep = SystemFonts.DefaultFont.Height;
         var gameStateText = new StringBuilder();
-        gameStateText.Append($"FPS: {this.fps}    mElapsedTime: {this.currrF2State.mElapsedTime:N4}    mCurrentET: {this.currrF2State.mCurrentET:N4}"
+        gameStateText.Append($"Plugin Version:    Expected: 1.1.0.1    Actual: {MainForm.getStringFromBytes(this.currrF2State.mVersion)}    FPS: {this.fps}"
+          + $"\nmElapsedTime: {this.currrF2State.mElapsedTime:N4}    mCurrentET: {this.currrF2State.mCurrentET:N4}"
           + $"    mElapsedTime-mCurrentET: {(this.currrF2State.mElapsedTime - this.currrF2State.mCurrentET):N4}    mDetlaTime: {this.currrF2State.mDeltaTime:N4}"
-          + $"    Invulnerability: " + (this.currrF2State.mInvulnerable == 0 ? "off" : "on")
-          + $"\nPlugin Version:    Expected: 1.1.0.1    Actual: {MainForm.getStringFromBytes(this.currrF2State.mVersion)}");
+          + $"    mInvulnerable: " + (this.currrF2State.mInvulnerable == 0 ? "off" : "on")
+          + $"\nmLapStartET: {this.currrF2State.mLapStartET:N4}    mLapDist: {this.currrF2State.mLapDist:N4}");
+
+
+
         g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, brush, currX, currY);
+
+        if (this.logLightMode)
+          return;
 
         Interpolator.RenderDebugInfo(ref this.currrF2State, g);
 

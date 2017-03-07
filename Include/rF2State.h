@@ -140,6 +140,20 @@ enum class rF2CountLapFlag {
   CountLapAndTime = 2
 };
 
+// 0=disallowed, 1=criteria detected but not allowed quite yet, 2=allowed
+enum class rF2RearFlapLegalStatus {
+  Disallowed = 0,
+  DetectedButNotAllowedYet = 1,
+  Alllowed = 2
+};
+
+// 0=off 1=ignition 2=ignition+starter
+enum class rF2IgnitionStarterStatus {
+  Off = 0,
+  Ignition = 1,
+  IgnitionAndStarter = 2
+};
+
 
 // MM_NEW
 struct Euler

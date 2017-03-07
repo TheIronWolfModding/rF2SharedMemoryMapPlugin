@@ -142,9 +142,23 @@ namespace rF2SMMonitor
       CountLapButNotTime = 1,
       CountLapAndTime = 2,
     }
+
+    // 0=disallowed, 1=criteria detected but not allowed quite yet, 2=allowed
+    internal enum rF2RearFlapLegalStatus {
+      Disallowed = 0,
+      DetectedButNotAllowedYet = 1,
+      Alllowed = 2
+    }
+
+    // 0=off 1=ignition 2=ignition+starter
+    internal enum rF2IgnitionStarterStatus {
+      Off = 0,
+      Ignition = 1,
+      IgnitionAndStarter = 2
+    }
   }
 
-    namespace rFactor2Data
+  namespace rFactor2Data
   {
     [StructLayout(LayoutKind.Sequential, Pack = 16)]
     struct rF2Vec3
