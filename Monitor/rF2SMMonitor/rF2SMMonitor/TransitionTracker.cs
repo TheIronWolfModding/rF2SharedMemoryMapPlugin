@@ -127,6 +127,8 @@ namespace rF2SMMonitor
     rF2GamePhase lastPhaseTrackingGamePhase = (rF2GamePhase)Enum.ToObject(typeof(rF2GamePhase), -255);
     rF2GamePhase lastTimingTrackingGamePhase = (rF2GamePhase)Enum.ToObject(typeof(rF2GamePhase), -255);
 
+    private float screenYStart = 150.0f;
+
     internal void TrackPhase(ref rF2State state, Graphics g, bool logToFile)
     {
       if (logToFile)
@@ -463,16 +465,15 @@ namespace rF2SMMonitor
 
       if (g != null)
       {
-        g.DrawString(this.sbPhaseChanged.ToString(), SystemFonts.DefaultFont, Brushes.Orange, 3.0f, 53.0f);
-        g.DrawString(this.sbPhaseLabel.ToString(), SystemFonts.DefaultFont, Brushes.Green, 30.0f, 50.0f);
-        g.DrawString(this.sbPhaseValues.ToString(), SystemFonts.DefaultFont, Brushes.Purple, 130.0f, 50.0f);
+        g.DrawString(this.sbPhaseChanged.ToString(), SystemFonts.DefaultFont, Brushes.Orange, 3.0f, this.screenYStart + 3.0f);
+        g.DrawString(this.sbPhaseLabel.ToString(), SystemFonts.DefaultFont, Brushes.Green, 30.0f, this.screenYStart);
+        g.DrawString(this.sbPhaseValues.ToString(), SystemFonts.DefaultFont, Brushes.Purple, 130.0f, this.screenYStart);
 
-        g.DrawString(this.sbPhaseChangedCol2.ToString(), SystemFonts.DefaultFont, Brushes.Orange, 253.0f, 53.0f);
-        g.DrawString(this.sbPhaseLabelCol2.ToString(), SystemFonts.DefaultFont, Brushes.Green, 280.0f, 50.0f);
-        g.DrawString(this.sbPhaseValuesCol2.ToString(), SystemFonts.DefaultFont, Brushes.Purple, 430.0f, 50.0f);
+        g.DrawString(this.sbPhaseChangedCol2.ToString(), SystemFonts.DefaultFont, Brushes.Orange, 253.0f, this.screenYStart + 3.0f);
+        g.DrawString(this.sbPhaseLabelCol2.ToString(), SystemFonts.DefaultFont, Brushes.Green, 280.0f, this.screenYStart);
+        g.DrawString(this.sbPhaseValuesCol2.ToString(), SystemFonts.DefaultFont, Brushes.Purple, 430.0f, this.screenYStart);
       }
     }
-
 
     internal class DamageInfo
     {
@@ -659,9 +660,10 @@ namespace rF2SMMonitor
 
       if (g != null)
       {
-        g.DrawString(this.sbDamageChanged.ToString(), SystemFonts.DefaultFont, Brushes.Orange, 3.0f, 373.0f);
-        g.DrawString(this.sbDamageLabel.ToString(), SystemFonts.DefaultFont, Brushes.Green, 30.0f, 370.0f);
-        g.DrawString(this.sbDamageValues.ToString(), SystemFonts.DefaultFont, Brushes.Purple, 200.0f, 370.0f);
+        var dmgYStart = this.screenYStart + 310.0f;
+        g.DrawString(this.sbDamageChanged.ToString(), SystemFonts.DefaultFont, Brushes.Orange, 3.0f, dmgYStart + 3.0f);
+        g.DrawString(this.sbDamageLabel.ToString(), SystemFonts.DefaultFont, Brushes.Green, 30.0f, dmgYStart);
+        g.DrawString(this.sbDamageValues.ToString(), SystemFonts.DefaultFont, Brushes.Purple, 200.0f, dmgYStart);
       }
     }
 
@@ -922,9 +924,10 @@ namespace rF2SMMonitor
 
       if (g != null)
       {
-        g.DrawString(sbPlayer.ToString(), SystemFonts.DefaultFont, Brushes.Magenta, 3.0f, 510.0f);
-        g.DrawString(sbPlayerDeltas.ToString(), SystemFonts.DefaultFont, Brushes.Black, 3.0f, 600.0f);
-        g.DrawString(sbFastest.ToString(), SystemFonts.DefaultFont, Brushes.OrangeRed, 3.0f, 720.0f);
+        var timingsYStart = this.screenYStart + 440.0f;
+        g.DrawString(sbPlayer.ToString(), SystemFonts.DefaultFont, Brushes.Magenta, 3.0f, timingsYStart);
+        g.DrawString(sbPlayerDeltas.ToString(), SystemFonts.DefaultFont, Brushes.Black, 3.0f, timingsYStart + 90.0f);
+        g.DrawString(sbFastest.ToString(), SystemFonts.DefaultFont, Brushes.OrangeRed, 3.0f, timingsYStart + 210.0f);
         g.DrawString(sbOpponentNames.ToString(), SystemFonts.DefaultFont, Brushes.Green, 560.0f, 50.0f);
         g.DrawString(sbOpponentStats.ToString(), SystemFonts.DefaultFont, Brushes.Purple, 670.0f, 50.0f);
       }

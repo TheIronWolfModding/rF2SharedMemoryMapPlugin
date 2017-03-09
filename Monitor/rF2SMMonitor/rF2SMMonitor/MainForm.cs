@@ -403,39 +403,84 @@ namespace rF2SMMonitor
       {
         var brush = new SolidBrush(System.Drawing.Color.Green);
 
-        // TODO:Global:
-        // mLapStartET
-        // mVehicleName
-        // mTrackName
-        //internal double mEndET;                 // ending time
-        //internal double mLapDist;               // distance around track
-        //internal double mTimeBehindNext;        // time behind vehicle in next higher place
-        //internal double mTimeBehindLeader;      // time behind leader
-        //internal double mLapStartET;            // time this lap was started
-        // internal double mTimeIntoLap;           // estimated time into lap
-        //internal double mEstimatedLapTime;      // estimated laptime used for 'time behind' and 'time into lap' (note: this may changed based on vehicle and setup!?)
-
-        // Player:
-        //internal double mLapDist;               // current distance around track
-
-        // internal byte[] mPlayerName;              // player name (including possible multiplayer override)
-        //internal byte[] mPlrFileName;             // may be encoded to be a legal filename
-        // [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = 24)]
-        // internal byte[] mPitGroup;              // pit group (same as team name unless pit is shared)
-
         var currX = 3.0f;
         var currY = 3.0f;
         float yStep = SystemFonts.DefaultFont.Height;
         var gameStateText = new StringBuilder();
-        gameStateText.Append($"Plugin Version:    Expected: 1.1.0.1    Actual: {MainForm.getStringFromBytes(this.currrF2State.mVersion)}    FPS: {this.fps}"
-          + $"\nmElapsedTime: {this.currrF2State.mElapsedTime:N4}    mCurrentET: {this.currrF2State.mCurrentET:N4}"
-          + $"    mElapsedTime-mCurrentET: {(this.currrF2State.mElapsedTime - this.currrF2State.mCurrentET):N4}    mDetlaTime: {this.currrF2State.mDeltaTime:N4}"
-          + $"    mInvulnerable: " + (this.currrF2State.mInvulnerable == 0 ? "off" : "on")
-          + $"\nmLapStartET: {this.currrF2State.mLapStartET:N4}    mLapDist: {this.currrF2State.mLapDist:N4}");
+        gameStateText.Append(
+          $"Plugin Version:    Expected: 1.1.0.1    Actual: {MainForm.getStringFromBytes(this.currrF2State.mVersion)}    FPS: {this.fps}");
 
-
-
+        // Draw header
         g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, brush, currX, currY);
+
+        gameStateText.Clear();
+
+        gameStateText.Append(
+          "mElapsedTime:\n"
+          + "mCurrentET:\n"
+          + "mElapsedTime-mCurrentET:\n"
+          + "mDetlaTime:\n"
+          + "mInvulnerable:\n"
+          + "mVehicleName:\n"
+          + "mTrackName:\n"
+          + "mLapStartET:\n"
+          + "mLapDist:\n"
+          + "mEndET:\n");
+
+        // Col 1 labels
+        g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, brush, currX, currY += yStep);
+
+        gameStateText.Clear();
+
+        gameStateText.Append(
+                $"{this.currrF2State.mElapsedTime:N3}\n"
+                + $"{this.currrF2State.mCurrentET:N3}\n"
+                + $"{(this.currrF2State.mElapsedTime - this.currrF2State.mCurrentET):N3}\n"
+                + $"{this.currrF2State.mDeltaTime:N3}\n"
+                + (this.currrF2State.mInvulnerable == 0 ? "off" : "on") + "\n"
+                + $"{MainForm.getStringFromBytes(this.currrF2State.mVehicleName)}\n"
+                + $"{MainForm.getStringFromBytes(this.currrF2State.mTrackName)}\n"
+                + $"{this.currrF2State.mLapStartET:N3}\n"
+                + $"{this.currrF2State.mLapDist:N3}\n"
+                + (this.currrF2State.mEndET < 0.0 ? "Unknown" : this.currrF2State.mEndET.ToString("N3")) + "\n");
+
+        // Col1 values
+        g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Purple, currX + 145, currY);
+
+        if (this.currrF2State.mNumVehicles > 0)
+        {
+          gameStateText.Clear();
+
+          gameStateText.Append(
+            "mLapDist(Plr):\n"
+            + "mTimeIntoLap:\n"
+            + "mEstimatedLapTime:\n"
+            + "mTimeBehindNext:\n"
+            + "mTimeBehindLeader:\n"
+            + "mPlayerName:\n"
+            + "mPlrFileName:\n"
+            + "mPitGroup\n");
+
+          // Col 2 labels
+          g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, brush, currX += 275, currY);
+          gameStateText.Clear();
+
+          var plrVeh = this.currrF2State.mVehicles[0];
+          gameStateText.Append(
+            $"{plrVeh.mLapDist:N3}\n"
+            + $"{plrVeh.mTimeIntoLap:N3}\n"
+            + $"{plrVeh.mEstimatedLapTime:N3}\n"
+            + $"{plrVeh.mTimeBehindNext:N3}\n"
+            + $"{plrVeh.mTimeBehindLeader:N3}\n"
+            + $"{MainForm.getStringFromBytes(this.currrF2State.mPlayerName)}\n"
+            + $"{MainForm.getStringFromBytes(this.currrF2State.mPlrFileName)}\n"
+            + $"{MainForm.getStringFromBytes(plrVeh.mPitGroup)}\n");
+
+          // Col2 values
+          g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Purple, currX + 120, currY);
+        }
+
+
 
         if (this.logLightMode)
           return;
@@ -490,13 +535,7 @@ namespace rF2SMMonitor
               (float)this.currrF2State.mVehicles[i].mPos.x,
               -(float)this.currrF2State.mVehicles[i].mPos.z,
              -(float)this.currrF2State.mVehicles[i].mYaw, Brushes.Red);
-
-
-          //          RenderCar(g, (float)Interpolator.scoringX, (float)-Interpolator.scoringZ, -(float)Interpolator.scoringYaw, Brushes.Black);
-          //RenderCar(g, (float)Interpolator.nlerpX, (float)-Interpolator.nlerpZ, -(float)Interpolator.nlerpYaw, Brushes.Orange);
- //         RenderCar(g, (float)Interpolator.matX, (float)-Interpolator.matZ, -(float)Interpolator.matYaw, Brushes.Blue);
         }
-
       }
     }
 
