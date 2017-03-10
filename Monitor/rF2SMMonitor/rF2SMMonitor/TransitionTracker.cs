@@ -714,6 +714,25 @@ namespace rF2SMMonitor
       internal int currLap = -1;
     }
 
+    // string -> lap data
+
+    internal class LapData
+    {
+      internal class LapStats
+      {
+        internal int lapNumber = -1;
+        internal double lapTime = -1.0;
+        internal double S1Time = -1.0;
+        internal double S2Time = -1.0;
+        internal double S3Time = -1.0;
+      }
+
+      internal int lastLapCompleted = -1;
+      List<LapStats> lapStats = new List<LapStats>();
+    }
+
+    internal Dictionary<string, LapData> lapDataMap = null;
+
     int lastTimingSector = -1;
 
     private int getSector(int rf2Sector) { return rf2Sector == 0 ? 3 : rf2Sector; }
@@ -749,6 +768,8 @@ namespace rF2SMMonitor
       if (state.mNumVehicles == 0)
       {
         this.lastTimingSector = -1;
+        this.lapDataMap = null;
+
         return;
       }
 
@@ -758,7 +779,6 @@ namespace rF2SMMonitor
 
       var playerVeh = state.mVehicles[0];
       Debug.Assert(state.mID == playerVeh.mID);
-
 
       StringBuilder sbPlayer = null;
       PlayerTimingInfo ptiPlayer = null;
@@ -810,6 +830,19 @@ namespace rF2SMMonitor
       foreach (var o in opponentInfos)
         sbOpponentNames.Append($"{o.name}\n");
 
+      if (this.lapDataMap == null)
+        this.lapDataMap = new Dictionary<string, LapData>();
+
+      // Save lap times history.
+      for (int i = 0; i < state.mNumVehicles; ++i)
+      {
+        var veh = state.mVehicles[i];
+
+        // If we don't have this vehicle in a map, add it. (And initialize laps completed).
+
+        // If this is the new lap for this vehicle, update the lastLapNumber, and save last lap stats.
+      }
+
       var sbOpponentStats = new StringBuilder();
       sbOpponentStats.Append("Pos:  Lap:      Best Lap:      Best S1:      Best S2:      Best S3:\n");
       foreach (var o in opponentInfos)
@@ -836,7 +869,7 @@ namespace rF2SMMonitor
       if (fastestIndex != -1)
       {
         var fastestVeh = state.mVehicles[fastestIndex];
-        
+
         if (fastestVeh.mBestLapTime > 0.0)
             this.getDetailedVehTiming("Fastest:", ref fastestVeh, ref state, out sbFastest, out ptiFastest);
       }
@@ -871,7 +904,22 @@ namespace rF2SMMonitor
         var deltaCurrSelfS3Str = deltaCurrSelfS3Time > 0.0 ? "+" : "";
         deltaCurrSelfS3Str = deltaCurrSelfS3Str + $"{deltaCurrSelfS3Time:N3}";
 
-        sbPlayerDeltas.Append($"Player delta current vs session best:    deltaCurrSelfBestLapTime: {deltaCurrSelfLapStr}\ndeltaCurrSelfBestS1: {deltaCurrSelfS1Str}    deltaCurrSelfBestS2: {deltaCurrSelfS2Str}    deltaBestS3: {deltaCurrSelfS3Str}\n\n");
+        sbPlayerDeltas.Append($"Player delta current vs session best:    deltaCurrSelfBestLapTime: {deltaCurrSelfLapStr}\ndeltaCurrSelfBestS1: {deltaCurrSelfS1Str}    deltaCurrSelfBestS2: {deltaCurrSelfS2Str}    deltaCurrSelfBestS3: {deltaCurrSelfS3Str}\n\n");
+
+        // Calculate "Best Split" to match rFactor 2 HUDs
+        var currSector = this.getSector(playerVeh.mSector);
+        double bestSplit = 0.0;
+        if (currSector == 1)
+          bestSplit = ptiPlayer.lastLapTime - ptiFastest.bestLapTime;
+        else if (currSector == 2)
+          bestSplit = ptiPlayer.currS1Time - ptiFastest.bestS1Time;
+        else
+          bestSplit = (ptiPlayer.currS1Time + ptiPlayer.currS2Time) - (ptiFastest.bestS1Time + ptiFastest.bestS2Time);
+
+        var bestSplitStr = bestSplit > 0.0 ? "+" : "";
+        bestSplitStr += $"{bestSplit:N3}";
+
+        sbPlayerDeltas.Append($"Best Split: {bestSplitStr}\n\n");
 
         var deltaSelfLapStr = deltaSelfLapTime > 0.0 ? "+" : "";
         deltaSelfLapStr = deltaSelfLapStr + $"{deltaSelfLapTime:N3}";
@@ -927,7 +975,7 @@ namespace rF2SMMonitor
         var timingsYStart = this.screenYStart + 440.0f;
         g.DrawString(sbPlayer.ToString(), SystemFonts.DefaultFont, Brushes.Magenta, 3.0f, timingsYStart);
         g.DrawString(sbPlayerDeltas.ToString(), SystemFonts.DefaultFont, Brushes.Black, 3.0f, timingsYStart + 90.0f);
-        g.DrawString(sbFastest.ToString(), SystemFonts.DefaultFont, Brushes.OrangeRed, 3.0f, timingsYStart + 210.0f);
+        g.DrawString(sbFastest.ToString(), SystemFonts.DefaultFont, Brushes.OrangeRed, 3.0f, timingsYStart + 240.0f);
         g.DrawString(sbOpponentNames.ToString(), SystemFonts.DefaultFont, Brushes.Green, 560.0f, 50.0f);
         g.DrawString(sbOpponentStats.ToString(), SystemFonts.DefaultFont, Brushes.Purple, 670.0f, 50.0f);
       }
