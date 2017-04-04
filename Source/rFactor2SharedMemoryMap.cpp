@@ -81,7 +81,7 @@ Sample consumption:
 
 // Each component can be in [0:99] range.
 #define PLUGIN_VERSION_MAJOR "1.1"
-#define PLUGIN_VERSION_MINOR "0.1"
+#define PLUGIN_VERSION_MINOR "0.2"
 #define PLUGIN_NAME_AND_VERSION "rFactor 2 Shared Memory Map Plugin - v" PLUGIN_VERSION_MAJOR
 #define SHARED_MEMORY_VERSION PLUGIN_VERSION_MAJOR "." PLUGIN_VERSION_MINOR
 
@@ -980,6 +980,29 @@ void SharedMemoryPlugin::UpdateScoring(ScoringInfoV01 const& info)
   }
 
   WriteScoringInternals(info);
+}
+
+bool SharedMemoryPlugin::WantsToDisplayMessage(MessageInfoV01& msgInfo)
+{
+  return false;
+}
+
+void SharedMemoryPlugin::ThreadStarted(long type)
+{
+}
+
+void SharedMemoryPlugin::ThreadStopping(long type)
+{
+}
+
+bool SharedMemoryPlugin::AccessTrackRules(TrackRulesV01& info)
+{
+  return false;
+}
+
+bool SharedMemoryPlugin::AccessPitMenu(PitMenuV01& info)
+{
+  return false;
 }
 
 ////////////////////////////////////////////

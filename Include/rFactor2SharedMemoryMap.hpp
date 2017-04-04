@@ -107,7 +107,7 @@ private:
       }
     }
 
-    void ProcessPhysicsOptions(PhysicsOptionsV01 &options)
+    void ProcessPhysicsOptions(PhysicsOptionsV01& options)
     {
       mInvulnerable = options.mInvulnerable;
     }
@@ -141,7 +141,6 @@ public:
   void Startup(long version) override;    // game startup
   void Shutdown() override;               // game shutdown
 
-
   void EnterRealtime() override;          // entering realtime (where the vehicle can be driven)
   void ExitRealtime() override;           // exiting realtime
 
@@ -157,12 +156,30 @@ public:
   bool WantsScoringUpdates() override { return true; }
   void UpdateScoring(ScoringInfoV01 const& info) override; // update plugin with scoring info (approximately five times per second)
 
+  // EXP: MESSAGE BOX INPUT
+  bool WantsToDisplayMessage(MessageInfoV01& msgInfo) override; // set message and return true
 
-  void SetPhysicsOptions(PhysicsOptionsV01 &options) override 
+  // EXP: ADDITIONAL GAMEFLOW NOTIFICATIONS
+  void ThreadStarted(long type) override; // called just after a primary thread is started (type is 0=multimedia or 1=simulation)
+  void ThreadStopping(long type) override;  // called just before a primary thread is stopped (type is 0=multimedia or 1=simulation)
+
+  // EXP: 
+  bool WantsTrackRulesAccess() override { return(true); } // change to true in order to read or write track order (during formation or caution laps)
+  bool AccessTrackRules(TrackRulesV01& info) override; // current track order passed in; return true if you want to change it (note: this will be called immediately after UpdateScoring() when appropriate)
+
+  // EXP: 
+  // PIT MENU INFO (currently, the only way to edit the pit menu is to use this in conjunction with CheckHWControl())
+  bool WantsPitMenuAccess() { return(true); } // change to true in order to view pit menu info
+  bool AccessPitMenu(PitMenuV01& info) override; // currently, the return code should always be false (because we may allow more direct editing in the future)
+
+  void SetPhysicsOptions(PhysicsOptionsV01& options) override 
   {
     mExtStateTracker.ProcessPhysicsOptions(options);
   }
 
+  // FUTURE/V2: SCORING CONTROL (only available in single-player or on multiplayer server)
+  // virtual bool WantsMultiSessionRulesAccess() { return(false); } // change to true in order to read or write multi-session rules
+  // virtual bool AccessMultiSessionRules(MultiSessionRulesV01 &info) { return(false); } // current internal rules passed in; return true if you want to change them
 
 private:
   void UpdateInRealtimeFC(bool inRealTime);
