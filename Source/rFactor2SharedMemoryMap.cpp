@@ -93,6 +93,7 @@ DebugLevel SharedMemoryPlugin::msDebugOutputLevel = DebugLevel::Off;
 bool SharedMemoryPlugin::msDebugISIInternals = false;
 int SharedMemoryPlugin::msMillisRefresh = 32;
 DWORD SharedMemoryPlugin::msMillisMutexWait = 1;
+// Future/V2:  split into telemetry/scoring/rules etc.
 char const* const SharedMemoryPlugin::MM_FILE_NAME1 = "$rFactor2SMMPBuffer1$";
 char const* const SharedMemoryPlugin::MM_FILE_NAME2 = "$rFactor2SMMPBuffer2$";
 char const* const SharedMemoryPlugin::MM_FILE_ACCESS_MUTEX = R"(Global\$rFactor2SMMPMutex)";
@@ -110,7 +111,7 @@ extern "C" __declspec(dllexport)
 PluginObjectType __cdecl GetPluginType() { return(PO_INTERNALS); }
 
 extern "C" __declspec(dllexport)
-int __cdecl GetPluginVersion() { return(7); } // InternalsPluginV01 functionality (if you change this return value, you must derive from the appropriate class!)
+int __cdecl GetPluginVersion() { return(7); } // InternalsPluginV07 functionality (if you change this return value, you must derive from the appropriate class!)
 
 extern "C" __declspec(dllexport)
 PluginObject * __cdecl CreatePluginObject() { return((PluginObject *) new SharedMemoryPlugin); }
@@ -984,24 +985,51 @@ void SharedMemoryPlugin::UpdateScoring(ScoringInfoV01 const& info)
 
 bool SharedMemoryPlugin::WantsToDisplayMessage(MessageInfoV01& msgInfo)
 {
+  // Looks like this is write only API, can't read current text in MC
+  /*
+  msgInfo.mText[0] = 'H';
+  msgInfo.mText[1] = 'e';
+  msgInfo.mText[2] = 'l';
+  msgInfo.mText[3] = 'l';
+  msgInfo.mText[4] = 'o';
+  msgInfo.mText[5] = '\0';
+  msgInfo.mDestination = 0;
+  DEBUG_MSG(DebugLevel::Errors, msgInfo.mText);
+  */
   return false;
 }
 
 void SharedMemoryPlugin::ThreadStarted(long type)
 {
+  DEBUG_MSG(DebugLevel::Errors, "Thread started");
+
 }
 
 void SharedMemoryPlugin::ThreadStopping(long type)
 {
+  DEBUG_MSG(DebugLevel::Errors, "Thread stopped");
 }
 
 bool SharedMemoryPlugin::AccessTrackRules(TrackRulesV01& info)
 {
+  DEBUG_MSG(DebugLevel::Errors, info.mMessage);
+  DEBUG_INT2(DebugLevel::Errors, "Slot 1 ", info.mParticipant[0].mID);
+  DEBUG_MSG(DebugLevel::Errors, info.mParticipant[0].mMessage);
+  DEBUG_INT2(DebugLevel::Errors, "Frozen Order", info.mParticipant[0].mFrozenOrder);
+  DEBUG_INT2(DebugLevel::Errors, "Formation place", info.mParticipant[0].mPlace);
+  DEBUG_INT2(DebugLevel::Errors, "Slot 2 ", info.mParticipant[1].mID);
+  DEBUG_MSG(DebugLevel::Errors, info.mParticipant[1].mMessage);
+  DEBUG_INT2(DebugLevel::Errors, "Frozen Order", info.mParticipant[1].mFrozenOrder);
+  DEBUG_INT2(DebugLevel::Errors, "Formation place", info.mParticipant[1].mPlace);
+
   return false;
 }
 
 bool SharedMemoryPlugin::AccessPitMenu(PitMenuV01& info)
 {
+  //DEBUG_MSG(DebugLevel::Errors, "Info");
+  //DEBUG_MSG(DebugLevel::Errors, info.mChoiceString);
+
   return false;
 }
 
