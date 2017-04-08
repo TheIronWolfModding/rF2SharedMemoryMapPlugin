@@ -94,6 +94,11 @@ bool SharedMemoryPlugin::msDebugISIInternals = false;
 int SharedMemoryPlugin::msMillisRefresh = 32;
 DWORD SharedMemoryPlugin::msMillisMutexWait = 1;
 // Future/V2:  split into telemetry/scoring/rules etc.
+// _Telemetry - possibly no need to interpolate.
+// _Scoring
+// _Extended
+// _Rules
+// _Weather
 char const* const SharedMemoryPlugin::MM_FILE_NAME1 = "$rFactor2SMMPBuffer1$";
 char const* const SharedMemoryPlugin::MM_FILE_NAME2 = "$rFactor2SMMPBuffer2$";
 char const* const SharedMemoryPlugin::MM_FILE_ACCESS_MUTEX = R"(Global\$rFactor2SMMPMutex)";
@@ -718,9 +723,9 @@ void SharedMemoryPlugin::UpdateScoringHelper(double const ticksNow, ScoringInfoV
 
   DEBUG_FLOAT2(DebugLevel::Verbose, "Scoring ticks:", ticksNow);
   if (pBuf == mpBuf1)
-    DEBUG_FLOAT2(DebugLevel::Timing, "Update Scoring Buffer 1:", delta / MICROSECONDS_IN_SECOND);
+    DEBUG_FLOAT2(DebugLevel::Errors, "Update Scoring Buffer 1:", delta / MICROSECONDS_IN_SECOND);
   else
-    DEBUG_FLOAT2(DebugLevel::Timing, "Update Scoring Buffer 2:", delta / MICROSECONDS_IN_SECOND);
+    DEBUG_FLOAT2(DebugLevel::Errors, "Update Scoring Buffer 2:", delta / MICROSECONDS_IN_SECOND);
 
   pBuf->mDeltaTime = 0.0;
 
@@ -1010,8 +1015,15 @@ void SharedMemoryPlugin::ThreadStopping(long type)
   DEBUG_MSG(DebugLevel::Errors, "Thread stopped");
 }
 
+// Called roughly every 300ms.
+double ticksPrev = 0.0;
 bool SharedMemoryPlugin::AccessTrackRules(TrackRulesV01& info)
 {
+  auto const ticksNow = TicksNow();
+
+  DEBUG_FLOAT2(DebugLevel::Errors, "Update Rules:", (ticksNow - ticksPrev) / MICROSECONDS_IN_SECOND);
+  ticksPrev = ticksNow;
+
   DEBUG_MSG(DebugLevel::Errors, info.mMessage);
   DEBUG_INT2(DebugLevel::Errors, "Slot 1 ", info.mParticipant[0].mID);
   DEBUG_MSG(DebugLevel::Errors, info.mParticipant[0].mMessage);
