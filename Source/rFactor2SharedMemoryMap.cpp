@@ -102,6 +102,9 @@ DWORD SharedMemoryPlugin::msMillisMutexWait = 1;
 char const* const SharedMemoryPlugin::MM_FILE_NAME1 = "$rFactor2SMMPBuffer1$";
 char const* const SharedMemoryPlugin::MM_FILE_NAME2 = "$rFactor2SMMPBuffer2$";
 char const* const SharedMemoryPlugin::MM_FILE_ACCESS_MUTEX = R"(Global\$rFactor2SMMPMutex)";
+char const* const SharedMemoryPlugin::MM_TELEMETRY_FILE_NAME1 = "$rFactor2SMMP_TelemetryBuffer1$";
+char const* const SharedMemoryPlugin::MM_TELEMETRY_FILE_NAME2 = "$rFactor2SMMP_TelemetryBuffer2$";
+char const* const SharedMemoryPlugin::MM_TELEMETRY_FILE_ACCESS_MUTEX = R"(Global\$rFactor2SMMP_TelemeteryMutex)";
 char const* const SharedMemoryPlugin::CONFIG_FILE_REL_PATH = R"(\UserData\player\rf2smmp.ini)";  // Relative to rF2 root.
 char const* const SharedMemoryPlugin::INTERNALS_TELEMETRY_FILENAME = "RF2SMMP_InternalsTelemetryOutput.txt";
 char const* const SharedMemoryPlugin::INTERNALS_SCORING_FILENAME = "RF2SMMP_InternalsScoringOutput.txt";
@@ -136,7 +139,8 @@ void __cdecl DestroyPluginObject(PluginObject *obj) { delete((SharedMemoryPlugin
 //////////////////////////////////////
 // SharedMemoryPlugin class
 //////////////////////////////////////
-HANDLE SharedMemoryPlugin::MapMemoryFile(char const* const fileName, rF2State*& pBuf) const
+template <typename BufT>
+HANDLE SharedMemoryPlugin::MapMemoryFile(char const* const fileName, BufT*& pBuf) const
 {
   char tag[256] = {};
   strcpy_s(tag, fileName);
@@ -154,7 +158,7 @@ HANDLE SharedMemoryPlugin::MapMemoryFile(char const* const fileName, rF2State*& 
 
   // init handle and try to create, read if existing
   HANDLE hMap = INVALID_HANDLE_VALUE;
-  hMap = CreateFileMapping(INVALID_HANDLE_VALUE, nullptr, PAGE_READWRITE, 0, sizeof(rF2State), TEXT(tag));
+  hMap = CreateFileMapping(INVALID_HANDLE_VALUE, nullptr, PAGE_READWRITE, 0, sizeof(BufT), TEXT(tag));
   if (hMap == nullptr) {
     if (GetLastError() == ERROR_ALREADY_EXISTS) {
       hMap = OpenFileMapping(FILE_MAP_ALL_ACCESS, FALSE, TEXT(tag));
@@ -164,7 +168,7 @@ HANDLE SharedMemoryPlugin::MapMemoryFile(char const* const fileName, rF2State*& 
     }
   }
 
-  pBuf = static_cast<rF2State*>(MapViewOfFile(hMap, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(rF2State)));
+  pBuf = static_cast<BufT*>(MapViewOfFile(hMap, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(BufT)));
   if (pBuf == nullptr) {
     // failed to map memory buffer
     CloseHandle(hMap);
@@ -197,6 +201,20 @@ void SharedMemoryPlugin::Startup(long version)
     return;
   }
 
+  mhTelemetryMap1 = MapMemoryFile(SharedMemoryPlugin::MM_TELEMETRY_FILE_NAME1, mpTelemetryBuf1);
+  if (mhTelemetryMap1 == nullptr)
+    return;
+
+  mhTelemetryMap2 = MapMemoryFile(SharedMemoryPlugin::MM_TELEMETRY_FILE_NAME2, mpTelemetryBuf2);
+  if (mhMap2 == nullptr)
+    return;
+
+  mhTelemetryMutex = CreateMutex(nullptr, FALSE, SharedMemoryPlugin::MM_TELEMETRY_FILE_ACCESS_MUTEX);
+  if (mhTelemetryMutex == nullptr) {
+    DEBUG_MSG(DebugLevel::Errors, "Failed to create telemetry mutex");
+    return;
+  }
+
   mIsMapped = true;
   if (mIsMapped) {
     ClearState();
@@ -208,6 +226,11 @@ void SharedMemoryPlugin::Startup(long version)
       char sizeSz[20] = {};
       _itoa_s(size, sizeSz, 10);
       DEBUG_MSG3(DebugLevel::Errors, "Size of state buffers:", sizeSz, "bytes each.");
+
+      size = static_cast<int>(sizeof(rF2Telemetry));
+      sizeSz[20] = {};
+      _itoa_s(size, sizeSz, 10);
+      DEBUG_MSG3(DebugLevel::Errors, "Size of telemetry buffers:", sizeSz, "bytes each.");
     }
   }
 
@@ -381,9 +404,22 @@ double TicksNow() {
 #endif
 }
 
-
+/*
+Use two timers: prev - mElapsedTime and QPC delta.
+Save elapsed time for mID = 0.
+Check last mElapsedTime for update for mID = 0.
+If last update was longer than 30ms, start updating the buffer
+as soon as we update mNumVehicles OR mID == 0 (in this case, mNumVehicles is somehow out of sync), flip.
+*/
 void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
 {
+  char msg[512] = {};
+  sprintf(msg, "mID:%d mElapsedTime:%f mNumVehicles:%d x:%f, z:%f", info.mID, info.mElapsedTime, mScoringInfo, info.mPos.x, info.mPos.z);
+  DEBUG_MSG(DebugLevel::Errors, msg);
+
+  if (info.mID != 0)
+    return;
+
   if (mIsMapped) {
     // Update extended state.
     // Since I do not want to miss impact data, and it is not accumulated in any way
@@ -723,9 +759,9 @@ void SharedMemoryPlugin::UpdateScoringHelper(double const ticksNow, ScoringInfoV
 
   DEBUG_FLOAT2(DebugLevel::Verbose, "Scoring ticks:", ticksNow);
   if (pBuf == mpBuf1)
-    DEBUG_FLOAT2(DebugLevel::Errors, "Update Scoring Buffer 1:", delta / MICROSECONDS_IN_SECOND);
+    DEBUG_FLOAT2(DebugLevel::Timing, "Update Scoring Buffer 1:", delta / MICROSECONDS_IN_SECOND);
   else
-    DEBUG_FLOAT2(DebugLevel::Errors, "Update Scoring Buffer 2:", delta / MICROSECONDS_IN_SECOND);
+    DEBUG_FLOAT2(DebugLevel::Timing, "Update Scoring Buffer 2:", delta / MICROSECONDS_IN_SECOND);
 
   pBuf->mDeltaTime = 0.0;
 
@@ -1016,10 +1052,10 @@ void SharedMemoryPlugin::ThreadStopping(long type)
 }
 
 // Called roughly every 300ms.
-double ticksPrev = 0.0;
+//double ticksPrev = 0.0;
 bool SharedMemoryPlugin::AccessTrackRules(TrackRulesV01& info)
 {
-  auto const ticksNow = TicksNow();
+/*  auto const ticksNow = TicksNow();
 
   DEBUG_FLOAT2(DebugLevel::Errors, "Update Rules:", (ticksNow - ticksPrev) / MICROSECONDS_IN_SECOND);
   ticksPrev = ticksNow;
@@ -1032,7 +1068,7 @@ bool SharedMemoryPlugin::AccessTrackRules(TrackRulesV01& info)
   DEBUG_INT2(DebugLevel::Errors, "Slot 2 ", info.mParticipant[1].mID);
   DEBUG_MSG(DebugLevel::Errors, info.mParticipant[1].mMessage);
   DEBUG_INT2(DebugLevel::Errors, "Frozen Order", info.mParticipant[1].mFrozenOrder);
-  DEBUG_INT2(DebugLevel::Errors, "Formation place", info.mParticipant[1].mPlace);
+  DEBUG_INT2(DebugLevel::Errors, "Formation place", info.mParticipant[1].mPlace);*/
 
   return false;
 }

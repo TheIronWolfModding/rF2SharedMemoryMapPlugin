@@ -575,11 +575,6 @@ enum OriMat
   NumRows
 };
 
-struct rF2StateHeader
-{
-  bool mCurrentRead;                 // True indicates buffer is safe to read under mutex.
-};
-
 // Our world coordinate system is left-handed, with +y pointing up.
 // The local vehicle coordinate system is as follows:
 //   +x points out the left side of the car (from the driver's perspective)
@@ -782,5 +777,129 @@ struct rF2State
                                                         // NOTE: everything beyound mNumVehicles is trash.
 };
 
+
+// Identical to TelemInfoV01, except where noted by MM_NEW/MM_NOT_USED comments.
+struct rF2VehicleTelemetry
+{
+  // Time
+  long mID;                      // slot ID (note that it can be re-used in multiplayer after someone leaves)
+  double mDeltaTime;             // time since last update (seconds)
+  double mElapsedTime;           // game session time
+  long mLapNumber;               // current lap number
+  double mLapStartET;            // time this lap was started
+  char mVehicleName[64];         // current vehicle name
+  // MM_NOT_USED: moved to rF2Telemetry
+  //char mTrackName[64];           // current track name
+
+  // Position and derivatives
+  rF2Vec3 mPos;                  // world position in meters
+  rF2Vec3 mLocalVel;             // velocity (meters/sec) in local vehicle coordinates
+  rF2Vec3 mLocalAccel;           // acceleration (meters/sec^2) in local vehicle coordinates
+
+                                 // Orientation and derivatives
+  rF2Vec3 mOri[3];               // rows of orientation matrix (use TelemQuat conversions if desired), also converts local
+                                 // vehicle vectors into world X, Y, or Z using dot product of rows 0, 1, or 2 respectively
+  rF2Vec3 mLocalRot;             // rotation (radians/sec) in local vehicle coordinates
+  rF2Vec3 mLocalRotAccel;        // rotational acceleration (radians/sec^2) in local vehicle coordinates
+
+  // Vehicle status
+  long mGear;                    // -1=reverse, 0=neutral, 1+=forward gears
+  double mEngineRPM;             // engine RPM
+  double mEngineWaterTemp;       // Celsius
+  double mEngineOilTemp;         // Celsius
+  double mClutchRPM;             // clutch RPM
+
+  // Driver input
+  double mUnfilteredThrottle;    // ranges  0.0-1.0
+  double mUnfilteredBrake;       // ranges  0.0-1.0
+  double mUnfilteredSteering;    // ranges -1.0-1.0 (left to right)
+  double mUnfilteredClutch;      // ranges  0.0-1.0
+
+  // Filtered input (various adjustments for rev or speed limiting, TC, ABS?, speed sensitive steering, clutch work for semi-automatic shifting, etc.)
+  double mFilteredThrottle;      // ranges  0.0-1.0
+  double mFilteredBrake;         // ranges  0.0-1.0
+  double mFilteredSteering;      // ranges -1.0-1.0 (left to right)
+  double mFilteredClutch;        // ranges  0.0-1.0
+
+  // Misc
+  double mSteeringShaftTorque;   // torque around steering shaft (used to be mSteeringArmForce, but that is not necessarily accurate for feedback purposes)
+  double mFront3rdDeflection;    // deflection at front 3rd spring
+  double mRear3rdDeflection;     // deflection at rear 3rd spring
+
+  // Aerodynamics
+  double mFrontWingHeight;       // front wing height
+  double mFrontRideHeight;       // front ride height
+  double mRearRideHeight;        // rear ride height
+  double mDrag;                  // drag
+  double mFrontDownforce;        // front downforce
+  double mRearDownforce;         // rear downforce
+
+  // State/damage info
+  double mFuel;                  // amount of fuel (liters)
+  double mEngineMaxRPM;          // rev limit
+  unsigned char mScheduledStops; // number of scheduled pitstops
+  bool  mOverheating;            // whether overheating icon is shown
+  bool  mDetached;               // whether any parts (besides wheels) have been detached
+  bool  mHeadlights;             // whether headlights are on
+  unsigned char mDentSeverity[8];// dent severity at 8 locations around the car (0=none, 1=some, 2=more)
+  double mLastImpactET;          // time of last impact
+  double mLastImpactMagnitude;   // magnitude of last impact
+  rF2Vec3 mLastImpactPos;        // location of last impact
+
+  // Expanded
+  double mEngineTorque;          // current engine torque (including additive torque) (used to be mEngineTq, but there's little reason to abbreviate it)
+  long mCurrentSector;           // the current sector (zero-based) with the pitlane stored in the sign bit (example: entering pits from third sector gives 0x80000002)
+  unsigned char mSpeedLimiter;   // whether speed limiter is on
+  unsigned char mMaxGears;       // maximum forward gears
+  unsigned char mFrontTireCompoundIndex;   // index within brand
+  unsigned char mRearTireCompoundIndex;    // index within brand
+  double mFuelCapacity;          // capacity in liters
+  unsigned char mFrontFlapActivated;       // whether front flap is activated
+  unsigned char mRearFlapActivated;        // whether rear flap is activated
+  unsigned char mRearFlapLegalStatus;      // 0=disallowed, 1=criteria detected but not allowed quite yet, 2=allowed
+  unsigned char mIgnitionStarter;          // 0=off 1=ignition 2=ignition+starter
+
+  char mFrontTireCompoundName[18];         // name of front tire compound
+  char mRearTireCompoundName[18];          // name of rear tire compound
+
+  unsigned char mSpeedLimiterAvailable;    // whether speed limiter is available
+  unsigned char mAntiStallActivated;       // whether (hard) anti-stall is activated
+  unsigned char mUnused[2];                //
+  float mVisualSteeringWheelRange;         // the *visual* steering wheel range
+
+  double mRearBrakeBias;                   // fraction of brakes on rear
+  double mTurboBoostPressure;              // current turbo boost pressure if available
+  float mPhysicsToGraphicsOffset[3];       // offset from static CG to graphical center
+  float mPhysicalSteeringWheelRange;       // the *physical* steering wheel range
+
+  // Future use
+  unsigned char mExpansion[152];           // for future use (note that the slot ID has been moved to mID above)
+
+  // keeping this at the end of the structure to make it easier to replace in future versions
+  rF2Wheel mWheel[4];                      // wheel info (front left, front right, rear left, rear right)
+};
+
+
+struct rF2MappedBufferHeader
+{
+  bool mCurrentRead;                 // True indicates buffer is safe to read under mutex.
+};
+
+
+struct rF2MappedBufferBase : public rF2MappedBufferHeader
+{
+  static int const MAX_MAPPED_VEHICLES = 64;
+
+  char mVersion[8];              // API version
+};
+
+
+struct rF2Telemetry : public rF2MappedBufferBase
+{
+  long mNumVehicles;             // current number of vehicles
+  char mTrackName[64];           // current track name
+
+  rF2VehicleTelemetry mVehicles[rF2MappedBufferBase::MAX_MAPPED_VEHICLES];
+};
 
 #pragma pack(pop)

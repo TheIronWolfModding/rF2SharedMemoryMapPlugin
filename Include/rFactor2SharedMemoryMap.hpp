@@ -36,6 +36,9 @@ public:
   static char const* const MM_FILE_NAME1;
   static char const* const MM_FILE_NAME2;
   static char const* const MM_FILE_ACCESS_MUTEX;
+  static char const* const MM_TELEMETRY_FILE_NAME1;
+  static char const* const MM_TELEMETRY_FILE_NAME2;
+  static char const* const MM_TELEMETRY_FILE_ACCESS_MUTEX;
   static char const* const CONFIG_FILE_REL_PATH;
   static char const* const INTERNALS_TELEMETRY_FILENAME;
   static char const* const INTERNALS_SCORING_FILENAME;
@@ -148,8 +151,7 @@ public:
   void EndSession() override;             // session has ended
 
   // GAME OUTPUT
-  long WantsTelemetryUpdates() override { return 1L; }
-  // whether we want telemetry updates (0=no 1=player-only 2=all vehicles)
+  long WantsTelemetryUpdates() override { return 2L; } // whether we want telemetry updates (0=no 1=player-only 2=all vehicles)
   void UpdateTelemetry(TelemInfoV01 const& info) override;
 
   // SCORING OUTPUT
@@ -190,7 +192,8 @@ private:
   void FlipBuffers();
   void TryFlipBuffers();
   
-  HANDLE MapMemoryFile(char const * const fileName, rF2State*& pBuf) const;
+  template <typename BufT>
+  HANDLE MapMemoryFile(char const * const fileName, BufT*& pBuf) const;
   void ClearState();
   void ClearTimings();
 
@@ -208,12 +211,23 @@ private:
   HANDLE mhMap1 = nullptr;
   HANDLE mhMap2 = nullptr;
 
+  HANDLE mhTelemetryMutex = nullptr;
+  HANDLE mhTelemetryMap1 = nullptr;
+  HANDLE mhTelemetryMap2 = nullptr;
+
   // Current write buffer.
   rF2State* mpBufCurWrite = nullptr;
 
   // Flip between 2 buffers.  Clients should read the one with mCurrentRead == true.
   rF2State* mpBuf1 = nullptr;
   rF2State* mpBuf2 = nullptr;
+
+  double mLastTelemetryUpdateET = 0.0;
+
+  // Telemetry buffers.
+  rF2Telemetry* mpCurTelemetryBufWrite= nullptr;
+  rF2Telemetry* mpTelemetryBuf1 = nullptr;
+  rF2Telemetry* mpTelemetryBuf2 = nullptr;
 
   bool mIsMapped = false;
   bool mInRealTimeLastFunctionCall = false;
