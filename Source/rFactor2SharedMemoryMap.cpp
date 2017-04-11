@@ -252,7 +252,6 @@ void SharedMemoryPlugin::Shutdown()
   if (!ret) DEBUG_MSG(DebugLevel::Errors, "Failed to unmap buffer1");
 
   if (mpBuf2 != nullptr) ret = UnmapViewOfFile(mpBuf2);
-  
   if (!ret) DEBUG_MSG(DebugLevel::Errors, "Failed to unmap buffer2");
 
   if (mhMap1 != nullptr) ret = CloseHandle(mhMap1);
@@ -264,12 +263,36 @@ void SharedMemoryPlugin::Shutdown()
   if (mhMutex != nullptr) ret = CloseHandle(mhMutex);
   if (!ret) DEBUG_MSG(DebugLevel::Errors, "Failed to close mutex handle");
 
+  // Telemetry buffers.
+  if (mpTelemetryBuf1 != nullptr) ret = UnmapViewOfFile(mpTelemetryBuf1);
+  if (!ret) DEBUG_MSG(DebugLevel::Errors, "Failed to unmap telemetry buffer1");
+
+  if (mpTelemetryBuf2 != nullptr) ret = UnmapViewOfFile(mpTelemetryBuf2);
+  if (!ret) DEBUG_MSG(DebugLevel::Errors, "Failed to unmap telemetry buffer2");
+
+  if (mhTelemetryMap1 != nullptr) ret = CloseHandle(mhTelemetryMap1);
+  if (!ret) DEBUG_MSG(DebugLevel::Errors, "Failed to close telemetry map1 handle");
+
+  if (mhTelemetryMap2 != nullptr) ret = CloseHandle(mhTelemetryMap2);
+  if (!ret) DEBUG_MSG(DebugLevel::Errors, "Failed to close telemetry map2 handle");
+
+  if (mhTelemetryMutex != nullptr) ret = CloseHandle(mhTelemetryMutex);
+  if (!ret) DEBUG_MSG(DebugLevel::Errors, "Failed to close telemetry mutex handle");
+
   mpBuf1 = nullptr;
   mpBuf2 = nullptr;
   mhMap1 = nullptr;
   mhMap2 = nullptr;
   mhMutex = nullptr;
   mpBufCurWrite = nullptr;
+
+  mpTelemetryBuf1 = nullptr;
+  mpTelemetryBuf2 = nullptr;
+  mhTelemetryMap1 = nullptr;
+  mhTelemetryMap2 = nullptr;
+  mhTelemetryMutex = nullptr;
+  mpCurTelemetryBufWrite = nullptr;
+
   mIsMapped = false;
 }
 
