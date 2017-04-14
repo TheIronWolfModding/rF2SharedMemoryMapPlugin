@@ -188,14 +188,22 @@ private:
   void UpdateTelemetryHelper(double const ticksNow, TelemInfoV01 const& info);
   void UpdateScoringHelper(double const ticksNow, ScoringInfoV01 const& info);
   void SyncBuffers(bool telemetryOnly);
-  void FlipBuffersHelper();
-  void FlipBuffers();
-  void TryFlipBuffers();
+
+  enum class BufferType
+  {
+    Telemetry,
+    Scoring,
+    Rules,
+    Extended
+  };
+  void FlipBuffersHelper(BufferType bt);
+  void FlipBuffers(BufferType bt);
+  void TryFlipBuffers(BufferType bt);
   
   template <typename BufT>
   HANDLE MapMemoryFile(char const * const fileName, BufT*& pBuf) const;
   void ClearState();
-  void ClearTimings();
+  void ClearTimingsAndCounters();
 
   // Timings are in microseconds.
   double mLastTelUpdate = 0.0;
@@ -228,6 +236,10 @@ private:
   rF2Telemetry* mpCurTelemetryBufWrite= nullptr;
   rF2Telemetry* mpTelemetryBuf1 = nullptr;
   rF2Telemetry* mpTelemetryBuf2 = nullptr;
+
+  bool mTelemetryUpdateInProgress = false;
+  int mCurTelemetryVehicleIndex = 0;
+  int mScoringNumVehicles = 0;
 
   bool mIsMapped = false;
   bool mInRealTimeLastFunctionCall = false;

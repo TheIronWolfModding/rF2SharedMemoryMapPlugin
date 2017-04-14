@@ -19,7 +19,9 @@ Description:
 #pragma once
 
 // Keep default x64 pack for maximum performance.  Space savings with pack(1) are less than 1.5k of 52k.
-#pragma pack(push, 16)
+// Use 4 to match ISI pack.
+#pragma pack(push, 4)
+#pragma warning(disable : 4121)   // Alignment sensitivity (ISI sets 4 byte pack)
 /*#ifdef _X86_
 #pragma pack(show)
 #endif
@@ -788,8 +790,7 @@ struct rF2VehicleTelemetry
   long mLapNumber;               // current lap number
   double mLapStartET;            // time this lap was started
   char mVehicleName[64];         // current vehicle name
-  // MM_NOT_USED: moved to rF2Telemetry
-  //char mTrackName[64];           // current track name
+  char mTrackName[64];           // current track name
 
   // Position and derivatives
   rF2Vec3 mPos;                  // world position in meters
@@ -897,9 +898,10 @@ struct rF2MappedBufferBase : public rF2MappedBufferHeader
 struct rF2Telemetry : public rF2MappedBufferBase
 {
   long mNumVehicles;             // current number of vehicles
-  char mTrackName[64];           // current track name
 
   rF2VehicleTelemetry mVehicles[rF2MappedBufferBase::MAX_MAPPED_VEHICLES];
 };
+
+static_assert(sizeof(rF2VehicleTelemetry) == sizeof(TelemInfoV01), "rF2VehicleTelemetry and TelemInfoV01 structures are out of sync");
 
 #pragma pack(pop)

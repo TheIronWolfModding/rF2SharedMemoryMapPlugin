@@ -227,8 +227,8 @@ void SharedMemoryPlugin::Startup(long version)
       _itoa_s(size, sizeSz, 10);
       DEBUG_MSG3(DebugLevel::Errors, "Size of state buffers:", sizeSz, "bytes each.");
 
+      sizeSz[0] = '\0';
       size = static_cast<int>(sizeof(rF2Telemetry));
-      sizeSz[20] = {};
       _itoa_s(size, sizeSz, 10);
       DEBUG_MSG3(DebugLevel::Errors, "Size of telemetry buffers:", sizeSz, "bytes each.");
     }
@@ -296,11 +296,16 @@ void SharedMemoryPlugin::Shutdown()
   mIsMapped = false;
 }
 
-void SharedMemoryPlugin::ClearTimings()
+void SharedMemoryPlugin::ClearTimingsAndCounters()
 {
   mLastTelUpdate = 0.0;
   mLastScoringUpdate = 0.0;
   mDelta = 0.0;
+
+  mLastTelemetryUpdateET = 0.0;
+  mTelemetryUpdateInProgress = false;
+  mCurTelemetryVehicleIndex = 0;
+  mScoringNumVehicles = 0;
 }
 
 void SharedMemoryPlugin::ClearState()
@@ -309,7 +314,7 @@ void SharedMemoryPlugin::ClearState()
     mRetryFlip = false;
     mRetriesLeft = 0;
 
-    auto const ret = WaitForSingleObject(mhMutex, SharedMemoryPlugin::msMillisMutexWait);
+    auto ret = WaitForSingleObject(mhMutex, SharedMemoryPlugin::msMillisMutexWait);
 
     memset(mpBuf1, 0, sizeof(rF2State));
     strcpy_s(mpBuf1->mVersion, SHARED_MEMORY_VERSION);
@@ -328,9 +333,29 @@ void SharedMemoryPlugin::ClearState()
       DEBUG_MSG(DebugLevel::Warnings, "WARNING: - Timed out while waiting on mutex.");
     else
       DEBUG_MSG(DebugLevel::Errors, "ERROR: - wait on mutex failed.");
+
+    ret = WaitForSingleObject(mhTelemetryMutex, SharedMemoryPlugin::msMillisMutexWait);
+
+    memset(mpTelemetryBuf1, 0, sizeof(rF2State));
+    strcpy_s(mpTelemetryBuf1->mVersion, SHARED_MEMORY_VERSION);
+    mpTelemetryBuf1->mCurrentRead = true;
+
+    memset(mpTelemetryBuf2, 0, sizeof(rF2State));
+    strcpy_s(mpTelemetryBuf2->mVersion, SHARED_MEMORY_VERSION);
+    mpTelemetryBuf2->mCurrentRead = false;
+
+    mpCurTelemetryBufWrite = mpTelemetryBuf2;
+    assert(!mpCurTelemetryBufWrite->mCurrentRead);
+
+    if (ret == WAIT_OBJECT_0)
+      ReleaseMutex(mhTelemetryMutex);
+    else if (ret == WAIT_TIMEOUT)
+      DEBUG_MSG(DebugLevel::Warnings, "WARNING: - Timed out while waiting on telemetry mutex.");
+    else
+      DEBUG_MSG(DebugLevel::Errors, "ERROR: - wait on telemetry mutex failed.");
   }
 
-  ClearTimings();
+  ClearTimingsAndCounters();
   mScoringInfo = {};
   mExtStateTracker.ResetDamageState();
 }
@@ -350,7 +375,7 @@ void SharedMemoryPlugin::EndSession()
   ClearState();
 }
 
-
+// TODO: move to extended state.
 void SharedMemoryPlugin::UpdateInRealtimeFC(bool inRealTime)
 {
   if (mIsMapped) {
@@ -369,7 +394,7 @@ void SharedMemoryPlugin::UpdateInRealtimeFC(bool inRealTime)
     pBuf->mInRealtimeFC = inRealTime;
 
     // Make it available to readers.
-    FlipBuffers();
+    FlipBuffers(BufferType::Extended);
 
     assert(pBuf != mpBufCurWrite);
 
@@ -436,26 +461,77 @@ as soon as we update mNumVehicles OR mID == 0 (in this case, mNumVehicles is som
 */
 void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
 {
-  char msg[512] = {};
+  /*char msg[512] = {};
   sprintf(msg, "mID:%d mElapsedTime:%f mNumVehicles:%d x:%f, z:%f", info.mID, info.mElapsedTime, mScoringInfo, info.mPos.x, info.mPos.z);
   DEBUG_MSG(DebugLevel::Errors, msg);
 
   if (info.mID != 0)
-    return;
+    return;*/
 
-  if (mIsMapped) {
+  WriteTelemetryInternals(info);
+  
+  if (!mIsMapped)
+    return;
+  
+  if (info.mID == 0) {
+    if (info.mElapsedTime <= mLastTelemetryUpdateET) {
+      DEBUG_MSG(DebugLevel::Timing, "Skipping telemetry update due to no changes in the input data.");
+
+      // SKIP!!
+    }
+
     // Update extended state.
     // Since I do not want to miss impact data, and it is not accumulated in any way
     // I am aware of in rF2 internals, process on every call.
     mExtStateTracker.ProcessTelemetryUpdate(info);
 
+    // Ok, this is the new sequence of telemetry updates, and it contains updated data.
+    // Check if it is time to update.
+    auto const ticksNow = TicksNow();
+    auto const delta = ticksNow - mLastTelUpdate;
+    // It looks like rF2 calls this function every ~10ms.
+    // Subtracting 5 from desired refresh rate makes it refresh closer to desired
+    // moment on the average.
+    if (delta >= ((SharedMemoryPlugin::msMillisRefresh - 5) * MICROSECONDS_IN_MILLISECOND)) {
+      DEBUG_FLOAT2(DebugLevel::Timing, "Delta since last update:", delta / MICROSECONDS_IN_SECOND);
+
+      if (info.mElapsedTime > mLastTelemetryUpdateET) {
+        auto const deltaGameMs = (info.mElapsedTime - mLastTelemetryUpdateET) * MILLISECONDS_IN_SECOND;
+        DEBUG_FLOAT2(DebugLevel::Timing, "Starting new update.  ET Delta since last update:", deltaGameMs);
+
+        if (mCurTelemetryVehicleIndex != 0)
+          DEBUG_INT2(DebugLevel::Warnings, "Previous telemetry update chain did not finish, ended at:", mCurTelemetryVehicleIndex);
+
+        mLastTelUpdate = ticksNow;
+        mLastTelemetryUpdateET = info.mElapsedTime;
+        mTelemetryUpdateInProgress = true;
+        mCurTelemetryVehicleIndex = 0;
+      } 
+    }
+  }
+
+  if (mTelemetryUpdateInProgress) {
+    memcpy(&(mpCurTelemetryBufWrite->mVehicles[mCurTelemetryVehicleIndex]), &info, sizeof(rF2VehicleTelemetry));
+    ++mCurTelemetryVehicleIndex;
+
+    // See if this is the last vehicle to update.
+    if (mCurTelemetryVehicleIndex >= mScoringNumVehicles
+      || mCurTelemetryVehicleIndex >= rF2Telemetry::MAX_MAPPED_VEHICLES) {
+      mTelemetryUpdateInProgress = false;
+      mCurTelemetryVehicleIndex = 0;
+
+      if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::Timing) {
+        auto const ticksNow = TicksNow();
+        auto const deltaSysTimeMicroseconds = ticksNow - mLastTelUpdate;
+        DEBUG_FLOAT2(DebugLevel::Timing, "Telemetry chain update took:", deltaSysTimeMicroseconds / MICROSECONDS_IN_SECOND);
+      }
+    }
+  }
+    /*
     // Delta will have to be capped to some max value (refresh rate)?
     auto const ticksNow = TicksNow();
     auto const delta = ticksNow - mLastTelUpdate;
 
-    // It looks like rF2 calls this function every ~10ms.
-    // Subtracting 5 from desired refresh rate makes it refresh closer to desired
-    // moment on the average.
     if (delta >= ((SharedMemoryPlugin::msMillisRefresh - 5) * MICROSECONDS_IN_MILLISECOND)) {
       mLastTelUpdate = ticksNow;
 
@@ -463,7 +539,7 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
       UpdateTelemetryHelper(ticksNow, info);
 
       // Try making write buffer the read buffer.
-      TryFlipBuffers();
+      TryFlipBuffers(BufferType::Telemetry);
 
       // If flip failed (some client holds lock), retry on next call.
       if (mRetryFlip) {
@@ -474,7 +550,7 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
     else if (mRetryFlip) {
       if (mRetriesLeft > 0) {
         // If we're in retry mode and we still have retries allowed, try again
-        TryFlipBuffers();
+        TryFlipBuffers(BufferType::Telemetry);
       
         if (mRetryFlip) {
           --mRetriesLeft;
@@ -486,17 +562,18 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
       else {
         // Otherwise, update synchronously.
         DEBUG_MSG(DebugLevel::Synchronization, "Retries failed, updating synchronously.");
-        FlipBuffers();
+        FlipBuffers(BufferType::Telemetry);
       }
-    }
-  }
+    }*/
 
-  WriteTelemetryInternals(info);
 }
 
 
-void SharedMemoryPlugin::FlipBuffersHelper()
+void SharedMemoryPlugin::FlipBuffersHelper(BufferType bt)
 {
+  if (bt == BufferType::Telemetry) {
+
+  }
   // Handle fucked up case:
   if (mpBuf1->mCurrentRead == mpBuf2->mCurrentRead) {
     mpBuf1->mCurrentRead = true;
@@ -515,7 +592,7 @@ void SharedMemoryPlugin::FlipBuffersHelper()
 }
 
 
-void SharedMemoryPlugin::FlipBuffers()
+void SharedMemoryPlugin::FlipBuffers(BufferType bt)
 {
   // This update will wait.  Clear the retry variables.
   mRetryFlip = false;
@@ -523,7 +600,7 @@ void SharedMemoryPlugin::FlipBuffers()
 
   auto const ret = WaitForSingleObject(mhMutex, SharedMemoryPlugin::msMillisMutexWait);
 
-  FlipBuffersHelper();
+  FlipBuffersHelper(bt);
 
   if (ret == WAIT_OBJECT_0)
     ReleaseMutex(mhMutex);
@@ -533,10 +610,10 @@ void SharedMemoryPlugin::FlipBuffers()
     DEBUG_MSG(DebugLevel::Errors, "ERROR: - wait on mutex failed.");
 }
 
-void SharedMemoryPlugin::TryFlipBuffers()
+void SharedMemoryPlugin::TryFlipBuffers(BufferType bt)
 {
   // Do not wait on mutex if it is held.
-  auto const ret = WaitForSingleObject(mhMutex, 0);
+  auto const ret = WaitForSingleObject(mhTelemetryMutex, 0);
   if (ret == WAIT_TIMEOUT) {
     mRetryFlip = true;
     return;
@@ -547,10 +624,10 @@ void SharedMemoryPlugin::TryFlipBuffers()
   mRetriesLeft = 0;
 
   // Do the actual flip.
-  FlipBuffersHelper();
+  FlipBuffersHelper(bt);
 
   if (ret == WAIT_OBJECT_0)
-    ReleaseMutex(mhMutex);
+    ReleaseMutex(mhTelemetryMutex);
 }
 
 
@@ -1023,6 +1100,7 @@ void SharedMemoryPlugin::SyncBuffers(bool telemetryOnly)
 void SharedMemoryPlugin::UpdateScoring(ScoringInfoV01 const& info)
 {
   if (mIsMapped) {
+    mScoringNumVehicles = info.mNumVehicles;
     auto const ticksNow = TicksNow();
 
     // Make sure we're updating latest buffer (pickup telemetry update).
@@ -1038,7 +1116,7 @@ void SharedMemoryPlugin::UpdateScoring(ScoringInfoV01 const& info)
     UpdateScoringHelper(ticksNow, info);
     
     // Make it available to readers.
-    FlipBuffers();
+    FlipBuffers(BufferType::Scoring);
 
     // Update write buffer with scoring info (to keep scoring info between buffers in sync).
     SyncBuffers(false /*telemetryOnly*/);
