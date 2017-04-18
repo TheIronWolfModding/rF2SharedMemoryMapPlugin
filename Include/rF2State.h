@@ -889,7 +889,7 @@ struct rF2MappedBufferHeader
 
 struct rF2MappedBufferBase : public rF2MappedBufferHeader
 {
-  static int const MAX_MAPPED_VEHICLES = 64;
+  static int const MAX_MAPPED_VEHICLES = 128;
 
   char mVersion[8];              // API version
 };

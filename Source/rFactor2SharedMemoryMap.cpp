@@ -306,6 +306,8 @@ void SharedMemoryPlugin::ClearTimingsAndCounters()
   mTelemetryUpdateInProgress = false;
   mCurTelemetryVehicleIndex = 0;
   mScoringNumVehicles = 0;
+
+  memset(mParticipantTelemetryUpdated, 0, sizeof(mParticipantTelemetryUpdated));
 }
 
 void SharedMemoryPlugin::ClearState()
@@ -453,11 +455,21 @@ double TicksNow() {
 }
 
 /*
-Use two timers: prev - mElapsedTime and QPC delta.
-Save elapsed time for mID = 0.
-Check last mElapsedTime for update for mID = 0.
-If last update was longer than 30ms, start updating the buffer
-as soon as we update mNumVehicles OR mID == 0 (in this case, mNumVehicles is somehow out of sync), flip.
+rF2 sends telemetry updates for each vehicle.  The problem is we do not know when all vehicles received an update.
+Below I am trying to flip buffers per-frame, where frame means all vehicles received telemetry update.
+
+I am detecting frame end in two ways:
+* Count vehicles from mID == 0 to mScoringNumVehicles.
+* As a backup for never  ending frame, I use mParticipantTelemetryUpdated index.  See below.
+
+Since mID values are reusable, I do not know if it is possible for mID to never be 0.  Since there's onone to ask,
+use mParticipantTelemetryUpdated array, to check if particular mID has already been updated.
+
+So, as a backup mechanism for ending frame, I consider frame complete as soon as mParticipantTelemetryUpdated indicates telemetry update already received for
+mID.  This is really a guesswork, but I don't want to deal with users having update frames never completed.
+
+There's one more check that can be done - 10ms since update chain start will also work, but as fun paranoid excercise I am trying
+to avoid QPC whatsoever.
 */
 void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
 {
@@ -472,45 +484,53 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
   
   if (!mIsMapped)
     return;
-  
-  if (info.mID == 0) {
+
+  // TODO cap mid.
+  auto const alreadyUpdated = mParticipantTelemetryUpdated[info.mID];
+  if (info.mID == 0 || alreadyUpdated) {
     if (info.mElapsedTime <= mLastTelemetryUpdateET) {
       DEBUG_MSG(DebugLevel::Timing, "Skipping telemetry update due to no changes in the input data.");
 
+      // Retry/flip if pending.
+
+      goto skipUpdate;
       // SKIP!!
     }
 
-    // Update extended state.
-    // Since I do not want to miss impact data, and it is not accumulated in any way
-    // I am aware of in rF2 internals, process on every call.
-    mExtStateTracker.ProcessTelemetryUpdate(info);
+    auto ticksNow = 0.0;
+    if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::Timing) {
+      ticksNow = TicksNow();
+      auto const delta = ticksNow - mLastTelUpdate;
+      DEBUG_FLOAT2(DebugLevel::Timing, "Delta since last update:", delta / MICROSECONDS_IN_SECOND);
+    }
 
     // Ok, this is the new sequence of telemetry updates, and it contains updated data.
-    // Check if it is time to update.
-    auto const ticksNow = TicksNow();
-    auto const delta = ticksNow - mLastTelUpdate;
-    // It looks like rF2 calls this function every ~10ms.
-    // Subtracting 5 from desired refresh rate makes it refresh closer to desired
-    // moment on the average.
-    if (delta >= ((SharedMemoryPlugin::msMillisRefresh - 5) * MICROSECONDS_IN_MILLISECOND)) {
-      DEBUG_FLOAT2(DebugLevel::Timing, "Delta since last update:", delta / MICROSECONDS_IN_SECOND);
+    if (mCurTelemetryVehicleIndex != 0)
+      DEBUG_INT2(DebugLevel::Warnings, "Previous update ended at:", mCurTelemetryVehicleIndex);
 
-      if (info.mElapsedTime > mLastTelemetryUpdateET) {
-        auto const deltaGameMs = (info.mElapsedTime - mLastTelemetryUpdateET) * MILLISECONDS_IN_SECOND;
-        DEBUG_FLOAT2(DebugLevel::Timing, "Starting new update.  ET Delta since last update:", deltaGameMs);
+    if (alreadyUpdated)
+      DEBUG_INT2(DebugLevel::Timing, "Update chain started at:", info.mID);
 
-        if (mCurTelemetryVehicleIndex != 0)
-          DEBUG_INT2(DebugLevel::Warnings, "Previous telemetry update chain did not finish, ended at:", mCurTelemetryVehicleIndex);
+    // Update extended state.
+    // Since I do not want to miss impact data, and it is not accumulated in any way
+    // I am aware of in rF2 internals, process on every call (for player vehicle.
+    if (info.mID == 0)
+      mExtStateTracker.ProcessTelemetryUpdate(info);
 
-        mLastTelUpdate = ticksNow;
-        mLastTelemetryUpdateET = info.mElapsedTime;
-        mTelemetryUpdateInProgress = true;
-        mCurTelemetryVehicleIndex = 0;
-      } 
-    }
+    // Start new telemetry update chain.
+    mLastTelemetryUpdateET = info.mElapsedTime;
+    mTelemetryUpdateInProgress = true;
+    mCurTelemetryVehicleIndex = 0;
+    memset(mParticipantTelemetryUpdated, 0, sizeof(mParticipantTelemetryUpdated));
+
+    mLastTelUpdate = ticksNow;
   }
 
   if (mTelemetryUpdateInProgress) {
+    // TODO, cap, error.
+    assert(mParticipantTelemetryUpdated[info.mID] == false);
+    mParticipantTelemetryUpdated[info.mID] = true;
+
     memcpy(&(mpCurTelemetryBufWrite->mVehicles[mCurTelemetryVehicleIndex]), &info, sizeof(rF2VehicleTelemetry));
     ++mCurTelemetryVehicleIndex;
 
@@ -520,6 +540,10 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
       mTelemetryUpdateInProgress = false;
       mCurTelemetryVehicleIndex = 0;
 
+      // Try flipping for N times, and force flip if retries are spent.
+      // Also, force flip on scoring update.  (and sync on scoring update if more recent ET).
+      // RETRY/FLIP
+
       if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::Timing) {
         auto const ticksNow = TicksNow();
         auto const deltaSysTimeMicroseconds = ticksNow - mLastTelUpdate;
@@ -527,6 +551,10 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
       }
     }
   }
+
+skipUpdate:
+  // If there's flip pending, retry.
+
     /*
     // Delta will have to be capped to some max value (refresh rate)?
     auto const ticksNow = TicksNow();

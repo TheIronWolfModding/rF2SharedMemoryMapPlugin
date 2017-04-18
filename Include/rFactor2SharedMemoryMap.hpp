@@ -206,7 +206,11 @@ private:
   void ClearTimingsAndCounters();
 
   // Timings are in microseconds.
+
+  // Only used for debugging in Timing level
   double mLastTelUpdate = 0.0;
+
+
   double mLastScoringUpdate = 0.0;
 
   // Frame delta is in seconds.
@@ -247,4 +251,6 @@ private:
 
   bool mRetryFlip = false;
   int mRetriesLeft = 0;
+
+  bool mParticipantTelemetryUpdated[256] = {};
 };
