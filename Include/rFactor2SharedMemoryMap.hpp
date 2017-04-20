@@ -6,6 +6,9 @@ Author: The Iron Wolf (vleonavicius@hotmail.com)
 
 #pragma once
 
+#include <time.h>
+#include <assert.h>
+
 #pragma warning(push)
 #pragma warning(disable : 4263)   // UpdateGraphics virtual incorrect signature
 #pragma warning(disable : 4264)   // UpdateGraphics virtual incorrect signature
@@ -14,9 +17,23 @@ Author: The Iron Wolf (vleonavicius@hotmail.com)
 #include "InternalsPlugin.hpp"
 #pragma warning(pop)
 
+// Each component can be in [0:99] range.
+#define PLUGIN_VERSION_MAJOR "2.0"
+#define PLUGIN_VERSION_MINOR "0.0"
+#define PLUGIN_NAME_AND_VERSION "rFactor 2 Shared Memory Map Plugin - v" PLUGIN_VERSION_MAJOR
+#define SHARED_MEMORY_VERSION PLUGIN_VERSION_MAJOR "." PLUGIN_VERSION_MINOR
+
+// NOTE: too much logging will kill performance.  Can be improved with buffering.
+// This is hell on earth, but I do not want to add additional dependencies needed for STL right now.
+// Be super careful with those, there's no type safety or checks of any kind.
+#define DEBUG_MSG(lvl, msg) SharedMemoryPlugin::WriteDebugMsg(lvl, "%s : %s\n", __FUNCTION__, msg)
+#define DEBUG_MSG2(lvl, msg, msg2) SharedMemoryPlugin::WriteDebugMsg(lvl, "%s : %s %s\n", __FUNCTION__, msg, msg2)
+#define DEBUG_INT2(lvl, msg, intValue) SharedMemoryPlugin::WriteDebugMsg(lvl, "%s : %s %d\n", __FUNCTION__, msg, intValue)
+#define DEBUG_FLOAT2(lvl, msg, floatValue) SharedMemoryPlugin::WriteDebugMsg(lvl, "%s : %s %f\n", __FUNCTION__, msg, floatValue)
+#define DEBUG_MSG3(lvl, msg, msg2, msg3) SharedMemoryPlugin::WriteDebugMsg(lvl, "%s : %s %s %s\n", __FUNCTION__, msg, msg2, msg3)
+
 #include "rF2State.h"
-#include <time.h>
-#include <assert.h>
+#include "MappedDoubleBuffer.h"
 
 enum DebugLevel
 {
@@ -135,7 +152,7 @@ private:
   };
 
 public:
-  SharedMemoryPlugin() {}
+  SharedMemoryPlugin();
   ~SharedMemoryPlugin() override {}
 
   ////////////////////////////////////////////////////
@@ -219,27 +236,7 @@ private:
   // Extended state tracker
   ExtendedStateTracker mExtStateTracker;
 
-  HANDLE mhMutex = nullptr;
-  HANDLE mhMap1 = nullptr;
-  HANDLE mhMap2 = nullptr;
-
-  HANDLE mhTelemetryMutex = nullptr;
-  HANDLE mhTelemetryMap1 = nullptr;
-  HANDLE mhTelemetryMap2 = nullptr;
-
-  // Current write buffer.
-  rF2State* mpBufCurWrite = nullptr;
-
-  // Flip between 2 buffers.  Clients should read the one with mCurrentRead == true.
-  rF2State* mpBuf1 = nullptr;
-  rF2State* mpBuf2 = nullptr;
-
   double mLastTelemetryUpdateET = 0.0;
-
-  // Telemetry buffers.
-  rF2Telemetry* mpCurTelemetryBufWrite= nullptr;
-  rF2Telemetry* mpTelemetryBuf1 = nullptr;
-  rF2Telemetry* mpTelemetryBuf2 = nullptr;
 
   bool mTelemetryUpdateInProgress = false;
   int mCurTelemetryVehicleIndex = 0;
@@ -253,4 +250,8 @@ private:
   int mRetriesLeft = 0;
 
   bool mParticipantTelemetryUpdated[256] = {};
+
+  MappedDoubleBuffer<rF2Telemetry> mTelemetry;
 };
+
+

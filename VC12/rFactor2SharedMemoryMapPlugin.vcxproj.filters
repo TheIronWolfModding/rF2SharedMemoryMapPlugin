@@ -16,6 +16,9 @@
     <ClInclude Include="..\Include\rF2State.h">
       <Filter>includes</Filter>
     </ClInclude>
+    <ClInclude Include="..\Include\MappedDoubleBuffer.h">
+      <Filter>includes</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="rf2_includes">

@@ -79,12 +79,6 @@ Sample consumption:
 #include <stdlib.h>
 #include <cstddef>                              // offsetof
 
-// Each component can be in [0:99] range.
-#define PLUGIN_VERSION_MAJOR "1.1"
-#define PLUGIN_VERSION_MINOR "0.2"
-#define PLUGIN_NAME_AND_VERSION "rFactor 2 Shared Memory Map Plugin - v" PLUGIN_VERSION_MAJOR
-#define SHARED_MEMORY_VERSION PLUGIN_VERSION_MAJOR "." PLUGIN_VERSION_MINOR
-
 static double const MILLISECONDS_IN_SECOND = 1000.0;
 static double const MICROSECONDS_IN_MILLISECOND = 1000.0;
 static double const MICROSECONDS_IN_SECOND = MILLISECONDS_IN_SECOND * MICROSECONDS_IN_MILLISECOND;
@@ -109,7 +103,7 @@ char const* const SharedMemoryPlugin::CONFIG_FILE_REL_PATH = R"(\UserData\player
 char const* const SharedMemoryPlugin::INTERNALS_TELEMETRY_FILENAME = "RF2SMMP_InternalsTelemetryOutput.txt";
 char const* const SharedMemoryPlugin::INTERNALS_SCORING_FILENAME = "RF2SMMP_InternalsScoringOutput.txt";
 char const* const SharedMemoryPlugin::DEBUG_OUTPUT_FILENAME = "RF2SMMP_DebugOutput.txt";
-int const SharedMemoryPlugin::MAX_ASYNC_RETRIES = 1;
+int const SharedMemoryPlugin::MAX_ASYNC_RETRIES = 3;
 
 // plugin information
 extern "C" __declspec(dllexport)
@@ -127,21 +121,15 @@ PluginObject * __cdecl CreatePluginObject() { return((PluginObject *) new Shared
 extern "C" __declspec(dllexport)
 void __cdecl DestroyPluginObject(PluginObject *obj) { delete((SharedMemoryPlugin *)obj); }
 
-// NOTE: too much logging will kill performance.  Can be improved with buffering.
-// This is hell on earth, but I do not want to add additional dependencies needed for STL right now.
-// Be super careful with those, there's no type safety or checks of any kind.
-#define DEBUG_MSG(lvl, msg) WriteDebugMsg(lvl, "%s : %s\n", __FUNCTION__, msg)
-#define DEBUG_MSG2(lvl, msg, msg2) WriteDebugMsg(lvl, "%s : %s %s\n", __FUNCTION__, msg, msg2)
-#define DEBUG_INT2(lvl, msg, intValue) WriteDebugMsg(lvl, "%s : %s %d\n", __FUNCTION__, msg, intValue)
-#define DEBUG_FLOAT2(lvl, msg, floatValue) WriteDebugMsg(lvl, "%s : %s %f\n", __FUNCTION__, msg, floatValue)
-#define DEBUG_MSG3(lvl, msg, msg2, msg3) WriteDebugMsg(lvl, "%s : %s %s %s\n", __FUNCTION__, msg, msg2, msg3)
 
 //////////////////////////////////////
 // SharedMemoryPlugin class
 //////////////////////////////////////
+
 template <typename BufT>
 HANDLE SharedMemoryPlugin::MapMemoryFile(char const* const fileName, BufT*& pBuf) const
 {
+#if 0
   char tag[256] = {};
   strcpy_s(tag, fileName);
 
@@ -176,6 +164,15 @@ HANDLE SharedMemoryPlugin::MapMemoryFile(char const* const fileName, BufT*& pBuf
   }
 
   return hMap;
+#endif
+}
+
+SharedMemoryPlugin::SharedMemoryPlugin()
+  : mTelemetry(SharedMemoryPlugin::MAX_ASYNC_RETRIES
+     , SharedMemoryPlugin::MM_TELEMETRY_FILE_NAME1
+     , SharedMemoryPlugin::MM_TELEMETRY_FILE_NAME2
+     , SharedMemoryPlugin::MM_TELEMETRY_FILE_ACCESS_MUTEX)
+{
 }
 
 void SharedMemoryPlugin::Startup(long version)
@@ -186,7 +183,7 @@ void SharedMemoryPlugin::Startup(long version)
   char temp[80] = {};
   sprintf(temp, "-STARTUP- (version %.3f)", (float)version / 1000.0f);
   WriteToAllExampleOutputFiles("w", temp);
-
+#if 0
   mhMap1 = MapMemoryFile(SharedMemoryPlugin::MM_FILE_NAME1, mpBuf1);
   if (mhMap1 == nullptr)
     return;
@@ -200,18 +197,9 @@ void SharedMemoryPlugin::Startup(long version)
     DEBUG_MSG(DebugLevel::Errors, "Failed to create mutex");
     return;
   }
-
-  mhTelemetryMap1 = MapMemoryFile(SharedMemoryPlugin::MM_TELEMETRY_FILE_NAME1, mpTelemetryBuf1);
-  if (mhTelemetryMap1 == nullptr)
-    return;
-
-  mhTelemetryMap2 = MapMemoryFile(SharedMemoryPlugin::MM_TELEMETRY_FILE_NAME2, mpTelemetryBuf2);
-  if (mhMap2 == nullptr)
-    return;
-
-  mhTelemetryMutex = CreateMutex(nullptr, FALSE, SharedMemoryPlugin::MM_TELEMETRY_FILE_ACCESS_MUTEX);
-  if (mhTelemetryMutex == nullptr) {
-    DEBUG_MSG(DebugLevel::Errors, "Failed to create telemetry mutex");
+#endif
+  if (!mTelemetry.Initialize()) {
+    DEBUG_MSG(DebugLevel::Errors, "Failed to initialize telemetry mapping");
     return;
   }
 
@@ -243,7 +231,7 @@ void SharedMemoryPlugin::Shutdown()
   WriteToAllExampleOutputFiles("a", "-SHUTDOWN-");
 
   DEBUG_MSG(DebugLevel::Errors, "Shutting down");
-
+#if 0
   ClearState();
 
   // Unmap views and close all handles.
@@ -292,6 +280,10 @@ void SharedMemoryPlugin::Shutdown()
   mhTelemetryMap2 = nullptr;
   mhTelemetryMutex = nullptr;
   mpCurTelemetryBufWrite = nullptr;
+#endif
+
+  mTelemetry.ClearState();
+  mTelemetry.ReleaseResources();
 
   mIsMapped = false;
 }
@@ -313,6 +305,7 @@ void SharedMemoryPlugin::ClearTimingsAndCounters()
 void SharedMemoryPlugin::ClearState()
 {
   if (mIsMapped) {
+#if 0
     mRetryFlip = false;
     mRetriesLeft = 0;
 
@@ -335,26 +328,9 @@ void SharedMemoryPlugin::ClearState()
       DEBUG_MSG(DebugLevel::Warnings, "WARNING: - Timed out while waiting on mutex.");
     else
       DEBUG_MSG(DebugLevel::Errors, "ERROR: - wait on mutex failed.");
+#endif
 
-    ret = WaitForSingleObject(mhTelemetryMutex, SharedMemoryPlugin::msMillisMutexWait);
-
-    memset(mpTelemetryBuf1, 0, sizeof(rF2State));
-    strcpy_s(mpTelemetryBuf1->mVersion, SHARED_MEMORY_VERSION);
-    mpTelemetryBuf1->mCurrentRead = true;
-
-    memset(mpTelemetryBuf2, 0, sizeof(rF2State));
-    strcpy_s(mpTelemetryBuf2->mVersion, SHARED_MEMORY_VERSION);
-    mpTelemetryBuf2->mCurrentRead = false;
-
-    mpCurTelemetryBufWrite = mpTelemetryBuf2;
-    assert(!mpCurTelemetryBufWrite->mCurrentRead);
-
-    if (ret == WAIT_OBJECT_0)
-      ReleaseMutex(mhTelemetryMutex);
-    else if (ret == WAIT_TIMEOUT)
-      DEBUG_MSG(DebugLevel::Warnings, "WARNING: - Timed out while waiting on telemetry mutex.");
-    else
-      DEBUG_MSG(DebugLevel::Errors, "ERROR: - wait on telemetry mutex failed.");
+    mTelemetry.ClearState();
   }
 
   ClearTimingsAndCounters();
@@ -381,6 +357,7 @@ void SharedMemoryPlugin::EndSession()
 void SharedMemoryPlugin::UpdateInRealtimeFC(bool inRealTime)
 {
   if (mIsMapped) {
+#if 0
     assert(mpBuf1->mInRealtimeFC == mpBuf2->mInRealtimeFC);
 
     // Make sure we're updating latest buffer (pickup telemetry update).
@@ -407,6 +384,7 @@ void SharedMemoryPlugin::UpdateInRealtimeFC(bool inRealTime)
     pBuf->mInRealtimeFC = inRealTime;
 
     assert(mpBuf1->mInRealtimeFC == mpBuf2->mInRealtimeFC);
+#endif
   }
 }
 
@@ -488,15 +466,15 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
   // TODO cap mid.
   auto const alreadyUpdated = mParticipantTelemetryUpdated[info.mID];
   if (info.mID == 0 || alreadyUpdated) {
-    if (info.mElapsedTime <= mLastTelemetryUpdateET) {
-      DEBUG_MSG(DebugLevel::Timing, "Skipping telemetry update due to no changes in the input data.");
+     if (info.mElapsedTime <= mLastTelemetryUpdateET) {
+      DEBUG_MSG(DebugLevel::Timing, "Skipping update due to no changes in the input data.");
 
       // Retry/flip if pending.
 
       goto skipUpdate;
       // SKIP!!
     }
-
+    
     auto ticksNow = 0.0;
     if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::Timing) {
       ticksNow = TicksNow();
@@ -524,6 +502,7 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
     memset(mParticipantTelemetryUpdated, 0, sizeof(mParticipantTelemetryUpdated));
 
     mLastTelUpdate = ticksNow;
+    mTelemetry.mpCurWriteBuf->mNumVehicles = mScoringNumVehicles;
   }
 
   if (mTelemetryUpdateInProgress) {
@@ -531,11 +510,11 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
     assert(mParticipantTelemetryUpdated[info.mID] == false);
     mParticipantTelemetryUpdated[info.mID] = true;
 
-    memcpy(&(mpCurTelemetryBufWrite->mVehicles[mCurTelemetryVehicleIndex]), &info, sizeof(rF2VehicleTelemetry));
+    memcpy(&(mTelemetry.mpCurWriteBuf->mVehicles[mCurTelemetryVehicleIndex]), &info, sizeof(rF2VehicleTelemetry));
     ++mCurTelemetryVehicleIndex;
 
     // See if this is the last vehicle to update.
-    if (mCurTelemetryVehicleIndex >= mScoringNumVehicles
+    if (mCurTelemetryVehicleIndex >= mTelemetry.mpCurWriteBuf->mNumVehicles
       || mCurTelemetryVehicleIndex >= rF2Telemetry::MAX_MAPPED_VEHICLES) {
       mTelemetryUpdateInProgress = false;
       mCurTelemetryVehicleIndex = 0;
@@ -553,6 +532,7 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
   }
 
 skipUpdate:
+  return;
   // If there's flip pending, retry.
 
     /*
@@ -597,72 +577,11 @@ skipUpdate:
 }
 
 
-void SharedMemoryPlugin::FlipBuffersHelper(BufferType bt)
-{
-  if (bt == BufferType::Telemetry) {
-
-  }
-  // Handle fucked up case:
-  if (mpBuf1->mCurrentRead == mpBuf2->mCurrentRead) {
-    mpBuf1->mCurrentRead = true;
-    mpBuf2->mCurrentRead = false;
-    DEBUG_MSG(DebugLevel::Errors, "ERROR: - Buffers out of sync.");
-  }
-
-  // Pick previous read buffer.
-  mpBufCurWrite = mpBuf1->mCurrentRead ? mpBuf1 : mpBuf2;
-
-  // Switch the read and write buffers.
-  mpBuf1->mCurrentRead = !mpBuf1->mCurrentRead;
-  mpBuf2->mCurrentRead = !mpBuf2->mCurrentRead;
-
-  assert(!mpBufCurWrite->mCurrentRead);
-}
-
-
-void SharedMemoryPlugin::FlipBuffers(BufferType bt)
-{
-  // This update will wait.  Clear the retry variables.
-  mRetryFlip = false;
-  mRetriesLeft = 0;
-
-  auto const ret = WaitForSingleObject(mhMutex, SharedMemoryPlugin::msMillisMutexWait);
-
-  FlipBuffersHelper(bt);
-
-  if (ret == WAIT_OBJECT_0)
-    ReleaseMutex(mhMutex);
-  else if (ret == WAIT_TIMEOUT)
-    DEBUG_MSG(DebugLevel::Warnings, "WARNING: - Timed out while waiting on mutex.");
-  else
-    DEBUG_MSG(DebugLevel::Errors, "ERROR: - wait on mutex failed.");
-}
-
-void SharedMemoryPlugin::TryFlipBuffers(BufferType bt)
-{
-  // Do not wait on mutex if it is held.
-  auto const ret = WaitForSingleObject(mhTelemetryMutex, 0);
-  if (ret == WAIT_TIMEOUT) {
-    mRetryFlip = true;
-    return;
-  }
-
-  // We have the lock.  Clear retry variables.
-  mRetryFlip = false;
-  mRetriesLeft = 0;
-
-  // Do the actual flip.
-  FlipBuffersHelper(bt);
-
-  if (ret == WAIT_OBJECT_0)
-    ReleaseMutex(mhTelemetryMutex);
-}
-
 
 void SharedMemoryPlugin::UpdateTelemetryHelper(double const ticksNow, TelemInfoV01 const& info)
 {
   mDelta = (ticksNow - mLastScoringUpdate) / MICROSECONDS_IN_SECOND;
-
+#if 0
   auto pBuf = mpBufCurWrite;
   assert(!mpBufCurWrite->mCurrentRead);
 
@@ -870,14 +789,16 @@ void SharedMemoryPlugin::UpdateTelemetryHelper(double const ticksNow, TelemInfoV
 
       ++interUpdates;
     }
+
   }
+#endif
 }
 
 
 void SharedMemoryPlugin::UpdateScoringHelper(double const ticksNow, ScoringInfoV01 const& info)
 {
   mLastScoringUpdate = ticksNow;
-
+#if 0
   static double scoringUpdatePrev = 0.0;
   auto const delta = mLastScoringUpdate - scoringUpdatePrev;
   scoringUpdatePrev = mLastScoringUpdate;
@@ -1086,14 +1007,17 @@ void SharedMemoryPlugin::UpdateScoringHelper(double const ticksNow, ScoringInfoV
     pBuf->mVehicles[i].mCountLapFlag = info.mVehicle[i].mCountLapFlag;
     pBuf->mVehicles[i].mInGarageStall = info.mVehicle[i].mInGarageStall;
   }
+#endif
 
   // Update Extended state.
-  mExtStateTracker.FlushToBuffer(pBuf);
+  // TODO:
+  //mExtStateTracker.FlushToBuffer(pBuf);
 }
 
 
 void SharedMemoryPlugin::SyncBuffers(bool telemetryOnly)
 {
+#if 0
   // Copy contents of the current read buffer to write buffer.
   auto pBuf = mpBufCurWrite;
   assert(!mpBufCurWrite->mCurrentRead);
@@ -1123,12 +1047,16 @@ void SharedMemoryPlugin::SyncBuffers(bool telemetryOnly)
 
   if (!telemetryOnly)
     assert((rF2State::MAX_VSI_SIZE - pSrcBuf->mNumVehicles) * sizeof(rF2VehScoringInfo) + bytes == sizeof(rF2State));
+#endif
 }
 
 void SharedMemoryPlugin::UpdateScoring(ScoringInfoV01 const& info)
 {
   if (mIsMapped) {
     mScoringNumVehicles = info.mNumVehicles;
+    // TODO: check if Scoring ET is ahead or behind of Telemetry, print.
+    // If ahead, I'll probably need to update newer later telemetry buffer.
+#if 0
     auto const ticksNow = TicksNow();
 
     // Make sure we're updating latest buffer (pickup telemetry update).
@@ -1148,6 +1076,7 @@ void SharedMemoryPlugin::UpdateScoring(ScoringInfoV01 const& info)
 
     // Update write buffer with scoring info (to keep scoring info between buffers in sync).
     SyncBuffers(false /*telemetryOnly*/);
+#endif
   }
 
   WriteScoringInternals(info);

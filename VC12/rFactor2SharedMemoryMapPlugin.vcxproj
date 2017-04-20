@@ -285,6 +285,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Include\InternalsPlugin.hpp" />
+    <ClInclude Include="..\Include\MappedDoubleBuffer.h" />
     <ClInclude Include="..\Include\rF2State.h" />
     <ClInclude Include="..\Include\rFactor2SharedMemoryMap.hpp" />
     <ClInclude Include="..\Include\PluginObjects.hpp" />
