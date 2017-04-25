@@ -60,7 +60,9 @@ public:
   static char const* const INTERNALS_TELEMETRY_FILENAME;
   static char const* const INTERNALS_SCORING_FILENAME;
   static char const* const DEBUG_OUTPUT_FILENAME;
-  static int const MAX_ASYNC_RETRIES;
+  
+  static int const MAX_ASYNC_RETRIES = 3;
+  static int const MAX_PARTICIPANT_SLOTS = 256;
 
   static DebugLevel msDebugOutputLevel;
   static bool msDebugISIInternals;
@@ -206,16 +208,6 @@ private:
   void UpdateScoringHelper(double const ticksNow, ScoringInfoV01 const& info);
   void SyncBuffers(bool telemetryOnly);
 
-  enum class BufferType
-  {
-    Telemetry,
-    Scoring,
-    Rules,
-    Extended
-  };
-  void FlipBuffersHelper(BufferType bt);
-  void FlipBuffers(BufferType bt);
-  void TryFlipBuffers(BufferType bt);
   
   template <typename BufT>
   HANDLE MapMemoryFile(char const * const fileName, BufT*& pBuf) const;
@@ -231,12 +223,14 @@ private:
   double mLastScoringUpdate = 0.0;
 
   // Frame delta is in seconds.
+  // TODO: Not sure we need this.
   double mDelta = 0.0;
 
   // Extended state tracker
   ExtendedStateTracker mExtStateTracker;
 
   double mLastTelemetryUpdateET = 0.0;
+  double mLastScoringUpdateET = 0.0;
 
   bool mTelemetryUpdateInProgress = false;
   int mCurTelemetryVehicleIndex = 0;
@@ -249,7 +243,7 @@ private:
   bool mRetryFlip = false;
   int mRetriesLeft = 0;
 
-  bool mParticipantTelemetryUpdated[256] = {};
+  bool mParticipantTelemetryUpdated[MAX_PARTICIPANT_SLOTS] = {};
 
   MappedDoubleBuffer<rF2Telemetry> mTelemetry;
 };

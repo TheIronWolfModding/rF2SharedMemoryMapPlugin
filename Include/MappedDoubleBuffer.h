@@ -46,8 +46,8 @@ public:
 
   void ClearState()
   {
-    mRetryFlip = false;
-    mRetriesLeft = 0;
+    mRetryPending = false;
+    mAsyncRetriesLeft = 0;
 
     auto ret = WaitForSingleObject(mhMutex, SharedMemoryPlugin::msMillisMutexWait);
 
@@ -127,8 +127,8 @@ public:
   void FlipBuffers()
   {
     // This update will wait.  Clear the retry variables.
-    mRetryFlip = false;
-    mRetriesLeft = 0;
+    mRetryPending = false;
+    mAsyncRetriesLeft = MAX_RETRIES;
 
     auto const ret = WaitForSingleObject(mhMutex, SharedMemoryPlugin::msMillisMutexWait);
 
@@ -145,22 +145,26 @@ public:
   void TryFlipBuffers()
   {
     // Do not wait on mutex if it is held.
-    auto const ret = WaitForSingleObject(mhTelemetryMutex, 0);
+    auto const ret = WaitForSingleObject(mhMutex, 0);
     if (ret == WAIT_TIMEOUT) {
-      mRetryFlip = true;
+      mRetryPending = true;
+      --mAsyncRetriesLeft;
       return;
     }
 
     // We have the lock.  Clear retry variables.
-    mRetryFlip = false;
-    mRetriesLeft = 0;
+    mRetryPending = false;
+    mAsyncRetriesLeft = MAX_RETRIES;
 
     // Do the actual flip.
-    FlipBuffersHelper(bt);
+    FlipBuffersHelper();
 
     if (ret == WAIT_OBJECT_0)
-      ReleaseMutex(mhTelemetryMutex);
+      ReleaseMutex(mhMutex);
   }
+
+  int AsyncRetriesLeft() const { return mAsyncRetriesLeft; }
+  int RetryPending() const { return mRetryPending; }
 
 private:
   MappedDoubleBuffer(MappedDoubleBuffer const&) = delete;
@@ -222,6 +226,6 @@ private:
   HANDLE mhMap1 = nullptr;
   HANDLE mhMap2 = nullptr;
 
-  bool mRetryFlip = false;
-  int mRetriesLeft = 0;
+  bool mRetryPending = false;
+  int mAsyncRetriesLeft = 0;
 };

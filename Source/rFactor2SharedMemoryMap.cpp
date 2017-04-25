@@ -103,7 +103,6 @@ char const* const SharedMemoryPlugin::CONFIG_FILE_REL_PATH = R"(\UserData\player
 char const* const SharedMemoryPlugin::INTERNALS_TELEMETRY_FILENAME = "RF2SMMP_InternalsTelemetryOutput.txt";
 char const* const SharedMemoryPlugin::INTERNALS_SCORING_FILENAME = "RF2SMMP_InternalsScoringOutput.txt";
 char const* const SharedMemoryPlugin::DEBUG_OUTPUT_FILENAME = "RF2SMMP_DebugOutput.txt";
-int const SharedMemoryPlugin::MAX_ASYNC_RETRIES = 3;
 
 // plugin information
 extern "C" __declspec(dllexport)
@@ -295,6 +294,7 @@ void SharedMemoryPlugin::ClearTimingsAndCounters()
   mDelta = 0.0;
 
   mLastTelemetryUpdateET = 0.0;
+  mLastScoringUpdateET = 0.0;
   mTelemetryUpdateInProgress = false;
   mCurTelemetryVehicleIndex = 0;
   mScoringNumVehicles = 0;
@@ -463,16 +463,14 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
   if (!mIsMapped)
     return;
 
-  // TODO cap mid.
-  auto const alreadyUpdated = mParticipantTelemetryUpdated[info.mID];
+  // TODO check if scoring update is ahead of telemetry, if it is we need to force flip.
+  auto const partiticpantIndex = min(info.mID, MAX_PARTICIPANT_SLOTS - 1);
+  auto const alreadyUpdated = mParticipantTelemetryUpdated[partiticpantIndex];
   if (info.mID == 0 || alreadyUpdated) {
      if (info.mElapsedTime <= mLastTelemetryUpdateET) {
       DEBUG_MSG(DebugLevel::Timing, "Skipping update due to no changes in the input data.");
-
-      // Retry/flip if pending.
-
+      assert(!mTelemetryUpdateInProgress);
       goto skipUpdate;
-      // SKIP!!
     }
     
     auto ticksNow = 0.0;
@@ -480,6 +478,11 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
       ticksNow = TicksNow();
       auto const delta = ticksNow - mLastTelUpdate;
       DEBUG_FLOAT2(DebugLevel::Timing, "Delta since last update:", delta / MICROSECONDS_IN_SECOND);
+
+      if (mTelemetry.mpCurWriteBuf == mTelemetry.mpBuf1)
+        DEBUG_MSG(DebugLevel::Timing, "Updating buffer 1.");
+      else
+        DEBUG_MSG(DebugLevel::Timing, "Updating buffer 2.");
     }
 
     // Ok, this is the new sequence of telemetry updates, and it contains updated data.
@@ -506,9 +509,9 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
   }
 
   if (mTelemetryUpdateInProgress) {
-    // TODO, cap, error.
-    assert(mParticipantTelemetryUpdated[info.mID] == false);
-    mParticipantTelemetryUpdated[info.mID] = true;
+    auto const partiticpantIndex = min(info.mID, MAX_PARTICIPANT_SLOTS - 1);
+    assert(mParticipantTelemetryUpdated[partiticpantIndex] == false);
+    mParticipantTelemetryUpdated[partiticpantIndex] = true;
 
     memcpy(&(mTelemetry.mpCurWriteBuf->mVehicles[mCurTelemetryVehicleIndex]), &info, sizeof(rF2VehicleTelemetry));
     ++mCurTelemetryVehicleIndex;
@@ -519,9 +522,25 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
       mTelemetryUpdateInProgress = false;
       mCurTelemetryVehicleIndex = 0;
 
-      // Try flipping for N times, and force flip if retries are spent.
-      // Also, force flip on scoring update.  (and sync on scoring update if more recent ET).
-      // RETRY/FLIP
+      if (mLastTelemetryUpdateET <= mLastScoringUpdateET) {
+        // If scoring update is ahead of this telemetry update, force flip.
+        DEBUG_MSG(DebugLevel::Timing, "Force flip due to: mLastTelemetryUpdateET <= mLastScoringUpdateET.");
+        mTelemetry.FlipBuffers();
+      }
+      else if (mTelemetry.AsyncRetriesLeft() > 0) {
+        // Otherwise, try buffer flip.
+        mTelemetry.TryFlipBuffers();
+
+        // Print msg about buffer flip failure or success.
+        if (mTelemetry.RetryPending())
+          DEBUG_INT2(DebugLevel::Timing, "Buffer flip failed, retries remaining:", mTelemetry.AsyncRetriesLeft());
+      } 
+      else {
+        // Force flip if no more retries are left
+        assert(mTelemetry.AsyncRetriesLeft() == 0);
+        mTelemetry.FlipBuffers();
+        DEBUG_MSG(DebugLevel::Timing, "Force flip due to retry limit exceeded.");
+      }
 
       if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::Timing) {
         auto const ticksNow = TicksNow();
@@ -529,11 +548,29 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
         DEBUG_FLOAT2(DebugLevel::Timing, "Telemetry chain update took:", deltaSysTimeMicroseconds / MICROSECONDS_IN_SECOND);
       }
     }
+
+    return;
   }
 
 skipUpdate:
-  return;
   // If there's flip pending, retry.
+  if (mTelemetry.RetryPending()) {
+    assert(!mTelemetryUpdateInProgress);
+    // Retry/flip if pending.
+    if (mTelemetry.AsyncRetriesLeft() > 0) {
+      DEBUG_MSG(DebugLevel::Timing, "Retrying incomplete buffer flip.");
+      mTelemetry.TryFlipBuffers();
+      if (mTelemetry.RetryPending())
+        DEBUG_INT2(DebugLevel::Timing, "Buffer flip failed, retries remaining:", mTelemetry.AsyncRetriesLeft());
+      else
+        DEBUG_MSG(DebugLevel::Timing, "Buffer flip succeeded.");
+    } 
+    else {
+      assert(mTelemetry.AsyncRetriesLeft() == 0);
+      mTelemetry.FlipBuffers();
+      DEBUG_MSG(DebugLevel::Timing, "Force flip due to retry limit exceeded.");
+    }
+  }
 
     /*
     // Delta will have to be capped to some max value (refresh rate)?
@@ -1054,6 +1091,8 @@ void SharedMemoryPlugin::UpdateScoring(ScoringInfoV01 const& info)
 {
   if (mIsMapped) {
     mScoringNumVehicles = info.mNumVehicles;
+    mLastTelemetryUpdateET = info.mCurrentET;
+    // TODO check if scoring update is ahead of telemetry, if it is we need to force flip.
     // TODO: check if Scoring ET is ahead or behind of Telemetry, print.
     // If ahead, I'll probably need to update newer later telemetry buffer.
 #if 0
