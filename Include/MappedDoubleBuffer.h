@@ -47,7 +47,7 @@ public:
   void ClearState()
   {
     mRetryPending = false;
-    mAsyncRetriesLeft = 0;
+    mAsyncRetriesLeft = MAX_RETRIES;
 
     auto ret = WaitForSingleObject(mhMutex, SharedMemoryPlugin::msMillisMutexWait);
 
@@ -61,7 +61,7 @@ public:
 
     mpCurReadBuf = mpBuf1;
     mpCurWriteBuf = mpBuf2;
-    assert(mpCurWriteBuf->mCurrentRead);
+    assert(mpCurReadBuf->mCurrentRead);
     assert(!mpCurWriteBuf->mCurrentRead);
 
     if (ret == WAIT_OBJECT_0)

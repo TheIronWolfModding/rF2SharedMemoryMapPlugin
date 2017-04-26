@@ -224,12 +224,21 @@ void SharedMemoryPlugin::Startup(long version)
   return;
 }
 
+FILE* debugFile = nullptr;
+// TODO: flush based on time, every n seconds?
+int numDebugMsg = 0;
 
 void SharedMemoryPlugin::Shutdown()
 {
   WriteToAllExampleOutputFiles("a", "-SHUTDOWN-");
 
   DEBUG_MSG(DebugLevel::Errors, "Shutting down");
+
+  if (debugFile != nullptr) {
+    fclose(debugFile);
+    debugFile = nullptr;
+  }
+
 #if 0
   ClearState();
 
@@ -468,21 +477,38 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
   auto const alreadyUpdated = mParticipantTelemetryUpdated[partiticpantIndex];
   if (info.mID == 0 || alreadyUpdated) {
      if (info.mElapsedTime <= mLastTelemetryUpdateET) {
-      DEBUG_MSG(DebugLevel::Timing, "Skipping update due to no changes in the input data.");
+       // TODO: Move to TraceSkipTelemetryUpdate
+       if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::Timing) {
+        DEBUG_MSG(DebugLevel::Timing, "Skipping update due to no changes in the input data.");
+      
+        if (info.mPos.x != mTelemetry.mpCurReadBuf->mVehicles->mPos.x
+          || info.mPos.y != mTelemetry.mpCurReadBuf->mVehicles->mPos.y
+          || info.mPos.z != mTelemetry.mpCurReadBuf->mVehicles->mPos.z)
+        {
+          char msg[512] = {};
+          sprintf(msg, "Pos Mismatch on skip update!!!  New ET: %f  Prev ET:%f  Prev Pos: %f %f %f  New Pos %f %f %f", info.mElapsedTime, mLastTelemetryUpdateET,
+            info.mPos.x, info.mPos.y, info.mPos.z,
+            mTelemetry.mpCurReadBuf->mVehicles->mPos.x,
+            mTelemetry.mpCurReadBuf->mVehicles->mPos.y,
+            mTelemetry.mpCurReadBuf->mVehicles->mPos.z);
+          DEBUG_MSG(DebugLevel::Timing, msg);
+        }
+      }
+
       assert(!mTelemetryUpdateInProgress);
       goto skipUpdate;
     }
     
     auto ticksNow = 0.0;
+    // TODO: Move to TraceTelUpdateBegin
     if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::Timing) {
       ticksNow = TicksNow();
       auto const delta = ticksNow - mLastTelUpdate;
-      DEBUG_FLOAT2(DebugLevel::Timing, "Delta since last update:", delta / MICROSECONDS_IN_SECOND);
 
       if (mTelemetry.mpCurWriteBuf == mTelemetry.mpBuf1)
-        DEBUG_MSG(DebugLevel::Timing, "Updating buffer 1.");
+        DEBUG_FLOAT2(DebugLevel::Timing, "Begin Update: Buffer 1.  Delta since last update:", delta / MICROSECONDS_IN_SECOND);
       else
-        DEBUG_MSG(DebugLevel::Timing, "Updating buffer 2.");
+        DEBUG_FLOAT2(DebugLevel::Timing, "Begin Update: Buffer 2.  Delta since last update:", delta / MICROSECONDS_IN_SECOND);
     }
 
     // Ok, this is the new sequence of telemetry updates, and it contains updated data.
@@ -519,8 +545,10 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
     // See if this is the last vehicle to update.
     if (mCurTelemetryVehicleIndex >= mTelemetry.mpCurWriteBuf->mNumVehicles
       || mCurTelemetryVehicleIndex >= rF2Telemetry::MAX_MAPPED_VEHICLES) {
+      auto const numVehiclesInChain = mCurTelemetryVehicleIndex;
       mTelemetryUpdateInProgress = false;
       mCurTelemetryVehicleIndex = 0;
+      memset(mParticipantTelemetryUpdated, 0, sizeof(mParticipantTelemetryUpdated));
 
       if (mLastTelemetryUpdateET <= mLastScoringUpdateET) {
         // If scoring update is ahead of this telemetry update, force flip.
@@ -542,10 +570,15 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
         DEBUG_MSG(DebugLevel::Timing, "Force flip due to retry limit exceeded.");
       }
 
+      // TODO: Move to TraceTelUpdateBegin
       if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::Timing) {
         auto const ticksNow = TicksNow();
         auto const deltaSysTimeMicroseconds = ticksNow - mLastTelUpdate;
-        DEBUG_FLOAT2(DebugLevel::Timing, "Telemetry chain update took:", deltaSysTimeMicroseconds / MICROSECONDS_IN_SECOND);
+
+        char msg[512] = {};
+        sprintf(msg, "End Update.  Telemetry chain update took %f:  Vehicles in chain: %d", deltaSysTimeMicroseconds / MICROSECONDS_IN_SECOND, numVehiclesInChain);
+
+        DEBUG_MSG(DebugLevel::Timing, msg);
       }
     }
 
@@ -1225,12 +1258,20 @@ void SharedMemoryPlugin::WriteDebugMsg(DebugLevel lvl, const char* const format,
     return;
 
   va_list argList;
-  auto fo = fopen(SharedMemoryPlugin::DEBUG_OUTPUT_FILENAME, "a");
-  if (fo != nullptr) {
+  if (debugFile == nullptr)
+    debugFile = fopen(SharedMemoryPlugin::DEBUG_OUTPUT_FILENAME, "a");
+
+  ++numDebugMsg;
+  if (debugFile != nullptr) {
     va_start(argList, format);
-    vfprintf(fo, format, argList);
+    vfprintf(debugFile, format, argList);
     va_end(argList);
-    fclose(fo);
+
+    if (numDebugMsg > 64) {
+      fclose(debugFile);
+      debugFile = nullptr;
+      numDebugMsg = 0;
+    }
   }
 }
 
