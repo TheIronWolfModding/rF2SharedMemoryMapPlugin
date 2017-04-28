@@ -8,6 +8,8 @@ Author: The Iron Wolf (vleonavicius@hotmail.com)
 
 #include <time.h>
 #include <assert.h>
+#include <stdio.h>                              // for sample output
+#include <share.h>                              // _fsopen share flags
 
 #pragma warning(push)
 #pragma warning(disable : 4263)   // UpdateGraphics virtual incorrect signature
@@ -63,11 +65,18 @@ public:
   
   static int const MAX_ASYNC_RETRIES = 3;
   static int const MAX_PARTICIPANT_SLOTS = 256;
+  static int const BUFFER_IO_BYTES = 2048;
 
   static DebugLevel msDebugOutputLevel;
   static bool msDebugISIInternals;
   static int msMillisRefresh;
   static DWORD msMillisMutexWait;
+
+  // Ouptut files:
+  static FILE* msDebugFile;
+  static FILE* msIsiTelemetryFile;
+  static FILE* msIsiScoringFile;
+
 
   static void LoadConfig();
 
@@ -214,12 +223,8 @@ private:
   void ClearState();
   void ClearTimingsAndCounters();
 
-  // Timings are in microseconds.
-
   // Only used for debugging in Timing level
   double mLastTelUpdate = 0.0;
-
-
   double mLastScoringUpdate = 0.0;
 
   // Frame delta is in seconds.

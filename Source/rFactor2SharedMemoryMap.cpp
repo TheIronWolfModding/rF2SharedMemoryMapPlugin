@@ -75,7 +75,6 @@ Sample consumption:
 #include <math.h>                               // for atan2, sqrt
 
 #include "rFactor2SharedMemoryMap.hpp"          // corresponding header file
-#include <stdio.h>                              // for sample output
 #include <stdlib.h>
 #include <cstddef>                              // offsetof
 
@@ -85,8 +84,12 @@ static double const MICROSECONDS_IN_SECOND = MILLISECONDS_IN_SECOND * MICROSECON
 
 DebugLevel SharedMemoryPlugin::msDebugOutputLevel = DebugLevel::Off;
 bool SharedMemoryPlugin::msDebugISIInternals = false;
-int SharedMemoryPlugin::msMillisRefresh = 32;
 DWORD SharedMemoryPlugin::msMillisMutexWait = 1;
+
+FILE* SharedMemoryPlugin::msDebugFile;
+FILE* SharedMemoryPlugin::msIsiTelemetryFile;
+FILE* SharedMemoryPlugin::msIsiScoringFile;
+
 // Future/V2:  split into telemetry/scoring/rules etc.
 // _Telemetry - possibly no need to interpolate.
 // _Scoring
@@ -224,23 +227,29 @@ void SharedMemoryPlugin::Startup(long version)
   return;
 }
 
-FILE* debugFile = nullptr;
-// TODO: flush based on time, every n seconds?
-int numDebugMsg = 0;
-
 void SharedMemoryPlugin::Shutdown()
 {
   WriteToAllExampleOutputFiles("a", "-SHUTDOWN-");
 
   DEBUG_MSG(DebugLevel::Errors, "Shutting down");
 
-  if (debugFile != nullptr) {
-    fclose(debugFile);
-    debugFile = nullptr;
+  // TODO: Make helper
+  if (msDebugFile != nullptr) {
+    fclose(msDebugFile);
+    msDebugFile = nullptr;
+  }
+
+  if (msIsiTelemetryFile != nullptr) {
+    fclose(msIsiTelemetryFile);
+    msIsiTelemetryFile = nullptr;
+  }
+
+  if (msIsiScoringFile != nullptr) {
+    fclose(msIsiScoringFile);
+    msIsiScoringFile = nullptr;
   }
 
 #if 0
-  ClearState();
 
   // Unmap views and close all handles.
   BOOL ret = FALSE;
@@ -1258,20 +1267,15 @@ void SharedMemoryPlugin::WriteDebugMsg(DebugLevel lvl, const char* const format,
     return;
 
   va_list argList;
-  if (debugFile == nullptr)
-    debugFile = fopen(SharedMemoryPlugin::DEBUG_OUTPUT_FILENAME, "a");
+  if (SharedMemoryPlugin::msDebugFile == nullptr) {
+    SharedMemoryPlugin::msDebugFile = _fsopen(SharedMemoryPlugin::DEBUG_OUTPUT_FILENAME, "a", _SH_DENYNO);
+    setvbuf(SharedMemoryPlugin::msDebugFile, nullptr, _IOFBF, SharedMemoryPlugin::BUFFER_IO_BYTES);
+  }
 
-  ++numDebugMsg;
-  if (debugFile != nullptr) {
+  if (SharedMemoryPlugin::msDebugFile != nullptr) {
     va_start(argList, format);
-    vfprintf(debugFile, format, argList);
+    vfprintf(SharedMemoryPlugin::msDebugFile, format, argList);
     va_end(argList);
-
-    if (numDebugMsg > 64) {
-      fclose(debugFile);
-      debugFile = nullptr;
-      numDebugMsg = 0;
-    }
   }
 }
 
@@ -1281,8 +1285,13 @@ void SharedMemoryPlugin::WriteTelemetryInternals(TelemInfoV01 const& info)
     return;
 
   // Use the incoming data, for now I'll just write some of it to a file to a) make sure it
+  if (SharedMemoryPlugin::msIsiTelemetryFile == nullptr) {
+    SharedMemoryPlugin::msIsiTelemetryFile = _fsopen(SharedMemoryPlugin::INTERNALS_TELEMETRY_FILENAME, "a", _SH_DENYNO);
+    setvbuf(SharedMemoryPlugin::msIsiTelemetryFile, nullptr, _IOFBF, SharedMemoryPlugin::BUFFER_IO_BYTES);
+  }
+
   // is working, and b) explain the coordinate system a little bit (see header for more info)
-  auto fo = fopen(SharedMemoryPlugin::INTERNALS_TELEMETRY_FILENAME, "a");
+  auto fo = SharedMemoryPlugin::msIsiTelemetryFile;
   if (fo != nullptr)
   {
     // Delta time is variable, as we send out the info once per frame
@@ -1380,7 +1389,12 @@ void SharedMemoryPlugin::WriteScoringInternals(ScoringInfoV01 const& info)
     return;
 
   // Note: function is called twice per second now (instead of once per second in previous versions)
-  auto fo = fopen(SharedMemoryPlugin::INTERNALS_SCORING_FILENAME, "a");
+  if (SharedMemoryPlugin::msIsiScoringFile == nullptr) {
+    SharedMemoryPlugin::msIsiScoringFile = _fsopen(SharedMemoryPlugin::INTERNALS_SCORING_FILENAME, "a", _SH_DENYNO);
+    setvbuf(SharedMemoryPlugin::msIsiScoringFile, nullptr, _IOFBF, SharedMemoryPlugin::BUFFER_IO_BYTES);
+  }
+
+  auto fo = SharedMemoryPlugin::msIsiScoringFile;
   if (fo != nullptr)
   {
     // Print general scoring info
