@@ -66,6 +66,7 @@ public:
   static int const MAX_ASYNC_RETRIES = 3;
   static int const MAX_PARTICIPANT_SLOTS = 256;
   static int const BUFFER_IO_BYTES = 2048;
+  static int const DEBUG_IO_FLUSH_PERIOD_SECS = 10;
 
   static DebugLevel msDebugOutputLevel;
   static bool msDebugISIInternals;
@@ -217,11 +218,13 @@ private:
   void UpdateScoringHelper(double const ticksNow, ScoringInfoV01 const& info);
   void SyncBuffers(bool telemetryOnly);
 
-  
-  template <typename BufT>
-  HANDLE MapMemoryFile(char const * const fileName, BufT*& pBuf) const;
   void ClearState();
   void ClearTimingsAndCounters();
+  void TraceSkipTelemetryUpdate(TelemInfoV01 const& info) const;
+  void TraceBeginTelemetryUpdate();
+  void TraceEndTelemetryUpdate(int numVehiclesInChain) const;
+
+private:
 
   // Only used for debugging in Timing level
   double mLastTelUpdate = 0.0;
@@ -248,7 +251,7 @@ private:
   bool mRetryFlip = false;
   int mRetriesLeft = 0;
 
-  bool mParticipantTelemetryUpdated[MAX_PARTICIPANT_SLOTS] = {};
+  bool mParticipantTelemetryUpdated[MAX_PARTICIPANT_SLOTS];
 
   MappedDoubleBuffer<rF2Telemetry> mTelemetry;
 };
