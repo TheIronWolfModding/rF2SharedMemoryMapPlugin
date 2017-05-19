@@ -273,7 +273,7 @@
       <OutputFile>.\Debug/rFactor2SharedMemoryMapPlugin64.bsc</OutputFile>
     </Bscmake>
     <PostBuildEvent>
-      <Command>copy $(Platform)\$(Configuration)\rFactor2SharedMemoryMapPlugin64.dll "e:\Steam\steamapps\common\rFactor 2\Bin64\Plugins\."  &amp;&amp; copy ..\Resources\rf2smmp.ini "e:\Steam\steamapps\common\rFactor 2\UserData\player\."</Command>
+      <Command>copy $(Platform)\$(Configuration)\rFactor2SharedMemoryMapPlugin64.dll "c:\games\Steam\steamapps\common\rFactor 2\Bin64\Plugins\."  &amp;&amp; copy ..\Resources\rf2smmp.ini "c:\games\Steam\steamapps\common\rFactor 2\UserData\player\."</Command>
     </PostBuildEvent>
     <CustomBuildStep>
       <Command>
