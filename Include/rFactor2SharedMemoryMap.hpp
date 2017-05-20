@@ -243,7 +243,7 @@ private:
 
   MappedDoubleBuffer<rF2Telemetry> mTelemetry;
   MappedDoubleBuffer<rF2Scoring> mScoring;
-  MappedDoubleBuffer<rF2Scoring> mExtended;
+  MappedDoubleBuffer<rF2Extended> mExtended;
 };
 
 

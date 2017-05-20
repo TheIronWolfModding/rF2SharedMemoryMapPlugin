@@ -343,7 +343,19 @@ void SharedMemoryPlugin::ClearState()
 
     mTelemetry.ClearState();
     mScoring.ClearState();
+
     mExtended.ClearState();
+
+    // Basically, for extended we need to reinitialize buffers instead of clearing them.
+
+    // Have mExtended member in tracker
+    // Some members will survive restarts, etc
+    // when we need to flush, memcpy mExteded->write, tracker->mExtended
+    // FlipBuffer
+
+    // Extend clear state to take initial buffer value
+    //strcpy_s(mExtended.mpBuf1->mVersion, SHARED_MEMORY_VERSION);
+    //strcpy_s(mExtended.mpBuf2->mVersion, SHARED_MEMORY_VERSION);
   }
 
   ClearTimingsAndCounters();
