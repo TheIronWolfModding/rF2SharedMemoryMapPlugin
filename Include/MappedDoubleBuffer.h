@@ -47,7 +47,7 @@ public:
     return true;
   }
 
-  void ClearState()
+  void ClearState(BuffT const* pInitialContents)
   {
     if (!mMapped) {
       assert(mMapped);
@@ -60,10 +60,16 @@ public:
 
     auto ret = WaitForSingleObject(mhMutex, SharedMemoryPlugin::msMillisMutexWait);
 
-    memset(mpBuf1, 0, sizeof(BuffT));
-    mpBuf1->mCurrentRead = true;
+    if (pInitialContents != nullptr) {
+      memcpy(mpBuf1, pInitialContents, sizeof(BuffT));
+      memcpy(mpBuf2, pInitialContents, sizeof(BuffT));
+    }
+    else {
+      memset(mpBuf1, 0, sizeof(BuffT));
+      memset(mpBuf2, 0, sizeof(BuffT));
+    }
 
-    memset(mpBuf2, 0, sizeof(BuffT));
+    mpBuf1->mCurrentRead = true;
     mpBuf2->mCurrentRead = false;
 
     mpCurReadBuf = mpBuf1;

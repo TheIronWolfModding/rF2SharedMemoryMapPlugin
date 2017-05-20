@@ -19,6 +19,12 @@ Author: The Iron Wolf (vleonavicius@hotmail.com)
 #include "InternalsPlugin.hpp"
 #pragma warning(pop)
 
+#ifdef _AMD64_
+#define PLUGIN_64BIT true
+#else
+#define PLUGIN_64BIT false
+#endif
+
 // Each component can be in [0:99] range.
 #define PLUGIN_VERSION_MAJOR "2.0"
 #define PLUGIN_VERSION_MINOR "0.0"
@@ -85,7 +91,6 @@ public:
   static FILE* msIsiTelemetryFile;
   static FILE* msIsiScoringFile;
 
-
   static void LoadConfig();
 
   // Debug output helpers
@@ -96,14 +101,14 @@ public:
 
 private:
 
-  struct ExtendedStateTracker
+  class ExtendedStateTracker
   {
-    unsigned char mInvulnerable = 0;
-    double mMaxImpactMagnitude = 0.0;
-    double mAccumulatedImpactMagnitude = 0.0;
-    
-    double mLastImpactProcessedET = 0.0;
-    double mLastPitStopET = 0.0;
+  public:
+    ExtendedStateTracker()
+    {
+      strcpy_s(mExtended.mVersion, SHARED_MEMORY_VERSION);
+      mExtended.is64bit = PLUGIN_64BIT;
+    }
 
     void ProcessTelemetryUpdate(TelemInfoV01 const& info)
     {
@@ -111,8 +116,9 @@ private:
         && info.mLastImpactET > mLastImpactProcessedET) { // Is this new impact?
         // Ok, this is either new impact, or first impact since pit stop.
         // Update max and accumulated impact magnitudes.
-        mMaxImpactMagnitude = max(mMaxImpactMagnitude, info.mLastImpactMagnitude);
-        mAccumulatedImpactMagnitude += info.mLastImpactMagnitude;
+        mExtended.mMaxImpactMagnitude = max(mExtended.mMaxImpactMagnitude, info.mLastImpactMagnitude);
+        mExtended.mAccumulatedImpactMagnitude += info.mLastImpactMagnitude;
+
         mLastImpactProcessedET = info.mLastImpactET;
       }
     }
@@ -130,26 +136,25 @@ private:
 
     void ProcessPhysicsOptions(PhysicsOptionsV01& options)
     {
-      mInvulnerable = options.mInvulnerable;
+      DEBUG_MSG(DebugLevel::Errors, "PHYSICS SET");
+      mExtended.mInvulnerable = options.mInvulnerable;
     }
 
     void ResetDamageState()
     {
-      mMaxImpactMagnitude = 0.0;
-      mAccumulatedImpactMagnitude = 0.0;
+      mExtended.mMaxImpactMagnitude = 0.0;
+      mExtended.mAccumulatedImpactMagnitude = 0.0;
+
       mLastImpactProcessedET = 0.0;
       mLastPitStopET = 0.0;
     }
 
-    /*void FlushToBuffer(rF2State* pBuf) const
-    {
-      assert(pBuf != nullptr);
-      assert(pBuf->mCurrentRead != true);
+  public:
+    rF2Extended mExtended = {};
 
-      pBuf->mMaxImpactMagnitude = mMaxImpactMagnitude;
-      pBuf->mAccumulatedImpactMagnitude = mAccumulatedImpactMagnitude;
-      pBuf->mInvulnerable = mInvulnerable;
-    }*/
+  private:
+    double mLastImpactProcessedET = 0.0;
+    double mLastPitStopET = 0.0;
   };
 
 public:
@@ -176,18 +181,16 @@ public:
   bool WantsScoringUpdates() override { return true; }
   void UpdateScoring(ScoringInfoV01 const& info) override; // update plugin with scoring info (approximately five times per second)
 
-  // EXP: MESSAGE BOX INPUT
+  // MESSAGE BOX INPUT
   bool WantsToDisplayMessage(MessageInfoV01& msgInfo) override; // set message and return true
 
-  // EXP: ADDITIONAL GAMEFLOW NOTIFICATIONS
+  // ADDITIONAL GAMEFLOW NOTIFICATIONS
   void ThreadStarted(long type) override; // called just after a primary thread is started (type is 0=multimedia or 1=simulation)
   void ThreadStopping(long type) override;  // called just before a primary thread is stopped (type is 0=multimedia or 1=simulation)
 
-  // EXP: 
   bool WantsTrackRulesAccess() override { return(true); } // change to true in order to read or write track order (during formation or caution laps)
   bool AccessTrackRules(TrackRulesV01& info) override; // current track order passed in; return true if you want to change it (note: this will be called immediately after UpdateScoring() when appropriate)
 
-  // EXP: 
   // PIT MENU INFO (currently, the only way to edit the pit menu is to use this in conjunction with CheckHWControl())
   bool WantsPitMenuAccess() { return(true); } // change to true in order to view pit menu info
   bool AccessPitMenu(PitMenuV01& info) override; // currently, the return code should always be false (because we may allow more direct editing in the future)
@@ -203,10 +206,7 @@ public:
 
 private:
   void UpdateInRealtimeFC(bool inRealTime);
-  void UpdateTelemetryHelper(double const ticksNow, TelemInfoV01 const& info);
-  void UpdateScoringHelper(double const ticksNow, ScoringInfoV01 const& info);
-  void SyncBuffers(bool telemetryOnly);
-
+  void UpdateThreadState(long type, bool starting);
   void ClearState();
   void ClearTimingsAndCounters();
 
@@ -219,31 +219,31 @@ private:
 private:
 
   // Only used for debugging in Timing level
-  double mLastTelemetryUpdateTicks = 0.0;
-  double mLastScoringUpdateTicks = 0.0;
-
-  // Frame delta is in seconds.
-  // TODO: Not sure we need this.
-  double mDelta = 0.0;
+  double mLastTelemetryUpdateMillis = 0.0;
+  double mLastScoringUpdateMillis = 0.0;
 
   // Extended state tracker
   ExtendedStateTracker mExtStateTracker;
 
+  // Elapsed times reported by the game.
   double mLastTelemetryUpdateET = 0.0;
   double mLastScoringUpdateET = 0.0;
 
+  // Telemetry update tracking variables:
+  // If true, we're in progress of collecting telemetry updates for a frame.
   bool mTelemetryUpdateInProgress = false;
   int mCurTelemetryVehicleIndex = 0;
-  int mScoringNumVehicles = 0;
-
-  bool mIsMapped = false;
-  bool mInRealTimeLastFunctionCall = false;
-  
+  // Array used to track if mID telemetry is captured for this update.
   bool mParticipantTelemetryUpdated[MAX_PARTICIPANT_SLOTS];
+  // Number of vehicles last reported by UpdateScoring.
+  int mScoringNumVehicles = 0;
 
   MappedDoubleBuffer<rF2Telemetry> mTelemetry;
   MappedDoubleBuffer<rF2Scoring> mScoring;
   MappedDoubleBuffer<rF2Extended> mExtended;
+
+  // Buffers mapped successfully or not.
+  bool mIsMapped = false;
 };
 
 

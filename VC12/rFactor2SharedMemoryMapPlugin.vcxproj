@@ -282,6 +282,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\Source\rFactor2SharedMemoryMap.cpp" />
+    <ClCompile Include="ISIInternalsDump.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Include\InternalsPlugin.hpp" />
