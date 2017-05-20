@@ -88,24 +88,6 @@ public:
   static void WriteScoringInternals(ScoringInfoV01 const& info);
 
 private:
-  // internal state tracking
-  struct InternalVehScoringInfo
-  {
-    double mLapDist;
-    rF2Vec3 mPos;
-    rF2Vec3 mLocalVel;
-    rF2Vec3 mLocalAccel;
-    rF2Quat mOriQuatBegin;  // Orientation quat at scoring update
-    rF2Quat mOriQuatEnd;    // Estimated orientation quat one second later
-    rF2Vec3 mLocalVelEnd;   // Estimated local speed one second later
-  };
-
-  struct InternalScoringInfo
-  {
-    int mNumVehicles;
-    char mPlrFileName[64];
-    InternalVehScoringInfo mVehicles[rF2State::MAX_VSI_SIZE];
-  };
 
   struct ExtendedStateTracker
   {
@@ -152,7 +134,7 @@ private:
       mLastPitStopET = 0.0;
     }
 
-    void FlushToBuffer(rF2State* pBuf) const
+    /*void FlushToBuffer(rF2State* pBuf) const
     {
       assert(pBuf != nullptr);
       assert(pBuf->mCurrentRead != true);
@@ -160,7 +142,7 @@ private:
       pBuf->mMaxImpactMagnitude = mMaxImpactMagnitude;
       pBuf->mAccumulatedImpactMagnitude = mAccumulatedImpactMagnitude;
       pBuf->mInvulnerable = mInvulnerable;
-    }
+    }*/
   };
 
 public:
@@ -246,8 +228,7 @@ private:
 
   bool mIsMapped = false;
   bool mInRealTimeLastFunctionCall = false;
-  InternalScoringInfo mScoringInfo = {};
-
+  
   bool mRetryFlip = false;
   int mRetriesLeft = 0;
 

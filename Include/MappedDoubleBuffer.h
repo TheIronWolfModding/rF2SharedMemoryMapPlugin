@@ -51,11 +51,11 @@ public:
 
     auto ret = WaitForSingleObject(mhMutex, SharedMemoryPlugin::msMillisMutexWait);
 
-    memset(mpBuf1, 0, sizeof(rF2State));
+    memset(mpBuf1, 0, sizeof(BuffT));
     strcpy_s(mpBuf1->mVersion, SHARED_MEMORY_VERSION);
     mpBuf1->mCurrentRead = true;
 
-    memset(mpBuf2, 0, sizeof(rF2State));
+    memset(mpBuf2, 0, sizeof(BuffT));
     strcpy_s(mpBuf2->mVersion, SHARED_MEMORY_VERSION);
     mpBuf2->mCurrentRead = false;
 

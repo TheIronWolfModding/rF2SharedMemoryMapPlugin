@@ -21,6 +21,9 @@ Plugin comes with rF2SMMonitor program that is useful for visualization of share
   * Synchronized: use mutex to make sure buffer is not overwritten. This use requires full understanding of how plugin works, and could cause FPS drop if not done right.  See `Monitor\rF2SMMonitor\rF2SMMonitor\MainForm.cs MainUpdate` method for example of use in C#
   * Basic: If 15FPS is enough, and you can tolerate partially overwritten buffer once in a while, simply read one buffer and don't bother with double buffering or mutex.
 
+## Support this project
+If you would like to support this project, you can donate [here.](http://thecrewchief.org/misc.php?do=donate)
+
 # Release history
 
 3/22/2017 - v1.1.0.1

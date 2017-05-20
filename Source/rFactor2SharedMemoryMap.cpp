@@ -173,13 +173,8 @@ void SharedMemoryPlugin::Startup(long version)
     DEBUG_MSG(DebugLevel::Errors, "Files mapped successfully");
 
     if (SharedMemoryPlugin::msDebugOutputLevel != DebugLevel::Off) {
-      auto size = static_cast<int>(sizeof(rF2State));
       char sizeSz[20] = {};
-      _itoa_s(size, sizeSz, 10);
-      DEBUG_MSG3(DebugLevel::Errors, "Size of state buffers:", sizeSz, "bytes each.");
-
-      sizeSz[0] = '\0';
-      size = static_cast<int>(sizeof(rF2Telemetry));
+      auto size = static_cast<int>(sizeof(rF2Telemetry));
       _itoa_s(size, sizeSz, 10);
       DEBUG_MSG3(DebugLevel::Errors, "Size of telemetry buffers:", sizeSz, "bytes each.");
     }
@@ -361,7 +356,7 @@ void SharedMemoryPlugin::ClearState()
   }
 
   ClearTimingsAndCounters();
-  mScoringInfo = {};
+  //mScoringInfo = {};
   mExtStateTracker.ResetDamageState();
 }
 
