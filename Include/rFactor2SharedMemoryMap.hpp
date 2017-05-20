@@ -52,13 +52,16 @@ enum DebugLevel
 class SharedMemoryPlugin : public InternalsPluginV07  // REMINDER: exported function GetPluginVersion() should return 1 if you are deriving from this InternalsPluginV01, 2 for InternalsPluginV02, etc.
 {
 public:
-  static char const* const MM_FILE_NAME1;
-  static char const* const MM_FILE_NAME2;
-  static char const* const MM_FILE_ACCESS_MUTEX;
   static char const* const MM_TELEMETRY_FILE_NAME1;
   static char const* const MM_TELEMETRY_FILE_NAME2;
   static char const* const MM_TELEMETRY_FILE_ACCESS_MUTEX;
+
+  static char const* const MM_SCORING_FILE_NAME1;
+  static char const* const MM_SCORING_FILE_NAME2;
+  static char const* const MM_SCORING_FILE_ACCESS_MUTEX;
+
   static char const* const CONFIG_FILE_REL_PATH;
+
   static char const* const INTERNALS_TELEMETRY_FILENAME;
   static char const* const INTERNALS_SCORING_FILENAME;
   static char const* const DEBUG_OUTPUT_FILENAME;
@@ -229,12 +232,10 @@ private:
   bool mIsMapped = false;
   bool mInRealTimeLastFunctionCall = false;
   
-  bool mRetryFlip = false;
-  int mRetriesLeft = 0;
-
   bool mParticipantTelemetryUpdated[MAX_PARTICIPANT_SLOTS];
 
   MappedDoubleBuffer<rF2Telemetry> mTelemetry;
+  MappedDoubleBuffer<rF2Scoring> mScoring;
 };
 
 

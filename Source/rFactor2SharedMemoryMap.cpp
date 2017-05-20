@@ -98,12 +98,14 @@ FILE* SharedMemoryPlugin::msIsiScoringFile;
 // _Extended
 // _Rules
 // _Weather
-char const* const SharedMemoryPlugin::MM_FILE_NAME1 = "$rFactor2SMMPBuffer1$";
-char const* const SharedMemoryPlugin::MM_FILE_NAME2 = "$rFactor2SMMPBuffer2$";
-char const* const SharedMemoryPlugin::MM_FILE_ACCESS_MUTEX = R"(Global\$rFactor2SMMPMutex)";
 char const* const SharedMemoryPlugin::MM_TELEMETRY_FILE_NAME1 = "$rFactor2SMMP_TelemetryBuffer1$";
 char const* const SharedMemoryPlugin::MM_TELEMETRY_FILE_NAME2 = "$rFactor2SMMP_TelemetryBuffer2$";
 char const* const SharedMemoryPlugin::MM_TELEMETRY_FILE_ACCESS_MUTEX = R"(Global\$rFactor2SMMP_TelemeteryMutex)";
+
+char const* const SharedMemoryPlugin::MM_SCORING_FILE_NAME1 = "$rFactor2SMMP_ScoringBuffer1$";
+char const* const SharedMemoryPlugin::MM_SCORING_FILE_NAME2 = "$rFactor2SMMP_ScoringBuffer2$";
+char const* const SharedMemoryPlugin::MM_SCORING_FILE_ACCESS_MUTEX = R"(Global\$rFactor2SMMP_ScoringMutex)";
+
 char const* const SharedMemoryPlugin::CONFIG_FILE_REL_PATH = R"(\UserData\player\rf2smmp.ini)";  // Relative to rF2 root.
 char const* const SharedMemoryPlugin::INTERNALS_TELEMETRY_FILENAME = "RF2SMMP_InternalsTelemetryOutput.txt";
 char const* const SharedMemoryPlugin::INTERNALS_SCORING_FILENAME = "RF2SMMP_InternalsScoringOutput.txt";
@@ -134,7 +136,11 @@ SharedMemoryPlugin::SharedMemoryPlugin()
   : mTelemetry(SharedMemoryPlugin::MAX_ASYNC_RETRIES
      , SharedMemoryPlugin::MM_TELEMETRY_FILE_NAME1
      , SharedMemoryPlugin::MM_TELEMETRY_FILE_NAME2
-     , SharedMemoryPlugin::MM_TELEMETRY_FILE_ACCESS_MUTEX)
+     , SharedMemoryPlugin::MM_TELEMETRY_FILE_ACCESS_MUTEX),
+    mScoring(0 /*maxRetries*/
+      , SharedMemoryPlugin::MM_SCORING_FILE_NAME1
+      , SharedMemoryPlugin::MM_SCORING_FILE_NAME2
+      , SharedMemoryPlugin::MM_SCORING_FILE_ACCESS_MUTEX)
 {
 }
 
@@ -177,6 +183,11 @@ void SharedMemoryPlugin::Startup(long version)
       auto size = static_cast<int>(sizeof(rF2Telemetry));
       _itoa_s(size, sizeSz, 10);
       DEBUG_MSG3(DebugLevel::Errors, "Size of telemetry buffers:", sizeSz, "bytes each.");
+
+      sizeSz[0] = '\0';
+      size = static_cast<int>(sizeof(rF2Scoring));
+      _itoa_s(size, sizeSz, 10);
+      DEBUG_MSG3(DebugLevel::Errors, "Size of scoring buffers:", sizeSz, "bytes each.");
     }
   }
 
@@ -257,6 +268,9 @@ void SharedMemoryPlugin::Shutdown()
   mTelemetry.ClearState();
   mTelemetry.ReleaseResources();
 
+  mScoring.ClearState();
+  mScoring.ReleaseResources();
+
   mIsMapped = false;
 }
 
@@ -268,8 +282,10 @@ void SharedMemoryPlugin::ClearTimingsAndCounters()
 
   mLastTelemetryUpdateET = 0.0;
   mLastScoringUpdateET = 0.0;
+
   mTelemetryUpdateInProgress = false;
   mCurTelemetryVehicleIndex = 0;
+
   mScoringNumVehicles = 0;
 
   memset(mParticipantTelemetryUpdated, 0, sizeof(mParticipantTelemetryUpdated));
@@ -353,10 +369,11 @@ void SharedMemoryPlugin::ClearState()
 #endif
 
     mTelemetry.ClearState();
+    mScoring.ClearState();
   }
 
   ClearTimingsAndCounters();
-  //mScoringInfo = {};
+
   mExtStateTracker.ResetDamageState();
 }
 
@@ -410,7 +427,7 @@ void SharedMemoryPlugin::UpdateInRealtimeFC(bool inRealTime)
   }
 }
 
-
+// TODO: extended state
 void SharedMemoryPlugin::EnterRealtime()
 {
   // start up timer every time we enter realtime
@@ -421,7 +438,7 @@ void SharedMemoryPlugin::EnterRealtime()
   mInRealTimeLastFunctionCall = true;
 }
 
-
+// TODO: extended state
 void SharedMemoryPlugin::ExitRealtime()
 {
   WriteToAllExampleOutputFiles("a", "---EXITREALTIME---");
@@ -455,27 +472,19 @@ double TicksNow() {
 }
 
 /*
-rF2 sends telemetry updates for each vehicle.  The problem is we do not know when all vehicles received an update.
+rF2 sends telemetry updates for each vehicle.  The problem is that I do not know when all vehicles received an update.
 Below I am trying to flip buffers per-frame, where frame means all vehicles received telemetry update.
 
 I am detecting frame end in two ways:
-* Count vehicles from mID == 0 to mScoringNumVehicles.
-* As a backup for case where mID == 0 drops out of the session, I use mParticipantTelemetryUpdated index to detect loop.
+  * Count vehicles from mID == 0 to mScoringNumVehicles.
+  * As a backup for case where mID == 0 drops out of the session, I use mParticipantTelemetryUpdated index to detect the loop.
 
-There's one more check that can be done - 10ms since update chain start will also work, but as fun paranoid excercise I am trying
-to avoid QPC whatsoever.
+There's one more check that can be done - 10ms since update chain start will also work, but I am trying to avoid call to QPC.
 
 Note that I am seeing different ET for vehicles in frame (typically no more than 2 values), no idea WTF that is.
 */
 void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
 {
-  /*char msg[512] = {};
-  sprintf(msg, "mID:%d mElapsedTime:%f mNumVehicles:%d x:%f, z:%f", info.mID, info.mElapsedTime, mScoringInfo, info.mPos.x, info.mPos.z);
-  DEBUG_MSG(DebugLevel::Errors, msg);
-
-  if (info.mID != 0)
-    return;*/
-
   WriteTelemetryInternals(info);
   
   if (!mIsMapped)
@@ -575,264 +584,12 @@ skipUpdate:
       DEBUG_MSG(DebugLevel::Timing, "Force flip due to retry limit exceeded.");
     }
   }
-
-    /*
-    // Delta will have to be capped to some max value (refresh rate)?
-    auto const ticksNow = TicksNow();
-    auto const delta = ticksNow - mLastTelUpdate;
-
-    if (delta >= ((SharedMemoryPlugin::msMillisRefresh - 5) * MICROSECONDS_IN_MILLISECOND)) {
-      mLastTelUpdate = ticksNow;
-
-      // Update write buffer with telemetry.
-      UpdateTelemetryHelper(ticksNow, info);
-
-      // Try making write buffer the read buffer.
-      TryFlipBuffers(BufferType::Telemetry);
-
-      // If flip failed (some client holds lock), retry on next call.
-      if (mRetryFlip) {
-        mRetriesLeft = MAX_ASYNC_RETRIES;
-        DEBUG_INT2(DebugLevel::Synchronization, "Buffer flip failed, retries left:", mRetriesLeft);
-      }
-    }
-    else if (mRetryFlip) {
-      if (mRetriesLeft > 0) {
-        // If we're in retry mode and we still have retries allowed, try again
-        TryFlipBuffers(BufferType::Telemetry);
-      
-        if (mRetryFlip) {
-          --mRetriesLeft;
-          DEBUG_INT2(DebugLevel::Synchronization, "Buffer flip failed, retries left:", mRetriesLeft);
-        }
-        else 
-          DEBUG_MSG(DebugLevel::Synchronization, "Buffer flip retry succeeded.");
-      }
-      else {
-        // Otherwise, update synchronously.
-        DEBUG_MSG(DebugLevel::Synchronization, "Retries failed, updating synchronously.");
-        FlipBuffers(BufferType::Telemetry);
-      }
-    }*/
-
 }
-
 
 
 void SharedMemoryPlugin::UpdateTelemetryHelper(double const ticksNow, TelemInfoV01 const& info)
 {
   mDelta = (ticksNow - mLastScoringUpdate) / MICROSECONDS_IN_SECOND;
-#if 0
-  auto pBuf = mpBufCurWrite;
-  assert(!mpBufCurWrite->mCurrentRead);
-
-  DEBUG_FLOAT2(DebugLevel::Verbose, "Telemetry ticks:", ticksNow);
-  if (pBuf == mpBuf1)
-    DEBUG_FLOAT2(DebugLevel::Timing, "Update Telemetry Buffer 1:", mDelta);
-  else
-    DEBUG_FLOAT2(DebugLevel::Timing, "Update Telemetry Buffer 2:", mDelta);
-
-  //
-  // TelemInfoV01
-  //
-
-  // Time
-  pBuf->mID = info.mID;
-  pBuf->mDeltaTime = mDelta;
-  pBuf->mElapsedTime = info.mElapsedTime;
-  pBuf->mLapNumber = info.mLapNumber;
-  pBuf->mLapStartET = info.mLapStartET;
-  
-  strcpy_s(pBuf->mVehicleName, info.mVehicleName);
-  strcpy_s(pBuf->mTrackName, info.mTrackName);
-
-  // Position and derivatives
-  pBuf->mPos = { info.mPos.x, info.mPos.y, info.mPos.z };
-  pBuf->mLocalVel = { info.mLocalVel.x, info.mLocalVel.y, info.mLocalVel.z };
-  pBuf->mLocalAccel = { info.mLocalAccel.x, info.mLocalAccel.y, info.mLocalAccel.z };
-
-  pBuf->mSpeed = sqrt((info.mLocalVel.x * info.mLocalVel.x) +
-    (info.mLocalVel.y * info.mLocalVel.y) +
-    (info.mLocalVel.z * info.mLocalVel.z));
-
-  // Orientation and derivatives
-  for (int row = 0; row < OriMat::NumRows; ++row) {
-    pBuf->mOri[row] = { info.mOri[row].x, info.mOri[row].y, info.mOri[row].z };
-  }
-  
-  pBuf->mLocalRot = { info.mLocalRot.x, info.mLocalRot.y, info.mLocalRot.z };
-  pBuf->mLocalRotAccel = { info.mLocalRotAccel.x, info.mLocalRotAccel.y, info.mLocalRotAccel.z };
-  
-  // Vehicle status
-  pBuf->mGear = info.mGear;
-  pBuf->mEngineRPM = info.mEngineRPM;
-  pBuf->mEngineWaterTemp = info.mEngineWaterTemp;
-  pBuf->mEngineOilTemp = info.mEngineOilTemp;
-  pBuf->mClutchRPM = info.mClutchRPM;
-
-  // Driver input
-  pBuf->mUnfilteredThrottle = info.mUnfilteredThrottle;
-  pBuf->mUnfilteredBrake = info.mUnfilteredBrake;
-  pBuf->mUnfilteredSteering = info.mUnfilteredSteering;
-  pBuf->mUnfilteredClutch = info.mUnfilteredClutch;
-
-  // Filtered input
-  pBuf->mFilteredThrottle = info.mFilteredThrottle;
-  pBuf->mFilteredBrake = info.mFilteredBrake;
-  pBuf->mFilteredSteering = info.mFilteredSteering;
-  pBuf->mFilteredClutch = info.mFilteredClutch;
-
-  // Misc
-  pBuf->mSteeringShaftTorque = info.mSteeringShaftTorque;
-  pBuf->mFront3rdDeflection = info.mFront3rdDeflection;
-  pBuf->mRear3rdDeflection = info.mRear3rdDeflection;
-
-  // Aerodynamics
-  pBuf->mFrontWingHeight = info.mFrontWingHeight;
-  pBuf->mFrontRideHeight = info.mFrontRideHeight;
-  pBuf->mRearRideHeight = info.mRearRideHeight;
-  pBuf->mDrag = info.mDrag;
-  pBuf->mFrontDownforce = info.mFrontDownforce;
-  pBuf->mRearDownforce = info.mRearDownforce;
-
-  // State/damage info
-  pBuf->mFuel= info.mFuel;
-  pBuf->mEngineMaxRPM = info.mEngineMaxRPM;
-  pBuf->mScheduledStops = info.mScheduledStops;
-  pBuf->mOverheating = info.mOverheating;
-  pBuf->mDetached = info.mDetached;
-  pBuf->mHeadlights = info.mHeadlights;
-  memcpy(pBuf->mDentSeverity, info.mDentSeverity, sizeof(pBuf->mDentSeverity));
-  pBuf->mLastImpactET = info.mLastImpactET;
-  pBuf->mLastImpactMagnitude = info.mLastImpactMagnitude;
-  pBuf->mLastImpactPos = { info.mLastImpactPos.x, info.mLastImpactPos.y, info.mLastImpactPos.z };
-
-  // Expanded
-  pBuf->mEngineTorque = info.mEngineTorque;
-  pBuf->mCurrentSector = info.mCurrentSector;
-  pBuf->mSpeedLimiter = info.mSpeedLimiter;
-  pBuf->mMaxGears = info.mMaxGears;
-  pBuf->mFrontTireCompoundIndex = info.mFrontTireCompoundIndex;
-  pBuf->mRearTireCompoundIndex = info.mRearTireCompoundIndex;
-  pBuf->mFuelCapacity = info.mFuelCapacity;
-  pBuf->mFrontFlapActivated = info.mFrontFlapActivated;
-  pBuf->mRearFlapActivated = info.mRearFlapActivated;
-  pBuf->mRearFlapLegalStatus = info.mRearFlapLegalStatus;
-  pBuf->mIgnitionStarter = info.mIgnitionStarter;
-
-  memcpy(pBuf->mFrontTireCompoundName, info.mFrontTireCompoundName, sizeof(pBuf->mFrontTireCompoundName));
-  memcpy(pBuf->mRearTireCompoundName, info.mRearTireCompoundName, sizeof(pBuf->mRearTireCompoundName));
-
-  pBuf->mSpeedLimiterAvailable = info.mSpeedLimiterAvailable;
-  pBuf->mAntiStallActivated = info.mAntiStallActivated;
-  pBuf->mVisualSteeringWheelRange = info.mVisualSteeringWheelRange;
-
-  pBuf->mRearBrakeBias = info.mRearBrakeBias;
-  pBuf->mTurboBoostPressure = info.mTurboBoostPressure;
-  memcpy(pBuf->mPhysicsToGraphicsOffset, info.mPhysicsToGraphicsOffset, sizeof(pBuf->mPhysicsToGraphicsOffset));
-  pBuf->mPhysicalSteeringWheelRange = info.mPhysicalSteeringWheelRange;
-
-  // TelemWheelV01
-  for (int i = 0; i < 4; ++i) {
-    pBuf->mWheels[i].mSuspensionDeflection = info.mWheel[i].mSuspensionDeflection;
-    pBuf->mWheels[i].mRideHeight = info.mWheel[i].mRideHeight;
-    pBuf->mWheels[i].mSuspForce = info.mWheel[i].mSuspForce;
-    pBuf->mWheels[i].mBrakeTemp = info.mWheel[i].mBrakeTemp;
-    pBuf->mWheels[i].mBrakePressure = info.mWheel[i].mBrakePressure;
-
-    pBuf->mWheels[i].mRotation = info.mWheel[i].mRotation;
-    pBuf->mWheels[i].mLateralPatchVel = info.mWheel[i].mLateralPatchVel;
-    pBuf->mWheels[i].mLongitudinalPatchVel = info.mWheel[i].mLongitudinalPatchVel;
-    pBuf->mWheels[i].mLateralGroundVel = info.mWheel[i].mLateralGroundVel;
-    pBuf->mWheels[i].mLongitudinalGroundVel = info.mWheel[i].mLongitudinalGroundVel;
-    pBuf->mWheels[i].mCamber = info.mWheel[i].mCamber;
-    pBuf->mWheels[i].mLateralForce = info.mWheel[i].mLateralForce;
-    pBuf->mWheels[i].mLongitudinalForce = info.mWheel[i].mLongitudinalForce;
-    pBuf->mWheels[i].mTireLoad = info.mWheel[i].mTireLoad;
-
-    pBuf->mWheels[i].mGripFract = info.mWheel[i].mGripFract;
-    pBuf->mWheels[i].mPressure = info.mWheel[i].mPressure;
-    memcpy(pBuf->mWheels[i].mTemperature, info.mWheel[i].mTemperature, sizeof(pBuf->mWheels[i].mTemperature));
-    pBuf->mWheels[i].mWear = info.mWheel[i].mWear;
-    strcpy_s(pBuf->mWheels[i].mTerrainName, info.mWheel[i].mTerrainName);
-    pBuf->mWheels[i].mSurfaceType = info.mWheel[i].mSurfaceType;
-    pBuf->mWheels[i].mFlat = info.mWheel[i].mFlat;
-    pBuf->mWheels[i].mDetached = info.mWheel[i].mDetached;
-
-    pBuf->mWheels[i].mVerticalTireDeflection = info.mWheel[i].mVerticalTireDeflection;
-    pBuf->mWheels[i].mWheelYLocation = info.mWheel[i].mWheelYLocation;
-    pBuf->mWheels[i].mToe = info.mWheel[i].mToe;
-
-    pBuf->mWheels[i].mTireCarcassTemperature = info.mWheel[i].mTireCarcassTemperature;
-    memcpy(pBuf->mWheels[i].mTireInnerLayerTemperature, info.mWheel[i].mTireInnerLayerTemperature, sizeof(pBuf->mWheels[i].mTireInnerLayerTemperature));
-  }
-
-  double interTicksBegin = 0.0;
-  // NOTE: makes sense only with QPC
-  if (msDebugOutputLevel >= DebugLevel::Perf)
-    interTicksBegin = TicksNow();
-
-  //
-  // Interpolation of scoring info
-  //
-  // In rF2 scoring update happens roughly every 200ms,
-  // so only interpolate if we're approximately within that time delta.
-  // Longer delta means a pause or a hiccup, and interpolation will go
-  // through the roof if there are no bounds.
-  //
-  if (mDelta > 0.0 && mDelta < 0.22) {
-    // ScoringInfoV01
-    for (int i = 0; i < rF2State::MAX_VSI_SIZE; ++i) {
-      if (i < mScoringInfo.mNumVehicles) {
-        // nlerp between begin and end orientations.
-        auto const nlerpQuat = rF2Quat::Nlerp(
-          mScoringInfo.mVehicles[i].mOriQuatBegin,
-          mScoringInfo.mVehicles[i].mOriQuatEnd,
-          mDelta);
-
-        // Calucalte estimated offset.
-        rF2Vec3 offset = mScoringInfo.mVehicles[i].mLocalVelEnd * mDelta;
-        offset.Rotate(nlerpQuat);
-
-        // Calculate estimated new position.
-        pBuf->mVehicles[i].mPos = mScoringInfo.mVehicles[i].mPos + offset;
-
-        // Calculate estimated orientation, speed and lap distance.
-        auto const euler = nlerpQuat.EulerFromQuat();
-
-        // Don't know why I need to negate here to match rF1 math, can be mistake either here or there.
-        pBuf->mVehicles[i].mYaw = -euler.yaw;
-        pBuf->mVehicles[i].mPitch = euler.pitch;
-        pBuf->mVehicles[i].mRoll = euler.roll;
-
-        // Calculate estimated speed and advance
-        auto const localVelEst = mScoringInfo.mVehicles[i].mLocalVel + (mScoringInfo.mVehicles[i].mLocalAccel * mDelta);
-
-        // Verify.
-        pBuf->mVehicles[i].mSpeed = sqrt((localVelEst.x * localVelEst.x) + (localVelEst.y * localVelEst.y) + (localVelEst.z * localVelEst.z));
-        pBuf->mVehicles[i].mLapDist = mScoringInfo.mVehicles[i].mLapDist - localVelEst.z * mDelta;
-
-        continue;
-      }
-    }
-
-    // Update Extended state.
-    mExtStateTracker.FlushToBuffer(pBuf);
-
-    if (msDebugOutputLevel >= DebugLevel::Perf) {
-      static double interTicksTotal = 0.0;
-      static int interUpdates = 1;
-
-      double const interTicks = TicksNow() - interTicksBegin;
-      interTicksTotal += interTicks;
-      DEBUG_FLOAT2(DebugLevel::Perf, "Interpolation time elapsed: ", interTicks);
-      DEBUG_FLOAT2(DebugLevel::Perf, "Avg interpolation time: ", interTicksTotal / interUpdates);
-
-      ++interUpdates;
-    }
-
-  }
-#endif
 }
 
 
@@ -883,171 +640,6 @@ void SharedMemoryPlugin::UpdateScoringHelper(double const ticksNow, ScoringInfoV
     for (int row = 0; row < OriMat::NumRows; ++row)
       pBuf->mOri[row] = { info.mVehicle[0].mOri[row].x, info.mVehicle[0].mOri[row].y, info.mVehicle[0].mOri[row].z };
   }
-
-  ////////////////////////////////////////////////////
-  // Update internal state (needed for interpolation).
-  ////////////////////////////////////////////////////
-  mScoringInfo.mNumVehicles = info.mNumVehicles;
-  strcpy(mScoringInfo.mPlrFileName, info.mPlrFileName);
-  for (int i = 0; i < info.mNumVehicles; ++i) {
-    mScoringInfo.mVehicles[i].mLapDist = info.mVehicle[i].mLapDist;
-    mScoringInfo.mVehicles[i].mPos = { info.mVehicle[i].mPos.x, info.mVehicle[i].mPos.y, info.mVehicle[i].mPos.z };
-    mScoringInfo.mVehicles[i].mLocalVel = { info.mVehicle[i].mLocalVel.x, info.mVehicle[i].mLocalVel.y, info.mVehicle[i].mLocalVel.z };
-    mScoringInfo.mVehicles[i].mLocalAccel = { info.mVehicle[i].mLocalAccel.x, info.mVehicle[i].mLocalAccel.y, info.mVehicle[i].mLocalAccel.z };
-
-    // Calculate nlerp begin/end quaternions for this vehicle.
-    rF2Quat& oriQuatBegin = mScoringInfo.mVehicles[i].mOriQuatBegin;
-    oriQuatBegin.ConvertMatToQuat(info.mVehicle[i].mOri);
-    oriQuatBegin.Normalize();
-
-    // Smoothing factors help with keeping average delta between real (telemetry) positions
-    // and interpolated positions smaller, and were found experimentally.
-    // Small accceleration factors are probably helpful due to acceleration not being linear (m/s^2).
-    static auto const RF2_SHARED_MEMORY_ROT_ACC_SMOOTH_FACTOR = 0.01;
-    static auto const RF2_SHARED_MEMORY_VEL_ACC_SMOOTH_FACTOR = 0.03;
-    static auto const RF2_SHARED_MEMORY_ROT_SMOOTH_FACTOR = 0.3;
-
-    // Calculate estimated local rotation and speed in one second.
-    rF2Vec3 localRot(info.mVehicle[i].mLocalRot);
-    rF2Vec3 const localRotAccel(info.mVehicle[i].mLocalRotAccel);
-    localRot += localRotAccel * RF2_SHARED_MEMORY_ROT_ACC_SMOOTH_FACTOR;
-
-    rF2Vec3 localVel(info.mVehicle[i].mLocalVel);
-    rF2Vec3 const localAccel(info.mVehicle[i].mLocalAccel);
-    localVel += localAccel * RF2_SHARED_MEMORY_VEL_ACC_SMOOTH_FACTOR;
-
-    // Save end velocity for offset calculation during interpolation.
-    mScoringInfo.mVehicles[i].mLocalVelEnd = localVel;
-
-    // Calculate estimated world rotation in one second.
-    rF2Vec3 wRot = localRot * RF2_SHARED_MEMORY_ROT_SMOOTH_FACTOR;
-    wRot.Rotate(oriQuatBegin);
-
-    // Calculate estimated rotation quaternion.
-    rF2Quat rotQuat;
-    rotQuat.ConvertEulerToQuat(wRot.x, wRot.y, wRot.z);
-    rotQuat.Normalize();
-
-    // Caluclate nlerp end quaternion.
-    rF2Quat& oriQuatEnd = mScoringInfo.mVehicles[i].mOriQuatEnd;
-    oriQuatEnd = oriQuatBegin;
-    oriQuatEnd *= rotQuat;
-    oriQuatEnd.Normalize();
-  }
-
-  //////////////////////////////////
-  // ScoringInfoV01
-  //////////////////////////////////
-  pBuf->mSession = info.mSession;
-  pBuf->mCurrentET = info.mCurrentET;
-  pBuf->mEndET = info.mEndET;
-  pBuf->mMaxLaps = info.mMaxLaps;
-  pBuf->mLapDist = info.mLapDist;
-  pBuf->mNumVehicles = info.mNumVehicles;
-
-  pBuf->mGamePhase = info.mGamePhase;
-  pBuf->mYellowFlagState = info.mYellowFlagState;
-
-  memcpy(pBuf->mSectorFlag, info.mSectorFlag, sizeof(pBuf->mSectorFlag));
-  pBuf->mStartLight = info.mStartLight;
-  pBuf->mNumRedLights = info.mNumRedLights;
-  pBuf->mInRealtimeSU = info.mInRealtime;
-
-  // Also set mInRealtimeFC.  On session restart, this value is lost.
-  pBuf->mInRealtimeFC = mInRealTimeLastFunctionCall;
-
-  strcpy_s(pBuf->mPlayerName, info.mPlayerName);
-  strcpy_s(pBuf->mPlrFileName, info.mPlrFileName);
-
-  // Weather
-  pBuf->mDarkCloud = info.mDarkCloud;
-  pBuf->mRaining = info.mRaining;
-  pBuf->mAmbientTemp = info.mAmbientTemp;
-  pBuf->mTrackTemp = info.mTrackTemp;
-  pBuf->mWind = { info.mWind.x, info.mWind.y, info.mWind.z };
-  pBuf->mMinPathWetness = info.mMinPathWetness;
-  pBuf->mMaxPathWetness = info.mMaxPathWetness;
-
-  ///////////////////////////////////////
-  // VehicleScoringInfoV01
-  ///////////////////////////////////////
-  for (int i = 0; i < info.mNumVehicles; ++i) {
-    pBuf->mVehicles[i].mID = info.mVehicle[i].mID;
-    strcpy_s(pBuf->mVehicles[i].mDriverName, info.mVehicle[i].mDriverName);
-    strcpy_s(pBuf->mVehicles[i].mVehicleName, info.mVehicle[i].mVehicleName);
-    pBuf->mVehicles[i].mTotalLaps = info.mVehicle[i].mTotalLaps;
-    pBuf->mVehicles[i].mSector = info.mVehicle[i].mSector;
-    pBuf->mVehicles[i].mFinishStatus = info.mVehicle[i].mFinishStatus;
-    pBuf->mVehicles[i].mLapDist = info.mVehicle[i].mLapDist;
-    pBuf->mVehicles[i].mPathLateral = info.mVehicle[i].mPathLateral;
-    pBuf->mVehicles[i].mTrackEdge = info.mVehicle[i].mTrackEdge;
-
-    pBuf->mVehicles[i].mBestSector1 = info.mVehicle[i].mBestSector1;
-    pBuf->mVehicles[i].mBestSector2 = info.mVehicle[i].mBestSector2;
-    pBuf->mVehicles[i].mBestLapTime = info.mVehicle[i].mBestLapTime;
-    pBuf->mVehicles[i].mLastSector1 = info.mVehicle[i].mLastSector1;
-    pBuf->mVehicles[i].mLastSector2 = info.mVehicle[i].mLastSector2;
-    pBuf->mVehicles[i].mLastLapTime = info.mVehicle[i].mLastLapTime;
-    pBuf->mVehicles[i].mCurSector1 = info.mVehicle[i].mCurSector1;
-    pBuf->mVehicles[i].mCurSector2 = info.mVehicle[i].mCurSector2;
-
-    pBuf->mVehicles[i].mNumPitstops = info.mVehicle[i].mNumPitstops;
-    pBuf->mVehicles[i].mNumPenalties = info.mVehicle[i].mNumPenalties;
-    pBuf->mVehicles[i].mIsPlayer = info.mVehicle[i].mIsPlayer;
-
-    pBuf->mVehicles[i].mControl = info.mVehicle[i].mControl;
-    pBuf->mVehicles[i].mInPits = info.mVehicle[i].mInPits;
-    pBuf->mVehicles[i].mPlace = info.mVehicle[i].mPlace;
-    strcpy_s(pBuf->mVehicles[i].mVehicleClass, info.mVehicle[i].mVehicleClass);
-
-    // Dash Indicators
-    pBuf->mVehicles[i].mTimeBehindNext = info.mVehicle[i].mTimeBehindNext;
-    pBuf->mVehicles[i].mLapsBehindNext = info.mVehicle[i].mLapsBehindNext;
-    pBuf->mVehicles[i].mTimeBehindLeader = info.mVehicle[i].mTimeBehindLeader;
-    pBuf->mVehicles[i].mLapsBehindLeader = info.mVehicle[i].mLapsBehindLeader;
-    pBuf->mVehicles[i].mLapStartET = info.mVehicle[i].mLapStartET;
-
-    // Position and derivatives
-    pBuf->mVehicles[i].mPos = { info.mVehicle[i].mPos.x, info.mVehicle[i].mPos.y, info.mVehicle[i].mPos.z };
-
-#ifdef DEBUG_INTERPOLATION
-    pBuf->mVehicles[i].mPosScoring = { info.mVehicle[i].mPos.x, info.mVehicle[i].mPos.y, info.mVehicle[i].mPos.z };
-    pBuf->mVehicles[i].mLocalVel = { info.mVehicle[i].mLocalVel.x, info.mVehicle[i].mLocalVel.y, info.mVehicle[i].mLocalVel.z };
-    pBuf->mVehicles[i].mLocalAccel = { info.mVehicle[i].mLocalAccel.x, info.mVehicle[i].mLocalAccel.y, info.mVehicle[i].mLocalAccel.z };
-    pBuf->mVehicles[i].mLocalRot = { info.mVehicle[i].mLocalRot.x, info.mVehicle[i].mLocalRot.y, info.mVehicle[i].mLocalRot.z };
-    pBuf->mVehicles[i].mLocalRotAccel = { info.mVehicle[i].mLocalRotAccel.x, info.mVehicle[i].mLocalRotAccel.y, info.mVehicle[i].mLocalRotAccel.z };
-    pBuf->mVehicles[i].mOri[RowX] = { info.mVehicle[i].mOri[RowX].x, info.mVehicle[i].mOri[RowX].y, info.mVehicle[i].mOri[RowX].z };
-    pBuf->mVehicles[i].mOri[RowY] = { info.mVehicle[i].mOri[RowY].x, info.mVehicle[i].mOri[RowY].y, info.mVehicle[i].mOri[RowY].z };
-    pBuf->mVehicles[i].mOri[RowZ] = { info.mVehicle[i].mOri[RowZ].x, info.mVehicle[i].mOri[RowZ].y, info.mVehicle[i].mOri[RowZ].z };
-#endif
-
-    pBuf->mVehicles[i].mYaw = atan2(info.mVehicle[i].mOri[RowZ].x, info.mVehicle[i].mOri[RowZ].z);
-    pBuf->mVehicles[i].mPitch = atan2(-info.mVehicle[i].mOri[RowY].z,
-      sqrt(info.mVehicle[i].mOri[RowX].z * info.mVehicle[i].mOri[RowX].z +
-        info.mVehicle[i].mOri[RowZ].z * info.mVehicle[i].mOri[RowZ].z));
-    pBuf->mVehicles[i].mRoll = atan2(info.mVehicle[i].mOri[RowY].x,
-      sqrt(info.mVehicle[i].mOri[RowX].x * info.mVehicle[i].mOri[RowX].x +
-        info.mVehicle[i].mOri[RowZ].x * info.mVehicle[i].mOri[RowZ].x));
-    pBuf->mVehicles[i].mSpeed = sqrt((info.mVehicle[i].mLocalVel.x * info.mVehicle[i].mLocalVel.x) +
-      (info.mVehicle[i].mLocalVel.y * info.mVehicle[i].mLocalVel.y) +
-      (info.mVehicle[i].mLocalVel.z * info.mVehicle[i].mLocalVel.z));
-
-    pBuf->mVehicles[i].mHeadlights = info.mVehicle[i].mHeadlights;
-    pBuf->mVehicles[i].mPitState = info.mVehicle[i].mPitState;
-    pBuf->mVehicles[i].mServerScored = info.mVehicle[i].mServerScored;
-    pBuf->mVehicles[i].mIndividualPhase = info.mVehicle[i].mIndividualPhase;
-
-    pBuf->mVehicles[i].mQualification = info.mVehicle[i].mQualification;
-
-    pBuf->mVehicles[i].mTimeIntoLap = info.mVehicle[i].mTimeIntoLap;
-    pBuf->mVehicles[i].mEstimatedLapTime = info.mVehicle[i].mEstimatedLapTime;
-
-    memcpy(pBuf->mVehicles[i].mPitGroup, info.mVehicle[i].mPitGroup, sizeof(pBuf->mVehicles[i].mPitGroup));
-    pBuf->mVehicles[i].mFlag = info.mVehicle[i].mFlag;
-    pBuf->mVehicles[i].mUnderYellow = info.mVehicle[i].mUnderYellow;
-    pBuf->mVehicles[i].mCountLapFlag = info.mVehicle[i].mCountLapFlag;
-    pBuf->mVehicles[i].mInGarageStall = info.mVehicle[i].mInGarageStall;
-  }
 #endif
 
   // Update Extended state.
@@ -1095,10 +687,19 @@ void SharedMemoryPlugin::UpdateScoring(ScoringInfoV01 const& info)
 {
   if (mIsMapped) {
     mScoringNumVehicles = info.mNumVehicles;
-    mLastTelemetryUpdateET = info.mCurrentET;
+    mLastScoringUpdateET = info.mCurrentET;
+    
     // TODO check if scoring update is ahead of telemetry, if it is we need to force flip.
     // TODO: check if Scoring ET is ahead or behind of Telemetry, print.
     // If ahead, I'll probably need to update newer later telemetry buffer.
+
+    memcpy(&(mScoring.mpCurWriteBuf->mScoringInfo), &info, sizeof(rF2ScoringInfo));
+
+    for (int i = 0; i < info.mNumVehicles; ++i)
+      memcpy(&(mScoring.mpCurWriteBuf->mVehicles[i]), &(info.mVehicle[i]), sizeof(rF2VehicleScoring));
+
+    mScoring.FlipBuffers();
+
 #if 0
     auto const ticksNow = TicksNow();
 

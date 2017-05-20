@@ -162,15 +162,6 @@ struct rF2Vec3
 };
 
 
-// TODO: see if needed
-enum OriMat
-{
-  RowX = 0,
-  RowY,
-  RowZ,
-  NumRows
-};
-
 /////////////////////////////////////
 // Based on TelemWheelV01
 ////////////////////////////////////
