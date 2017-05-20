@@ -60,6 +60,10 @@ public:
   static char const* const MM_SCORING_FILE_NAME2;
   static char const* const MM_SCORING_FILE_ACCESS_MUTEX;
 
+  static char const* const MM_EXTENDED_FILE_NAME1;
+  static char const* const MM_EXTENDED_FILE_NAME2;
+  static char const* const MM_EXTENDED_FILE_ACCESS_MUTEX;
+
   static char const* const CONFIG_FILE_REL_PATH;
 
   static char const* const INTERNALS_TELEMETRY_FILENAME;
@@ -115,9 +119,9 @@ private:
 
     void ProcessScoringUpdate(ScoringInfoV01 const& info)
     {
-      // This code bravely assumes that car at 0 is player.
-      // Not sure how correct this is.
+      // This code bravely assumes that car at 0 with id 0 is player.
       if (info.mNumVehicles > 0 
+        && info.mVehicle[0].mID == 0
         && info.mVehicle[0].mPitState == static_cast<unsigned char>(rF2PitState::Stopped)) {
         ResetDamageState();
         mLastPitStopET = info.mCurrentET;
@@ -205,15 +209,18 @@ private:
 
   void ClearState();
   void ClearTimingsAndCounters();
-  void TraceSkipTelemetryUpdate(TelemInfoV01 const& info) const;
-  void TraceBeginTelemetryUpdate();
-  void TraceEndTelemetryUpdate(int numVehiclesInChain) const;
+
+  void TelemetryTraceSkipUpdate(TelemInfoV01 const& info) const;
+  void TelemetryTraceBeginUpdate();
+  void TelemetryTraceEndUpdate(int numVehiclesInChain) const;
+
+  void ScoringTraceBeginUpdate();
 
 private:
 
   // Only used for debugging in Timing level
-  double mLastTelUpdate = 0.0;
-  double mLastScoringUpdate = 0.0;
+  double mLastTelemetryUpdateTicks = 0.0;
+  double mLastScoringUpdateTicks = 0.0;
 
   // Frame delta is in seconds.
   // TODO: Not sure we need this.
@@ -236,6 +243,7 @@ private:
 
   MappedDoubleBuffer<rF2Telemetry> mTelemetry;
   MappedDoubleBuffer<rF2Scoring> mScoring;
+  MappedDoubleBuffer<rF2Scoring> mExtended;
 };
 
 

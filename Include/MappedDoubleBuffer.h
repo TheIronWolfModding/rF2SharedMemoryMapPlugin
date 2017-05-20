@@ -23,6 +23,7 @@ public:
 
   bool Initialize()
   {
+    assert(!mMapped);
     mhMap1 = MapMemoryFile(MM_FILE_NAME1, mpBuf1);
     if (mhMap1 == nullptr) {
       DEBUG_MSG(DebugLevel::Errors, "Failed to map file 1");
@@ -40,23 +41,29 @@ public:
       DEBUG_MSG(DebugLevel::Errors, "Failed to create mutex");
       return false;
     }
-    
+
+    mMapped = true;
+
     return true;
   }
 
   void ClearState()
   {
+    if (!mMapped) {
+      assert(mMapped);
+      DEBUG_MSG(DebugLevel::Errors, "Accessing unmapped buffer.");
+      return;
+    }
+
     mRetryPending = false;
     mAsyncRetriesLeft = MAX_RETRIES;
 
     auto ret = WaitForSingleObject(mhMutex, SharedMemoryPlugin::msMillisMutexWait);
 
     memset(mpBuf1, 0, sizeof(BuffT));
-    strcpy_s(mpBuf1->mVersion, SHARED_MEMORY_VERSION);
     mpBuf1->mCurrentRead = true;
 
     memset(mpBuf2, 0, sizeof(BuffT));
-    strcpy_s(mpBuf2->mVersion, SHARED_MEMORY_VERSION);
     mpBuf2->mCurrentRead = false;
 
     mpCurReadBuf = mpBuf1;
@@ -102,6 +109,12 @@ public:
 
   void FlipBuffersHelper()
   {
+    if (!mMapped) {
+      assert(mMapped);
+      DEBUG_MSG(DebugLevel::Errors, "Accessing unmapped buffer.");
+      return;
+    }
+
     // Handle fucked up case:
     if (mpBuf1->mCurrentRead == mpBuf2->mCurrentRead) {
       mpBuf1->mCurrentRead = true;
@@ -126,6 +139,12 @@ public:
 
   void FlipBuffers()
   {
+    if (!mMapped) {
+      assert(mMapped);
+      DEBUG_MSG(DebugLevel::Errors, "Accessing unmapped buffer.");
+      return;
+    }
+
     // This update will wait.  Clear the retry variables.
     mRetryPending = false;
     mAsyncRetriesLeft = MAX_RETRIES;
@@ -144,6 +163,12 @@ public:
 
   void TryFlipBuffers()
   {
+    if (!mMapped) {
+      assert(mMapped);
+      DEBUG_MSG(DebugLevel::Errors, "Accessing unmapped buffer.");
+      return;
+    }
+
     // Do not wait on mutex if it is held.
     auto const ret = WaitForSingleObject(mhMutex, 0);
     if (ret == WAIT_TIMEOUT) {
@@ -208,7 +233,7 @@ private:
     return hMap;
   }
 
- public:
+  public:
     // Flip between 2 buffers.  Clients should read the one with mCurrentRead == true.
     BuffT* mpBuf1 = nullptr;
     BuffT* mpBuf2 = nullptr;
@@ -216,16 +241,18 @@ private:
     BuffT* mpCurWriteBuf = nullptr;
     BuffT* mpCurReadBuf = nullptr;
 
-private:
-  int const MAX_RETRIES;
-  char const* const MM_FILE_NAME1;
-  char const* const MM_FILE_NAME2;
-  char const* const MM_FILE_ACCESS_MUTEX;
+  private:
+    int const MAX_RETRIES;
+    char const* const MM_FILE_NAME1;
+    char const* const MM_FILE_NAME2;
+    char const* const MM_FILE_ACCESS_MUTEX;
 
-  HANDLE mhMutex = nullptr;
-  HANDLE mhMap1 = nullptr;
-  HANDLE mhMap2 = nullptr;
+    HANDLE mhMutex = nullptr;
+    HANDLE mhMap1 = nullptr;
+    HANDLE mhMap2 = nullptr;
 
-  bool mRetryPending = false;
-  int mAsyncRetriesLeft = 0;
+    bool mRetryPending = false;
+    int mAsyncRetriesLeft = 0;
+
+    bool mMapped = false;
 };

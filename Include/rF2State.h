@@ -460,31 +460,34 @@ struct rF2VehicleScoring
 
 struct rF2MappedBufferHeader
 {
+  static int const MAX_MAPPED_VEHICLES = 128;
+
   bool mCurrentRead;                 // True indicates buffer is safe to read under mutex.
 };
 
 
-struct rF2MappedBufferBase : public rF2MappedBufferHeader
-{
-  static int const MAX_MAPPED_VEHICLES = 128;
-
-  char mVersion[8];              // API version
-};
-
-
-struct rF2Telemetry : public rF2MappedBufferBase
+struct rF2Telemetry : public rF2MappedBufferHeader
 {
   long mNumVehicles;             // current number of vehicles
 
-  rF2VehicleTelemetry mVehicles[rF2MappedBufferBase::MAX_MAPPED_VEHICLES];
+  rF2VehicleTelemetry mVehicles[rF2MappedBufferHeader::MAX_MAPPED_VEHICLES];
 };
 
 
-struct rF2Scoring : public rF2MappedBufferBase
+struct rF2Scoring : public rF2MappedBufferHeader
 {
   // TODO: this probably should host extended state as well.
   rF2ScoringInfo mScoringInfo;
-  rF2VehicleScoring mVehicles[rF2MappedBufferBase::MAX_MAPPED_VEHICLES];
+  rF2VehicleScoring mVehicles[rF2MappedBufferHeader::MAX_MAPPED_VEHICLES];
+};
+
+
+struct rF2Extended : public rF2MappedBufferHeader
+{
+  char mVersion[8];              // API version
+
+//  strcpy_s(mpBuf1->mVersion, SHARED_MEMORY_VERSION);
+  //strcpy_s(mpBuf2->mVersion, SHARED_MEMORY_VERSION);
 };
 
 
