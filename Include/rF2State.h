@@ -458,6 +458,47 @@ struct rF2VehicleScoring
   unsigned char mExpansion[60];  // for future use
 };
 
+
+//////////////////////////////////////////////////////////////////////////////////////////
+// Identical to PhysicsOptionsV01, except where noted by MM_NEW/MM_NOT_USED comments.
+//////////////////////////////////////////////////////////////////////////////////////////
+struct rF2PhysicsOptions
+{
+  unsigned char mTractionControl;  // 0 (off) - 3 (high)
+  unsigned char mAntiLockBrakes;   // 0 (off) - 2 (high)
+  unsigned char mStabilityControl; // 0 (off) - 2 (high)
+  unsigned char mAutoShift;        // 0 (off), 1 (upshifts), 2 (downshifts), 3 (all)
+  unsigned char mAutoClutch;       // 0 (off), 1 (on)
+  unsigned char mInvulnerable;     // 0 (off), 1 (on)
+  unsigned char mOppositeLock;     // 0 (off), 1 (on)
+  unsigned char mSteeringHelp;     // 0 (off) - 3 (high)
+  unsigned char mBrakingHelp;      // 0 (off) - 2 (high)
+  unsigned char mSpinRecovery;     // 0 (off), 1 (on)
+  unsigned char mAutoPit;          // 0 (off), 1 (on)
+  unsigned char mAutoLift;         // 0 (off), 1 (on)
+  unsigned char mAutoBlip;         // 0 (off), 1 (on)
+
+  unsigned char mFuelMult;         // fuel multiplier (0x-7x)
+  unsigned char mTireMult;         // tire wear multiplier (0x-7x)
+  unsigned char mMechFail;         // mechanical failure setting; 0 (off), 1 (normal), 2 (timescaled)
+  unsigned char mAllowPitcrewPush; // 0 (off), 1 (on)
+  unsigned char mRepeatShifts;     // accidental repeat shift prevention (0-5; see PLR file)
+  unsigned char mHoldClutch;       // for auto-shifters at start of race: 0 (off), 1 (on)
+  unsigned char mAutoReverse;      // 0 (off), 1 (on)
+  unsigned char mAlternateNeutral; // Whether shifting up and down simultaneously equals neutral
+
+                                   // tag.2014.06.09 - yes these are new, but no they don't change the size of the structure nor the address of the other variables in it (because we're just using the existing padding)
+  unsigned char mAIControl;        // Whether player vehicle is currently under AI control
+  unsigned char mUnused1;          //
+  unsigned char mUnused2;          //
+
+  float mManualShiftOverrideTime;  // time before auto-shifting can resume after recent manual shift
+  float mAutoShiftOverrideTime;    // time before manual shifting can resume after recent auto shift
+  float mSpeedSensitiveSteering;   // 0.0 (off) - 1.0
+  float mSteerRatioSpeed;          // speed (m/s) under which lock gets expanded to full
+};
+
+
 struct rF2MappedBufferHeader
 {
   static int const MAX_MAPPED_VEHICLES = 128;
@@ -499,8 +540,15 @@ struct rF2Extended : public rF2MappedBufferHeader
 };
 
 
+struct rF2Physics : public rF2MappedBufferHeader
+{
+  rF2PhysicsOptions mOptions;
+};
+
+
 static_assert(sizeof(rF2VehicleTelemetry) == sizeof(TelemInfoV01), "rF2VehicleTelemetry and TelemInfoV01 structures are out of sync");
 static_assert(sizeof(rF2ScoringInfo) == sizeof(ScoringInfoV01), "rF2ScoringInfo and ScoringInfoV01 structures are out of sync");
-static_assert(sizeof(rF2VehicleScoring) == sizeof(VehicleScoringInfoV01), "rF2VehicleScorin and VehicleScoringInfoV01 structures are out of sync");
+static_assert(sizeof(rF2VehicleScoring) == sizeof(VehicleScoringInfoV01), "rF2VehicleScoring and VehicleScoringInfoV01 structures are out of sync");
+static_assert(sizeof(rF2PhysicsOptions) == sizeof(PhysicsOptionsV01), "rF2PhysicsOptions and PhysicsOptionsV01 structures are out of sync");
 
 #pragma pack(pop)

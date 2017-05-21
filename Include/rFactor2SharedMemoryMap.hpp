@@ -70,6 +70,10 @@ public:
   static char const* const MM_EXTENDED_FILE_NAME2;
   static char const* const MM_EXTENDED_FILE_ACCESS_MUTEX;
 
+  static char const* const MM_PHYSICS_FILE_NAME1;
+  static char const* const MM_PHYSICS_FILE_NAME2;
+  static char const* const MM_PHYSICS_FILE_ACCESS_MUTEX;
+
   static char const* const CONFIG_FILE_REL_PATH;
 
   static char const* const INTERNALS_TELEMETRY_FILENAME;
@@ -136,7 +140,6 @@ private:
 
     void ProcessPhysicsOptions(PhysicsOptionsV01& options)
     {
-      DEBUG_MSG(DebugLevel::Errors, "PHYSICS SET");
       mExtended.mInvulnerable = options.mInvulnerable;
     }
 
@@ -195,10 +198,7 @@ public:
   bool WantsPitMenuAccess() { return(true); } // change to true in order to view pit menu info
   bool AccessPitMenu(PitMenuV01& info) override; // currently, the return code should always be false (because we may allow more direct editing in the future)
 
-  void SetPhysicsOptions(PhysicsOptionsV01& options) override 
-  {
-    mExtStateTracker.ProcessPhysicsOptions(options);
-  }
+  void SetPhysicsOptions(PhysicsOptionsV01& options) override;
 
   // FUTURE/V2: SCORING CONTROL (only available in single-player or on multiplayer server)
   // virtual bool WantsMultiSessionRulesAccess() { return(false); } // change to true in order to read or write multi-session rules
@@ -241,9 +241,8 @@ private:
   MappedDoubleBuffer<rF2Telemetry> mTelemetry;
   MappedDoubleBuffer<rF2Scoring> mScoring;
   MappedDoubleBuffer<rF2Extended> mExtended;
+  MappedDoubleBuffer<rF2Physics> mPhysics;
 
   // Buffers mapped successfully or not.
   bool mIsMapped = false;
 };
-
-

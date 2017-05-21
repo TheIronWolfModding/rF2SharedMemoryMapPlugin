@@ -110,6 +110,10 @@ char const* const SharedMemoryPlugin::MM_EXTENDED_FILE_NAME1 = "$rFactor2SMMP_Ex
 char const* const SharedMemoryPlugin::MM_EXTENDED_FILE_NAME2 = "$rFactor2SMMP_ExtendedBuffer2$";
 char const* const SharedMemoryPlugin::MM_EXTENDED_FILE_ACCESS_MUTEX = R"(Global\$rFactor2SMMP_ExtendedMutex)";
 
+char const* const SharedMemoryPlugin::MM_PHYSICS_FILE_NAME1 = "$rFactor2SMMP_PhysicsBuffer1$";
+char const* const SharedMemoryPlugin::MM_PHYSICS_FILE_NAME2 = "$rFactor2SMMP_PhysicsBuffer2$";
+char const* const SharedMemoryPlugin::MM_PHYSICS_FILE_ACCESS_MUTEX = R"(Global\$rFactor2SMMP_PhysicsMutex)";
+
 char const* const SharedMemoryPlugin::CONFIG_FILE_REL_PATH = R"(\UserData\player\rf2smmp.ini)";  // Relative to rF2 root.
 char const* const SharedMemoryPlugin::INTERNALS_TELEMETRY_FILENAME = "RF2SMMP_InternalsTelemetryOutput.txt";
 char const* const SharedMemoryPlugin::INTERNALS_SCORING_FILENAME = "RF2SMMP_InternalsScoringOutput.txt";
@@ -148,7 +152,12 @@ SharedMemoryPlugin::SharedMemoryPlugin()
     mExtended(0 /*maxRetries*/
       , SharedMemoryPlugin::MM_EXTENDED_FILE_NAME1
       , SharedMemoryPlugin::MM_EXTENDED_FILE_NAME2
-      , SharedMemoryPlugin::MM_EXTENDED_FILE_ACCESS_MUTEX)
+      , SharedMemoryPlugin::MM_EXTENDED_FILE_ACCESS_MUTEX),
+    mPhysics(0 /*maxRetries*/
+      , SharedMemoryPlugin::MM_PHYSICS_FILE_NAME1
+      , SharedMemoryPlugin::MM_PHYSICS_FILE_NAME2
+      , SharedMemoryPlugin::MM_PHYSICS_FILE_ACCESS_MUTEX)
+
 {}
 
 void SharedMemoryPlugin::Startup(long version)
@@ -190,9 +199,17 @@ void SharedMemoryPlugin::Startup(long version)
     size = static_cast<int>(sizeof(rF2Scoring));
     _itoa_s(size, sizeSz, 10);
     DEBUG_MSG3(DebugLevel::Errors, "Size of scoring buffers:", sizeSz, "bytes each.");
-  }
 
-  return;
+    sizeSz[0] = '\0';
+    size = static_cast<int>(sizeof(rF2Extended));
+    _itoa_s(size, sizeSz, 10);
+    DEBUG_MSG3(DebugLevel::Errors, "Size of extended buffers:", sizeSz, "bytes each.");
+
+    sizeSz[0] = '\0';
+    size = static_cast<int>(sizeof(rF2Physics));
+    _itoa_s(size, sizeSz, 10);
+    DEBUG_MSG3(DebugLevel::Errors, "Size of physics buffers:", sizeSz, "bytes each.");
+  }
 }
 
 void SharedMemoryPlugin::Shutdown()
@@ -335,14 +352,14 @@ void SharedMemoryPlugin::TelemetryTraceSkipUpdate(TelemInfoV01 const& info) cons
 {
   if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::Timing) {
     char msg[512] = {};
-    sprintf(msg, "Skipping update due to no changes in the input data.  New ET: %f  Prev ET:%f", info.mElapsedTime, mLastTelemetryUpdateET);
+    sprintf(msg, "TELEMETRY - Skipping update due to no changes in the input data.  New ET: %f  Prev ET:%f", info.mElapsedTime, mLastTelemetryUpdateET);
     DEBUG_MSG(DebugLevel::Timing, msg);
 
     if (info.mPos.x != mTelemetry.mpCurReadBuf->mVehicles->mPos.x
       || info.mPos.y != mTelemetry.mpCurReadBuf->mVehicles->mPos.y
       || info.mPos.z != mTelemetry.mpCurReadBuf->mVehicles->mPos.z)
     {
-      sprintf(msg, "Pos Mismatch on skip update!!!  New ET: %f  Prev ET:%f  Prev Pos: %f %f %f  New Pos %f %f %f", info.mElapsedTime, mLastTelemetryUpdateET,
+      sprintf(msg, "TELEMETRY - Pos Mismatch on skip update!!!  New ET: %f  Prev ET:%f  Prev Pos: %f %f %f  New Pos %f %f %f", info.mElapsedTime, mLastTelemetryUpdateET,
         info.mPos.x, info.mPos.y, info.mPos.z,
         mTelemetry.mpCurReadBuf->mVehicles->mPos.x,
         mTelemetry.mpCurReadBuf->mVehicles->mPos.y,
@@ -377,7 +394,7 @@ void SharedMemoryPlugin::TelemetryTraceEndUpdate(int numVehiclesInChain) const
     auto const deltaSysTimeMicroseconds = ticksNow - mLastTelemetryUpdateMillis;
 
     char msg[512] = {};
-    sprintf(msg, "End Update.  Telemetry chain update took %f:  Vehicles in chain: %d", deltaSysTimeMicroseconds / MICROSECONDS_IN_SECOND, numVehiclesInChain);
+    sprintf(msg, "TELEMETRY - End Update.  Telemetry chain update took %f:  Vehicles in chain: %d", deltaSysTimeMicroseconds / MICROSECONDS_IN_SECOND, numVehiclesInChain);
 
     DEBUG_MSG(DebugLevel::Timing, msg);
   }
@@ -414,12 +431,16 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
 
     TelemetryTraceBeginUpdate();
 
-    // Ok, this is the new sequence of telemetry updates, and it contains updated data.
-    if (mCurTelemetryVehicleIndex != 0)
-      DEBUG_INT2(DebugLevel::Warnings, "Previous update ended at:", mCurTelemetryVehicleIndex);
+    // Ok, this is the new sequence of telemetry updates, and it contains updated data (new ET).
 
+    // First, trace unusual cases as I need to better understand them better.
+    // Previous chain did not end.
+    if (mCurTelemetryVehicleIndex != 0)
+      DEBUG_INT2(DebugLevel::Synchronization, "TELEMETRY - Previous update ended at:", mCurTelemetryVehicleIndex);
+
+    // This is the case where cases where mID == 0 is not in the chain and we hit a loop. 
     if (alreadyUpdated)
-      DEBUG_INT2(DebugLevel::Timing, "Update chain started at:", info.mID);
+      DEBUG_INT2(DebugLevel::Synchronization, "TELEMETRY - Update chain started at:", info.mID);
 
     // Update extended state.
     // Since I do not want to miss impact data, and it is not accumulated in any way
@@ -453,7 +474,7 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
 
       if (mLastTelemetryUpdateET <= mLastScoringUpdateET) {
         // If scoring update is ahead of this telemetry update, force flip.
-        DEBUG_MSG(DebugLevel::Timing, "Force flip due to: mLastTelemetryUpdateET <= mLastScoringUpdateET.");
+        DEBUG_MSG(DebugLevel::Synchronization, "TELEMETRY - Force flip due to: mLastTelemetryUpdateET <= mLastScoringUpdateET.");
         mTelemetry.FlipBuffers();
       }
       else if (mTelemetry.AsyncRetriesLeft() > 0) {
@@ -462,13 +483,13 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
 
         // Print msg about buffer flip failure or success.
         if (mTelemetry.RetryPending())
-          DEBUG_INT2(DebugLevel::Synchronization, "Buffer flip failed, retries remaining:", mTelemetry.AsyncRetriesLeft());
+          DEBUG_INT2(DebugLevel::Synchronization, "TELEMETRY - Buffer flip failed, retries remaining:", mTelemetry.AsyncRetriesLeft());
       } 
       else {
         // Force flip if no more retries are left
         assert(mTelemetry.AsyncRetriesLeft() == 0);
+        DEBUG_MSG(DebugLevel::Synchronization, "TELEMETRY - Force flip due to retry limit exceeded.");
         mTelemetry.FlipBuffers();
-        DEBUG_MSG(DebugLevel::Synchronization, "Force flip due to retry limit exceeded.");
       }
 
       TelemetryTraceEndUpdate(numVehiclesInChain);
@@ -483,22 +504,22 @@ skipUpdate:
     assert(!mTelemetryUpdateInProgress);
     if (mLastTelemetryUpdateET <= mLastScoringUpdateET) {
       // If scoring update is ahead of this telemetry update, force flip.
-      DEBUG_MSG(DebugLevel::Timing, "Force pending flip due to: mLastTelemetryUpdateET <= mLastScoringUpdateET.");
+      DEBUG_MSG(DebugLevel::Synchronization, "TELEMETRY - Force pending flip due to: mLastTelemetryUpdateET <= mLastScoringUpdateET.");
       mTelemetry.FlipBuffers();
     }
     // Retry/flip if pending.
     else if (mTelemetry.AsyncRetriesLeft() > 0) {
-      DEBUG_MSG(DebugLevel::Synchronization, "Retrying incomplete buffer flip.");
+      DEBUG_MSG(DebugLevel::Synchronization, "TELEMETRY - Retrying incomplete buffer flip.");
       mTelemetry.TryFlipBuffers();
       if (mTelemetry.RetryPending())
-        DEBUG_INT2(DebugLevel::Synchronization, "Buffer flip failed, retries remaining:", mTelemetry.AsyncRetriesLeft());
+        DEBUG_INT2(DebugLevel::Synchronization, "TELEMETRY - Buffer flip failed, retries remaining:", mTelemetry.AsyncRetriesLeft());
       else
-        DEBUG_MSG(DebugLevel::Synchronization, "Buffer flip succeeded.");
+        DEBUG_MSG(DebugLevel::Synchronization, "TELEMETRY - Buffer flip succeeded.");
     } 
     else {
       assert(mTelemetry.AsyncRetriesLeft() == 0);
       mTelemetry.FlipBuffers();
-      DEBUG_MSG(DebugLevel::Synchronization, "Force flip due to retry limit exceeded.");
+      DEBUG_MSG(DebugLevel::Synchronization, "TELEMETRY - Force flip due to retry limit exceeded.");
     }
   }
 }
@@ -517,7 +538,7 @@ void SharedMemoryPlugin::ScoringTraceBeginUpdate()
       DEBUG_FLOAT2(DebugLevel::Timing, "SCORING - Begin Update: Buffer 2.  Delta since last update:", delta / MICROSECONDS_IN_SECOND);
 
     char msg[512] = {};
-    sprintf(msg, "Scoring ET:%f  Telemetry ET:%f", mLastScoringUpdateET, mLastTelemetryUpdateET);
+    sprintf(msg, "SCORING - Scoring ET:%f  Telemetry ET:%f", mLastScoringUpdateET, mLastTelemetryUpdateET);
     DEBUG_MSG(DebugLevel::Timing, msg);
   }
 
@@ -538,7 +559,7 @@ void SharedMemoryPlugin::UpdateScoring(ScoringInfoV01 const& info)
   ScoringTraceBeginUpdate();
 
   if (mTelemetry.RetryPending()) {
-    DEBUG_MSG(DebugLevel::Synchronization, "Telemetry force flip due to retry pending.");
+    DEBUG_MSG(DebugLevel::Synchronization, "SCORING - Telemetry force flip due to retry pending.");
     mTelemetry.FlipBuffers();
   }
 
@@ -601,6 +622,14 @@ bool SharedMemoryPlugin::AccessTrackRules(TrackRulesV01& /*info*/)
 bool SharedMemoryPlugin::AccessPitMenu(PitMenuV01& /*info*/)
 {
   return false;
+}
+
+void SharedMemoryPlugin::SetPhysicsOptions(PhysicsOptionsV01 & options)
+{
+  DEBUG_MSG(DebugLevel::Timing, "PHYSICS - Updated.");
+  mExtStateTracker.ProcessPhysicsOptions(options);
+  memcpy(mExtended.mpCurWriteBuf, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
+  mExtended.FlipBuffers();
 }
 
 ////////////////////////////////////////////
