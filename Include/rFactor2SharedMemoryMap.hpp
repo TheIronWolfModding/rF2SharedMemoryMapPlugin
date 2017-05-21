@@ -110,8 +110,18 @@ private:
   public:
     ExtendedStateTracker()
     {
+      // There's a bug somewhere, initializing mExtended = {} does not make it all 0.
+      // Maybe there's a race between simulation and multimedia threads, but I can't debug due to game crashing on attach.
+      // Traces suggest no race however.
+      memset(&mExtended, 0, sizeof(rF2Extended));
+
       strcpy_s(mExtended.mVersion, SHARED_MEMORY_VERSION);
       mExtended.is64bit = PLUGIN_64BIT;
+
+      assert(!mExtended.mCurrentRead);
+      assert(!mExtended.mMultimediaThreadStarted);
+      assert(!mExtended.mMultimediaThreadStarted);
+      assert(!mExtended.mSimulationThreadStarted);
     }
 
     void ProcessTelemetryUpdate(TelemInfoV01 const& info)
@@ -136,11 +146,6 @@ private:
         ResetDamageState();
         mLastPitStopET = info.mCurrentET;
       }
-    }
-
-    void ProcessPhysicsOptions(PhysicsOptionsV01& options)
-    {
-      mExtended.mInvulnerable = options.mInvulnerable;
     }
 
     void ResetDamageState()
@@ -240,8 +245,8 @@ private:
 
   MappedDoubleBuffer<rF2Telemetry> mTelemetry;
   MappedDoubleBuffer<rF2Scoring> mScoring;
-  MappedDoubleBuffer<rF2Extended> mExtended;
   MappedDoubleBuffer<rF2Physics> mPhysics;
+  MappedDoubleBuffer<rF2Extended> mExtended;
 
   // Buffers mapped successfully or not.
   bool mIsMapped = false;

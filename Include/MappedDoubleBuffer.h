@@ -129,6 +129,8 @@ public:
     }
 
     // Update read buffer.
+    assert(mpCurReadBuf->mCurrentRead);
+    assert(!mpCurWriteBuf->mCurrentRead);
     mpCurReadBuf = mpCurWriteBuf;
 
     // Pick previous read buffer.

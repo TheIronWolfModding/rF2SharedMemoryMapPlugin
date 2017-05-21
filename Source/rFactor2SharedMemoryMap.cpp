@@ -149,16 +149,16 @@ SharedMemoryPlugin::SharedMemoryPlugin()
       , SharedMemoryPlugin::MM_SCORING_FILE_NAME1
       , SharedMemoryPlugin::MM_SCORING_FILE_NAME2
       , SharedMemoryPlugin::MM_SCORING_FILE_ACCESS_MUTEX),
-    mExtended(0 /*maxRetries*/
-      , SharedMemoryPlugin::MM_EXTENDED_FILE_NAME1
-      , SharedMemoryPlugin::MM_EXTENDED_FILE_NAME2
-      , SharedMemoryPlugin::MM_EXTENDED_FILE_ACCESS_MUTEX),
     mPhysics(0 /*maxRetries*/
       , SharedMemoryPlugin::MM_PHYSICS_FILE_NAME1
       , SharedMemoryPlugin::MM_PHYSICS_FILE_NAME2
-      , SharedMemoryPlugin::MM_PHYSICS_FILE_ACCESS_MUTEX)
-
+      , SharedMemoryPlugin::MM_PHYSICS_FILE_ACCESS_MUTEX),
+    mExtended(0 /*maxRetries*/
+      , SharedMemoryPlugin::MM_EXTENDED_FILE_NAME1
+      , SharedMemoryPlugin::MM_EXTENDED_FILE_NAME2
+      , SharedMemoryPlugin::MM_EXTENDED_FILE_ACCESS_MUTEX)
 {}
+
 
 void SharedMemoryPlugin::Startup(long version)
 {
@@ -179,16 +179,21 @@ void SharedMemoryPlugin::Startup(long version)
     return;
   }
 
+  if (!mPhysics.Initialize()) {
+    DEBUG_MSG(DebugLevel::Errors, "Failed to initialize physics mapping");
+    return;
+  }
+
   if (!mExtended.Initialize()) {
     DEBUG_MSG(DebugLevel::Errors, "Failed to initialize extended mapping");
     return;
   }
 
   mIsMapped = true;
+
   ClearState();
 
   DEBUG_MSG(DebugLevel::Errors, "Files mapped successfully");
-
   if (SharedMemoryPlugin::msDebugOutputLevel != DebugLevel::Off) {
     char sizeSz[20] = {};
     auto size = static_cast<int>(sizeof(rF2Telemetry));
@@ -201,14 +206,14 @@ void SharedMemoryPlugin::Startup(long version)
     DEBUG_MSG3(DebugLevel::Errors, "Size of scoring buffers:", sizeSz, "bytes each.");
 
     sizeSz[0] = '\0';
-    size = static_cast<int>(sizeof(rF2Extended));
-    _itoa_s(size, sizeSz, 10);
-    DEBUG_MSG3(DebugLevel::Errors, "Size of extended buffers:", sizeSz, "bytes each.");
-
-    sizeSz[0] = '\0';
     size = static_cast<int>(sizeof(rF2Physics));
     _itoa_s(size, sizeSz, 10);
     DEBUG_MSG3(DebugLevel::Errors, "Size of physics buffers:", sizeSz, "bytes each.");
+
+    sizeSz[0] = '\0';
+    size = static_cast<int>(sizeof(rF2Extended));
+    _itoa_s(size, sizeSz, 10);
+    DEBUG_MSG3(DebugLevel::Errors, "Size of extended buffers:", sizeSz, "bytes each.");
   }
 }
 
@@ -238,6 +243,9 @@ void SharedMemoryPlugin::Shutdown()
 
   mScoring.ClearState(nullptr /*pInitialContents*/);
   mScoring.ReleaseResources();
+
+  mPhysics.ClearState(nullptr /*pInitialContents*/);
+  mPhysics.ReleaseResources();
 
   mExtended.ClearState(nullptr /*pInitialContents*/);
   mExtended.ReleaseResources();
@@ -269,11 +277,11 @@ void SharedMemoryPlugin::ClearState()
 
   mTelemetry.ClearState(nullptr /*pInitialContents*/);
   mScoring.ClearState(nullptr /*pInitialContents*/);
-
-  mExtStateTracker.ResetDamageState();
+  mPhysics.ClearState(nullptr /*pInitialContents*/);
 
   // Certain members of extended state persist between restarts/sessions.
   // So, clear the state but pass persisting state as initial state.
+  mExtStateTracker.ResetDamageState();
   mExtended.ClearState(&(mExtStateTracker.mExtended));
 
   ClearTimingsAndCounters();
@@ -300,9 +308,9 @@ void SharedMemoryPlugin::UpdateInRealtimeFC(bool inRealTime)
   if (!mIsMapped)
     return;
 
-  mExtStateTracker.mExtended.mInRealtimeFC = inRealTime;
-
   DEBUG_MSG(DebugLevel::Synchronization, inRealTime ? "Entering Realtime" : "Exiting Realtime");
+
+  mExtStateTracker.mExtended.mInRealtimeFC = inRealTime;
   memcpy(mExtended.mpCurWriteBuf, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
   mExtended.FlipBuffers();
 }
@@ -354,17 +362,20 @@ void SharedMemoryPlugin::TelemetryTraceSkipUpdate(TelemInfoV01 const& info) cons
     char msg[512] = {};
     sprintf(msg, "TELEMETRY - Skipping update due to no changes in the input data.  New ET: %f  Prev ET:%f", info.mElapsedTime, mLastTelemetryUpdateET);
     DEBUG_MSG(DebugLevel::Timing, msg);
+  }
 
+  if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::Warnings) {
     if (info.mPos.x != mTelemetry.mpCurReadBuf->mVehicles->mPos.x
       || info.mPos.y != mTelemetry.mpCurReadBuf->mVehicles->mPos.y
       || info.mPos.z != mTelemetry.mpCurReadBuf->mVehicles->mPos.z)
     {
-      sprintf(msg, "TELEMETRY - Pos Mismatch on skip update!!!  New ET: %f  Prev ET:%f  Prev Pos: %f %f %f  New Pos %f %f %f", info.mElapsedTime, mLastTelemetryUpdateET,
+      char msg[512] = {};
+      sprintf(msg, "WARNING - Pos Mismatch on skip update!!!  New ET: %f  Prev ET:%f  Prev Pos: %f %f %f  New Pos %f %f %f", info.mElapsedTime, mLastTelemetryUpdateET,
         info.mPos.x, info.mPos.y, info.mPos.z,
         mTelemetry.mpCurReadBuf->mVehicles->mPos.x,
         mTelemetry.mpCurReadBuf->mVehicles->mPos.y,
         mTelemetry.mpCurReadBuf->mVehicles->mPos.z);
-      DEBUG_MSG(DebugLevel::Timing, msg);
+      DEBUG_MSG(DebugLevel::Warnings, msg);
     }
   }
 }
@@ -590,11 +601,11 @@ bool SharedMemoryPlugin::WantsToDisplayMessage(MessageInfoV01& /*msgInfo*/)
 
 void SharedMemoryPlugin::UpdateThreadState(long type, bool starting)
 {
-  if (!mIsMapped)
-    return;
-
   (type == 0 ? mExtStateTracker.mExtended.mMultimediaThreadStarted : mExtStateTracker.mExtended.mSimulationThreadStarted)
     = starting;
+
+  if (!mIsMapped)
+    return;
 
   memcpy(mExtended.mpCurWriteBuf, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
   mExtended.FlipBuffers();
@@ -624,12 +635,11 @@ bool SharedMemoryPlugin::AccessPitMenu(PitMenuV01& /*info*/)
   return false;
 }
 
-void SharedMemoryPlugin::SetPhysicsOptions(PhysicsOptionsV01 & options)
+void SharedMemoryPlugin::SetPhysicsOptions(PhysicsOptionsV01& options)
 {
   DEBUG_MSG(DebugLevel::Timing, "PHYSICS - Updated.");
-  mExtStateTracker.ProcessPhysicsOptions(options);
-  memcpy(mExtended.mpCurWriteBuf, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
-  mExtended.FlipBuffers();
+  memcpy(&(mPhysics.mpCurWriteBuf->mOptions), &options, sizeof(rF2PhysicsOptions));
+  mPhysics.FlipBuffers();
 }
 
 ////////////////////////////////////////////
@@ -684,6 +694,7 @@ void SharedMemoryPlugin::WriteDebugMsg(DebugLevel lvl, const char* const format,
     setvbuf(SharedMemoryPlugin::msDebugFile, nullptr, _IOFBF, SharedMemoryPlugin::BUFFER_IO_BYTES);
   }
 
+  fprintf(SharedMemoryPlugin::msDebugFile, "TID:0x%04x  ", GetCurrentThreadId());
   if (SharedMemoryPlugin::msDebugFile != nullptr) {
     va_start(argList, format);
     vfprintf(SharedMemoryPlugin::msDebugFile, format, argList);
