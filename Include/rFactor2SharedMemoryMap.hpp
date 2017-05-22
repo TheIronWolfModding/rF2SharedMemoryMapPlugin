@@ -66,13 +66,13 @@ public:
   static char const* const MM_SCORING_FILE_NAME2;
   static char const* const MM_SCORING_FILE_ACCESS_MUTEX;
 
-  static char const* const MM_EXTENDED_FILE_NAME1;
-  static char const* const MM_EXTENDED_FILE_NAME2;
-  static char const* const MM_EXTENDED_FILE_ACCESS_MUTEX;
-
   static char const* const MM_PHYSICS_FILE_NAME1;
   static char const* const MM_PHYSICS_FILE_NAME2;
   static char const* const MM_PHYSICS_FILE_ACCESS_MUTEX;
+
+  static char const* const MM_EXTENDED_FILE_NAME1;
+  static char const* const MM_EXTENDED_FILE_NAME2;
+  static char const* const MM_EXTENDED_FILE_ACCESS_MUTEX;
 
   static char const* const CONFIG_FILE_REL_PATH;
 
@@ -119,7 +119,6 @@ private:
       mExtended.is64bit = PLUGIN_64BIT;
 
       assert(!mExtended.mCurrentRead);
-      assert(!mExtended.mMultimediaThreadStarted);
       assert(!mExtended.mMultimediaThreadStarted);
       assert(!mExtended.mSimulationThreadStarted);
     }
