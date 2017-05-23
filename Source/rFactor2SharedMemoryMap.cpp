@@ -264,9 +264,9 @@ void SharedMemoryPlugin::ClearTimingsAndCounters()
   mTelemetryUpdateInProgress = false;
   mCurTelemetryVehicleIndex = 0;
 
-  mScoringNumVehicles = 0;
-
   memset(mParticipantTelemetryUpdated, 0, sizeof(mParticipantTelemetryUpdated));
+
+  mScoringNumVehicles = 0;
 }
 
 
@@ -434,11 +434,15 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
   auto const partiticpantIndex = min(info.mID, MAX_PARTICIPANT_SLOTS - 1);
   auto const alreadyUpdated = mParticipantTelemetryUpdated[partiticpantIndex];
   if (info.mID == 0 || alreadyUpdated) {
-    if (info.mElapsedTime <= mLastTelemetryUpdateET) {
+    if (info.mElapsedTime == mLastTelemetryUpdateET) {
       TelemetryTraceSkipUpdate(info);
       assert(!mTelemetryUpdateInProgress);
       goto skipUpdate;
     }
+
+    // I saw zis vence and want to understand WTF??
+    if (info.mElapsedTime < mLastTelemetryUpdateET)
+      DEBUG_MSG(DebugLevel::Warnings, "WARNING: sinfo.mElapsedTime < mLastTelemetryUpdateET");
 
     TelemetryTraceBeginUpdate();
 
@@ -474,6 +478,12 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
 
     memcpy(&(mTelemetry.mpCurWriteBuf->mVehicles[mCurTelemetryVehicleIndex]), &info, sizeof(rF2VehicleTelemetry));
     ++mCurTelemetryVehicleIndex;
+
+    if (SharedMemoryPlugin::msDebugOutputLevel == DebugLevel::Verbose) {
+      char msg[512] = {};
+      sprintf(msg, "Telemetry added - mID:%d  ET:%f", info.mID, info.mElapsedTime);
+      DEBUG_MSG(DebugLevel::Verbose, msg);
+    }
 
     // See if this is the last vehicle to update.
     if (mCurTelemetryVehicleIndex >= mTelemetry.mpCurWriteBuf->mNumVehicles
@@ -575,6 +585,7 @@ void SharedMemoryPlugin::UpdateScoring(ScoringInfoV01 const& info)
   }
 
   // Below apparently never happens, but let's keep it in case there's a regression in the game.
+  // So far, this appears to only happen on session end, when telemetry is already zeroed out.
   if (mLastScoringUpdateET > mLastTelemetryUpdateET)
     DEBUG_MSG(DebugLevel::Warnings, "WARNING: Scoring update is ahead of telemetry.");
 
