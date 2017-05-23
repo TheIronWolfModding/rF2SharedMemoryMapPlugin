@@ -34,11 +34,11 @@ Author: The Iron Wolf (vleonavicius@hotmail.com)
 // NOTE: too much logging will kill performance.  Can be improved with buffering.
 // This is hell on earth, but I do not want to add additional dependencies needed for STL right now.
 // Be super careful with those, there's no type safety or checks of any kind.
-#define DEBUG_MSG(lvl, msg) SharedMemoryPlugin::WriteDebugMsg(lvl, "%s : %s\n", __FUNCTION__, msg)
-#define DEBUG_MSG2(lvl, msg, msg2) SharedMemoryPlugin::WriteDebugMsg(lvl, "%s : %s %s\n", __FUNCTION__, msg, msg2)
-#define DEBUG_INT2(lvl, msg, intValue) SharedMemoryPlugin::WriteDebugMsg(lvl, "%s : %s %d\n", __FUNCTION__, msg, intValue)
-#define DEBUG_FLOAT2(lvl, msg, floatValue) SharedMemoryPlugin::WriteDebugMsg(lvl, "%s : %s %f\n", __FUNCTION__, msg, floatValue)
-#define DEBUG_MSG3(lvl, msg, msg2, msg3) SharedMemoryPlugin::WriteDebugMsg(lvl, "%s : %s %s %s\n", __FUNCTION__, msg, msg2, msg3)
+#define DEBUG_MSG(lvl, msg) SharedMemoryPlugin::WriteDebugMsg(lvl, "%s(%d) : %s\n", __FUNCTION__, __LINE__, msg)
+#define DEBUG_MSG2(lvl, msg, msg2) SharedMemoryPlugin::WriteDebugMsg(lvl, "%s(%d) : %s %s\n", __FUNCTION__, __LINE__, msg, msg2)
+#define DEBUG_INT2(lvl, msg, intValue) SharedMemoryPlugin::WriteDebugMsg(lvl, "%s(%d) : %s %d\n", __FUNCTION__, __LINE__, msg, intValue)
+#define DEBUG_FLOAT2(lvl, msg, floatValue) SharedMemoryPlugin::WriteDebugMsg(lvl, "%s(%d) : %s %f\n", __FUNCTION__, __LINE__, msg, floatValue)
+#define DEBUG_MSG3(lvl, msg, msg2, msg3) SharedMemoryPlugin::WriteDebugMsg(lvl, "%s(%d) : %s %s %s\n", __FUNCTION__, __LINE__, msg, msg2, msg3)
 
 #include "rF2State.h"
 #include "MappedDoubleBuffer.h"
@@ -216,6 +216,7 @@ private:
 
   void TelemetryTraceSkipUpdate(TelemInfoV01 const& info) const;
   void TelemetryTraceBeginUpdate();
+  void TelemetryTraceVehicleAdded(TelemInfoV01 const& infos) const;
   void TelemetryTraceEndUpdate(int numVehiclesInChain) const;
 
   void ScoringTraceBeginUpdate();

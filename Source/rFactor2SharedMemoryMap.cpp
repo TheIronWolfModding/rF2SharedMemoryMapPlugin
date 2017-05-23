@@ -398,6 +398,20 @@ void SharedMemoryPlugin::TelemetryTraceBeginUpdate()
 }
 
 
+void SharedMemoryPlugin::TelemetryTraceVehicleAdded(TelemInfoV01 const& info) const
+{
+  if (SharedMemoryPlugin::msDebugOutputLevel == DebugLevel::Verbose) {
+    bool const samePos = info.mPos.x == mTelemetry.mpCurReadBuf->mVehicles[mCurTelemetryVehicleIndex - 1].mPos.x
+      && info.mPos.y == mTelemetry.mpCurReadBuf->mVehicles[mCurTelemetryVehicleIndex - 1].mPos.y
+      && info.mPos.z == mTelemetry.mpCurReadBuf->mVehicles[mCurTelemetryVehicleIndex - 1].mPos.z;
+
+    char msg[512] = {};
+    sprintf(msg, "Telemetry added - mID:%d  ET:%f  Pos Changed:%s", info.mID, info.mElapsedTime, samePos ? "Same" : "Changed");
+    DEBUG_MSG(DebugLevel::Verbose, msg);
+  }
+}
+
+
 void SharedMemoryPlugin::TelemetryTraceEndUpdate(int numVehiclesInChain) const
 {
   if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::Timing) {
@@ -434,11 +448,11 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
   auto const partiticpantIndex = min(info.mID, MAX_PARTICIPANT_SLOTS - 1);
   auto const alreadyUpdated = mParticipantTelemetryUpdated[partiticpantIndex];
   if (info.mID == 0 || alreadyUpdated) {
-    if (info.mElapsedTime == mLastTelemetryUpdateET) {
+    /*if (info.mElapsedTime == mLastTelemetryUpdateET) {
       TelemetryTraceSkipUpdate(info);
       assert(!mTelemetryUpdateInProgress);
       goto skipUpdate;
-    }
+    }*/
 
     // I saw zis vence and want to understand WTF??
     if (info.mElapsedTime < mLastTelemetryUpdateET)
@@ -479,11 +493,7 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
     memcpy(&(mTelemetry.mpCurWriteBuf->mVehicles[mCurTelemetryVehicleIndex]), &info, sizeof(rF2VehicleTelemetry));
     ++mCurTelemetryVehicleIndex;
 
-    if (SharedMemoryPlugin::msDebugOutputLevel == DebugLevel::Verbose) {
-      char msg[512] = {};
-      sprintf(msg, "Telemetry added - mID:%d  ET:%f", info.mID, info.mElapsedTime);
-      DEBUG_MSG(DebugLevel::Verbose, msg);
-    }
+    TelemetryTraceVehicleAdded(info);
 
     // See if this is the last vehicle to update.
     if (mCurTelemetryVehicleIndex >= mTelemetry.mpCurWriteBuf->mNumVehicles
