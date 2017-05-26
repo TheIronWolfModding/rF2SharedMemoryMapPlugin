@@ -381,17 +381,18 @@ void SharedMemoryPlugin::TelemetryTraceSkipUpdate(TelemInfoV01 const& info) cons
 }
 
 
-void SharedMemoryPlugin::TelemetryTraceBeginUpdate()
+void SharedMemoryPlugin::TelemetryTraceBeginUpdate(double telUpdateET)
 {
   auto ticksNow = 0.0;
   if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::Timing) {
     ticksNow = TicksNow();
     auto const delta = ticksNow - mLastTelemetryUpdateMillis;
 
-    if (mTelemetry.mpCurWriteBuf == mTelemetry.mpBuf1)
-      DEBUG_FLOAT2(DebugLevel::Timing, "TELEMETRY - Begin Update: Buffer 1.  Delta since last update:", delta / MICROSECONDS_IN_SECOND);
-    else
-      DEBUG_FLOAT2(DebugLevel::Timing, "TELEMETRY - Begin Update: Buffer 2.  Delta since last update:", delta / MICROSECONDS_IN_SECOND);
+    char msg[512] = {};
+    sprintf(msg, "TELEMETRY - Begin Update: Buffer %s.  ET:%f  Delta since last update:%f",
+      mTelemetry.mpCurWriteBuf == mTelemetry.mpBuf1 ? "1" : "2", telUpdateET, delta / MICROSECONDS_IN_SECOND);
+    
+    DEBUG_MSG(DebugLevel::Timing, msg);
   }
 
   mLastTelemetryUpdateMillis = ticksNow;
@@ -448,17 +449,17 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
   auto const partiticpantIndex = min(info.mID, MAX_PARTICIPANT_SLOTS - 1);
   auto const alreadyUpdated = mParticipantTelemetryUpdated[partiticpantIndex];
   if (info.mID == 0 || alreadyUpdated) {
-    /*if (info.mElapsedTime == mLastTelemetryUpdateET) {
+    if (info.mElapsedTime == mLastTelemetryUpdateET) {
       TelemetryTraceSkipUpdate(info);
       assert(!mTelemetryUpdateInProgress);
       goto skipUpdate;
-    }*/
+    }
 
     // I saw zis vence and want to understand WTF??
     if (info.mElapsedTime < mLastTelemetryUpdateET)
-      DEBUG_MSG(DebugLevel::Warnings, "WARNING: sinfo.mElapsedTime < mLastTelemetryUpdateET");
+      DEBUG_MSG(DebugLevel::Warnings, "WARNING: info.mElapsedTime < mLastTelemetryUpdateET");
 
-    TelemetryTraceBeginUpdate();
+    TelemetryTraceBeginUpdate(info.mElapsedTime);
 
     // Ok, this is the new sequence of telemetry updates, and it contains updated data (new ET).
 

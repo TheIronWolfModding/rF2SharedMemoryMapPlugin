@@ -215,7 +215,7 @@ private:
   void ClearTimingsAndCounters();
 
   void TelemetryTraceSkipUpdate(TelemInfoV01 const& info) const;
-  void TelemetryTraceBeginUpdate();
+  void TelemetryTraceBeginUpdate(double telUpdateET);
   void TelemetryTraceVehicleAdded(TelemInfoV01 const& infos) const;
   void TelemetryTraceEndUpdate(int numVehiclesInChain) const;
 

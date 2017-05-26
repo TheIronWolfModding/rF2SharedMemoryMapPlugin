@@ -33,13 +33,38 @@ namespace rF2SMMonitor
     // Shared memory buffer fields
     readonly int SHARED_MEMORY_SIZE_BYTES = Marshal.SizeOf(typeof(rF2State));
     readonly int SHARED_MEMORY_HEADER_SIZE_BYTES = Marshal.SizeOf(typeof(rF2StateHeader));
-    byte[] sharedMemoryReadBuffer = null;
+
+    readonly int RF2_TELEMETRY_BUFFER_SIZE_BYTES = Marshal.SizeOf(typeof(rF2Telemetry));
+    readonly int RF2_SCORING_BUFFER_SIZE_BYTES = Marshal.SizeOf(typeof(rF2Scoring));
+    readonly int RF2_PHYSICS_BUFFER_SIZE_BYTES = Marshal.SizeOf(typeof(rF2Physics));
+    readonly int RF2_EXTENDED_BUFFER_SIZE_BYTES = Marshal.SizeOf(typeof(rF2Extended));
+    readonly int RF2_BUFFER_HEADER_SIZE_BYTES = Marshal.SizeOf(typeof(rF2BufferHeader));
+
+    byte[] sharedMemoryReadBufferTelemetry = null;
+    byte[] sharedMemoryReadBufferScoring = null;
+    byte[] sharedMemoryReadBufferPhysics = null;
+    byte[] sharedMemoryReadBufferExtended = null;
 
     // Plugin access fields
-    Mutex fileAccessMutex = null;
-    MemoryMappedFile memoryMappedFile1 = null;
-    MemoryMappedFile memoryMappedFile2 = null;
-    int currBuff = 0;
+    // Telemetry:
+    Mutex mutexTelemetry = null;
+    MemoryMappedFile memoryMappedTelemetry1 = null;
+    MemoryMappedFile memoryMappedTelemetry2 = null;
+
+    // Scoring:
+    Mutex mutexScoring = null;
+    MemoryMappedFile memoryMappedScoring1 = null;
+    MemoryMappedFile memoryMappedScoring2 = null;
+
+    // Physics:
+    Mutex mutexPhysics = null;
+    MemoryMappedFile memoryMappedPhysics1 = null;
+    MemoryMappedFile memoryMappedPhysics2 = null;
+
+    // Extended:
+    Mutex mutexExtended = null;
+    MemoryMappedFile memoryMappedExtended1 = null;
+    MemoryMappedFile memoryMappedExtended2 = null;
 
     // Marshalled view
     rF2State currrF2State;
@@ -293,28 +318,29 @@ namespace rF2SMMonitor
 
       try
       {
+        // Clients that do not need consistency accross the whole buffer, like dashboards, do not need to use mutexes.
         // Note: if it is critical for client minimize wait time, same strategy as plugin uses can be employed.
         // Pass 0 timeout and skip update if someone holds the lock.
-        if (this.fileAccessMutex.WaitOne(5000))
+        if (this.mutexTelemetry.WaitOne(5000))
         {
           try
           {
             bool buf1Current = false;
             // Try buffer 1:
-            using (var sharedMemoryStreamView = this.memoryMappedFile1.CreateViewStream())
+            using (var sharedMemoryStreamView = this.memoryMappedTelemetry1.CreateViewStream())
             {
               var sharedMemoryStream = new BinaryReader(sharedMemoryStreamView);
-              this.sharedMemoryReadBuffer = sharedMemoryStream.ReadBytes(this.SHARED_MEMORY_HEADER_SIZE_BYTES);
+              this.sharedMemoryReadBufferTelemetry = sharedMemoryStream.ReadBytes(this.SHARED_MEMORY_HEADER_SIZE_BYTES);
 
               // Marhsal header
-              var headerHandle = GCHandle.Alloc(this.sharedMemoryReadBuffer, GCHandleType.Pinned);
+              var headerHandle = GCHandle.Alloc(this.sharedMemoryReadBufferTelemetry, GCHandleType.Pinned);
               var header = (rF2StateHeader)Marshal.PtrToStructure(headerHandle.AddrOfPinnedObject(), typeof(rF2StateHeader));
               headerHandle.Free();
 
               if (header.mCurrentRead == 1)
               {
                 sharedMemoryStream.BaseStream.Position = 0;
-                this.sharedMemoryReadBuffer = sharedMemoryStream.ReadBytes(this.SHARED_MEMORY_SIZE_BYTES);
+                this.sharedMemoryReadBufferTelemetry = sharedMemoryStream.ReadBytes(this.SHARED_MEMORY_SIZE_BYTES);
                 buf1Current = true;
                 this.currBuff = 1;
               }
@@ -323,21 +349,21 @@ namespace rF2SMMonitor
             // Read buffer 2
             if (!buf1Current)
             {
-              using (var sharedMemoryStreamView = this.memoryMappedFile2.CreateViewStream())
+              using (var sharedMemoryStreamView = this.memoryMappedTelemetry2.CreateViewStream())
               {
                 var sharedMemoryStream = new BinaryReader(sharedMemoryStreamView);
-                this.sharedMemoryReadBuffer = sharedMemoryStream.ReadBytes(this.SHARED_MEMORY_SIZE_BYTES);
+                this.sharedMemoryReadBufferTelemetry = sharedMemoryStream.ReadBytes(this.SHARED_MEMORY_SIZE_BYTES);
                 this.currBuff = 2;
               }
             }
           }
           finally
           {
-            this.fileAccessMutex.ReleaseMutex();
+            this.mutexTelemetry.ReleaseMutex();
           }
 
           // Marshal rF2State
-          var handle = GCHandle.Alloc(this.sharedMemoryReadBuffer, GCHandleType.Pinned);
+          var handle = GCHandle.Alloc(this.sharedMemoryReadBufferTelemetry, GCHandleType.Pinned);
           this.currrF2State = (rF2State)Marshal.PtrToStructure(handle.AddrOfPinnedObject(), typeof(rF2State));
           handle.Free();
         }
@@ -623,11 +649,37 @@ namespace rF2SMMonitor
       {
         try
         {
-          this.fileAccessMutex = Mutex.OpenExisting(rF2SMMonitor.rFactor2Constants.MM_FILE_ACCESS_MUTEX);
-          this.memoryMappedFile1 = MemoryMappedFile.OpenExisting(rFactor2Constants.MM_FILE_NAME1);
-          this.memoryMappedFile2 = MemoryMappedFile.OpenExisting(rFactor2Constants.MM_FILE_NAME2);
-          // NOTE: Make sure that SHARED_MEMORY_SIZE_BYTES matches the structure size in the plugin (debug mode prints).
-          this.sharedMemoryReadBuffer = new byte[this.SHARED_MEMORY_SIZE_BYTES];
+          this.mutexTelemetry = Mutex.OpenExisting(rF2SMMonitor.rFactor2Constants.MM_TELEMETRY_FILE_ACCESS_MUTEX);
+          this.memoryMappedTelemetry1 = MemoryMappedFile.OpenExisting(rFactor2Constants.MM_TELEMETRY_FILE_NAME1);
+          this.memoryMappedTelemetry2 = MemoryMappedFile.OpenExisting(rFactor2Constants.MM_TELEMETRY_FILE_NAME2);
+
+          // NOTE: Make sure that RF2_TELEMETRY_BUFFER_SIZE_BYTES matches the structure size in the plugin (debug mode prints that).
+          this.sharedMemoryReadBufferTelemetry = new byte[this.RF2_TELEMETRY_BUFFER_SIZE_BYTES];
+
+
+          this.mutexScoring = Mutex.OpenExisting(rF2SMMonitor.rFactor2Constants.MM_SCORING_FILE_ACCESS_MUTEX);
+          this.memoryMappedScoring1 = MemoryMappedFile.OpenExisting(rFactor2Constants.MM_SCORING_FILE_NAME1);
+          this.memoryMappedScoring2 = MemoryMappedFile.OpenExisting(rFactor2Constants.MM_SCORING_FILE_NAME2);
+
+          // NOTE: Make sure that RF2_SCORING_BUFFER_SIZE_BYTES matches the structure size in the plugin (debug mode prints that).
+          this.sharedMemoryReadBufferScoring = new byte[this.RF2_SCORING_BUFFER_SIZE_BYTES];
+
+
+          this.mutexPhysics = Mutex.OpenExisting(rF2SMMonitor.rFactor2Constants.MM_PHYSICS_FILE_ACCESS_MUTEX);
+          this.memoryMappedPhysics1 = MemoryMappedFile.OpenExisting(rFactor2Constants.MM_PHYSICS_FILE_NAME1);
+          this.memoryMappedPhysics2 = MemoryMappedFile.OpenExisting(rFactor2Constants.MM_PHYSICS_FILE_NAME2);
+
+          // NOTE: Make sure that RF2_PHYSICS_BUFFER_SIZE_BYTES matches the structure size in the plugin (debug mode prints that).
+          this.sharedMemoryReadBufferPhysics = new byte[this.RF2_PHYSICS_BUFFER_SIZE_BYTES];
+
+
+          this.mutexExtended = Mutex.OpenExisting(rF2SMMonitor.rFactor2Constants.MM_EXTENDED_FILE_ACCESS_MUTEX);
+          this.memoryMappedExtended1 = MemoryMappedFile.OpenExisting(rFactor2Constants.MM_EXTENDED_FILE_NAME1);
+          this.memoryMappedExtended2 = MemoryMappedFile.OpenExisting(rFactor2Constants.MM_EXTENDED_FILE_NAME2);
+
+          // NOTE: Make sure that RF2_EXTENDED_BUFFER_SIZE_BYTES matches the structure size in the plugin (debug mode prints that).
+          this.sharedMemoryReadBufferExtended = new byte[this.RF2_EXTENDED_BUFFER_SIZE_BYTES];
+
           this.connected = true;
 
           this.EnableControls(true);
@@ -658,20 +710,21 @@ namespace rF2SMMonitor
     }
     private void Disconnect()
     {
-      if (this.memoryMappedFile1 != null)
-        this.memoryMappedFile1.Dispose();
+      // TODO: disconnect
+      if (this.memoryMappedTelemetry1 != null)
+        this.memoryMappedTelemetry1.Dispose();
 
-      if (this.memoryMappedFile2 != null)
-        this.memoryMappedFile2.Dispose();
+      if (this.memoryMappedTelemetry2 != null)
+        this.memoryMappedTelemetry2.Dispose();
 
-      if (this.fileAccessMutex != null)
-        this.fileAccessMutex.Dispose();
+      if (this.mutexTelemetry != null)
+        this.mutexTelemetry.Dispose();
 
-      this.memoryMappedFile1 = null;
-      this.memoryMappedFile2 = null;
-      this.sharedMemoryReadBuffer = null;
+      this.memoryMappedTelemetry1 = null;
+      this.memoryMappedTelemetry2 = null;
+      this.sharedMemoryReadBufferTelemetry = null;
       this.connected = false;
-      this.fileAccessMutex = null;
+      this.mutexTelemetry = null;
 
       this.EnableControls(false);
     }

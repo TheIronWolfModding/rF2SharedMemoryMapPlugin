@@ -4,7 +4,7 @@ Implementation of InterpolationStats class.
 Tracks and renders stats on how close interpolated values are to real
 values by comparing player vehicle telemetry values to ScoringUpdate values.
 
-Author: The Iron Wolf (vleonavicius @hotmail.com)
+Author: The Iron Wolf (vleonavicius@hotmail.com)
 */
 using rF2SMMonitor.rFactor2Data;
 using System;
