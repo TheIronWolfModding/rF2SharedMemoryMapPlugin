@@ -3,7 +3,7 @@ rF2SMMonitor is visual debugger for rF2 Shared Memory Plugin.
 
 MainForm implementation, contains main loop and render calls.
 
-Author: The Iron Wolf (vleonavicius @hotmail.com)
+Author: The Iron Wolf (vleonavicius@hotmail.com)
 */
 using rF2SMMonitor.rFactor2Data;
 using System;
@@ -36,13 +36,11 @@ namespace rF2SMMonitor
 
     readonly int RF2_TELEMETRY_BUFFER_SIZE_BYTES = Marshal.SizeOf(typeof(rF2Telemetry));
     readonly int RF2_SCORING_BUFFER_SIZE_BYTES = Marshal.SizeOf(typeof(rF2Scoring));
-    readonly int RF2_PHYSICS_BUFFER_SIZE_BYTES = Marshal.SizeOf(typeof(rF2Physics));
     readonly int RF2_EXTENDED_BUFFER_SIZE_BYTES = Marshal.SizeOf(typeof(rF2Extended));
     readonly int RF2_BUFFER_HEADER_SIZE_BYTES = Marshal.SizeOf(typeof(rF2BufferHeader));
 
     byte[] sharedMemoryReadBufferTelemetry = null;
     byte[] sharedMemoryReadBufferScoring = null;
-    byte[] sharedMemoryReadBufferPhysics = null;
     byte[] sharedMemoryReadBufferExtended = null;
 
     // Plugin access fields
@@ -55,11 +53,6 @@ namespace rF2SMMonitor
     Mutex mutexScoring = null;
     MemoryMappedFile memoryMappedScoring1 = null;
     MemoryMappedFile memoryMappedScoring2 = null;
-
-    // Physics:
-    Mutex mutexPhysics = null;
-    MemoryMappedFile memoryMappedPhysics1 = null;
-    MemoryMappedFile memoryMappedPhysics2 = null;
 
     // Extended:
     Mutex mutexExtended = null;
@@ -665,14 +658,6 @@ namespace rF2SMMonitor
           this.sharedMemoryReadBufferScoring = new byte[this.RF2_SCORING_BUFFER_SIZE_BYTES];
 
 
-          this.mutexPhysics = Mutex.OpenExisting(rF2SMMonitor.rFactor2Constants.MM_PHYSICS_FILE_ACCESS_MUTEX);
-          this.memoryMappedPhysics1 = MemoryMappedFile.OpenExisting(rFactor2Constants.MM_PHYSICS_FILE_NAME1);
-          this.memoryMappedPhysics2 = MemoryMappedFile.OpenExisting(rFactor2Constants.MM_PHYSICS_FILE_NAME2);
-
-          // NOTE: Make sure that RF2_PHYSICS_BUFFER_SIZE_BYTES matches the structure size in the plugin (debug mode prints that).
-          this.sharedMemoryReadBufferPhysics = new byte[this.RF2_PHYSICS_BUFFER_SIZE_BYTES];
-
-
           this.mutexExtended = Mutex.OpenExisting(rF2SMMonitor.rFactor2Constants.MM_EXTENDED_FILE_ACCESS_MUTEX);
           this.memoryMappedExtended1 = MemoryMappedFile.OpenExisting(rFactor2Constants.MM_EXTENDED_FILE_NAME1);
           this.memoryMappedExtended2 = MemoryMappedFile.OpenExisting(rFactor2Constants.MM_EXTENDED_FILE_NAME2);
@@ -708,23 +693,31 @@ namespace rF2SMMonitor
         Disconnect();
       }
     }
+
+    private void DisposeAndClear(ref MemoryMappedFile file1, ref MemoryMappedFile file2, ref Mutex mutex, ref byte[] buffer)
+    {
+      if (file1 != null)
+        file1.Dispose();
+
+      if (file2 != null)
+        file2.Dispose();
+
+      if (mutex != null)
+        mutex.Dispose();
+
+      file1 = null;
+      file2 = null;
+      buffer = null;
+      mutex = null;
+    }
+
     private void Disconnect()
     {
-      // TODO: disconnect
-      if (this.memoryMappedTelemetry1 != null)
-        this.memoryMappedTelemetry1.Dispose();
+      this.DisposeAndClear(ref this.memoryMappedTelemetry1, ref this.memoryMappedTelemetry2, ref this.mutexTelemetry, ref this.sharedMemoryReadBufferTelemetry);
+      this.DisposeAndClear(ref this.memoryMappedScoring1, ref this.memoryMappedScoring2, ref this.mutexScoring, ref this.sharedMemoryReadBufferScoring);
+      this.DisposeAndClear(ref this.memoryMappedExtended1, ref this.memoryMappedExtended2, ref this.mutexExtended, ref this.sharedMemoryReadBufferExtended);
 
-      if (this.memoryMappedTelemetry2 != null)
-        this.memoryMappedTelemetry2.Dispose();
-
-      if (this.mutexTelemetry != null)
-        this.mutexTelemetry.Dispose();
-
-      this.memoryMappedTelemetry1 = null;
-      this.memoryMappedTelemetry2 = null;
-      this.sharedMemoryReadBufferTelemetry = null;
       this.connected = false;
-      this.mutexTelemetry = null;
 
       this.EnableControls(false);
     }

@@ -522,22 +522,19 @@ struct rF2Scoring : public rF2MappedBufferHeader
 };
 
 
-struct rF2Physics : public rF2MappedBufferHeader
-{
-  rF2PhysicsOptions mOptions;
-};
-
-
 struct rF2Extended : public rF2MappedBufferHeader
 {
   char mVersion[8];                            // API version
   bool is64bit;                                // Is 64bit plugin?
 
-                                               // Damage tracking:
+  // Damage tracking:
   double mMaxImpactMagnitude;                 // Max impact magnitude.  Tracked on every telemetry update, and reset on visit to pits or Session restart.
   double mAccumulatedImpactMagnitude;         // Accumulated impact magnitude.  Tracked on every telemetry update, and reset on visit to pits or Session restart.
 
-                                              // Function call based flags:
+  // Physics options (updated on session start):
+  rF2PhysicsOptions mPhysics;
+
+  // Function call based flags:
   bool mInRealtimeFC;                         // in realtime as opposed to at the monitor (reported via last EnterRealtime/ExitRealtime calls).
   bool mMultimediaThreadStarted;              // multimedia thread started (reported via ThreadStarted/ThreadStopped calls).
   bool mSimulationThreadStarted;              // simulation thread started (reported via ThreadStarted/ThreadStopped calls).

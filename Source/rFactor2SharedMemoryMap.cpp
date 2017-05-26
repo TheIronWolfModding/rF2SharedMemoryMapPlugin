@@ -106,10 +106,6 @@ char const* const SharedMemoryPlugin::MM_SCORING_FILE_NAME1 = "$rFactor2SMMP_Sco
 char const* const SharedMemoryPlugin::MM_SCORING_FILE_NAME2 = "$rFactor2SMMP_ScoringBuffer2$";
 char const* const SharedMemoryPlugin::MM_SCORING_FILE_ACCESS_MUTEX = R"(Global\$rFactor2SMMP_ScoringMutex)";
 
-char const* const SharedMemoryPlugin::MM_PHYSICS_FILE_NAME1 = "$rFactor2SMMP_PhysicsBuffer1$";
-char const* const SharedMemoryPlugin::MM_PHYSICS_FILE_NAME2 = "$rFactor2SMMP_PhysicsBuffer2$";
-char const* const SharedMemoryPlugin::MM_PHYSICS_FILE_ACCESS_MUTEX = R"(Global\$rFactor2SMMP_PhysicsMutex)";
-
 char const* const SharedMemoryPlugin::MM_EXTENDED_FILE_NAME1 = "$rFactor2SMMP_ExtendedBuffer1$";
 char const* const SharedMemoryPlugin::MM_EXTENDED_FILE_NAME2 = "$rFactor2SMMP_ExtendedBuffer2$";
 char const* const SharedMemoryPlugin::MM_EXTENDED_FILE_ACCESS_MUTEX = R"(Global\$rFactor2SMMP_ExtendedMutex)";
@@ -149,10 +145,6 @@ SharedMemoryPlugin::SharedMemoryPlugin()
       , SharedMemoryPlugin::MM_SCORING_FILE_NAME1
       , SharedMemoryPlugin::MM_SCORING_FILE_NAME2
       , SharedMemoryPlugin::MM_SCORING_FILE_ACCESS_MUTEX),
-    mPhysics(0 /*maxRetries*/
-      , SharedMemoryPlugin::MM_PHYSICS_FILE_NAME1
-      , SharedMemoryPlugin::MM_PHYSICS_FILE_NAME2
-      , SharedMemoryPlugin::MM_PHYSICS_FILE_ACCESS_MUTEX),
     mExtended(0 /*maxRetries*/
       , SharedMemoryPlugin::MM_EXTENDED_FILE_NAME1
       , SharedMemoryPlugin::MM_EXTENDED_FILE_NAME2
@@ -179,11 +171,6 @@ void SharedMemoryPlugin::Startup(long version)
     return;
   }
 
-  if (!mPhysics.Initialize()) {
-    DEBUG_MSG(DebugLevel::Errors, "Failed to initialize physics mapping");
-    return;
-  }
-
   if (!mExtended.Initialize()) {
     DEBUG_MSG(DebugLevel::Errors, "Failed to initialize extended mapping");
     return;
@@ -204,11 +191,6 @@ void SharedMemoryPlugin::Startup(long version)
     size = static_cast<int>(sizeof(rF2Scoring));
     _itoa_s(size, sizeSz, 10);
     DEBUG_MSG3(DebugLevel::Errors, "Size of scoring buffers:", sizeSz, "bytes each.");
-
-    sizeSz[0] = '\0';
-    size = static_cast<int>(sizeof(rF2Physics));
-    _itoa_s(size, sizeSz, 10);
-    DEBUG_MSG3(DebugLevel::Errors, "Size of physics buffers:", sizeSz, "bytes each.");
 
     sizeSz[0] = '\0';
     size = static_cast<int>(sizeof(rF2Extended));
@@ -244,9 +226,6 @@ void SharedMemoryPlugin::Shutdown()
   mScoring.ClearState(nullptr /*pInitialContents*/);
   mScoring.ReleaseResources();
 
-  mPhysics.ClearState(nullptr /*pInitialContents*/);
-  mPhysics.ReleaseResources();
-
   mExtended.ClearState(nullptr /*pInitialContents*/);
   mExtended.ReleaseResources();
 
@@ -277,11 +256,10 @@ void SharedMemoryPlugin::ClearState()
 
   mTelemetry.ClearState(nullptr /*pInitialContents*/);
   mScoring.ClearState(nullptr /*pInitialContents*/);
-  mPhysics.ClearState(nullptr /*pInitialContents*/);
 
   // Certain members of extended state persist between restarts/sessions.
   // So, clear the state but pass persisting state as initial state.
-  mExtStateTracker.ResetDamageState();
+  mExtStateTracker.ClearState();
   mExtended.ClearState(&(mExtStateTracker.mExtended));
 
   ClearTimingsAndCounters();
@@ -614,6 +592,7 @@ void SharedMemoryPlugin::UpdateScoring(ScoringInfoV01 const& info)
 }
 
 
+// Invoked periodically.
 bool SharedMemoryPlugin::WantsToDisplayMessage(MessageInfoV01& /*msgInfo*/)
 {
   // Looks like this is write only API, can't read current text in MC
@@ -646,12 +625,14 @@ void SharedMemoryPlugin::ThreadStopping(long type)
   UpdateThreadState(type, false /*starting*/);
 }
 
+
 // Called roughly every 300ms.
 bool SharedMemoryPlugin::AccessTrackRules(TrackRulesV01& /*info*/)
 {
   return false;
 }
 
+// Invoked periodically.
 bool SharedMemoryPlugin::AccessPitMenu(PitMenuV01& /*info*/)
 {
   return false;
@@ -660,8 +641,9 @@ bool SharedMemoryPlugin::AccessPitMenu(PitMenuV01& /*info*/)
 void SharedMemoryPlugin::SetPhysicsOptions(PhysicsOptionsV01& options)
 {
   DEBUG_MSG(DebugLevel::Timing, "PHYSICS - Updated.");
-  memcpy(&(mPhysics.mpCurWriteBuf->mOptions), &options, sizeof(rF2PhysicsOptions));
-  mPhysics.FlipBuffers();
+  memcpy(&(mExtStateTracker.mExtended.mPhysics), &options, sizeof(rF2PhysicsOptions));
+  memcpy(mExtended.mpCurWriteBuf, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
+  mExtended.FlipBuffers();
 }
 
 ////////////////////////////////////////////

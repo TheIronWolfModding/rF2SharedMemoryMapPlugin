@@ -179,6 +179,7 @@ namespace rF2SMMonitor
       public double x, y, z;
     }
 
+
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
     struct rF2Wheel
     {
@@ -406,6 +407,7 @@ namespace rF2SMMonitor
       public byte[] pointer2;
     }
 
+
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
     struct rF2VehicleScoring
     {
@@ -487,6 +489,7 @@ namespace rF2SMMonitor
       public byte[] mExpansion;  // for future use
     }
 
+
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
     struct rF2PhysicsOptions
     {
@@ -555,15 +558,6 @@ namespace rF2SMMonitor
 
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
-    struct rF2Physics
-    {
-      public byte mCurrentRead;                 // True indicates buffer is safe to read under mutex.
-
-      public rF2PhysicsOptions mOptions;
-    }
-
-
-    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
     struct rF2Extended
     {
       public byte mCurrentRead;                 // True indicates buffer is safe to read under mutex.
@@ -576,11 +570,15 @@ namespace rF2SMMonitor
       public double mMaxImpactMagnitude;                 // Max impact magnitude.  Tracked on every telemetry update, and reset on visit to pits or Session restart.
       public double mAccumulatedImpactMagnitude;         // Accumulated impact magnitude.  Tracked on every telemetry update, and reset on visit to pits or Session restart.
 
+      // Physics options (updated on session start):
+      public rF2PhysicsOptions mPhysics;
+
       // Function call based flags:
       public byte mInRealtimeFC;                         // in realtime as opposed to at the monitor (reported via last EnterRealtime/ExitRealtime calls).
       public byte mMultimediaThreadStarted;              // multimedia thread started (reported via ThreadStarted/ThreadStopped calls).
       public byte mSimulationThreadStarted;              // simulation thread started (reported via ThreadStarted/ThreadStopped calls).
     }
+
 
     [StructLayout(LayoutKind.Sequential, Pack = 4)]
     struct rF2BufferHeader

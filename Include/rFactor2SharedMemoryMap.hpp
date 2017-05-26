@@ -66,10 +66,6 @@ public:
   static char const* const MM_SCORING_FILE_NAME2;
   static char const* const MM_SCORING_FILE_ACCESS_MUTEX;
 
-  static char const* const MM_PHYSICS_FILE_NAME1;
-  static char const* const MM_PHYSICS_FILE_NAME2;
-  static char const* const MM_PHYSICS_FILE_ACCESS_MUTEX;
-
   static char const* const MM_EXTENDED_FILE_NAME1;
   static char const* const MM_EXTENDED_FILE_NAME2;
   static char const* const MM_EXTENDED_FILE_ACCESS_MUTEX;
@@ -147,6 +143,17 @@ private:
       }
     }
 
+    void ClearState()
+    {
+      ResetDamageState();
+
+      memset(&(mExtended.mPhysics), 0, sizeof(rF2PhysicsOptions));
+    }
+
+  public:
+    rF2Extended mExtended = {};
+
+  private:
     void ResetDamageState()
     {
       mExtended.mMaxImpactMagnitude = 0.0;
@@ -156,10 +163,6 @@ private:
       mLastPitStopET = 0.0;
     }
 
-  public:
-    rF2Extended mExtended = {};
-
-  private:
     double mLastImpactProcessedET = 0.0;
     double mLastPitStopET = 0.0;
   };
@@ -199,7 +202,7 @@ public:
   bool AccessTrackRules(TrackRulesV01& info) override; // current track order passed in; return true if you want to change it (note: this will be called immediately after UpdateScoring() when appropriate)
 
   // PIT MENU INFO (currently, the only way to edit the pit menu is to use this in conjunction with CheckHWControl())
-  bool WantsPitMenuAccess() { return(true); } // change to true in order to view pit menu info
+  bool WantsPitMenuAccess() { return(false); } // change to true in order to view pit menu info
   bool AccessPitMenu(PitMenuV01& info) override; // currently, the return code should always be false (because we may allow more direct editing in the future)
 
   void SetPhysicsOptions(PhysicsOptionsV01& options) override;
@@ -245,7 +248,6 @@ private:
 
   MappedDoubleBuffer<rF2Telemetry> mTelemetry;
   MappedDoubleBuffer<rF2Scoring> mScoring;
-  MappedDoubleBuffer<rF2Physics> mPhysics;
   MappedDoubleBuffer<rF2Extended> mExtended;
 
   // Buffers mapped successfully or not.
