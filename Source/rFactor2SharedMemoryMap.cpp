@@ -450,12 +450,6 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
     if (alreadyUpdated)
       DEBUG_INT2(DebugLevel::Synchronization, "TELEMETRY - Update chain started at:", info.mID);
 
-    // Update extended state.
-    // Since I do not want to miss impact data, and it is not accumulated in any way
-    // I am aware of in rF2 internals, process on every call (for player vehicle.
-    if (info.mID == 0)
-      mExtStateTracker.ProcessTelemetryUpdate(info);
-
     // Start new telemetry update chain.
     mLastTelemetryUpdateET = info.mElapsedTime;
     mTelemetryUpdateInProgress = true;
@@ -465,6 +459,11 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
   }
 
   if (mTelemetryUpdateInProgress) {
+    // Update extended state for this vehicle.
+    // Since I do not want to miss impact data, and it is not accumulated in any way
+    // I am aware of in rF2 internals, process on every telemetr update.
+    mExtStateTracker.ProcessTelemetryUpdate(info);
+
     auto const partiticpantIndex = min(info.mID, MAX_PARTICIPANT_SLOTS - 1);
     assert(mParticipantTelemetryUpdated[partiticpantIndex] == false);
     mParticipantTelemetryUpdated[partiticpantIndex] = true;

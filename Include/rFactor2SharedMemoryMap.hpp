@@ -121,25 +121,31 @@ private:
 
     void ProcessTelemetryUpdate(TelemInfoV01 const& info)
     {
-      if (info.mLastImpactET > mLastPitStopET  // Is this new impact since last pit stop?
-        && info.mLastImpactET > mLastImpactProcessedET) { // Is this new impact?
+      auto& dti = mDamageTrackingInfos[info.mID];  // TODO: cap
+      if (info.mLastImpactET > dti.mLastPitStopET  // Is this new impact since last pit stop?
+        && info.mLastImpactET > dti.mLastImpactProcessedET) { // Is this new impact?
         // Ok, this is either new impact, or first impact since pit stop.
         // Update max and accumulated impact magnitudes.
-        mExtended.mMaxImpactMagnitude = max(mExtended.mMaxImpactMagnitude, info.mLastImpactMagnitude);
-        mExtended.mAccumulatedImpactMagnitude += info.mLastImpactMagnitude;
+        auto& td = mExtended.mTrackedDamages[info.mID];
+        td.mMaxImpactMagnitude = max(td.mMaxImpactMagnitude, info.mLastImpactMagnitude);
+        td.mAccumulatedImpactMagnitude += info.mLastImpactMagnitude;
 
-        mLastImpactProcessedET = info.mLastImpactET;
+        dti.mLastImpactProcessedET = info.mLastImpactET;
       }
     }
 
     void ProcessScoringUpdate(ScoringInfoV01 const& info)
     {
-      // This code bravely assumes that car at 0 with id 0 is player.
-      if (info.mNumVehicles > 0 
-        && info.mVehicle[0].mID == 0
-        && info.mVehicle[0].mPitState == static_cast<unsigned char>(rF2PitState::Stopped)) {
-        ResetDamageState();
-        mLastPitStopET = info.mCurrentET;
+      for (int i = 0; i < info.mNumVehicles; ++i) {
+        if (info.mVehicle[i].mPitState == static_cast<unsigned char>(rF2PitState::Stopped)) {
+          // If this car is pitting, clear out any damage tracked.
+          auto const id = info.mVehicle[i].mID; // TODO: cap ID
+
+          memset(&(mExtended.mTrackedDamages[id]), 0, sizeof(rF2TrackedDamage));
+
+          mDamageTrackingInfos[id].mLastImpactProcessedET = 0.0;
+          mDamageTrackingInfos[id].mLastPitStopET = info.mCurrentET;
+        }
       }
     }
 
@@ -156,15 +162,17 @@ private:
   private:
     void ResetDamageState()
     {
-      mExtended.mMaxImpactMagnitude = 0.0;
-      mExtended.mAccumulatedImpactMagnitude = 0.0;
-
-      mLastImpactProcessedET = 0.0;
-      mLastPitStopET = 0.0;
+      memset(&(mExtended.mTrackedDamages), 0, sizeof(rF2TrackedDamage));
+      memset(&mDamageTrackingInfos, 0, sizeof(mDamageTrackingInfos));
     }
 
-    double mLastImpactProcessedET = 0.0;
-    double mLastPitStopET = 0.0;
+    struct DamageTracking
+    {
+      double mLastImpactProcessedET = 0.0;
+      double mLastPitStopET = 0.0;
+    };
+
+    DamageTracking mDamageTrackingInfos[rF2MappedBufferHeader::MAX_MAPPED_IDS];
   };
 
 public:

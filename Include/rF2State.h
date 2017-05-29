@@ -502,6 +502,7 @@ struct rF2PhysicsOptions
 struct rF2MappedBufferHeader
 {
   static int const MAX_MAPPED_VEHICLES = 128;
+  static int const MAX_MAPPED_IDS = 256;
 
   bool mCurrentRead;                 // True indicates buffer is safe to read under mutex.
 };
@@ -522,17 +523,23 @@ struct rF2Scoring : public rF2MappedBufferHeader
 };
 
 
+struct rF2TrackedDamage
+{
+  double mMaxImpactMagnitude;                 // Max impact magnitude.  Tracked on every telemetry update, and reset on visit to pits or Session restart.
+  double mAccumulatedImpactMagnitude;         // Accumulated impact magnitude.  Tracked on every telemetry update, and reset on visit to pits or Session restart.
+};
+
+
 struct rF2Extended : public rF2MappedBufferHeader
 {
   char mVersion[8];                            // API version
   bool is64bit;                                // Is 64bit plugin?
 
-  // Damage tracking:
-  double mMaxImpactMagnitude;                 // Max impact magnitude.  Tracked on every telemetry update, and reset on visit to pits or Session restart.
-  double mAccumulatedImpactMagnitude;         // Accumulated impact magnitude.  Tracked on every telemetry update, and reset on visit to pits or Session restart.
-
   // Physics options (updated on session start):
   rF2PhysicsOptions mPhysics;
+
+  // Damage tracking for each vehicle (indexed by mID):
+  rF2TrackedDamage mTrackedDamages[rF2MappedBufferHeader::MAX_MAPPED_IDS];
 
   // Function call based flags:
   bool mInRealtimeFC;                         // in realtime as opposed to at the monitor (reported via last EnterRealtime/ExitRealtime calls).
