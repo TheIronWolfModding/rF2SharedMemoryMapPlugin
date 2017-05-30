@@ -231,6 +231,7 @@ private:
   void TelemetryTraceBeginUpdate(double telUpdateET);
   void TelemetryTraceVehicleAdded(TelemInfoV01 const& infos) const;
   void TelemetryTraceEndUpdate(int numVehiclesInChain) const;
+  void TelemetryFlipBuffers();
 
   void ScoringTraceBeginUpdate();
 

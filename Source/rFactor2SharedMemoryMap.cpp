@@ -342,7 +342,8 @@ void SharedMemoryPlugin::TelemetryTraceSkipUpdate(TelemInfoV01 const& info) cons
     DEBUG_MSG(DebugLevel::Timing, msg);
   }
 
-  if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::Warnings) {
+  if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::Warnings 
+    && !mTelemetry.RetryPending()) { // If we're in retry mode, below check makes no sense as read buffer is behind current state.
     if (info.mPos.x != mTelemetry.mpCurReadBuf->mVehicles->mPos.x
       || info.mPos.y != mTelemetry.mpCurReadBuf->mVehicles->mPos.y
       || info.mPos.z != mTelemetry.mpCurReadBuf->mVehicles->mPos.z)
@@ -401,6 +402,37 @@ void SharedMemoryPlugin::TelemetryTraceEndUpdate(int numVehiclesInChain) const
     sprintf(msg, "TELEMETRY - End Update.  Telemetry chain update took %f:  Vehicles in chain: %d", deltaSysTimeMicroseconds / MICROSECONDS_IN_SECOND, numVehiclesInChain);
 
     DEBUG_MSG(DebugLevel::Timing, msg);
+  }
+}
+
+
+void SharedMemoryPlugin::TelemetryFlipBuffers()
+{
+  if (mLastTelemetryUpdateET <= mLastScoringUpdateET) {
+    // If scoring update is ahead of this telemetry update, force flip.
+    DEBUG_MSG(DebugLevel::Synchronization, "TELEMETRY - Force flip due to: mLastTelemetryUpdateET <= mLastScoringUpdateET.");
+    mTelemetry.FlipBuffers();
+  }
+  else if (mTelemetry.AsyncRetriesLeft() > 0) {
+    auto const retryPending = mTelemetry.RetryPending();
+    // Otherwise, try buffer flip.
+    mTelemetry.TryFlipBuffers();
+
+    // Print msg about buffer flip failure or success.
+    if (mTelemetry.RetryPending())
+      DEBUG_INT2(DebugLevel::Synchronization, "TELEMETRY - Buffer flip failed, retries remaining:", mTelemetry.AsyncRetriesLeft());
+    else {
+      if (retryPending)
+        DEBUG_MSG(DebugLevel::Synchronization, "TELEMETRY - Buffer flip succeeded on retry.");
+      else
+        DEBUG_MSG(DebugLevel::Timing, "TELEMETRY - Buffer flip succeeded.");
+    }
+  }
+  else {
+    // Force flip if no more retries are left
+    assert(mTelemetry.AsyncRetriesLeft() == 0);
+    DEBUG_MSG(DebugLevel::Synchronization, "TELEMETRY - Force flip due to retry limit exceeded.");
+    mTelemetry.FlipBuffers();
   }
 }
 
@@ -481,55 +513,20 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
       mCurTelemetryVehicleIndex = 0;
       memset(mParticipantTelemetryUpdated, 0, sizeof(mParticipantTelemetryUpdated));
 
-      if (mLastTelemetryUpdateET <= mLastScoringUpdateET) {
-        // If scoring update is ahead of this telemetry update, force flip.
-        DEBUG_MSG(DebugLevel::Synchronization, "TELEMETRY - Force flip due to: mLastTelemetryUpdateET <= mLastScoringUpdateET.");
-        mTelemetry.FlipBuffers();
-      }
-      else if (mTelemetry.AsyncRetriesLeft() > 0) {
-        // Otherwise, try buffer flip.
-        mTelemetry.TryFlipBuffers();
-
-        // Print msg about buffer flip failure or success.
-        if (mTelemetry.RetryPending())
-          DEBUG_INT2(DebugLevel::Synchronization, "TELEMETRY - Buffer flip failed, retries remaining:", mTelemetry.AsyncRetriesLeft());
-      } 
-      else {
-        // Force flip if no more retries are left
-        assert(mTelemetry.AsyncRetriesLeft() == 0);
-        DEBUG_MSG(DebugLevel::Synchronization, "TELEMETRY - Force flip due to retry limit exceeded.");
-        mTelemetry.FlipBuffers();
-      }
-
+      TelemetryFlipBuffers();
       TelemetryTraceEndUpdate(numVehiclesInChain);
     }
 
     return;
   }
+  else
+    return;  // Do nothing if there's no update in progress.
 
 skipUpdate:
-  // If there's flip pending, retry.
+  // Once per skipped update, retry pending flip, if any.
   if (mTelemetry.RetryPending()) {
-    assert(!mTelemetryUpdateInProgress);
-    if (mLastTelemetryUpdateET <= mLastScoringUpdateET) {
-      // If scoring update is ahead of this telemetry update, force flip.
-      DEBUG_MSG(DebugLevel::Synchronization, "TELEMETRY - Force pending flip due to: mLastTelemetryUpdateET <= mLastScoringUpdateET.");
-      mTelemetry.FlipBuffers();
-    }
-    // Retry/flip if pending.
-    else if (mTelemetry.AsyncRetriesLeft() > 0) {
-      DEBUG_MSG(DebugLevel::Synchronization, "TELEMETRY - Retrying incomplete buffer flip.");
-      mTelemetry.TryFlipBuffers();
-      if (mTelemetry.RetryPending())
-        DEBUG_INT2(DebugLevel::Synchronization, "TELEMETRY - Buffer flip failed, retries remaining:", mTelemetry.AsyncRetriesLeft());
-      else
-        DEBUG_MSG(DebugLevel::Synchronization, "TELEMETRY - Buffer flip succeeded.");
-    } 
-    else {
-      assert(mTelemetry.AsyncRetriesLeft() == 0);
-      mTelemetry.FlipBuffers();
-      DEBUG_MSG(DebugLevel::Synchronization, "TELEMETRY - Force flip due to retry limit exceeded.");
-    }
+    DEBUG_MSG(DebugLevel::Synchronization, "TELEMETRY - Retry pending buffer flip on update skip.");
+    TelemetryFlipBuffers();
   }
 }
 
@@ -568,7 +565,7 @@ void SharedMemoryPlugin::UpdateScoring(ScoringInfoV01 const& info)
   ScoringTraceBeginUpdate();
 
   if (mTelemetry.RetryPending()) {
-    DEBUG_MSG(DebugLevel::Synchronization, "SCORING - Telemetry force flip due to retry pending.");
+    DEBUG_MSG(DebugLevel::Synchronization, "SCORING - Force telemetry flip due to retry pending.");
     mTelemetry.FlipBuffers();
   }
 

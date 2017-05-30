@@ -34,10 +34,11 @@ namespace rF2SMMonitor
     {
       readonly int RF2_BUFFER_HEADER_SIZE_BYTES = Marshal.SizeOf(typeof(rF2BufferHeader));
 
-      readonly int BUFFER_SIZE;
+      readonly int BUFFER_SIZE_BYTES;
       readonly string BUFFER1_NAME;
       readonly string BUFFER2_NAME;
       readonly string MUTEX_NAME;
+
       byte[] sharedMemoryReadBuffer = null;
       Mutex mutex = null;
       MemoryMappedFile memoryMappedFile1 = null;
@@ -45,7 +46,7 @@ namespace rF2SMMonitor
 
       public MappedDoubleBuffer(string buff1Name, string buff2Name, string mutexName)
       {
-        this.BUFFER_SIZE = Marshal.SizeOf(typeof(MappedBufferT));
+        this.BUFFER_SIZE_BYTES = Marshal.SizeOf(typeof(MappedBufferT));
         this.BUFFER1_NAME = buff1Name;
         this.BUFFER2_NAME = buff2Name;
         this.MUTEX_NAME = mutexName;
@@ -58,7 +59,7 @@ namespace rF2SMMonitor
         this.memoryMappedFile2 = MemoryMappedFile.OpenExisting(this.BUFFER2_NAME);
 
         // NOTE: Make sure that BUFFER_SIZE matches the structure size in the plugin (debug mode prints that).
-        this.sharedMemoryReadBuffer = new byte[this.BUFFER_SIZE];
+        this.sharedMemoryReadBuffer = new byte[this.BUFFER_SIZE_BYTES];
       }
 
       public void Disconnect()
@@ -105,7 +106,7 @@ namespace rF2SMMonitor
               if (header.mCurrentRead == 1)
               {
                 sharedMemoryStream.BaseStream.Position = 0;
-                this.sharedMemoryReadBuffer = sharedMemoryStream.ReadBytes(this.BUFFER_SIZE);
+                this.sharedMemoryReadBuffer = sharedMemoryStream.ReadBytes(this.BUFFER_SIZE_BYTES);
                 buf1Current = true;
               }
             }
@@ -116,7 +117,7 @@ namespace rF2SMMonitor
               using (var sharedMemoryStreamView = this.memoryMappedFile2.CreateViewStream())
               {
                 var sharedMemoryStream = new BinaryReader(sharedMemoryStreamView);
-                this.sharedMemoryReadBuffer = sharedMemoryStream.ReadBytes(this.BUFFER_SIZE);
+                this.sharedMemoryReadBuffer = sharedMemoryStream.ReadBytes(this.BUFFER_SIZE_BYTES);
               }
             }
           }
