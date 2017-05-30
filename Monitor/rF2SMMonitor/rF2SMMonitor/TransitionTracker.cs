@@ -1,4 +1,5 @@
-﻿using rF2SMMonitor.rFactor2Data;
+﻿#if false
+using rF2SMMonitor.rFactor2Data;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -1086,14 +1087,16 @@ namespace rF2SMMonitor
       return bestLapStats;
     }
 
-    private string getStringFromBytes(byte[] name)
+    private static string getStringFromBytes(byte[] bytes)
     {
-      var str = Encoding.Default.GetString(name);
-      var eosChar = str.IndexOf('\0');
-      if (eosChar != -1)
-        str = str.Substring(0, eosChar);
+      if (bytes == null)
+        return "";
 
-      return str;
+      var nullIdx = Array.IndexOf(bytes, (byte)0);
+
+      return nullIdx >= 0
+        ? Encoding.Default.GetString(bytes, 0, nullIdx) 
+        : Encoding.Default.GetString(bytes);
     }
 
     private void getDetailedVehTiming(string name, ref rF2VehScoringInfo vehicle, LapData.LapStats bestLapStats, ref rF2State state, out StringBuilder sbDetails, out PlayerTimingInfo pti)
@@ -1145,3 +1148,4 @@ namespace rF2SMMonitor
     }
   }
 }
+#endif

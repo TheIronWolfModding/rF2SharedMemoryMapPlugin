@@ -1,4 +1,5 @@
-﻿/*
+﻿#if false
+/*
 Implementation of InterpolationStats class.
 
 Tracks and renders stats on how close interpolated values are to real
@@ -233,3 +234,4 @@ namespace rF2SMMonitor
     }
   }
 }
+#endif

@@ -37,8 +37,10 @@ namespace rF2SMMonitor
     public const string MM_EXTENDED_FILE_ACCESS_MUTEX = @"Global\$rFactor2SMMP_ExtendedMutex";
 
     public const int MAX_MAPPED_VEHICLES = 128;
+    public const int MAX_MAPPED_IDS = 256;
     public const string RFACTOR2_PROCESS_NAME = "rFactor2";
 
+    // TODO: remove if not needed
     public const byte RowX = 0;
     public const byte RowY = 1;
     public const byte RowZ = 2;
@@ -384,7 +386,7 @@ namespace rF2SMMonitor
       [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = 32)]
       public byte[] mPlayerName;            // player name (including possible multiplayer override)
       [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = 64)]
-      public char[] mPlrFileName;           // may be encoded to be a legal filename
+      public byte[] mPlrFileName;           // may be encoded to be a legal filename
 
       // weather
       public double mDarkCloud;               // cloud darkness? 0.0-1.0
@@ -552,9 +554,18 @@ namespace rF2SMMonitor
       public byte mCurrentRead;                 // True indicates buffer is safe to read under mutex.
 
       public rF2ScoringInfo mScoringInfo;
+
       [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = rFactor2Constants.MAX_MAPPED_VEHICLES)]
       public rF2VehicleScoring[] mVehicles;
     }
+
+
+    [StructLayout(LayoutKind.Sequential, Pack = 4)]
+    struct rF2TrackedDamage
+    {
+      public double mMaxImpactMagnitude;                 // Max impact magnitude.  Tracked on every telemetry update, and reset on visit to pits or Session restart.
+      public double mAccumulatedImpactMagnitude;         // Accumulated impact magnitude.  Tracked on every telemetry update, and reset on visit to pits or Session restart.
+    };
 
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
@@ -566,9 +577,9 @@ namespace rF2SMMonitor
       public byte[] mVersion;                            // API version
       public byte is64bit;                               // Is 64bit plugin?
 
-      // Damage tracking:
-      public double mMaxImpactMagnitude;                 // Max impact magnitude.  Tracked on every telemetry update, and reset on visit to pits or Session restart.
-      public double mAccumulatedImpactMagnitude;         // Accumulated impact magnitude.  Tracked on every telemetry update, and reset on visit to pits or Session restart.
+      // Damage tracking for each vehicle (indexed by mID):
+      [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = rFactor2Constants.MAX_MAPPED_IDS)]
+      public rF2TrackedDamage[] mTrackedDamages;
 
       // Physics options (updated on session start):
       public rF2PhysicsOptions mPhysics;

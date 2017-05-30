@@ -121,12 +121,14 @@ private:
 
     void ProcessTelemetryUpdate(TelemInfoV01 const& info)
     {
-      auto& dti = mDamageTrackingInfos[info.mID];  // TODO: cap
+      auto const id = min(info.mID, rF2MappedBufferHeader::MAX_MAPPED_IDS - 1);
+
+      auto& dti = mDamageTrackingInfos[id];
       if (info.mLastImpactET > dti.mLastPitStopET  // Is this new impact since last pit stop?
         && info.mLastImpactET > dti.mLastImpactProcessedET) { // Is this new impact?
         // Ok, this is either new impact, or first impact since pit stop.
         // Update max and accumulated impact magnitudes.
-        auto& td = mExtended.mTrackedDamages[info.mID];
+        auto& td = mExtended.mTrackedDamages[id];
         td.mMaxImpactMagnitude = max(td.mMaxImpactMagnitude, info.mLastImpactMagnitude);
         td.mAccumulatedImpactMagnitude += info.mLastImpactMagnitude;
 
@@ -139,7 +141,7 @@ private:
       for (int i = 0; i < info.mNumVehicles; ++i) {
         if (info.mVehicle[i].mPitState == static_cast<unsigned char>(rF2PitState::Stopped)) {
           // If this car is pitting, clear out any damage tracked.
-          auto const id = info.mVehicle[i].mID; // TODO: cap ID
+          auto const id = min(info.mVehicle[i].mID, rF2MappedBufferHeader::MAX_MAPPED_IDS - 1);
 
           memset(&(mExtended.mTrackedDamages[id]), 0, sizeof(rF2TrackedDamage));
 

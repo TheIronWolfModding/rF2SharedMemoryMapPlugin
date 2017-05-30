@@ -1,4 +1,5 @@
-﻿/*
+﻿#if false
+/*
 Implementation of Interpolator class.
 
 Scratch pad for getting interpolation math right.
@@ -415,3 +416,4 @@ namespace rF2SMMonitor
   }
 }
 
+#endif
