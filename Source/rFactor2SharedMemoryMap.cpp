@@ -462,7 +462,12 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
     if (info.mElapsedTime == mLastTelemetryUpdateET) {
       TelemetryTraceSkipUpdate(info);
       assert(!mTelemetryUpdateInProgress);
-      goto skipUpdate;
+
+      // Once per skipped update, retry pending flip, if any.
+      if (mTelemetry.RetryPending()) {
+        DEBUG_MSG(DebugLevel::Synchronization, "TELEMETRY - Retry pending buffer flip on update skip.");
+        TelemetryFlipBuffers();
+      }
     }
 
     // I saw zis vence and want to understand WTF??
@@ -518,15 +523,6 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
     }
 
     return;
-  }
-  else
-    return;  // Do nothing if there's no update in progress.
-
-skipUpdate:
-  // Once per skipped update, retry pending flip, if any.
-  if (mTelemetry.RetryPending()) {
-    DEBUG_MSG(DebugLevel::Synchronization, "TELEMETRY - Retry pending buffer flip on update skip.");
-    TelemetryFlipBuffers();
   }
 }
 

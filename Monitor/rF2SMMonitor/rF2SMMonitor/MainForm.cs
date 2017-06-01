@@ -7,6 +7,7 @@ Author: The Iron Wolf (vleonavicius@hotmail.com)
 */
 using rF2SMMonitor.rFactor2Data;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
@@ -150,11 +151,8 @@ namespace rF2SMMonitor
     rF2Scoring scoring;
     rF2Extended extended;
 
-    // Interpolation debugging
-    //InterpolationStats interpolationStats = new InterpolationStats();
-
     // Track rF2 transitions.
-//    TransitionTracker tracker = new TransitionTracker();
+    TransitionTracker tracker = new TransitionTracker();
 
     // Config
     IniFile config = new IniFile();
@@ -455,10 +453,9 @@ namespace rF2SMMonitor
     {
       var g = e.Graphics;
 
-      /*
-      this.tracker.TrackPhase(ref this.currrF2State, g, this.logPhaseAndState);
-      this.tracker.TrackDamage(ref this.currrF2State, g, this.logDamage);
-      this.tracker.TrackTimings(ref this.currrF2State, g, this.logTiming);*/
+      this.tracker.TrackPhase(ref this.scoring, ref this.telemetry, g, this.logPhaseAndState);
+      //this.tracker.TrackDamage(ref this.currrF2State, g, this.logDamage);
+      //this.tracker.TrackTimings(ref this.currrF2State, g, this.logTiming);
 
       this.UpdateFPS();
 
@@ -554,9 +551,17 @@ namespace rF2SMMonitor
         if (this.logLightMode)
           return;
 
-        //Interpolator.RenderDebugInfo(ref this.currrF2State, g);
+        if (this.scoring.mScoringInfo.mNumVehicles == 0)
+          return;
 
-        //this.interpolationStats.RenderInterpolationInfo(ref this.currrF2State, g, this.currBuff);
+        // Build map of mID -> telemetry.mVehicles[i]. 
+        // They are typically matching values, however, we need to handle online cases and dropped vehicles (mID can be reused).
+        var idsToTelIndices = new Dictionary<long, int>();
+        for (int i = 0; i < this.telemetry.mNumVehicles; ++i)
+        {
+          if (!idsToTelIndices.ContainsKey(this.telemetry.mVehicles[i].mID))
+            idsToTelIndices.Add(this.telemetry.mVehicles[i].mID, i);
+        }
 
         // Branch of UI choice: origin center or car# center
         // Fix rotation on car of choice or no.
@@ -564,7 +569,13 @@ namespace rF2SMMonitor
         // Scale will be parameter, scale applied last on render to zoom.
         float scale = this.scale;
 
-        var playerVeh = this.telemetry.mVehicles[0];
+        var scoringPlrId = this.scoring.mVehicles[0].mID;
+        if (!idsToTelIndices.ContainsKey(scoringPlrId))
+          return;
+
+        var resolvedIdx = idsToTelIndices[scoringPlrId];
+        var playerVeh = this.telemetry.mVehicles[resolvedIdx];
+
         var xVeh = (float)playerVeh.mPos.x;
         var zVeh = (float)playerVeh.mPos.z;
         var yawVeh = Math.Atan2(playerVeh.mOri[2].x, playerVeh.mOri[2].z);
@@ -613,11 +624,6 @@ namespace rF2SMMonitor
               -(float)veh.mPos.z,
               -(float)yaw, Brushes.Red);
           }
-           /* for (int i = 0; i < this.currrF2State.mNumVehicles; ++i)
-            this.RenderCar(g,
-              (float)this.currrF2State.mVehicles[i].mPos.x,
-              -(float)this.currrF2State.mVehicles[i].mPos.z,
-             -(float)this.currrF2State.mVehicles[i].mYaw, Brushes.Red);*/
         }
       }
     }

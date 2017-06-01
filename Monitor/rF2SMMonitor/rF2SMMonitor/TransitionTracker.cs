@@ -1,5 +1,4 @@
-﻿#if false
-using rF2SMMonitor.rFactor2Data;
+﻿using rF2SMMonitor.rFactor2Data;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -130,7 +129,7 @@ namespace rF2SMMonitor
 
     private float screenYStart = 150.0f;
 
-    internal void TrackPhase(ref rF2State state, Graphics g, bool logToFile)
+    internal void TrackPhase(ref rF2Scoring scoring, ref rF2Telemetry telemetry, Graphics g, bool logToFile)
     {
       if (logToFile)
       {
@@ -138,10 +137,10 @@ namespace rF2SMMonitor
               || this.lastPhaseTrackingGamePhase == rF2GamePhase.SessionOver
               || this.lastPhaseTrackingGamePhase == rF2GamePhase.SessionStopped
               || (int)this.lastPhaseTrackingGamePhase == 9)  // What is 9? 
-            && ((rF2GamePhase)state.mGamePhase == rF2GamePhase.Countdown
-              || (rF2GamePhase)state.mGamePhase == rF2GamePhase.Formation
-              || (rF2GamePhase)state.mGamePhase == rF2GamePhase.GridWalk
-              || (rF2GamePhase)state.mGamePhase == rF2GamePhase.GreenFlag))
+            && ((rF2GamePhase)scoring.mScoringInfo.mGamePhase == rF2GamePhase.Countdown
+              || (rF2GamePhase)scoring.mScoringInfo.mGamePhase == rF2GamePhase.Formation
+              || (rF2GamePhase)scoring.mScoringInfo.mGamePhase == rF2GamePhase.GridWalk
+              || (rF2GamePhase)scoring.mScoringInfo.mGamePhase == rF2GamePhase.GreenFlag))
         {
           var lines = new List<string>();
           lines.Add("\n");
@@ -153,26 +152,40 @@ namespace rF2SMMonitor
         }
       }
 
-      this.lastPhaseTrackingGamePhase = (rF2GamePhase)state.mGamePhase;
+      this.lastPhaseTrackingGamePhase = (rF2GamePhase)scoring.mScoringInfo.mGamePhase;
 
-      if (state.mNumVehicles == 0)
+      if (scoring.mScoringInfo.mNumVehicles == 0)
         return;
 
-      var playerVeh = state.mVehicles[0];
-      Debug.Assert(state.mID == playerVeh.mID);
+      // Build map of mID -> telemetry.mVehicles[i]. 
+      // They are typically matching values, however, we need to handle online cases and dropped vehicles (mID can be reused).
+      var idsToTelIndices = new Dictionary<long, int>();
+      for (int i = 0; i < telemetry.mNumVehicles; ++i)
+      {
+        if (!idsToTelIndices.ContainsKey(telemetry.mVehicles[i].mID))
+          idsToTelIndices.Add(telemetry.mVehicles[i].mID, i);
+      }
+
+      var scoringPlrId = scoring.mVehicles[0].mID;
+      if (!idsToTelIndices.ContainsKey(scoringPlrId))
+        return;
+
+      var resolvedIdx = idsToTelIndices[scoringPlrId];
+      var playerVeh = scoring.mVehicles[0];
+      var playerVehTelemetry = telemetry.mVehicles[resolvedIdx];
 
       var ps = new PhaseAndState();
 
-      ps.mGamePhase = (rF2GamePhase)state.mGamePhase;
-      ps.mSession = state.mSession;
-      ps.mYellowFlagState = (rF2YellowFlagState)state.mYellowFlagState;
-      ps.mSector = state.mVehicles[0].mSector == 0 ? 3 : state.mVehicles[0].mSector;
-      ps.mCurrentSector = state.mCurrentSector;
-      ps.mInRealTimeFC = state.mInRealtimeFC;
-      ps.mInRealTimeSU = state.mInRealtimeSU;
-      ps.mSector1Flag = (rF2YellowFlagState)state.mSectorFlag[0];
-      ps.mSector2Flag = (rF2YellowFlagState)state.mSectorFlag[1];
-      ps.mSector3Flag = (rF2YellowFlagState)state.mSectorFlag[2];
+      ps.mGamePhase = (rF2GamePhase)scoring.mScoringInfo.mGamePhase;
+      ps.mSession = scoring.mScoringInfo.mSession;
+      ps.mYellowFlagState = (rF2YellowFlagState)scoring.mScoringInfo.mYellowFlagState;
+      ps.mSector = playerVeh.mSector == 0 ? 3 : playerVeh.mSector;
+      ps.mCurrentSector = playerVehTelemetry.mCurrentSector;
+      ps.mInRealTimeFC = scoring.mScoringInfo.mInRealtime;
+      ps.mInRealTimeSU = 0;  //TODO: pass extended//scoring.mScoringInfo.mInRealtimeSU;
+      ps.mSector1Flag = (rF2YellowFlagState)scoring.mScoringInfo.mSectorFlag[0];
+      ps.mSector2Flag = (rF2YellowFlagState)scoring.mScoringInfo.mSectorFlag[1];
+      ps.mSector3Flag = (rF2YellowFlagState)scoring.mScoringInfo.mSectorFlag[2];
       ps.mControl = (rF2Control)playerVeh.mControl;
       ps.mInPits = playerVeh.mInPits;
       ps.mIsPlayer = playerVeh.mIsPlayer;
@@ -184,25 +197,25 @@ namespace rF2SMMonitor
       ps.mCountLapFlag = (rF2CountLapFlag)playerVeh.mCountLapFlag;
       ps.mInGarageStall = playerVeh.mInGarageStall;
       ps.mFinishStatus = (rF2FinishStatus)playerVeh.mFinishStatus;
-      ps.mLapNumber = state.mLapNumber;
+      ps.mLapNumber = playerVehTelemetry.mLapNumber;
       ps.mTotalLaps = playerVeh.mTotalLaps;
-      ps.mMaxLaps = state.mMaxLaps;
-      ps.mNumVehicles = state.mNumVehicles;
-      ps.mScheduledStops = state.mScheduledStops;
-      ps.mHeadlights = state.mHeadlights;
-      ps.mSpeedLimiter = state.mSpeedLimiter;
-      ps.mFrontTireCompoundIndex = state.mFrontTireCompoundIndex;
-      ps.mRearTireCompoundIndex = state.mRearTireCompoundIndex;
-      ps.mFrontTireCompoundName = this.getStringFromBytes(state.mFrontTireCompoundName);
-      ps.mRearTireCompoundName = this.getStringFromBytes(state.mRearTireCompoundName);
-      ps.mFrontFlapActivated = state.mFrontFlapActivated;
-      ps.mRearFlapActivated = state.mRearFlapActivated;
-      ps.mRearFlapLegalStatus = (rF2RearFlapLegalStatus)state.mRearFlapLegalStatus;
-      ps.mIgnitionStarter = (rF2IgnitionStarterStatus)state.mIgnitionStarter;
-      ps.mSpeedLimiterAvailable = state.mSpeedLimiterAvailable;
-      ps.mAntiStallActivated = state.mAntiStallActivated;
-      ps.mStartLight = state.mStartLight;
-      ps.mNumRedLights = state.mNumRedLights;
+      ps.mMaxLaps = scoring.mScoringInfo.mMaxLaps;
+      ps.mNumVehicles = scoring.mScoringInfo.mNumVehicles;
+      ps.mScheduledStops = playerVehTelemetry.mScheduledStops;
+      ps.mHeadlights = playerVeh.mHeadlights;
+      ps.mSpeedLimiter = playerVehTelemetry.mSpeedLimiter;
+      ps.mFrontTireCompoundIndex = playerVehTelemetry.mFrontTireCompoundIndex;
+      ps.mRearTireCompoundIndex = playerVehTelemetry.mRearTireCompoundIndex;
+      ps.mFrontTireCompoundName = TransitionTracker.getStringFromBytes(playerVehTelemetry.mFrontTireCompoundName);
+      ps.mRearTireCompoundName = TransitionTracker.getStringFromBytes(playerVehTelemetry.mRearTireCompoundName);
+      ps.mFrontFlapActivated = playerVehTelemetry.mFrontFlapActivated;
+      ps.mRearFlapActivated = playerVehTelemetry.mRearFlapActivated;
+      ps.mRearFlapLegalStatus = (rF2RearFlapLegalStatus)playerVehTelemetry.mRearFlapLegalStatus;
+      ps.mIgnitionStarter = (rF2IgnitionStarterStatus)playerVehTelemetry.mIgnitionStarter;
+      ps.mSpeedLimiterAvailable = playerVehTelemetry.mSpeedLimiterAvailable;
+      ps.mAntiStallActivated = playerVehTelemetry.mAntiStallActivated;
+      ps.mStartLight = scoring.mScoringInfo.mStartLight;
+      ps.mNumRedLights = scoring.mScoringInfo.mNumRedLights;
       ps.mNumPitstops = playerVeh.mNumPitstops;
       ps.mNumPenalties = playerVeh.mNumPenalties;
       ps.mLapsBehindNext = playerVeh.mLapsBehindNext;
@@ -368,16 +381,16 @@ namespace rF2SMMonitor
 
         this.sbPhaseValues = new StringBuilder();
         sbPhaseValues.Append(
-          $"{GetEnumString<rF2GamePhase>(state.mGamePhase)}\n"
-          + $"{GetSessionString(state.mSession)}\n"
-          + $"{GetEnumString<rF2YellowFlagState>(state.mYellowFlagState)}\n"
+          $"{GetEnumString<rF2GamePhase>(scoring.mScoringInfo.mGamePhase)}\n"
+          + $"{GetSessionString(scoring.mScoringInfo.mSession)}\n"
+          + $"{GetEnumString<rF2YellowFlagState>(scoring.mScoringInfo.mYellowFlagState)}\n"
           + $"{ps.mSector}\n"
           + $"0x{ps.mCurrentSector,4:X8}\n" // {4:X} hexadecimal to see values
           + (ps.mInRealTimeFC == 0 ? $"false({ps.mInRealTimeFC})" : $"true({ps.mInRealTimeFC})") + "\n"
           + (ps.mInRealTimeSU == 0 ? $"false({ps.mInRealTimeSU})" : $"true({ps.mInRealTimeSU})") + "\n"
-          + $"{GetEnumString<rF2YellowFlagState>(state.mSectorFlag[0])}\n"
-          + $"{GetEnumString<rF2YellowFlagState>(state.mSectorFlag[1])}\n"
-          + $"{GetEnumString<rF2YellowFlagState>(state.mSectorFlag[2])}\n"
+          + $"{GetEnumString<rF2YellowFlagState>(scoring.mScoringInfo.mSectorFlag[0])}\n"
+          + $"{GetEnumString<rF2YellowFlagState>(scoring.mScoringInfo.mSectorFlag[1])}\n"
+          + $"{GetEnumString<rF2YellowFlagState>(scoring.mScoringInfo.mSectorFlag[2])}\n"
           + $"{GetEnumString<rF2Control>(playerVeh.mControl)}\n"
           + (ps.mInPits == 0 ? $"false({ps.mInPits})" : $"true({ps.mInPits})") + "\n"
           + (ps.mIsPlayer == 0 ? $"false({ps.mIsPlayer})" : $"true({ps.mIsPlayer})") + "\n"
@@ -404,8 +417,8 @@ namespace rF2SMMonitor
           + $"{ps.mRearTireCompoundName}\n"
           + (ps.mFrontFlapActivated == 0 ? $"false({ps.mFrontFlapActivated})" : $"true({ps.mFrontFlapActivated})") + "\n"
           + (ps.mRearFlapActivated == 0 ? $"false({ps.mRearFlapActivated})" : $"true({ps.mRearFlapActivated})") + "\n"
-          + $"{GetEnumString<rF2RearFlapLegalStatus>(state.mRearFlapLegalStatus)}\n"
-          + $"{GetEnumString<rF2IgnitionStarterStatus>(state.mIgnitionStarter)}\n"
+          + $"{GetEnumString<rF2RearFlapLegalStatus>(playerVehTelemetry.mRearFlapLegalStatus)}\n"
+          + $"{GetEnumString<rF2IgnitionStarterStatus>(playerVehTelemetry.mIgnitionStarter)}\n"
           + (ps.mSpeedLimiterAvailable == 0 ? $"false({ps.mSpeedLimiterAvailable})" : $"true({ps.mSpeedLimiterAvailable})") + "\n"
           + (ps.mAntiStallActivated == 0 ? $"false({ps.mAntiStallActivated})" : $"true({ps.mAntiStallActivated})") + "\n"
           + $"{ps.mStartLight}\n"
@@ -476,6 +489,18 @@ namespace rF2SMMonitor
       }
     }
 
+    private static string getStringFromBytes(byte[] bytes)
+    {
+      if (bytes == null)
+        return "";
+
+      var nullIdx = Array.IndexOf(bytes, (byte)0);
+
+      return nullIdx >= 0
+        ? Encoding.Default.GetString(bytes, 0, nullIdx)
+        : Encoding.Default.GetString(bytes);
+    }
+
     internal class DamageInfo
     {
       internal byte[] mDentSeverity = new byte[8];         // dent severity at 8 locations around the car (0=none, 1=some, 2=more)
@@ -503,7 +528,7 @@ namespace rF2SMMonitor
     internal StringBuilder sbDamageChanged = new StringBuilder();
     internal StringBuilder sbDamageLabel = new StringBuilder();
     internal StringBuilder sbDamageValues = new StringBuilder();
-
+#if false
     internal void TrackDamage(ref rF2State state, Graphics g, bool logToFile)
     {
       if (logToFile)
@@ -1087,18 +1112,6 @@ namespace rF2SMMonitor
       return bestLapStats;
     }
 
-    private static string getStringFromBytes(byte[] bytes)
-    {
-      if (bytes == null)
-        return "";
-
-      var nullIdx = Array.IndexOf(bytes, (byte)0);
-
-      return nullIdx >= 0
-        ? Encoding.Default.GetString(bytes, 0, nullIdx) 
-        : Encoding.Default.GetString(bytes);
-    }
-
     private void getDetailedVehTiming(string name, ref rF2VehScoringInfo vehicle, LapData.LapStats bestLapStats, ref rF2State state, out StringBuilder sbDetails, out PlayerTimingInfo pti)
     {
       pti = new PlayerTimingInfo();
@@ -1146,6 +1159,6 @@ namespace rF2SMMonitor
       sbDetails.Append($"currS1: {this.lapTimeStr(pti.currS1Time)}    currS2: {this.lapTimeStr(pti.currS2Time)}    currS3: {this.lapTimeStr(pti.currS3Time)}\n");
       sbDetails.Append($"bestS1: {this.lapTimeStr(pti.bestS1Time)}    bestS2: {this.lapTimeStr(pti.bestS2Time)}    bestS3: {this.lapTimeStr(pti.bestS3Time)}    bestTotal: {this.lapTimeStr(pti.bestS1Time + pti.bestS2Time + pti.bestS3Time)}\n");
     }
+#endif
   }
 }
-#endif
