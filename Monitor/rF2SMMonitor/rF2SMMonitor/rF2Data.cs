@@ -332,7 +332,7 @@ namespace rF2SMMonitor
 
       // keeping this at the end of the structure to make it easier to replace in future versions
       [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = 4)]
-      public rF2Wheel[] mWheel;                      // wheel info (front left, front right, rear left, rear right)
+      public rF2Wheel[] mWheels;                      // wheel info (front left, front right, rear left, rear right)
     }
 
 
@@ -577,12 +577,12 @@ namespace rF2SMMonitor
       public byte[] mVersion;                            // API version
       public byte is64bit;                               // Is 64bit plugin?
 
+      // Physics options (updated on session start):
+      public rF2PhysicsOptions mPhysics;
+
       // Damage tracking for each vehicle (indexed by mID):
       [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = rFactor2Constants.MAX_MAPPED_IDS)]
       public rF2TrackedDamage[] mTrackedDamages;
-
-      // Physics options (updated on session start):
-      public rF2PhysicsOptions mPhysics;
 
       // Function call based flags:
       public byte mInRealtimeFC;                         // in realtime as opposed to at the monitor (reported via last EnterRealtime/ExitRealtime calls).

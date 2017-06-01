@@ -453,8 +453,8 @@ namespace rF2SMMonitor
     {
       var g = e.Graphics;
 
-      this.tracker.TrackPhase(ref this.scoring, ref this.telemetry, g, this.logPhaseAndState);
-      //this.tracker.TrackDamage(ref this.currrF2State, g, this.logDamage);
+      this.tracker.TrackPhase(ref this.scoring, ref this.telemetry, ref this.extended, g, this.logPhaseAndState);
+      this.tracker.TrackDamage(ref this.scoring, ref this.telemetry, ref this.extended, g, this.logPhaseAndState);
       //this.tracker.TrackTimings(ref this.currrF2State, g, this.logTiming);
 
       this.UpdateFPS();
