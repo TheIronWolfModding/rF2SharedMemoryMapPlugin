@@ -222,6 +222,9 @@ public:
   // virtual bool AccessMultiSessionRules(MultiSessionRulesV01 &info) { return(false); } // current internal rules passed in; return true if you want to change them
 
 private:
+  SharedMemoryPlugin(SharedMemoryPlugin const& rhs) = delete;
+  SharedMemoryPlugin& operator =(SharedMemoryPlugin const& rhs) = delete;
+
   void UpdateInRealtimeFC(bool inRealTime);
   void UpdateThreadState(long type, bool starting);
   void ClearState();

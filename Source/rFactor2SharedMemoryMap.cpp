@@ -468,6 +468,9 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
         DEBUG_MSG(DebugLevel::Synchronization, "TELEMETRY - Retry pending buffer flip on update skip.");
         TelemetryFlipBuffers();
       }
+
+      // Skip this update, there's no change in data (in most cases).
+      return;
     }
 
     // I saw zis vence and want to understand WTF??
@@ -698,7 +701,7 @@ void SharedMemoryPlugin::WriteDebugMsg(DebugLevel lvl, const char* const format,
   }
 
   // Flush periodically for low volume messages.
-  static __int64 lastFlushTicks = 0LL;
+  static ULONGLONG lastFlushTicks = 0uLL;
   auto const ticksNow = GetTickCount64();
   if ((ticksNow - lastFlushTicks) / MILLISECONDS_IN_SECOND > DEBUG_IO_FLUSH_PERIOD_SECS) {
     fflush(SharedMemoryPlugin::msDebugFile);
