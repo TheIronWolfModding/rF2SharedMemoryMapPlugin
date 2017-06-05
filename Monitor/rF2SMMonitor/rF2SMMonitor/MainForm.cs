@@ -455,7 +455,7 @@ namespace rF2SMMonitor
 
       this.tracker.TrackPhase(ref this.scoring, ref this.telemetry, ref this.extended, g, this.logPhaseAndState);
       this.tracker.TrackDamage(ref this.scoring, ref this.telemetry, ref this.extended, g, this.logPhaseAndState);
-      //this.tracker.TrackTimings(ref this.currrF2State, g, this.logTiming);
+      this.tracker.TrackTimings(ref this.scoring, ref this.telemetry, ref this.extended, g, this.logPhaseAndState);
 
       this.UpdateFPS();
 

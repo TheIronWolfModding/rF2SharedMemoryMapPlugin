@@ -707,7 +707,6 @@ namespace rF2SMMonitor
       }
     }
 
-#if false
     internal class PlayerTimingInfo
     {
       internal string name = null;
@@ -786,16 +785,16 @@ namespace rF2SMMonitor
       return time > 0.0 ? TimeSpan.FromSeconds(time).ToString(@"mm\:ss\:fff") : time.ToString();
     }
 
-    internal void TrackTimings(ref rF2State state, Graphics g, bool logToFile)
+    internal void TrackTimings(ref rF2Scoring scoring, ref rF2Telemetry telemetry, ref rF2Extended extended, Graphics g, bool logToFile)
     {
       if ((this.lastTimingTrackingGamePhase == rF2GamePhase.Garage
             || this.lastTimingTrackingGamePhase == rF2GamePhase.SessionOver
             || this.lastTimingTrackingGamePhase == rF2GamePhase.SessionStopped
             || (int)this.lastTimingTrackingGamePhase == 9)  // What is 9? 
-          && ((rF2GamePhase)state.mGamePhase == rF2GamePhase.Countdown
-            || (rF2GamePhase)state.mGamePhase == rF2GamePhase.Formation
-            || (rF2GamePhase)state.mGamePhase == rF2GamePhase.GridWalk
-            || (rF2GamePhase)state.mGamePhase == rF2GamePhase.GreenFlag))
+          && ((rF2GamePhase)scoring.mScoringInfo.mGamePhase == rF2GamePhase.Countdown
+            || (rF2GamePhase)scoring.mScoringInfo.mGamePhase == rF2GamePhase.Formation
+            || (rF2GamePhase)scoring.mScoringInfo.mGamePhase == rF2GamePhase.GridWalk
+            || (rF2GamePhase)scoring.mScoringInfo.mGamePhase == rF2GamePhase.GreenFlag))
       {
         this.lapDataMap = null;
         this.bestSplitString = "";
@@ -810,9 +809,9 @@ namespace rF2SMMonitor
         }
       }
 
-      this.lastTimingTrackingGamePhase = (rF2GamePhase)state.mGamePhase;
+      this.lastTimingTrackingGamePhase = (rF2GamePhase)scoring.mScoringInfo.mGamePhase;
 
-      if (state.mNumVehicles == 0)
+      if (scoring.mScoringInfo.mNumVehicles == 0)
       {
         this.lastTimingSector = -1;
         this.lapDataMap = null;
@@ -824,26 +823,39 @@ namespace rF2SMMonitor
       if (this.lapDataMap == null)
         this.lapDataMap = new Dictionary<string, LapData>();
 
-      var playerVeh = state.mVehicles[0];
+      // Build map of mID -> telemetry.mVehicles[i]. 
+      // They are typically matching values, however, we need to handle online cases and dropped vehicles (mID can be reused).
+      var idsToTelIndices = new Dictionary<long, int>();
+      for (int i = 0; i < telemetry.mNumVehicles; ++i)
+      {
+        if (!idsToTelIndices.ContainsKey(telemetry.mVehicles[i].mID))
+          idsToTelIndices.Add(telemetry.mVehicles[i].mID, i);
+      }
+
+      var scoringPlrId = scoring.mVehicles[0].mID;
+      if (!idsToTelIndices.ContainsKey(scoringPlrId))
+        return;
+
+      var resolvedIdx = idsToTelIndices[scoringPlrId];
+      var playerVeh = scoring.mVehicles[0];
+      var playerVehTelemetry = telemetry.mVehicles[resolvedIdx];
+
       bool sectorChanged = this.lastTimingSector != this.getSector(playerVeh.mSector);
       bool newLap = this.lastTimingSector == 3 && this.getSector(playerVeh.mSector) == 1;
 
       this.lastTimingSector = this.getSector(playerVeh.mSector);
 
-      
-      Debug.Assert(state.mID == playerVeh.mID);
-
       StringBuilder sbPlayer = null;
       PlayerTimingInfo ptiPlayer = null;
-      var bls = this.getBestLapStats(this.getStringFromBytes(playerVeh.mDriverName), newLap /*skipLastLap*/);
-      this.getDetailedVehTiming("Player:", ref playerVeh, bls, ref state, out sbPlayer, out ptiPlayer);
+      var bls = this.getBestLapStats(TransitionTracker.getStringFromBytes(playerVeh.mDriverName), newLap /*skipLastLap*/);
+      this.getDetailedVehTiming("Player:", ref playerVeh, bls, ref scoring, out sbPlayer, out ptiPlayer);
 
       var opponentInfos = new List<OpponentTimingInfo>();
-      for (int i = 0; i < state.mNumVehicles; ++i)
+      for (int i = 0; i < scoring.mScoringInfo.mNumVehicles; ++i)
       {
-        var veh = state.mVehicles[i];
+        var veh = scoring.mVehicles[i];
         var o = new OpponentTimingInfo();
-        o.name = this.getStringFromBytes(veh.mDriverName);
+        o.name = TransitionTracker.getStringFromBytes(veh.mDriverName);
         o.position = veh.mPlace;
 
         o.lastS1Time = veh.mLastSector1 > 0.0 ? veh.mLastSector1 : -1.0;
@@ -872,11 +884,11 @@ namespace rF2SMMonitor
 
         o.currLapET = veh.mLapStartET;
         o.lastLapTime = veh.mLastLapTime;
-        o.currLapTime = state.mCurrentET - veh.mLapStartET;
+        o.currLapTime = scoring.mScoringInfo.mCurrentET - veh.mLapStartET;
         o.bestLapTime = veh.mBestLapTime;
         o.currLap = veh.mTotalLaps;
-        o.vehicleName = this.getStringFromBytes(veh.mVehicleName);
-        o.vehicleClass = this.getStringFromBytes(veh.mVehicleClass);
+        o.vehicleName = TransitionTracker.getStringFromBytes(veh.mVehicleName);
+        o.vehicleClass = TransitionTracker.getStringFromBytes(veh.mVehicleClass);
 
         opponentInfos.Add(o);
       }
@@ -889,10 +901,10 @@ namespace rF2SMMonitor
         sbOpponentNames.Append($"{o.name} | {o.vehicleClass} | {o.vehicleName}\n");
 
       // Save lap times history.
-      for (int i = 0; i < state.mNumVehicles; ++i)
+      for (int i = 0; i < scoring.mScoringInfo.mNumVehicles; ++i)
       {
-        var veh = state.mVehicles[i];
-        var driverName = this.getStringFromBytes(veh.mDriverName);
+        var veh = scoring.mVehicles[i];
+        var driverName = TransitionTracker.getStringFromBytes(veh.mDriverName);
 
         // If we don't have this vehicle in a map, add it. (And initialize laps completed).
         if (!this.lapDataMap.ContainsKey(driverName))
@@ -930,7 +942,7 @@ namespace rF2SMMonitor
       sbOpponentStats.Append("Pos:  Lap:      Best Tracked:      Best S1:      Best S2:      Best S3:\n");
       foreach (var o in opponentInfos)
       {
-        var skipLastLap = o.name == this.getStringFromBytes(playerVeh.mDriverName) && newLap;
+        var skipLastLap = o.name == TransitionTracker.getStringFromBytes(playerVeh.mDriverName) && newLap;
         var bestLapStats = this.getBestLapStats(o.name, skipLastLap);
         /*        double bestLapS1 = 30.173;
                 double bestLapS2 = 12.712;
@@ -951,7 +963,7 @@ namespace rF2SMMonitor
       foreach (var lapData in this.lapDataMap)
       {
         // If this is the new lap, ignore just completed lap for the player vehicle, and use time of one lap before.
-        bool skipLastLap = newLap && lapData.Key == this.getStringFromBytes(playerVeh.mDriverName);
+        bool skipLastLap = newLap && lapData.Key == TransitionTracker.getStringFromBytes(playerVeh.mDriverName);
 
         var blsCandidate = this.getBestLapStats(lapData.Key, skipLastLap);
         if (blsCandidate.lapTime < 0.0)
@@ -966,9 +978,9 @@ namespace rF2SMMonitor
       }
 
       int fastestIndex = -1;
-      for (int i = 0; i < state.mNumVehicles; ++i)
+      for (int i = 0; i < scoring.mScoringInfo.mNumVehicles; ++i)
       {
-        if (fastestName == this.getStringFromBytes(state.mVehicles[i].mDriverName))
+        if (fastestName == TransitionTracker.getStringFromBytes(scoring.mVehicles[i].mDriverName))
         {
           fastestIndex = i;
           break;
@@ -979,11 +991,11 @@ namespace rF2SMMonitor
       var sbFastest = new StringBuilder("");
       if (fastestIndex != -1)
       {
-        var fastestVeh = state.mVehicles[fastestIndex];
+        var fastestVeh = scoring.mVehicles[fastestIndex];
         if (blsFastest.lapTime > 0.0)
         {
         //'  var blsFastest = this.getBestLapStats(this.getStringFromBytes(fastestVeh.mDriverName));
-          this.getDetailedVehTiming("Fastest:", ref fastestVeh, blsFastest, ref state, out sbFastest, out ptiFastest);
+          this.getDetailedVehTiming("Fastest:", ref fastestVeh, blsFastest, ref scoring, out sbFastest, out ptiFastest);
         }
       }
 
@@ -1127,10 +1139,10 @@ namespace rF2SMMonitor
       return bestLapStats;
     }
 
-    private void getDetailedVehTiming(string name, ref rF2VehScoringInfo vehicle, LapData.LapStats bestLapStats, ref rF2State state, out StringBuilder sbDetails, out PlayerTimingInfo pti)
+    private void getDetailedVehTiming(string name, ref rF2VehicleScoring vehicle, LapData.LapStats bestLapStats, ref rF2Scoring scoring, out StringBuilder sbDetails, out PlayerTimingInfo pti)
     {
       pti = new PlayerTimingInfo();
-      pti.name = this.getStringFromBytes(vehicle.mDriverName);
+      pti.name = TransitionTracker.getStringFromBytes(vehicle.mDriverName);
       pti.lastS1Time = vehicle.mLastSector1 > 0.0 ? vehicle.mLastSector1 : -1.0;
       pti.lastS2Time = vehicle.mLastSector1 > 0.0 && vehicle.mLastSector2 > 0.0
         ? vehicle.mLastSector2 - vehicle.mLastSector1 : -1.0;
@@ -1164,7 +1176,7 @@ namespace rF2SMMonitor
 
       pti.currLapET = vehicle.mLapStartET;
       pti.lastLapTime = vehicle.mLastLapTime;
-      pti.currLapTime = state.mCurrentET - vehicle.mLapStartET;
+      pti.currLapTime = scoring.mScoringInfo.mCurrentET - vehicle.mLapStartET;
       
       pti.currLap = vehicle.mTotalLaps;
 
@@ -1174,6 +1186,5 @@ namespace rF2SMMonitor
       sbDetails.Append($"currS1: {this.lapTimeStr(pti.currS1Time)}    currS2: {this.lapTimeStr(pti.currS2Time)}    currS3: {this.lapTimeStr(pti.currS3Time)}\n");
       sbDetails.Append($"bestS1: {this.lapTimeStr(pti.bestS1Time)}    bestS2: {this.lapTimeStr(pti.bestS2Time)}    bestS3: {this.lapTimeStr(pti.bestS3Time)}    bestTotal: {this.lapTimeStr(pti.bestS1Time + pti.bestS2Time + pti.bestS3Time)}\n");
     }
-#endif
   }
 }
