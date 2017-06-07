@@ -127,7 +127,7 @@ namespace rF2SMMonitor
     rF2GamePhase lastPhaseTrackingGamePhase = (rF2GamePhase)Enum.ToObject(typeof(rF2GamePhase), -255);
     rF2GamePhase lastTimingTrackingGamePhase = (rF2GamePhase)Enum.ToObject(typeof(rF2GamePhase), -255);
 
-    private float screenYStart = 150.0f;
+    private float screenYStart = 170.0f;
 
     internal void TrackPhase(ref rF2Scoring scoring, ref rF2Telemetry telemetry, ref rF2Extended extended, Graphics g, bool logToFile)
     {
@@ -944,10 +944,6 @@ namespace rF2SMMonitor
       {
         var skipLastLap = o.name == TransitionTracker.getStringFromBytes(playerVeh.mDriverName) && newLap;
         var bestLapStats = this.getBestLapStats(o.name, skipLastLap);
-        /*        double bestLapS1 = 30.173;
-                double bestLapS2 = 12.712;
-                double bestLapS3 = 10.245;
-                bestLapTimeTracked = 120.20;*/
 
         var bestLapS1 = bestLapStats.S1Time;
         var bestLapS2 = bestLapStats.S2Time;

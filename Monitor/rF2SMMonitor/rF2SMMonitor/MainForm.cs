@@ -375,12 +375,10 @@ namespace rF2SMMonitor
 
         if (base.WindowState == FormWindowState.Minimized)
         {
-          /* TODO: Revisit
           // being lazy lazy lazy.
-          this.tracker.TrackPhase(ref this.currrF2State, null, this.logPhaseAndState);
-          this.tracker.TrackDamage(ref this.currrF2State, null, this.logDamage);
-          this.tracker.TrackTimings(ref this.currrF2State, null, this.logTiming);
-          */
+          this.tracker.TrackPhase(ref this.scoring, ref this.telemetry, ref this.extended, null, this.logPhaseAndState);
+          this.tracker.TrackDamage(ref this.scoring, ref this.telemetry, ref this.extended, null, this.logPhaseAndState);
+          this.tracker.TrackTimings(ref this.scoring, ref this.telemetry, ref this.extended, null, this.logPhaseAndState);
         }
         else
         {
@@ -493,7 +491,9 @@ namespace rF2SMMonitor
           + "mTrackName:\n"
           + "mLapStartET:\n"
           + "mLapDist:\n"
-          + "mEndET:\n");
+          + "mEndET:\n"
+          + "mPlayerName:\n"
+          + "mPlrFileName:\n");
 
         // Col 1 labels
         g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, brush, currX, currY += yStep);
@@ -510,49 +510,34 @@ namespace rF2SMMonitor
                 + $"{MainForm.getStringFromBytes(this.telemetry.mVehicles[0].mTrackName)}\n"
                 + $"{this.telemetry.mVehicles[0].mLapStartET:N3}\n"
                 + $"{this.scoring.mScoringInfo.mLapDist:N3}\n"
-                + (this.scoring.mScoringInfo.mEndET < 0.0 ? "Unknown" : this.scoring.mScoringInfo.mEndET.ToString("N3")) + "\n");
+                + (this.scoring.mScoringInfo.mEndET < 0.0 ? "Unknown" : this.scoring.mScoringInfo.mEndET.ToString("N3")) + "\n"
+                + $"{MainForm.getStringFromBytes(this.scoring.mScoringInfo.mPlayerName)}\n"
+                + $"{MainForm.getStringFromBytes(this.scoring.mScoringInfo.mPlrFileName)}\n");
 
         // Col1 values
         g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Purple, currX + 145, currY);
 
-        if (this.telemetry.mNumVehicles > 0)
-        {
-          gameStateText.Clear();
-
-          gameStateText.Append(
-            "mLapDist(Plr):\n"
-            + "mTimeIntoLap:\n"
-            + "mEstimatedLapTime:\n"
-            + "mTimeBehindNext:\n"
-            + "mTimeBehindLeader:\n"
-            + "mPlayerName:\n"
-            + "mPlrFileName:\n"
-            + "mPitGroup\n");
-
-          // Col 2 labels
-          g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, brush, currX += 275, currY);
-          gameStateText.Clear();
-
-          var plrVeh = this.scoring.mVehicles[0];
-          gameStateText.Append(
-            $"{plrVeh.mLapDist:N3}\n"
-            + $"{plrVeh.mTimeIntoLap:N3}\n"
-            + $"{plrVeh.mEstimatedLapTime:N3}\n"
-            + $"{plrVeh.mTimeBehindNext:N3}\n"
-            + $"{plrVeh.mTimeBehindLeader:N3}\n"
-            + $"{MainForm.getStringFromBytes(this.scoring.mScoringInfo.mPlayerName)}\n"
-            + $"{MainForm.getStringFromBytes(this.scoring.mScoringInfo.mPlrFileName)}\n"
-            + $"{MainForm.getStringFromBytes(plrVeh.mPitGroup)}\n");
-
-          // Col2 values
-          g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Purple, currX + 120, currY);
-        }
-
-        if (this.logLightMode)
-          return;
-
         if (this.scoring.mScoringInfo.mNumVehicles == 0)
           return;
+
+        gameStateText.Clear();
+
+        gameStateText.Append(
+          "mTimeIntoLap:\n"
+          + "mEstimatedLapTime:\n"
+          + "mTimeBehindNext:\n"
+          + "mTimeBehindLeader:\n"
+          + "mPitGroup:\n"
+          + "mLapDist(Plr):\n"
+          + "mLapDist(Est):\n"
+          + "yaw:\n"
+          + "pitch:\n"
+          + "roll:\n"
+          + "speed:\n");
+
+        // Col 2 labels
+        g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, brush, currX += 275, currY);
+        gameStateText.Clear();
 
         // Build map of mID -> telemetry.mVehicles[i]. 
         // They are typically matching values, however, we need to handle online cases and dropped vehicles (mID can be reused).
@@ -563,22 +548,67 @@ namespace rF2SMMonitor
             idsToTelIndices.Add(this.telemetry.mVehicles[i].mID, i);
         }
 
-        // Branch of UI choice: origin center or car# center
-        // Fix rotation on car of choice or no.
-        // Draw axes
-        // Scale will be parameter, scale applied last on render to zoom.
-        float scale = this.scale;
-
         var scoringPlrId = this.scoring.mVehicles[0].mID;
         if (!idsToTelIndices.ContainsKey(scoringPlrId))
           return;
 
         var resolvedIdx = idsToTelIndices[scoringPlrId];
         var playerVeh = this.telemetry.mVehicles[resolvedIdx];
+        var playerVehScoring = this.scoring.mVehicles[0];
+
+        // Calculate derivatives:
+        var yaw = Math.Atan2(playerVeh.mOri[RowZ].x, playerVeh.mOri[RowZ].z);
+
+        var pitch = Math.Atan2(-playerVeh.mOri[RowY].z,
+          Math.Sqrt(playerVeh.mOri[RowX].z * playerVeh.mOri[RowX].z + playerVeh.mOri[RowZ].z * playerVeh.mOri[RowZ].z));
+      
+        var roll = Math.Atan2(playerVeh.mOri[RowY].x,
+          Math.Sqrt(playerVeh.mOri[RowX].x * playerVeh.mOri[RowX].x + playerVeh.mOri[RowZ].x * playerVeh.mOri[RowZ].x));
+
+        var speed = Math.Sqrt((playerVeh.mLocalVel.x * playerVeh.mLocalVel.x)
+          + (playerVeh.mLocalVel.y * playerVeh.mLocalVel.y)
+          + (playerVeh.mLocalVel.z * playerVeh.mLocalVel.z));
+
+        // Estimate lapdist
+        // See how much ahead telemetry is ahead of scoring update
+        var delta = playerVeh.mElapsedTime - scoring.mScoringInfo.mCurrentET;
+        var lapDistEstimated = playerVehScoring.mLapDist;
+        if (delta > 0.0)
+        {
+          var localZAccelEstimated = playerVehScoring.mLocalAccel.z * delta;
+          var localZVelEstimated = playerVehScoring.mLocalVel.z + localZAccelEstimated;
+
+          lapDistEstimated = playerVehScoring.mLapDist - localZVelEstimated * delta;
+        }
+
+        gameStateText.Append(
+          $"{playerVehScoring.mTimeIntoLap:N3}\n"
+          + $"{playerVehScoring.mEstimatedLapTime:N3}\n"
+          + $"{playerVehScoring.mTimeBehindNext:N3}\n"
+          + $"{playerVehScoring.mTimeBehindLeader:N3}\n"
+          + $"{MainForm.getStringFromBytes(playerVehScoring.mPitGroup)}\n"
+          + $"{playerVehScoring.mLapDist:N3}\n"
+          + $"{lapDistEstimated:N3}\n"
+          + $"{yaw:N3}\n"
+          + $"{pitch:N3}\n"
+          + $"{roll:N3}\n"
+          + string.Format("{0:n3} m/s {1:n4} km/h\n", speed, speed * 3.6));
+
+        // Col2 values
+        g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Purple, currX + 120, currY);
+
+        if (this.logLightMode)
+          return;
+
+        // Branch of UI choice: origin center or car# center
+        // Fix rotation on car of choice or no.
+        // Draw axes
+        // Scale will be parameter, scale applied last on render to zoom.
+        float scale = this.scale;
 
         var xVeh = (float)playerVeh.mPos.x;
         var zVeh = (float)playerVeh.mPos.z;
-        var yawVeh = Math.Atan2(playerVeh.mOri[2].x, playerVeh.mOri[2].z);
+        var yawVeh = yaw;
 
          // View center
         var xScrOrigin = this.view.Width / 2.0f;
@@ -595,11 +625,11 @@ namespace rF2SMMonitor
           for (int i = 1; i < this.telemetry.mNumVehicles; ++i)
           {
             var veh = this.telemetry.mVehicles[i];
-            var yaw = Math.Atan2(veh.mOri[2].x, veh.mOri[2].z);
+            var thisYaw = Math.Atan2(veh.mOri[2].x, veh.mOri[2].z);
             this.RenderCar(g,
               (float)veh.mPos.x,
               -(float)veh.mPos.z,
-              -(float)yaw, Brushes.Red);
+              -(float)thisYaw, Brushes.Red);
           }
         }
         else
@@ -618,11 +648,11 @@ namespace rF2SMMonitor
           for (int i = 1; i < this.telemetry.mNumVehicles; ++i)
           {
             var veh = this.telemetry.mVehicles[i];
-            var yaw = Math.Atan2(veh.mOri[2].x, veh.mOri[2].z);
+            var thisYaw = Math.Atan2(veh.mOri[2].x, veh.mOri[2].z);
             this.RenderCar(g,
               (float)veh.mPos.x,
               -(float)veh.mPos.z,
-              -(float)yaw, Brushes.Red);
+              -(float)thisYaw, Brushes.Red);
           }
         }
       }
