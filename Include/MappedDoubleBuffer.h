@@ -1,3 +1,11 @@
+/*
+Definition of MappedDoubleBuffer<> class.  It abstracts two memory mapped buffers that 
+are used for reading and writing data in turns.
+
+Author: The Iron Wolf (vleonavicius@hotmail.com)
+Website: thecrewchief.org
+*/
+
 #pragma once
 
 template <typename BuffT>

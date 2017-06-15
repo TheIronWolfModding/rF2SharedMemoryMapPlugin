@@ -2,7 +2,7 @@
 Definition of rF2State structure and related types.
 
 Author: The Iron Wolf (vleonavicius@hotmail.com)
-
+Website: thecrewchief.org
 
 Description:
   rF2State is the structure that maps game state into memory mapped file.  It is 

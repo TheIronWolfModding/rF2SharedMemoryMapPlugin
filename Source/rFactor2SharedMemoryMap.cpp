@@ -2,64 +2,71 @@
 Implementation of rF2 internal state mapping into shared memory buffers.
 
 Author: The Iron Wolf (vleonavicius@hotmail.com)
+Website: thecrewchief.org
 
 
 Acknowledgements:
   This work is based on:
     - rF2 Internals Plugin sample #7 by ISI/S397 found at: https://www.studio-397.com/modding-resources/
     - rF1 Shared Memory Map Plugin by Dan Allongo found at: https://github.com/dallongo/rFactorSharedMemoryMap
-    - 3D Math tutorials and samples from all around the internet.  http://www.euclideanspace.com/ and http://www.3dkingdoms.com
-      were particularly useful in preserving my sanity.  Same goes to Dan's plugin, that was used as math baseline.
 
 
 Shared resources:
   This plugin uses double buffering and mutex to allow optional synchronized access.
-  Shared resources are:
-    - $rFactor2SMMPBuffer1$ - memory mapped file of rF2State structure
-    - $rFactor2SMMPBuffer2$ - memory mapped file of rF2State structure
-    - Global\$rFactor2SMMPMutex - global mutex
+  Shared resources have the following names:
+    - $rFactor2SMMP_<BUFFER_TYPE>Buffer1$
+    - $rFactor2SMMP_<BUFFER_TYPE>Buffer2$
+    - Global\$rFactor2SMMP_<BUFFER_TYPE>Mutex - mutex for synchronization (see Synchronization below)
+
+  where <BUFFER_TYPE> is one of the following:
+    * Telemetry - mapped view of rF2Telemetry structure
+    * Scoring - mapped view of rF2Scoring structure
+    * Extended - mapped view of rF2Extended structure
+
+  Those types are with few exceptions exact mirror of ISI structures, plugin constantly memcopies them from game to memory mapped files.
 
 
 State updates:
-  Plugin captures player telemetry and scoring updates in rF2State structure.
+  Telemetry - updated every 10ms, but in practice only every other update contains updated data, so real update rate is around 50FPS.
+  Scoring - every 200ms (5FPS)
+  Extended - every 200ms or on tracked function call.
 
-  rF2 Internals plugin updates scoring info at ~5FPS via SharedMemoryPlugin::UpdateScoring.  Player vehicle telemetry is
-  updated at ~90FPS via SharedMemoryPlugin::UpdateTelemetry.  Current implementation of this plugin artificially
-  reduces refresh rate to ~30FPS by default (to reduce CPU load).
-
+Telemetry state:
+  rF2 calls UpdateTelemetry for each vehicle.  Plugin tries to guess when all vehicles received an update, and only after that flip is attempted (see Double Buffering).
 
 Extended state:
-  Plugin also tracks and tries to make sense of updates with the goal of exposing additional info not currently available
-  via internals model (see SharedMemoryPlugin::ExtendedStateTracker struct).  Tracking happens on _every_ telemetry/scoring
-  update for highest precision.
+  Extended state consists of two parts:
 
-  Currently, damage and invulnerability changes are tracked.
+  * Attempt to compensate values not available from game:
+      Plugin also tracks and tries to make sense of updates with the goal of exposing additional info not currently available
+      via internals model (see SharedMemoryPlugin::ExtendedStateTracker struct).  Tracking happens on _every_ telemetry/scoring
+      update for highest precision.
 
+      Currently, damage changes are tracked.
 
-Interpolation:
-  Plugin interpolates opponent vehicle positions using quaternion nlerp.  Exact positions are received via
-  SharedMemoryPlugin::UpdateScoring and are interpolated during telemetry refreshes.  Future version might instead request
-  telemetry for all vehicles on track and use real positions from game.
-
-  Begin/End quaternion setup is done in SharedMemoryPlugin::UpdateScoringHelper, nlerp itself in
-  SharedMemoryPlugin::UpdateTelemetryHelper.
-
+  * Non periodically updated game state:
+      Currently, Physics settings updates and various call back based properties are tracked.
 
 Double buffering:
-  Plugin maps rF2State structure into two memory mapped files.  Buffers are written to alternatively.
-  rF2State::mCurrentRead indicates last updated buffer.
+  Plugin maps each state type structure into two memory mapped files.  Buffers are written to alternatively.
+  rF2MappedBufferHeaders::mCurrentRead indicates last updated buffer.
 
-  Buffers are flipped after each telemetry update (if no mutex wait is needed) and scoring update.
+  Buffers are flipped after each update (see State Updates) except for telemetry state buffers.
 
-  Contents of scoring updates are written to both buffers.  This is done because game state is
-  communicated via scoring updates and scoring/telemetry updates are not happening in menu/garage.
-  See: SharedMemoryPlugin::SyncBuffers and callers.
+  Telemetry buffer flip is designed so that we try to avoid waiting on the mutex if it is signaled.  There are three
+  attempts before wait will happen.  Retries only happen on new telemetry frame completion (or skip due to no changes).
 
 
 Synchronization:
-  While mutex is exposed for synchronized access, plugin tries to minimize wait time by retrying
-  during telemetry updates (~90FPS) and only waiting for 1ms max during scoring updates
-  (and on second telemetry retry), before forcefully flipping buffers.
+  Important: do not use synchronization if your application queries at high rate (50ms or smaller gaps) and if you
+  do not need consistent view of the whole buffer.  Typically, Dashboards,  varios visualizers do not need such views,
+  because partially correct data will be overritten by next frame.  Abusing synchronization might cause game FPS drop!
+
+  A lot of effort was done to ensure minimal impact on the rF2.  Therefore, using mutex does not guarantee that buffer
+  won't be overwritten. While mutex is exposed for synchronized access, plugin tries to minimize wait time by retrying
+  during telemetry updates (~90FPS) and only waiting for 1ms max during scoring updates (and on fourth telemetry retry), 
+  before forcefully flipping buffers.  Also, if 1ms elapses on synchronized flip, buffer will be overwritten
+  anyway.
 
 
 Configuration file:
