@@ -1,15 +1,20 @@
 ﻿/*
-Definition of rF2State structure and related types.
+Definition of mapped rF2 structures and related types.
 
 Author: The Iron Wolf (vleonavicius@hotmail.com)
 Website: thecrewchief.org
 
 Description:
-  rF2State is the structure that maps game state into memory mapped file.  It is 
-  essentially a combination of ISI's Internals Plugin #7 structures defined in InternalsPlugin.hpp.
-  I've kept comments to reflect relationships to the ISI types.
+  This file contains structures that are written memory mapped file.  Those
+  essentially mirrors ISI's Internals Plugin #7 structures defined in InternalsPlugin.hpp,
+  except for pointer types, which are replaced with dummy char arrays.  Where game's
+  structure contains pointer to the array that we'd like to expose, it is exposed as separate
+  member variable with predefined array size.
 
-  rF2State uses different x64 default 16 byte pack.  I've also added 3D math helpers to make code more readable.
+  Those exposed structures are mostly memcpy'ed one to one from ISI types, so it is critical
+  for layout, padding, pack and size to match exactly.
+
+  I've kept comments to reflect relationships to the ISI types.
 
   Parts of types different from ISI types are tagged with comments:
     - MM_NEW - added members

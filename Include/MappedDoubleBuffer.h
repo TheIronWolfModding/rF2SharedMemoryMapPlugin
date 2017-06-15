@@ -1,11 +1,18 @@
 /*
-Definition of MappedDoubleBuffer<> class.  It abstracts two memory mapped buffers that 
-are used for reading and writing data in turns.
+Definition of MappedDoubleBuffer<> class.
 
 Author: The Iron Wolf (vleonavicius@hotmail.com)
 Website: thecrewchief.org
-*/
 
+Description:
+  MappedDoubleBuffer<> class abstracts two memory mapped buffers that are used for reading
+  and writing data in turns.  The idea is to allow clients to read one buffer
+  (identified by mCurrentRead == true) while the other buffer is used for writing of the new data,
+  when game reports it.  When buffers are flipped, mutex is acquired and mCurrentRead
+  values are inverted for each buffer.
+
+  Flip operation also supports retry mode, where flip is cancelled if mutex is signaled.
+*/
 #pragma once
 
 template <typename BuffT>
