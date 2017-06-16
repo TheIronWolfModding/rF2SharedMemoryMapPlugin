@@ -11,7 +11,8 @@ Description:
   when game reports it.  When buffers are flipped, mutex is acquired and mCurrentRead
   values are inverted for each buffer.
 
-  Flip operation also supports retry mode, where flip is cancelled if mutex is signaled.
+  Flip operation also supports retry mode, where flip is cancelled if mutex is signaled
+  (to avoid blocking the thread).
 */
 #pragma once
 

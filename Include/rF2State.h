@@ -5,11 +5,11 @@ Author: The Iron Wolf (vleonavicius@hotmail.com)
 Website: thecrewchief.org
 
 Description:
-  This file contains structures that are written memory mapped file.  Those
-  essentially mirrors ISI's Internals Plugin #7 structures defined in InternalsPlugin.hpp,
+  This file contains structures that are written to memory mapped files.  Those
+  essentially mirror ISI's Internals Plugin #7 structures defined in InternalsPlugin.hpp,
   except for pointer types, which are replaced with dummy char arrays.  Where game's
   structure contains pointer to the array that we'd like to expose, it is exposed as separate
-  member variable with predefined array size.
+  member variable with fixed array size.
 
   Those exposed structures are mostly memcpy'ed one to one from ISI types, so it is critical
   for layout, padding, pack and size to match exactly.
@@ -20,7 +20,6 @@ Description:
     - MM_NEW - added members
     - MM_NOT_USED - present in ISI type, but not in mapped type
 */
-
 #pragma once
 
 // Use 4 to match ISI pack.
@@ -155,16 +154,14 @@ enum class rF2IgnitionStarterStatus {
 };
 
 
+/////////////////////////////////////
+// Based on TelemVect3
+/////////////////////////////////////
 struct rF2Vec3
 {
   double x, y, z;
-
-  void Set(const double a, const double b, const double c) { x = a; y = b; z = c; }
-
-  // Allowed to reference as [0], [1], or [2], instead of .x, .y, or .z, respectively
-  double& operator[](long i) { return((&x)[i]); }
-  const double& operator[](long i) const { return((&x)[i]); }
 };
+static_assert(sizeof(rF2Vec3) == sizeof(TelemVect3), "rF2Vec3 and TelemVect3 structures are out of sync");
 
 
 /////////////////////////////////////
@@ -206,6 +203,7 @@ struct rF2Wheel
 
   unsigned char mExpansion[24];  // for future use
 };
+static_assert(sizeof(rF2Wheel) == sizeof(TelemWheelV01), "rF2Wheel and TelemWheelV01 structures are out of sync");
 
 //////////////////////////////////////////////////////////////////////////////////////////
 // Identical to TelemInfoV01, except where noted by MM_NEW/MM_NOT_USED comments.
@@ -308,7 +306,7 @@ struct rF2VehicleTelemetry
   // keeping this at the end of the structure to make it easier to replace in future versions
   rF2Wheel mWheels[4];                     // wheel info (front left, front right, rear left, rear right)
 };
-
+static_assert(sizeof(rF2VehicleTelemetry) == sizeof(TelemInfoV01), "rF2VehicleTelemetry and TelemInfoV01 structures are out of sync");
 
 //////////////////////////////////////////////////////////////////////////////////////////
 // Identical to ScoringInfoV01, except where noted by MM_NEW/MM_NOT_USED comments.
@@ -385,6 +383,7 @@ struct rF2ScoringInfo
   unsigned char pointer2[4];
 #endif
 };
+static_assert(sizeof(rF2ScoringInfo) == sizeof(ScoringInfoV01), "rF2ScoringInfo and ScoringInfoV01 structures are out of sync");
 
 
 //////////////////////////////////////////////////////////////////////////////////////////
@@ -462,6 +461,7 @@ struct rF2VehicleScoring
                                    // tag.2012.04.06 - SEE ABOVE!
   unsigned char mExpansion[60];  // for future use
 };
+static_assert(sizeof(rF2VehicleScoring) == sizeof(VehicleScoringInfoV01), "rF2VehicleScoring and VehicleScoringInfoV01 structures are out of sync");
 
 
 //////////////////////////////////////////////////////////////////////////////////////////
@@ -502,7 +502,12 @@ struct rF2PhysicsOptions
   float mSpeedSensitiveSteering;   // 0.0 (off) - 1.0
   float mSteerRatioSpeed;          // speed (m/s) under which lock gets expanded to full
 };
+static_assert(sizeof(rF2PhysicsOptions) == sizeof(PhysicsOptionsV01), "rF2PhysicsOptions and PhysicsOptionsV01 structures are out of sync");
 
+
+///////////////////////////////////////////
+// Mapped wrapper structures
+///////////////////////////////////////////
 
 struct rF2MappedBufferHeader
 {
@@ -551,11 +556,5 @@ struct rF2Extended : public rF2MappedBufferHeader
   bool mMultimediaThreadStarted;              // multimedia thread started (reported via ThreadStarted/ThreadStopped calls).
   bool mSimulationThreadStarted;              // simulation thread started (reported via ThreadStarted/ThreadStopped calls).
 };
-
-
-static_assert(sizeof(rF2VehicleTelemetry) == sizeof(TelemInfoV01), "rF2VehicleTelemetry and TelemInfoV01 structures are out of sync");
-static_assert(sizeof(rF2ScoringInfo) == sizeof(ScoringInfoV01), "rF2ScoringInfo and ScoringInfoV01 structures are out of sync");
-static_assert(sizeof(rF2VehicleScoring) == sizeof(VehicleScoringInfoV01), "rF2VehicleScoring and VehicleScoringInfoV01 structures are out of sync");
-static_assert(sizeof(rF2PhysicsOptions) == sizeof(PhysicsOptionsV01), "rF2PhysicsOptions and PhysicsOptionsV01 structures are out of sync");
 
 #pragma pack(pop)

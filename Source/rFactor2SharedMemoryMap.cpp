@@ -1,5 +1,5 @@
 /*
-Implementation of rF2 internal state mapping into shared memory buffers.
+Implementation of rFactor 2 internal state mapping into shared memory buffers.
 
 Author: The Iron Wolf (vleonavicius@hotmail.com)
 Website: thecrewchief.org
@@ -12,40 +12,44 @@ Acknowledgements:
 
 
 Shared resources:
-  This plugin uses double buffering and mutex to allow optional synchronized access.
-  Shared resources have the following names:
+  This plugin uses double buffering and mutex to allow optional synchronized access to rF2 exposed internal state.
+  Shared resources use the following naming convention:
     - $rFactor2SMMP_<BUFFER_TYPE>Buffer1$
     - $rFactor2SMMP_<BUFFER_TYPE>Buffer2$
-    - Global\$rFactor2SMMP_<BUFFER_TYPE>Mutex - mutex for synchronization (see Synchronization below)
+    - Global\$rFactor2SMMP_<BUFFER_TYPE>Mutex - mutex for optional weak synchronization (see Synchronization below)
 
   where <BUFFER_TYPE> is one of the following:
     * Telemetry - mapped view of rF2Telemetry structure
     * Scoring - mapped view of rF2Scoring structure
     * Extended - mapped view of rF2Extended structure
 
-  Those types are with few exceptions exact mirror of ISI structures, plugin constantly memcopies them from game to memory mapped files.
+  Those types are (with few exceptions) exact mirror of ISI structures, plugin constantly memcpy'es them from game to memory mapped files.
 
 
-State updates:
+State updates (buffer flips, see Double Buffering):
   Telemetry - updated every 10ms, but in practice only every other update contains updated data, so real update rate is around 50FPS.
   Scoring - every 200ms (5FPS)
   Extended - every 200ms or on tracked function call.
 
+  Plugin does not add artificial delays, except:
+    - telemetry updates with same game time are skipped
+    - if telemetry mutex is signaled, telemetry buffer update is skipped
+
+
 Telemetry state:
   rF2 calls UpdateTelemetry for each vehicle.  Plugin tries to guess when all vehicles received an update, and only after that flip is attempted (see Double Buffering).
 
+
 Extended state:
-  Extended state consists of two parts:
-
-  * Attempt to compensate values not available from game:
-      Plugin also tracks and tries to make sense of updates with the goal of exposing additional info not currently available
-      via internals model (see SharedMemoryPlugin::ExtendedStateTracker struct).  Tracking happens on _every_ telemetry/scoring
-      update for highest precision.
-
-      Currently, damage changes are tracked.
+  Exposed extended state consists of the two parts:
 
   * Non periodically updated game state:
-      Currently, Physics settings updates and various call back based properties are tracked.
+      Currently, Physics settings updates and various callback based properties are tracked.
+
+  * Attempt to compensate for values not currently available from the game:
+      Currently, damage state is tracked, since game provides no accumulated damage data.  Tracking happens on _every_ telemetry/scoring
+      update for highest precision.  See SharedMemoryPlugin::ExtendedStateTracker struct for details.
+
 
 Double buffering:
   Plugin maps each state type structure into two memory mapped files.  Buffers are written to alternatively.

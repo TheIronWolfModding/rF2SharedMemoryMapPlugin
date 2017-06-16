@@ -4,7 +4,6 @@ Definition of SharedMemoryMap class and related types.
 Author: The Iron Wolf (vleonavicius@hotmail.com)
 Website: thecrewchief.org
 */
-
 #pragma once
 
 #include <time.h>
@@ -32,9 +31,8 @@ Website: thecrewchief.org
 #define PLUGIN_NAME_AND_VERSION "rFactor 2 Shared Memory Map Plugin - v" PLUGIN_VERSION_MAJOR
 #define SHARED_MEMORY_VERSION PLUGIN_VERSION_MAJOR "." PLUGIN_VERSION_MINOR
 
-// NOTE: too much logging will kill performance.  Can be improved with buffering.
 // This is hell on earth, but I do not want to add additional dependencies needed for STL right now.
-// Be super careful with those, there's no type safety or checks of any kind.
+// Be super careful with those, there's no type safety or checks of any kind (1979 style).
 #define DEBUG_MSG(lvl, msg) SharedMemoryPlugin::WriteDebugMsg(lvl, "%s(%d) : %s\n", __FUNCTION__, __LINE__, msg)
 #define DEBUG_MSG2(lvl, msg, msg2) SharedMemoryPlugin::WriteDebugMsg(lvl, "%s(%d) : %s %s\n", __FUNCTION__, __LINE__, msg, msg2)
 #define DEBUG_INT2(lvl, msg, intValue) SharedMemoryPlugin::WriteDebugMsg(lvl, "%s(%d) : %s %d\n", __FUNCTION__, __LINE__, msg, intValue)
@@ -107,7 +105,7 @@ private:
   public:
     ExtendedStateTracker()
     {
-      // There's a bug somewhere, initializing mExtended = {} does not make it all 0.
+      // There's a bug somewhere (in my head?), initializing mExtended = {} does not make it all 0.
       // Maybe there's a race between simulation and multimedia threads, but I can't debug due to game crashing on attach.
       // Traces suggest no race however.
       memset(&mExtended, 0, sizeof(rF2Extended));
@@ -245,7 +243,6 @@ private:
   double mLastTelemetryUpdateMillis = 0.0;
   double mLastScoringUpdateMillis = 0.0;
 
-  // Extended state tracker
   ExtendedStateTracker mExtStateTracker;
 
   // Elapsed times reported by the game.
