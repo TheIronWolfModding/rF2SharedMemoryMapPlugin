@@ -14,7 +14,7 @@ Plugin uses double buffering and offers optional weak synchronization on global 
 Plugin is built using VS 2015 Community Edition, targeting VC12 (VS 2013) runtime, since rF2 comes with VC12 redist.
 
 ## Refresh Rates:
-* Telemetry - 90FPS, but sometinmes game sends same values twice, so effective rate is 50FPS (provided there's no mutex contention).
+* Telemetry - 90FPS, but it appears that game sends same values twice, so effective rate is 50FPS (provided there's no mutex contention).  This might be due to my particular processor speed, so your mileage may vary.
 * Scoring - 5FPS.
 * Extended - 5FPS and on tracked callback by the game.
 
