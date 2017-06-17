@@ -2,9 +2,14 @@
 Definition of SharedMemoryMap class and related types.
 
 Author: The Iron Wolf (vleonavicius@hotmail.com)
+Website: thecrewchief.org
 */
-
 #pragma once
+
+#include <time.h>
+#include <assert.h>
+#include <stdio.h>                              // for sample output
+#include <share.h>                              // _fsopen share flags
 
 #pragma warning(push)
 #pragma warning(disable : 4263)   // UpdateGraphics virtual incorrect signature
@@ -14,9 +19,28 @@ Author: The Iron Wolf (vleonavicius@hotmail.com)
 #include "InternalsPlugin.hpp"
 #pragma warning(pop)
 
+#ifdef _AMD64_
+#define PLUGIN_64BIT true
+#else
+#define PLUGIN_64BIT false
+#endif
+
+// Each component can be in [0:99] range.
+#define PLUGIN_VERSION_MAJOR "2.0"
+#define PLUGIN_VERSION_MINOR "0.0"
+#define PLUGIN_NAME_AND_VERSION "rFactor 2 Shared Memory Map Plugin - v" PLUGIN_VERSION_MAJOR
+#define SHARED_MEMORY_VERSION PLUGIN_VERSION_MAJOR "." PLUGIN_VERSION_MINOR
+
+// This is hell on earth, but I do not want to add additional dependencies needed for STL right now.
+// Be super careful with those, there's no type safety or checks of any kind (1979 style).
+#define DEBUG_MSG(lvl, msg) SharedMemoryPlugin::WriteDebugMsg(lvl, "%s(%d) : %s\n", __FUNCTION__, __LINE__, msg)
+#define DEBUG_MSG2(lvl, msg, msg2) SharedMemoryPlugin::WriteDebugMsg(lvl, "%s(%d) : %s %s\n", __FUNCTION__, __LINE__, msg, msg2)
+#define DEBUG_INT2(lvl, msg, intValue) SharedMemoryPlugin::WriteDebugMsg(lvl, "%s(%d) : %s %d\n", __FUNCTION__, __LINE__, msg, intValue)
+#define DEBUG_FLOAT2(lvl, msg, floatValue) SharedMemoryPlugin::WriteDebugMsg(lvl, "%s(%d) : %s %f\n", __FUNCTION__, __LINE__, msg, floatValue)
+#define DEBUG_MSG3(lvl, msg, msg2, msg3) SharedMemoryPlugin::WriteDebugMsg(lvl, "%s(%d) : %s %s %s\n", __FUNCTION__, __LINE__, msg, msg2, msg3)
+
 #include "rF2State.h"
-#include <time.h>
-#include <assert.h>
+#include "MappedDoubleBuffer.h"
 
 enum DebugLevel
 {
@@ -33,19 +57,38 @@ enum DebugLevel
 class SharedMemoryPlugin : public InternalsPluginV07  // REMINDER: exported function GetPluginVersion() should return 1 if you are deriving from this InternalsPluginV01, 2 for InternalsPluginV02, etc.
 {
 public:
-  static char const* const MM_FILE_NAME1;
-  static char const* const MM_FILE_NAME2;
-  static char const* const MM_FILE_ACCESS_MUTEX;
+  static char const* const MM_TELEMETRY_FILE_NAME1;
+  static char const* const MM_TELEMETRY_FILE_NAME2;
+  static char const* const MM_TELEMETRY_FILE_ACCESS_MUTEX;
+
+  static char const* const MM_SCORING_FILE_NAME1;
+  static char const* const MM_SCORING_FILE_NAME2;
+  static char const* const MM_SCORING_FILE_ACCESS_MUTEX;
+
+  static char const* const MM_EXTENDED_FILE_NAME1;
+  static char const* const MM_EXTENDED_FILE_NAME2;
+  static char const* const MM_EXTENDED_FILE_ACCESS_MUTEX;
+
   static char const* const CONFIG_FILE_REL_PATH;
+
   static char const* const INTERNALS_TELEMETRY_FILENAME;
   static char const* const INTERNALS_SCORING_FILENAME;
   static char const* const DEBUG_OUTPUT_FILENAME;
-  static int const MAX_ASYNC_RETRIES;
+  
+  static int const MAX_ASYNC_RETRIES = 3;
+  static int const MAX_PARTICIPANT_SLOTS = 256;
+  static int const BUFFER_IO_BYTES = 2048;
+  static int const DEBUG_IO_FLUSH_PERIOD_SECS = 10;
 
   static DebugLevel msDebugOutputLevel;
   static bool msDebugISIInternals;
   static int msMillisRefresh;
   static DWORD msMillisMutexWait;
+
+  // Ouptut files:
+  static FILE* msDebugFile;
+  static FILE* msIsiTelemetryFile;
+  static FILE* msIsiScoringFile;
 
   static void LoadConfig();
 
@@ -56,83 +99,85 @@ public:
   static void WriteScoringInternals(ScoringInfoV01 const& info);
 
 private:
-  // internal state tracking
-  struct InternalVehScoringInfo
-  {
-    double mLapDist;
-    rF2Vec3 mPos;
-    rF2Vec3 mLocalVel;
-    rF2Vec3 mLocalAccel;
-    rF2Quat mOriQuatBegin;  // Orientation quat at scoring update
-    rF2Quat mOriQuatEnd;    // Estimated orientation quat one second later
-    rF2Vec3 mLocalVelEnd;   // Estimated local speed one second later
-  };
 
-  struct InternalScoringInfo
+  class ExtendedStateTracker
   {
-    int mNumVehicles;
-    char mPlrFileName[64];
-    InternalVehScoringInfo mVehicles[rF2State::MAX_VSI_SIZE];
-  };
+  public:
+    ExtendedStateTracker()
+    {
+      // There's a bug somewhere (in my head?), initializing mExtended = {} does not make it all 0.
+      // Maybe there's a race between simulation and multimedia threads, but I can't debug due to game crashing on attach.
+      // Traces suggest no race however.
+      memset(&mExtended, 0, sizeof(rF2Extended));
 
-  struct ExtendedStateTracker
-  {
-    unsigned char mInvulnerable = 0;
-    double mMaxImpactMagnitude = 0.0;
-    double mAccumulatedImpactMagnitude = 0.0;
-    
-    double mLastImpactProcessedET = 0.0;
-    double mLastPitStopET = 0.0;
+      strcpy_s(mExtended.mVersion, SHARED_MEMORY_VERSION);
+      mExtended.is64bit = PLUGIN_64BIT;
+
+      assert(!mExtended.mCurrentRead);
+      assert(!mExtended.mMultimediaThreadStarted);
+      assert(!mExtended.mSimulationThreadStarted);
+    }
 
     void ProcessTelemetryUpdate(TelemInfoV01 const& info)
     {
-      if (info.mLastImpactET > mLastPitStopET  // Is this new impact since last pit stop?
-        && info.mLastImpactET > mLastImpactProcessedET) { // Is this new impact?
+      auto const id = min(info.mID, rF2MappedBufferHeader::MAX_MAPPED_IDS - 1);
+
+      auto& dti = mDamageTrackingInfos[id];
+      if (info.mLastImpactET > dti.mLastPitStopET  // Is this new impact since last pit stop?
+        && info.mLastImpactET > dti.mLastImpactProcessedET) { // Is this new impact?
         // Ok, this is either new impact, or first impact since pit stop.
         // Update max and accumulated impact magnitudes.
-        mMaxImpactMagnitude = max(mMaxImpactMagnitude, info.mLastImpactMagnitude);
-        mAccumulatedImpactMagnitude += info.mLastImpactMagnitude;
-        mLastImpactProcessedET = info.mLastImpactET;
+        auto& td = mExtended.mTrackedDamages[id];
+        td.mMaxImpactMagnitude = max(td.mMaxImpactMagnitude, info.mLastImpactMagnitude);
+        td.mAccumulatedImpactMagnitude += info.mLastImpactMagnitude;
+
+        dti.mLastImpactProcessedET = info.mLastImpactET;
       }
     }
 
     void ProcessScoringUpdate(ScoringInfoV01 const& info)
     {
-      // This code bravely assumes that car at 0 is player.
-      // Not sure how correct this is.
-      if (info.mNumVehicles > 0 
-        && info.mVehicle[0].mPitState == static_cast<unsigned char>(rF2PitState::Stopped)) {
-        ResetDamageState();
-        mLastPitStopET = info.mCurrentET;
+      for (int i = 0; i < info.mNumVehicles; ++i) {
+        if (info.mVehicle[i].mPitState == static_cast<unsigned char>(rF2PitState::Stopped)) {
+          // If this car is pitting, clear out any damage tracked.
+          auto const id = min(info.mVehicle[i].mID, rF2MappedBufferHeader::MAX_MAPPED_IDS - 1);
+
+          memset(&(mExtended.mTrackedDamages[id]), 0, sizeof(rF2TrackedDamage));
+
+          mDamageTrackingInfos[id].mLastImpactProcessedET = 0.0;
+          mDamageTrackingInfos[id].mLastPitStopET = info.mCurrentET;
+        }
       }
     }
 
-    void ProcessPhysicsOptions(PhysicsOptionsV01 &options)
+    void ClearState()
     {
-      mInvulnerable = options.mInvulnerable;
+      ResetDamageState();
+
+      memset(&(mExtended.mPhysics), 0, sizeof(rF2PhysicsOptions));
     }
 
+  public:
+    rF2Extended mExtended = {};
+
+  private:
     void ResetDamageState()
     {
-      mMaxImpactMagnitude = 0.0;
-      mAccumulatedImpactMagnitude = 0.0;
-      mLastImpactProcessedET = 0.0;
-      mLastPitStopET = 0.0;
+      memset(&(mExtended.mTrackedDamages), 0, sizeof(rF2TrackedDamage));
+      memset(&mDamageTrackingInfos, 0, sizeof(mDamageTrackingInfos));
     }
 
-    void FlushToBuffer(rF2State* pBuf) const
+    struct DamageTracking
     {
-      assert(pBuf != nullptr);
-      assert(pBuf->mCurrentRead != true);
+      double mLastImpactProcessedET = 0.0;
+      double mLastPitStopET = 0.0;
+    };
 
-      pBuf->mMaxImpactMagnitude = mMaxImpactMagnitude;
-      pBuf->mAccumulatedImpactMagnitude = mAccumulatedImpactMagnitude;
-      pBuf->mInvulnerable = mInvulnerable;
-    }
+    DamageTracking mDamageTrackingInfos[rF2MappedBufferHeader::MAX_MAPPED_IDS];
   };
 
 public:
-  SharedMemoryPlugin() {}
+  SharedMemoryPlugin();
   ~SharedMemoryPlugin() override {}
 
   ////////////////////////////////////////////////////
@@ -141,7 +186,6 @@ public:
   void Startup(long version) override;    // game startup
   void Shutdown() override;               // game shutdown
 
-
   void EnterRealtime() override;          // entering realtime (where the vehicle can be driven)
   void ExitRealtime() override;           // exiting realtime
 
@@ -149,59 +193,75 @@ public:
   void EndSession() override;             // session has ended
 
   // GAME OUTPUT
-  long WantsTelemetryUpdates() override { return 1L; }
-  // whether we want telemetry updates (0=no 1=player-only 2=all vehicles)
+  long WantsTelemetryUpdates() override { return 2L; } // whether we want telemetry updates (0=no 1=player-only 2=all vehicles)
   void UpdateTelemetry(TelemInfoV01 const& info) override;
 
   // SCORING OUTPUT
   bool WantsScoringUpdates() override { return true; }
   void UpdateScoring(ScoringInfoV01 const& info) override; // update plugin with scoring info (approximately five times per second)
 
+  // MESSAGE BOX INPUT
+  bool WantsToDisplayMessage(MessageInfoV01& msgInfo) override; // set message and return true
 
-  void SetPhysicsOptions(PhysicsOptionsV01 &options) override 
-  {
-    mExtStateTracker.ProcessPhysicsOptions(options);
-  }
+  // ADDITIONAL GAMEFLOW NOTIFICATIONS
+  void ThreadStarted(long type) override; // called just after a primary thread is started (type is 0=multimedia or 1=simulation)
+  void ThreadStopping(long type) override;  // called just before a primary thread is stopped (type is 0=multimedia or 1=simulation)
 
+  bool WantsTrackRulesAccess() override { return false; } // change to true in order to read or write track order (during formation or caution laps)
+  bool AccessTrackRules(TrackRulesV01& info) override; // current track order passed in; return true if you want to change it (note: this will be called immediately after UpdateScoring() when appropriate)
+
+  // PIT MENU INFO (currently, the only way to edit the pit menu is to use this in conjunction with CheckHWControl())
+  bool WantsPitMenuAccess() { return false; } // change to true in order to view pit menu info
+  bool AccessPitMenu(PitMenuV01& info) override; // currently, the return code should always be false (because we may allow more direct editing in the future)
+
+  void SetPhysicsOptions(PhysicsOptionsV01& options) override;
+
+  // FUTURE/V2: SCORING CONTROL (only available in single-player or on multiplayer server)
+  // virtual bool WantsMultiSessionRulesAccess() { return(false); } // change to true in order to read or write multi-session rules
+  // virtual bool AccessMultiSessionRules(MultiSessionRulesV01 &info) { return(false); } // current internal rules passed in; return true if you want to change them
 
 private:
+  SharedMemoryPlugin(SharedMemoryPlugin const& rhs) = delete;
+  SharedMemoryPlugin& operator =(SharedMemoryPlugin const& rhs) = delete;
+
   void UpdateInRealtimeFC(bool inRealTime);
-  void UpdateTelemetryHelper(double const ticksNow, TelemInfoV01 const& info);
-  void UpdateScoringHelper(double const ticksNow, ScoringInfoV01 const& info);
-  void SyncBuffers(bool telemetryOnly);
-  void FlipBuffersHelper();
-  void FlipBuffers();
-  void TryFlipBuffers();
-  
-  HANDLE MapMemoryFile(char const * const fileName, rF2State*& pBuf) const;
+  void UpdateThreadState(long type, bool starting);
   void ClearState();
-  void ClearTimings();
+  void ClearTimingsAndCounters();
 
-  // Timings are in microseconds.
-  double mLastTelUpdate = 0.0;
-  double mLastScoringUpdate = 0.0;
+  void TelemetryTraceSkipUpdate(TelemInfoV01 const& info) const;
+  void TelemetryTraceBeginUpdate(double telUpdateET);
+  void TelemetryTraceVehicleAdded(TelemInfoV01 const& infos) const;
+  void TelemetryTraceEndUpdate(int numVehiclesInChain) const;
+  void TelemetryFlipBuffers();
 
-  // Frame delta is in seconds.
-  double mDelta = 0.0;
+  void ScoringTraceBeginUpdate();
 
-  // Extended state tracker
+private:
+
+  // Only used for debugging in Timing level
+  double mLastTelemetryUpdateMillis = 0.0;
+  double mLastScoringUpdateMillis = 0.0;
+
   ExtendedStateTracker mExtStateTracker;
 
-  HANDLE mhMutex = nullptr;
-  HANDLE mhMap1 = nullptr;
-  HANDLE mhMap2 = nullptr;
+  // Elapsed times reported by the game.
+  double mLastTelemetryUpdateET = 0.0;
+  double mLastScoringUpdateET = 0.0;
 
-  // Current write buffer.
-  rF2State* mpBufCurWrite = nullptr;
+  // Telemetry update tracking variables:
+  // If true, we're in progress of collecting telemetry updates for a frame.
+  bool mTelemetryUpdateInProgress = false;
+  int mCurTelemetryVehicleIndex = 0;
+  // Array used to track if mID telemetry is captured for this update.
+  bool mParticipantTelemetryUpdated[MAX_PARTICIPANT_SLOTS];
+  // Number of vehicles last reported by UpdateScoring.
+  int mScoringNumVehicles = 0;
 
-  // Flip between 2 buffers.  Clients should read the one with mCurrentRead == true.
-  rF2State* mpBuf1 = nullptr;
-  rF2State* mpBuf2 = nullptr;
+  MappedDoubleBuffer<rF2Telemetry> mTelemetry;
+  MappedDoubleBuffer<rF2Scoring> mScoring;
+  MappedDoubleBuffer<rF2Extended> mExtended;
 
+  // Buffers mapped successfully or not.
   bool mIsMapped = false;
-  bool mInRealTimeLastFunctionCall = false;
-  InternalScoringInfo mScoringInfo = {};
-
-  bool mRetryFlip = false;
-  int mRetriesLeft = 0;
 };

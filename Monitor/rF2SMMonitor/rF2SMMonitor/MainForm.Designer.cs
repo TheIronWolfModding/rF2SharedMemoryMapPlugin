@@ -1,4 +1,10 @@
-﻿namespace rF2SMMonitor
+﻿/*
+MainForm Designer part of file.
+
+Author: The Iron Wolf (vleonavicius@hotmail.com)
+Website: thecrewchief.org
+*/
+namespace rF2SMMonitor
 {
     partial class MainForm
     {

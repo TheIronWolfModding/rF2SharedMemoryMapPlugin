@@ -1,7 +1,8 @@
 ﻿/*
 Implementation of MathHelper and related classes.
 
-Author: The Iron Wolf (vleonavicius @hotmail.com)
+Author: The Iron Wolf (vleonavicius@hotmail.com)
+Website: thecrewchief.org
 */
 using rF2SMMonitor.rFactor2Data;
 using System;

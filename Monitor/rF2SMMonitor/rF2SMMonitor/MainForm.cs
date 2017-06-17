@@ -3,10 +3,12 @@ rF2SMMonitor is visual debugger for rF2 Shared Memory Plugin.
 
 MainForm implementation, contains main loop and render calls.
 
-Author: The Iron Wolf (vleonavicius @hotmail.com)
+Author: The Iron Wolf (vleonavicius@hotmail.com)
+Website: thecrewchief.org
 */
 using rF2SMMonitor.rFactor2Data;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
@@ -30,22 +32,125 @@ namespace rF2SMMonitor
     System.Windows.Forms.Timer disconnectTimer = new System.Windows.Forms.Timer();
     bool connected = false;
 
-    // Shared memory buffer fields
-    readonly int SHARED_MEMORY_SIZE_BYTES = Marshal.SizeOf(typeof(rF2State));
-    readonly int SHARED_MEMORY_HEADER_SIZE_BYTES = Marshal.SizeOf(typeof(rF2StateHeader));
-    byte[] sharedMemoryReadBuffer = null;
+    private class MappedDoubleBuffer<MappedBufferT>
+    {
+      readonly int RF2_BUFFER_HEADER_SIZE_BYTES = Marshal.SizeOf(typeof(rF2BufferHeader));
 
-    // Plugin access fields
-    Mutex fileAccessMutex = null;
-    MemoryMappedFile memoryMappedFile1 = null;
-    MemoryMappedFile memoryMappedFile2 = null;
-    int currBuff = 0;
+      readonly int BUFFER_SIZE_BYTES;
+      readonly string BUFFER1_NAME;
+      readonly string BUFFER2_NAME;
+      readonly string MUTEX_NAME;
 
-    // Marshalled view
-    rF2State currrF2State;
+      byte[] sharedMemoryReadBuffer = null;
+      Mutex mutex = null;
+      MemoryMappedFile memoryMappedFile1 = null;
+      MemoryMappedFile memoryMappedFile2 = null;
 
-    // Interpolation debugging
-    InterpolationStats interpolationStats = new InterpolationStats();
+      public MappedDoubleBuffer(string buff1Name, string buff2Name, string mutexName)
+      {
+        this.BUFFER_SIZE_BYTES = Marshal.SizeOf(typeof(MappedBufferT));
+        this.BUFFER1_NAME = buff1Name;
+        this.BUFFER2_NAME = buff2Name;
+        this.MUTEX_NAME = mutexName;
+      }
+
+      public void Connect()
+      {
+        this.mutex = Mutex.OpenExisting(this.MUTEX_NAME);
+        this.memoryMappedFile1 = MemoryMappedFile.OpenExisting(this.BUFFER1_NAME);
+        this.memoryMappedFile2 = MemoryMappedFile.OpenExisting(this.BUFFER2_NAME);
+
+        // NOTE: Make sure that BUFFER_SIZE matches the structure size in the plugin (debug mode prints that).
+        this.sharedMemoryReadBuffer = new byte[this.BUFFER_SIZE_BYTES];
+      }
+
+      public void Disconnect()
+      {
+        if (this.memoryMappedFile1 != null)
+          this.memoryMappedFile1.Dispose();
+
+        if (this.memoryMappedFile2 != null)
+          this.memoryMappedFile2.Dispose();
+
+        if (this.mutex != null)
+          this.mutex.Dispose();
+
+        this.memoryMappedFile1 = null;
+        this.memoryMappedFile2 = null;
+        this.sharedMemoryReadBuffer = null;
+        this.mutex = null;
+      }
+
+      public void GetMappedData(ref MappedBufferT mappedData)
+      {
+        //
+        // IMPORTANT:  Clients that do not need consistency accross the whole buffer, like dashboards that visualize data, _do not_ need to use mutexes.
+        //
+
+        // Note: if it is critical for client minimize wait time, same strategy as plugin uses can be employed.
+        // Pass 0 timeout and skip update if someone holds the lock.
+        if (this.mutex.WaitOne(5000))
+        {
+          try
+          {
+            bool buf1Current = false;
+            // Try buffer 1:
+            using (var sharedMemoryStreamView = this.memoryMappedFile1.CreateViewStream())
+            {
+              var sharedMemoryStream = new BinaryReader(sharedMemoryStreamView);
+              this.sharedMemoryReadBuffer = sharedMemoryStream.ReadBytes(this.RF2_BUFFER_HEADER_SIZE_BYTES);
+
+              // Marhsal header.
+              var headerHandle = GCHandle.Alloc(this.sharedMemoryReadBuffer, GCHandleType.Pinned);
+              var header = (rF2MappedBufferHeader)Marshal.PtrToStructure(headerHandle.AddrOfPinnedObject(), typeof(rF2MappedBufferHeader));
+              headerHandle.Free();
+
+              if (header.mCurrentRead == 1)
+              {
+                sharedMemoryStream.BaseStream.Position = 0;
+                this.sharedMemoryReadBuffer = sharedMemoryStream.ReadBytes(this.BUFFER_SIZE_BYTES);
+                buf1Current = true;
+              }
+            }
+
+            // Read buffer 2
+            if (!buf1Current)
+            {
+              using (var sharedMemoryStreamView = this.memoryMappedFile2.CreateViewStream())
+              {
+                var sharedMemoryStream = new BinaryReader(sharedMemoryStreamView);
+                this.sharedMemoryReadBuffer = sharedMemoryStream.ReadBytes(this.BUFFER_SIZE_BYTES);
+              }
+            }
+          }
+          finally
+          {
+            this.mutex.ReleaseMutex();
+          }
+
+          // Marshal rF2State
+          var handle = GCHandle.Alloc(this.sharedMemoryReadBuffer, GCHandleType.Pinned);
+          
+          mappedData = (MappedBufferT)Marshal.PtrToStructure(handle.AddrOfPinnedObject(), typeof(MappedBufferT));
+
+          handle.Free();
+        }
+      }
+    }
+
+    MappedDoubleBuffer<rF2Telemetry> telemetryBuffer = new MappedDoubleBuffer<rF2Telemetry>(rFactor2Constants.MM_TELEMETRY_FILE_NAME1, 
+      rFactor2Constants.MM_TELEMETRY_FILE_NAME2, rFactor2Constants.MM_TELEMETRY_FILE_ACCESS_MUTEX);
+
+    MappedDoubleBuffer<rF2Scoring> scoringBuffer = new MappedDoubleBuffer<rF2Scoring>(rFactor2Constants.MM_SCORING_FILE_NAME1,
+      rFactor2Constants.MM_SCORING_FILE_NAME2, rFactor2Constants.MM_SCORING_FILE_ACCESS_MUTEX);
+
+    MappedDoubleBuffer<rF2Extended> extendedBuffer = new MappedDoubleBuffer<rF2Extended>(rFactor2Constants.MM_EXTENDED_FILE_NAME1,
+      rFactor2Constants.MM_EXTENDED_FILE_NAME2, rFactor2Constants.MM_EXTENDED_FILE_ACCESS_MUTEX);
+
+    // Marshalled views:
+    rF2Telemetry telemetry;
+    rF2Scoring scoring;
+    rF2Extended extended;
 
     // Track rF2 transitions.
     TransitionTracker tracker = new TransitionTracker();
@@ -149,8 +254,8 @@ namespace rF2SMMonitor
 
     private void MainForm_MouseClick(object sender, MouseEventArgs e)
     {
-      if (e.Button == MouseButtons.Right)
-        this.interpolationStats.Reset();
+      //if (e.Button == MouseButtons.Right)
+       // this.interpolationStats.Reset();
     }
 
     private void YOffsetTextBox_LostFocus(object sender, EventArgs e)
@@ -272,9 +377,9 @@ namespace rF2SMMonitor
         if (base.WindowState == FormWindowState.Minimized)
         {
           // being lazy lazy lazy.
-          this.tracker.TrackPhase(ref this.currrF2State, null, this.logPhaseAndState);
-          this.tracker.TrackDamage(ref this.currrF2State, null, this.logDamage);
-          this.tracker.TrackTimings(ref this.currrF2State, null, this.logTiming);
+          this.tracker.TrackPhase(ref this.scoring, ref this.telemetry, ref this.extended, null, this.logPhaseAndState);
+          this.tracker.TrackDamage(ref this.scoring, ref this.telemetry, ref this.extended, null, this.logPhaseAndState);
+          this.tracker.TrackTimings(ref this.scoring, ref this.telemetry, ref this.extended, null, this.logPhaseAndState);
         }
         else
         {
@@ -293,54 +398,9 @@ namespace rF2SMMonitor
 
       try
       {
-        // Note: if it is critical for client minimize wait time, same strategy as plugin uses can be employed.
-        // Pass 0 timeout and skip update if someone holds the lock.
-        if (this.fileAccessMutex.WaitOne(5000))
-        {
-          try
-          {
-            bool buf1Current = false;
-            // Try buffer 1:
-            using (var sharedMemoryStreamView = this.memoryMappedFile1.CreateViewStream())
-            {
-              var sharedMemoryStream = new BinaryReader(sharedMemoryStreamView);
-              this.sharedMemoryReadBuffer = sharedMemoryStream.ReadBytes(this.SHARED_MEMORY_HEADER_SIZE_BYTES);
-
-              // Marhsal header
-              var headerHandle = GCHandle.Alloc(this.sharedMemoryReadBuffer, GCHandleType.Pinned);
-              var header = (rF2StateHeader)Marshal.PtrToStructure(headerHandle.AddrOfPinnedObject(), typeof(rF2StateHeader));
-              headerHandle.Free();
-
-              if (header.mCurrentRead == 1)
-              {
-                sharedMemoryStream.BaseStream.Position = 0;
-                this.sharedMemoryReadBuffer = sharedMemoryStream.ReadBytes(this.SHARED_MEMORY_SIZE_BYTES);
-                buf1Current = true;
-                this.currBuff = 1;
-              }
-            }
-
-            // Read buffer 2
-            if (!buf1Current)
-            {
-              using (var sharedMemoryStreamView = this.memoryMappedFile2.CreateViewStream())
-              {
-                var sharedMemoryStream = new BinaryReader(sharedMemoryStreamView);
-                this.sharedMemoryReadBuffer = sharedMemoryStream.ReadBytes(this.SHARED_MEMORY_SIZE_BYTES);
-                this.currBuff = 2;
-              }
-            }
-          }
-          finally
-          {
-            this.fileAccessMutex.ReleaseMutex();
-          }
-
-          // Marshal rF2State
-          var handle = GCHandle.Alloc(this.sharedMemoryReadBuffer, GCHandleType.Pinned);
-          this.currrF2State = (rF2State)Marshal.PtrToStructure(handle.AddrOfPinnedObject(), typeof(rF2State));
-          handle.Free();
-        }
+        extendedBuffer.GetMappedData(ref extended);
+        scoringBuffer.GetMappedData(ref scoring);
+        telemetryBuffer.GetMappedData(ref telemetry);
       }
       catch (Exception)
       {
@@ -373,7 +433,14 @@ namespace rF2SMMonitor
 
     private static string getStringFromBytes(byte[] bytes)
     {
-      return bytes == null ? "" : Encoding.Default.GetString(bytes).TrimEnd('\0').Trim();
+      if (bytes == null)
+        return "";
+
+      var nullIdx = Array.IndexOf(bytes, (byte)0);
+
+      return nullIdx >= 0
+        ? Encoding.Default.GetString(bytes, 0, nullIdx) 
+        : Encoding.Default.GetString(bytes);
     }
 
     // Corrdinate conversion:
@@ -385,9 +452,9 @@ namespace rF2SMMonitor
     {
       var g = e.Graphics;
 
-      this.tracker.TrackPhase(ref this.currrF2State, g, this.logPhaseAndState);
-      this.tracker.TrackDamage(ref this.currrF2State, g, this.logDamage);
-      this.tracker.TrackTimings(ref this.currrF2State, g, this.logTiming);
+      this.tracker.TrackPhase(ref this.scoring, ref this.telemetry, ref this.extended, g, this.logPhaseAndState);
+      this.tracker.TrackDamage(ref this.scoring, ref this.telemetry, ref this.extended, g, this.logPhaseAndState);
+      this.tracker.TrackTimings(ref this.scoring, ref this.telemetry, ref this.extended, g, this.logPhaseAndState);
 
       this.UpdateFPS();
 
@@ -408,7 +475,7 @@ namespace rF2SMMonitor
         float yStep = SystemFonts.DefaultFont.Height;
         var gameStateText = new StringBuilder();
         gameStateText.Append(
-          $"Plugin Version:    Expected: 1.1.0.1    Actual: {MainForm.getStringFromBytes(this.currrF2State.mVersion)}    FPS: {this.fps}");
+          $"Plugin Version:    Expected: 1.1.0.1    Actual: {MainForm.getStringFromBytes(this.extended.mVersion)}    FPS: {this.fps}");
 
         // Draw header
         g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, brush, currX, currY);
@@ -425,7 +492,9 @@ namespace rF2SMMonitor
           + "mTrackName:\n"
           + "mLapStartET:\n"
           + "mLapDist:\n"
-          + "mEndET:\n");
+          + "mEndET:\n"
+          + "mPlayerName:\n"
+          + "mPlrFileName:\n");
 
         // Col 1 labels
         g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, brush, currX, currY += yStep);
@@ -433,61 +502,104 @@ namespace rF2SMMonitor
         gameStateText.Clear();
 
         gameStateText.Append(
-                $"{this.currrF2State.mElapsedTime:N3}\n"
-                + $"{this.currrF2State.mCurrentET:N3}\n"
-                + $"{(this.currrF2State.mElapsedTime - this.currrF2State.mCurrentET):N3}\n"
-                + $"{this.currrF2State.mDeltaTime:N3}\n"
-                + (this.currrF2State.mInvulnerable == 0 ? "off" : "on") + "\n"
-                + $"{MainForm.getStringFromBytes(this.currrF2State.mVehicleName)}\n"
-                + $"{MainForm.getStringFromBytes(this.currrF2State.mTrackName)}\n"
-                + $"{this.currrF2State.mLapStartET:N3}\n"
-                + $"{this.currrF2State.mLapDist:N3}\n"
-                + (this.currrF2State.mEndET < 0.0 ? "Unknown" : this.currrF2State.mEndET.ToString("N3")) + "\n");
+                $"{this.telemetry.mVehicles[0].mElapsedTime:N3}\n"
+                + $"{this.scoring.mScoringInfo.mCurrentET:N3}\n"
+                + $"{(this.telemetry.mVehicles[0].mElapsedTime - this.scoring.mScoringInfo.mCurrentET):N3}\n"
+                + $"{this.telemetry.mVehicles[0].mDeltaTime:N3}\n"
+                + (this.extended.mPhysics.mInvulnerable == 0 ? "off" : "on") + "\n"
+                + $"{MainForm.getStringFromBytes(this.telemetry.mVehicles[0].mVehicleName)}\n"
+                + $"{MainForm.getStringFromBytes(this.telemetry.mVehicles[0].mTrackName)}\n"
+                + $"{this.telemetry.mVehicles[0].mLapStartET:N3}\n"
+                + $"{this.scoring.mScoringInfo.mLapDist:N3}\n"
+                + (this.scoring.mScoringInfo.mEndET < 0.0 ? "Unknown" : this.scoring.mScoringInfo.mEndET.ToString("N3")) + "\n"
+                + $"{MainForm.getStringFromBytes(this.scoring.mScoringInfo.mPlayerName)}\n"
+                + $"{MainForm.getStringFromBytes(this.scoring.mScoringInfo.mPlrFileName)}\n");
 
         // Col1 values
         g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Purple, currX + 145, currY);
 
-        if (this.currrF2State.mNumVehicles > 0)
+        if (this.scoring.mScoringInfo.mNumVehicles == 0)
+          return;
+
+        gameStateText.Clear();
+
+        gameStateText.Append(
+          "mTimeIntoLap:\n"
+          + "mEstimatedLapTime:\n"
+          + "mTimeBehindNext:\n"
+          + "mTimeBehindLeader:\n"
+          + "mPitGroup:\n"
+          + "mLapDist(Plr):\n"
+          + "mLapDist(Est):\n"
+          + "yaw:\n"
+          + "pitch:\n"
+          + "roll:\n"
+          + "speed:\n");
+
+        // Col 2 labels
+        g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, brush, currX += 275, currY);
+        gameStateText.Clear();
+
+        // Build map of mID -> telemetry.mVehicles[i]. 
+        // They are typically matching values, however, we need to handle online cases and dropped vehicles (mID can be reused).
+        var idsToTelIndices = new Dictionary<long, int>();
+        for (int i = 0; i < this.telemetry.mNumVehicles; ++i)
         {
-          gameStateText.Clear();
-
-          gameStateText.Append(
-            "mLapDist(Plr):\n"
-            + "mTimeIntoLap:\n"
-            + "mEstimatedLapTime:\n"
-            + "mTimeBehindNext:\n"
-            + "mTimeBehindLeader:\n"
-            + "mPlayerName:\n"
-            + "mPlrFileName:\n"
-            + "mPitGroup\n");
-
-          // Col 2 labels
-          g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, brush, currX += 275, currY);
-          gameStateText.Clear();
-
-          var plrVeh = this.currrF2State.mVehicles[0];
-          gameStateText.Append(
-            $"{plrVeh.mLapDist:N3}\n"
-            + $"{plrVeh.mTimeIntoLap:N3}\n"
-            + $"{plrVeh.mEstimatedLapTime:N3}\n"
-            + $"{plrVeh.mTimeBehindNext:N3}\n"
-            + $"{plrVeh.mTimeBehindLeader:N3}\n"
-            + $"{MainForm.getStringFromBytes(this.currrF2State.mPlayerName)}\n"
-            + $"{MainForm.getStringFromBytes(this.currrF2State.mPlrFileName)}\n"
-            + $"{MainForm.getStringFromBytes(plrVeh.mPitGroup)}\n");
-
-          // Col2 values
-          g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Purple, currX + 120, currY);
+          if (!idsToTelIndices.ContainsKey(this.telemetry.mVehicles[i].mID))
+            idsToTelIndices.Add(this.telemetry.mVehicles[i].mID, i);
         }
 
+        var scoringPlrId = this.scoring.mVehicles[0].mID;
+        if (!idsToTelIndices.ContainsKey(scoringPlrId))
+          return;
 
+        var resolvedIdx = idsToTelIndices[scoringPlrId];
+        var playerVeh = this.telemetry.mVehicles[resolvedIdx];
+        var playerVehScoring = this.scoring.mVehicles[0];
+
+        // Calculate derivatives:
+        var yaw = Math.Atan2(playerVeh.mOri[RowZ].x, playerVeh.mOri[RowZ].z);
+
+        var pitch = Math.Atan2(-playerVeh.mOri[RowY].z,
+          Math.Sqrt(playerVeh.mOri[RowX].z * playerVeh.mOri[RowX].z + playerVeh.mOri[RowZ].z * playerVeh.mOri[RowZ].z));
+      
+        var roll = Math.Atan2(playerVeh.mOri[RowY].x,
+          Math.Sqrt(playerVeh.mOri[RowX].x * playerVeh.mOri[RowX].x + playerVeh.mOri[RowZ].x * playerVeh.mOri[RowZ].x));
+
+        var speed = Math.Sqrt((playerVeh.mLocalVel.x * playerVeh.mLocalVel.x)
+          + (playerVeh.mLocalVel.y * playerVeh.mLocalVel.y)
+          + (playerVeh.mLocalVel.z * playerVeh.mLocalVel.z));
+
+        // Estimate lapdist
+        // See how much ahead telemetry is ahead of scoring update
+        var delta = playerVeh.mElapsedTime - scoring.mScoringInfo.mCurrentET;
+        var lapDistEstimated = playerVehScoring.mLapDist;
+        if (delta > 0.0)
+        {
+          var localZAccelEstimated = playerVehScoring.mLocalAccel.z * delta;
+          var localZVelEstimated = playerVehScoring.mLocalVel.z + localZAccelEstimated;
+
+          lapDistEstimated = playerVehScoring.mLapDist - localZVelEstimated * delta;
+        }
+
+        gameStateText.Append(
+          $"{playerVehScoring.mTimeIntoLap:N3}\n"
+          + $"{playerVehScoring.mEstimatedLapTime:N3}\n"
+          + $"{playerVehScoring.mTimeBehindNext:N3}\n"
+          + $"{playerVehScoring.mTimeBehindLeader:N3}\n"
+          + $"{MainForm.getStringFromBytes(playerVehScoring.mPitGroup)}\n"
+          + $"{playerVehScoring.mLapDist:N3}\n"
+          + $"{lapDistEstimated:N3}\n"
+          + $"{yaw:N3}\n"
+          + $"{pitch:N3}\n"
+          + $"{roll:N3}\n"
+          + string.Format("{0:n3} m/s {1:n4} km/h\n", speed, speed * 3.6));
+
+        // Col2 values
+        g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Purple, currX + 120, currY);
 
         if (this.logLightMode)
           return;
-
-        Interpolator.RenderDebugInfo(ref this.currrF2State, g);
-
-        this.interpolationStats.RenderInterpolationInfo(ref this.currrF2State, g, this.currBuff);
 
         // Branch of UI choice: origin center or car# center
         // Fix rotation on car of choice or no.
@@ -495,9 +607,9 @@ namespace rF2SMMonitor
         // Scale will be parameter, scale applied last on render to zoom.
         float scale = this.scale;
 
-        var xVeh = (float)this.currrF2State.mPos.x;
-        var zVeh = (float)this.currrF2State.mPos.z;
-        var yawVeh = Math.Atan2(this.currrF2State.mOri[2].x, this.currrF2State.mOri[2].z);
+        var xVeh = (float)playerVeh.mPos.x;
+        var zVeh = (float)playerVeh.mPos.z;
+        var yawVeh = yaw;
 
          // View center
         var xScrOrigin = this.view.Width / 2.0f;
@@ -511,11 +623,15 @@ namespace rF2SMMonitor
 
           RenderCar(g, xVeh, -zVeh, -(float)yawVeh, Brushes.Green);
 
-          for (int i = 0; i < this.currrF2State.mNumVehicles; ++i)
+          for (int i = 1; i < this.telemetry.mNumVehicles; ++i)
+          {
+            var veh = this.telemetry.mVehicles[i];
+            var thisYaw = Math.Atan2(veh.mOri[2].x, veh.mOri[2].z);
             this.RenderCar(g,
-              (float)this.currrF2State.mVehicles[i].mPos.x,
-              -(float)this.currrF2State.mVehicles[i].mPos.z,
-              -(float)this.currrF2State.mVehicles[i].mYaw, Brushes.Red);
+              (float)veh.mPos.x,
+              -(float)veh.mPos.z,
+              -(float)thisYaw, Brushes.Red);
+          }
         }
         else
         {
@@ -530,11 +646,15 @@ namespace rF2SMMonitor
 
           RenderCar(g, xVeh, -zVeh, -(float)yawVeh, Brushes.Green);
 
-          for (int i = 0; i < this.currrF2State.mNumVehicles; ++i)
+          for (int i = 1; i < this.telemetry.mNumVehicles; ++i)
+          {
+            var veh = this.telemetry.mVehicles[i];
+            var thisYaw = Math.Atan2(veh.mOri[2].x, veh.mOri[2].z);
             this.RenderCar(g,
-              (float)this.currrF2State.mVehicles[i].mPos.x,
-              -(float)this.currrF2State.mVehicles[i].mPos.z,
-             -(float)this.currrF2State.mVehicles[i].mYaw, Brushes.Red);
+              (float)veh.mPos.x,
+              -(float)veh.mPos.z,
+              -(float)thisYaw, Brushes.Red);
+          }
         }
       }
     }
@@ -623,11 +743,10 @@ namespace rF2SMMonitor
       {
         try
         {
-          this.fileAccessMutex = Mutex.OpenExisting(rF2SMMonitor.rFactor2Constants.MM_FILE_ACCESS_MUTEX);
-          this.memoryMappedFile1 = MemoryMappedFile.OpenExisting(rFactor2Constants.MM_FILE_NAME1);
-          this.memoryMappedFile2 = MemoryMappedFile.OpenExisting(rFactor2Constants.MM_FILE_NAME2);
-          // NOTE: Make sure that SHARED_MEMORY_SIZE_BYTES matches the structure size in the plugin (debug mode prints).
-          this.sharedMemoryReadBuffer = new byte[this.SHARED_MEMORY_SIZE_BYTES];
+          this.telemetryBuffer.Connect();
+          this.scoringBuffer.Connect();
+          this.extendedBuffer.Connect();
+
           this.connected = true;
 
           this.EnableControls(true);
@@ -656,22 +775,14 @@ namespace rF2SMMonitor
         Disconnect();
       }
     }
+
     private void Disconnect()
     {
-      if (this.memoryMappedFile1 != null)
-        this.memoryMappedFile1.Dispose();
+      this.extendedBuffer.Disconnect();
+      this.scoringBuffer.Disconnect();
+      this.telemetryBuffer.Disconnect();
 
-      if (this.memoryMappedFile2 != null)
-        this.memoryMappedFile2.Dispose();
-
-      if (this.fileAccessMutex != null)
-        this.fileAccessMutex.Dispose();
-
-      this.memoryMappedFile1 = null;
-      this.memoryMappedFile2 = null;
-      this.sharedMemoryReadBuffer = null;
       this.connected = false;
-      this.fileAccessMutex = null;
 
       this.EnableControls(false);
     }
@@ -772,7 +883,6 @@ namespace rF2SMMonitor
         this.logTiming = false;
 
       this.checkBoxLogTiming.Checked = this.logTiming;
-
     }
   }
 }

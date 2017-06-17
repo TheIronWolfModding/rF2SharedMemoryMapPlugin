@@ -2,6 +2,7 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="..\Source\rFactor2SharedMemoryMap.cpp" />
+    <ClCompile Include="ISIInternalsDump.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Include\InternalsPlugin.hpp">
@@ -14,6 +15,9 @@
       <Filter>includes</Filter>
     </ClInclude>
     <ClInclude Include="..\Include\rF2State.h">
+      <Filter>includes</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Include\MappedDoubleBuffer.h">
       <Filter>includes</Filter>
     </ClInclude>
   </ItemGroup>
