@@ -44,15 +44,17 @@ Extended state:
   Exposed extended state consists of the two parts:
 
   * Non periodically updated game state:
-      Currently, Physics settings updates and various callback based properties are tracked.
+      Physics settings updates and various callback based properties are tracked.
 
-  * Attempt to compensate for values not currently available from the game:
-      Currently, damage state is tracked, since game provides no accumulated damage data.  Tracking happens on _every_ telemetry/scoring
-      update for highest precision.  See SharedMemoryPlugin::ExtendedStateTracker struct for details.
+  * Heuristic data exposed as an attempt to compensate for values not currently available from the game:
+      Damage state is tracked, since game provides no accumulated damage data.  Tracking happens on _every_ telemetry/scoring
+      update for full precision.
+      
+  See SharedMemoryPlugin::ExtendedStateTracker struct for details.
 
 
-Double buffering:
-  Plugin maps each state type structure into two memory mapped files.  Buffers are written to alternatively.
+Double Buffering:
+  Plugin maps each exposed structure into two memory mapped files.  Buffers are written to alternatively.
   rF2MappedBufferHeaders::mCurrentRead indicates last updated buffer.
 
   Buffers are flipped after each update (see State Updates) except for telemetry state buffers.
@@ -62,15 +64,15 @@ Double buffering:
 
 
 Synchronization:
-  Important: do not use synchronization if your application queries at high rate (50ms or smaller gaps) and if you
-  do not need consistent view of the whole buffer.  Typically, Dashboards,  varios visualizers do not need such views,
-  because partially correct data will be overritten by next frame.  Abusing synchronization might cause game FPS drop!
+  Important: do not use synchronization if your application:
+    - queries for data at high rate (50ms or smaller gaps)
+    - does not need consistent view of the whole buffer.  Typically, Dashboards,  varios visualizers do not need such views,
+      because partially correct data will be overritten by next frame.  Abusing synchronization might cause game FPS drops.
 
   A lot of effort was done to ensure minimal impact on the rF2.  Therefore, using mutex does not guarantee that buffer
   won't be overwritten. While mutex is exposed for synchronized access, plugin tries to minimize wait time by retrying
-  during telemetry updates (~90FPS) and only waiting for 1ms max during scoring updates (and on fourth telemetry retry), 
-  before forcefully flipping buffers.  Also, if 1ms elapses on synchronized flip, buffer will be overwritten
-  anyway.
+  during telemetry updates (~90FPS) and only waiting for 1ms max during scoring updates (and on fourth telemetry flip retry), 
+  before forcefully flipping buffers.  Also, if 1ms elapses on synchronized flip, buffer will be overwritten anyway.
 
 
 Configuration file:

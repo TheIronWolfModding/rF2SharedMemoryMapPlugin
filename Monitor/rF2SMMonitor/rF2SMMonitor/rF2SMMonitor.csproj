@@ -47,8 +47,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="IniFile.cs" />
-    <Compile Include="InterpolationStats.cs" />
-    <Compile Include="Interpolator.cs" />
     <Compile Include="MainForm.cs">
       <SubType>Form</SubType>
     </Compile>

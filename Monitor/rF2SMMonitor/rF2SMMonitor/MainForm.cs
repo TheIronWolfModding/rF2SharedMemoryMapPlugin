@@ -4,6 +4,7 @@ rF2SMMonitor is visual debugger for rF2 Shared Memory Plugin.
 MainForm implementation, contains main loop and render calls.
 
 Author: The Iron Wolf (vleonavicius@hotmail.com)
+Website: thecrewchief.org
 */
 using rF2SMMonitor.rFactor2Data;
 using System;
