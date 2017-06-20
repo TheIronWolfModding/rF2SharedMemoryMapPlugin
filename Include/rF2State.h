@@ -518,7 +518,13 @@ struct rF2MappedBufferHeader
 };
 
 
-struct rF2Telemetry : public rF2MappedBufferHeader
+struct rF2MappedBufferHeaderWithSize : public rF2MappedBufferHeader
+{
+  int mBytesUpdated;
+};
+
+
+struct rF2Telemetry : public rF2MappedBufferHeaderWithSize
 {
   long mNumVehicles;             // current number of vehicles
 
@@ -526,7 +532,7 @@ struct rF2Telemetry : public rF2MappedBufferHeader
 };
 
 
-struct rF2Scoring : public rF2MappedBufferHeader
+struct rF2Scoring : public rF2MappedBufferHeaderWithSize
 {
   rF2ScoringInfo mScoringInfo;
   rF2VehicleScoring mVehicles[rF2MappedBufferHeader::MAX_MAPPED_VEHICLES];

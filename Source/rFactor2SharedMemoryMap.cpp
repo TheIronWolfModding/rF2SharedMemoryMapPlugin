@@ -530,6 +530,10 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
     if (mCurTelemetryVehicleIndex >= mTelemetry.mpCurWriteBuf->mNumVehicles
       || mCurTelemetryVehicleIndex >= rF2Telemetry::MAX_MAPPED_VEHICLES) {
       auto const numVehiclesInChain = mCurTelemetryVehicleIndex;
+
+      mTelemetry.mpCurWriteBuf->mBytesUpdated = offsetof(rF2Telemetry, mVehicles[mTelemetry.mpCurWriteBuf->mNumVehicles]);
+      //  + (sizeof(rF2VehicleTelemetry) * mTelemetry.mpCurWriteBuf->mNumVehicles);
+
       mTelemetryUpdateInProgress = false;
       mCurTelemetryVehicleIndex = 0;
       memset(mParticipantTelemetryUpdated, 0, sizeof(mParticipantTelemetryUpdated));
@@ -590,6 +594,8 @@ void SharedMemoryPlugin::UpdateScoring(ScoringInfoV01 const& info)
 
   for (int i = 0; i < info.mNumVehicles; ++i)
     memcpy(&(mScoring.mpCurWriteBuf->mVehicles[i]), &(info.mVehicle[i]), sizeof(rF2VehicleScoring));
+
+  mScoring.mpCurWriteBuf->mBytesUpdated = offsetof(rF2Scoring, mVehicles[info.mNumVehicles]);// +(sizeof(rF2VehicleScoring) * info.mNumVehicles);
 
   mScoring.FlipBuffers();
 

@@ -539,9 +539,19 @@ namespace rF2SMMonitor
 
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
+    struct rF2MappedBufferHeaderWithSize
+    {
+      public byte mCurrentRead;                 // True indicates buffer is safe to read under mutex.
+      public int mBytesUpdated;
+    }
+
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
     struct rF2Telemetry
     {
       public byte mCurrentRead;                 // True indicates buffer is safe to read under mutex.
+
+      public int mBytesUpdated;
 
       public int mNumVehicles;                // current number of vehicles
       [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = rFactor2Constants.MAX_MAPPED_VEHICLES)]
@@ -553,6 +563,8 @@ namespace rF2SMMonitor
     struct rF2Scoring
     {
       public byte mCurrentRead;                 // True indicates buffer is safe to read under mutex.
+
+      public int mBytesUpdated;
 
       public rF2ScoringInfo mScoringInfo;
 
