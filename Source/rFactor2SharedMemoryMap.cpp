@@ -83,10 +83,6 @@ Configuration file:
 Sample consumption:
   For sample C# client, see Monitor\rF2SMMonitor\rF2SMMonitor\MainForm.cs
 */
-
-#define _USE_MATH_DEFINES                       // for M_PI
-#include <math.h>                               // for atan2, sqrt
-
 #include "rFactor2SharedMemoryMap.hpp"          // corresponding header file
 #include <stdlib.h>
 #include <cstddef>                              // offsetof
@@ -200,10 +196,14 @@ void SharedMemoryPlugin::Startup(long version)
     _itoa_s(size, sizeSz, 10);
     DEBUG_MSG3(DebugLevel::Errors, "Size of telemetry buffers:", sizeSz, "bytes each.");
 
+    assert(sizeof(rF2Telemetry) == offsetof(rF2Telemetry, mVehicles[rF2MappedBufferHeader::MAX_MAPPED_VEHICLES]));
+
     sizeSz[0] = '\0';
     size = static_cast<int>(sizeof(rF2Scoring));
     _itoa_s(size, sizeSz, 10);
     DEBUG_MSG3(DebugLevel::Errors, "Size of scoring buffers:", sizeSz, "bytes each.");
+
+    assert(sizeof(rF2Scoring) == offsetof(rF2Scoring, mVehicles[rF2MappedBufferHeader::MAX_MAPPED_VEHICLES]));
 
     sizeSz[0] = '\0';
     size = static_cast<int>(sizeof(rF2Extended));
@@ -531,8 +531,7 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
       || mCurTelemetryVehicleIndex >= rF2Telemetry::MAX_MAPPED_VEHICLES) {
       auto const numVehiclesInChain = mCurTelemetryVehicleIndex;
 
-      mTelemetry.mpCurWriteBuf->mBytesUpdated = offsetof(rF2Telemetry, mVehicles[mTelemetry.mpCurWriteBuf->mNumVehicles]);
-      //  + (sizeof(rF2VehicleTelemetry) * mTelemetry.mpCurWriteBuf->mNumVehicles);
+      mTelemetry.mpCurWriteBuf->mBytesUpdatedHint = offsetof(rF2Telemetry, mVehicles[mTelemetry.mpCurWriteBuf->mNumVehicles]);
 
       mTelemetryUpdateInProgress = false;
       mCurTelemetryVehicleIndex = 0;
@@ -595,7 +594,7 @@ void SharedMemoryPlugin::UpdateScoring(ScoringInfoV01 const& info)
   for (int i = 0; i < info.mNumVehicles; ++i)
     memcpy(&(mScoring.mpCurWriteBuf->mVehicles[i]), &(info.mVehicle[i]), sizeof(rF2VehicleScoring));
 
-  mScoring.mpCurWriteBuf->mBytesUpdated = offsetof(rF2Scoring, mVehicles[info.mNumVehicles]);// +(sizeof(rF2VehicleScoring) * info.mNumVehicles);
+  mScoring.mpCurWriteBuf->mBytesUpdatedHint = offsetof(rF2Scoring, mVehicles[info.mNumVehicles]);
 
   mScoring.FlipBuffers();
 

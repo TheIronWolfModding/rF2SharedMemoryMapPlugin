@@ -448,9 +448,9 @@ namespace rF2SMMonitor
 
       // Dash Indicators
       public double mTimeBehindNext;        // time behind vehicle in next higher place
-      public int mLapsBehindNext;          // laps behind vehicle in next higher place
+      public int mLapsBehindNext;           // laps behind vehicle in next higher place
       public double mTimeBehindLeader;      // time behind leader
-      public int mLapsBehindLeader;        // laps behind leader
+      public int mLapsBehindLeader;         // laps behind leader
       public double mLapStartET;            // time this lap was started
 
       // Position and derivatives
@@ -461,7 +461,7 @@ namespace rF2SMMonitor
       // Orientation and derivatives
       [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = 3)]
       public rF2Vec3[] mOri;               // rows of orientation matrix (use TelemQuat conversions if desired), also converts local
-                                      // vehicle vectors into world X, Y, or Z using dot product of rows 0, 1, or 2 respectively
+                                           // vehicle vectors into world X, Y, or Z using dot product of rows 0, 1, or 2 respectively
       public rF2Vec3 mLocalRot;             // rotation (radians/sec) in local vehicle coordinates
       public rF2Vec3 mLocalRotAccel;        // rotational acceleration (radians/sec^2) in local vehicle coordinates
 
@@ -542,7 +542,8 @@ namespace rF2SMMonitor
     struct rF2MappedBufferHeaderWithSize
     {
       public byte mCurrentRead;                 // True indicates buffer is safe to read under mutex.
-      public int mBytesUpdated;
+      public int mBytesUpdatedHint;             // How many bytes of the structure were written during the last update.
+                                                // 0 means unknown (whole buffer should be considered as updated).
     }
 
 
@@ -550,10 +551,10 @@ namespace rF2SMMonitor
     struct rF2Telemetry
     {
       public byte mCurrentRead;                 // True indicates buffer is safe to read under mutex.
+      public int mBytesUpdatedHint;             // How many bytes of the structure were written during the last update.
+                                                // 0 means unknown (whole buffer should be considered as updated).
 
-      public int mBytesUpdated;
-
-      public int mNumVehicles;                // current number of vehicles
+      public int mNumVehicles;                  // current number of vehicles
       [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = rFactor2Constants.MAX_MAPPED_VEHICLES)]
       public rF2VehicleTelemetry[] mVehicles;
     }
@@ -563,8 +564,8 @@ namespace rF2SMMonitor
     struct rF2Scoring
     {
       public byte mCurrentRead;                 // True indicates buffer is safe to read under mutex.
-
-      public int mBytesUpdated;
+      public int mBytesUpdatedHint;             // How many bytes of the structure were written during the last update.
+                                                // 0 means unknown (whole buffer should be considered as updated).
 
       public rF2ScoringInfo mScoringInfo;
 
@@ -584,7 +585,7 @@ namespace rF2SMMonitor
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
     struct rF2Extended
     {
-      public byte mCurrentRead;                 // True indicates buffer is safe to read under mutex.
+      public byte mCurrentRead;                          // True indicates buffer is safe to read under mutex.
 
       [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = 8)]
       public byte[] mVersion;                            // API version

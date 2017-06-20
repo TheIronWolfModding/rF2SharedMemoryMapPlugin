@@ -42,7 +42,12 @@ namespace rF2SMMonitor
       readonly string BUFFER2_NAME;
       readonly string MUTEX_NAME;
 
-      byte[] fullSizeBuffer = null;  // TODO: explain
+      // Holds the entire byte array that can be marshalled to a MappedBufferT.  Partial updates
+      // only read changed part of buffer, ignoring trailing uninteresting bytes.  However,
+      // to marshal we still need to supply entire structure size.  So, on update new bytes are copied
+      // (outside of the mutex).
+      byte[] fullSizeBuffer = null;
+
       Mutex mutex = null;
       MemoryMappedFile memoryMappedFile1 = null;
       MemoryMappedFile memoryMappedFile2 = null;
@@ -167,7 +172,7 @@ namespace rF2SMMonitor
               if (header.mCurrentRead == 1)
               {
                 sharedMemoryStream.BaseStream.Position = 0;
-                sharedMemoryReadBuffer = sharedMemoryStream.ReadBytes(header.mBytesUpdated != 0 ? header.mBytesUpdated : this.BUFFER_SIZE_BYTES);
+                sharedMemoryReadBuffer = sharedMemoryStream.ReadBytes(header.mBytesUpdatedHint != 0 ? header.mBytesUpdatedHint : this.BUFFER_SIZE_BYTES);
                 buf1Current = true;
               }
             }
@@ -186,7 +191,7 @@ namespace rF2SMMonitor
                 headerHandle.Free();
 
                 sharedMemoryStream.BaseStream.Position = 0;
-                sharedMemoryReadBuffer = sharedMemoryStream.ReadBytes(header.mBytesUpdated != 0 ? header.mBytesUpdated : this.BUFFER_SIZE_BYTES);
+                sharedMemoryReadBuffer = sharedMemoryStream.ReadBytes(header.mBytesUpdatedHint != 0 ? header.mBytesUpdatedHint : this.BUFFER_SIZE_BYTES);
               }
             }
           }
@@ -545,7 +550,10 @@ namespace rF2SMMonitor
         float yStep = SystemFonts.DefaultFont.Height;
         var gameStateText = new StringBuilder();
         gameStateText.Append(
-          $"Plugin Version:    Expected: 1.1.0.1    Actual: {MainForm.getStringFromBytes(this.extended.mVersion)}    FPS: {this.fps}");
+          $"Plugin Version:    Expected: 2.0.0.0 64bit   Actual: {MainForm.getStringFromBytes(this.extended.mVersion)} {(this.extended.is64bit == 1 ? "64bit" : "32bit")}    FPS: {this.fps}");
+
+        if (this.extended.is64bit == 0)
+          throw new NotSupportedException("32bit rF2 is not supported.");
 
         // Draw header
         g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, brush, currX, currY);

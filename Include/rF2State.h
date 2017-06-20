@@ -514,13 +514,14 @@ struct rF2MappedBufferHeader
   static int const MAX_MAPPED_VEHICLES = 128;
   static int const MAX_MAPPED_IDS = 256;
 
-  bool mCurrentRead;                 // True indicates buffer is safe to read under mutex.
+  bool mCurrentRead;               // True indicates buffer is safe to read under mutex.
 };
 
 
 struct rF2MappedBufferHeaderWithSize : public rF2MappedBufferHeader
 {
-  int mBytesUpdated;
+  int mBytesUpdatedHint;              // How many bytes of the structure were written during the last update.
+                                      // 0 means unknown (whole buffer should be considered as updated).
 };
 
 
