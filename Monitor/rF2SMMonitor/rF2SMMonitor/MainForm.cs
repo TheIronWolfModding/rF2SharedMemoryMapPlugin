@@ -152,6 +152,8 @@ namespace rF2SMMonitor
 
         // Note: if it is critical for client minimize wait time, same strategy as plugin uses can be employed.
         // Pass 0 timeout and skip update if someone holds the lock.
+
+        // Using partial buffer copying reduces time under lock.  Scoring by 30%, telemetry by 70%.
         if (this.mutex.WaitOne(5000))
         {
           byte[] sharedMemoryReadBuffer = null;
