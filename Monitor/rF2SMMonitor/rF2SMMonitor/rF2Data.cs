@@ -19,7 +19,7 @@ namespace rF2SMMonitor
   // signed char   ->    sbyte
   // bool          ->    byte
   // long          ->    int
-  class rFactor2Constants
+  public class rFactor2Constants
   {
     public const string MM_TELEMETRY_FILE_NAME1 = "$rFactor2SMMP_TelemetryBuffer1$";
     public const string MM_TELEMETRY_FILE_NAME2 = "$rFactor2SMMP_TelemetryBuffer2$";
@@ -177,14 +177,14 @@ namespace rF2SMMonitor
   namespace rFactor2Data
   {
     [StructLayout(LayoutKind.Sequential, Pack = 4)]
-    struct rF2Vec3
+    public struct rF2Vec3
     {
       public double x, y, z;
     }
 
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
-    struct rF2Wheel
+    public struct rF2Wheel
     {
       public double mSuspensionDeflection;  // meters
       public double mRideHeight;            // meters
@@ -227,7 +227,7 @@ namespace rF2SMMonitor
 
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
-    struct rF2VehicleTelemetry
+    public struct rF2VehicleTelemetry
     {
       // Time
       public int mID;                      // slot ID (note that it can be re-used in multiplayer after someone leaves)
@@ -338,7 +338,7 @@ namespace rF2SMMonitor
 
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
-    struct rF2ScoringInfo
+    public struct rF2ScoringInfo
     {
       [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = 64)]
       public byte[] mTrackName;           // current track name
@@ -412,7 +412,7 @@ namespace rF2SMMonitor
 
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
-    struct rF2VehicleScoring
+    public struct rF2VehicleScoring
     {
       public int mID;                      // slot ID (note that it can be re-used in multiplayer after someone leaves)
       [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = 32)]
@@ -494,7 +494,7 @@ namespace rF2SMMonitor
 
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
-    struct rF2PhysicsOptions
+    public struct rF2PhysicsOptions
     {
       public byte mTractionControl;  // 0 (off) - 3 (high)
       public byte mAntiLockBrakes;   // 0 (off) - 2 (high)
@@ -532,14 +532,14 @@ namespace rF2SMMonitor
 
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
-    struct rF2MappedBufferHeader
+    public struct rF2MappedBufferHeader
     {
       public byte mCurrentRead;                 // True indicates buffer is safe to read under mutex.
     }
 
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
-    struct rF2MappedBufferHeaderWithSize
+    public struct rF2MappedBufferHeaderWithSize
     {
       public byte mCurrentRead;                 // True indicates buffer is safe to read under mutex.
       public int mBytesUpdatedHint;             // How many bytes of the structure were written during the last update.
@@ -548,7 +548,7 @@ namespace rF2SMMonitor
 
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
-    struct rF2Telemetry
+    public struct rF2Telemetry
     {
       public byte mCurrentRead;                 // True indicates buffer is safe to read under mutex.
       public int mBytesUpdatedHint;             // How many bytes of the structure were written during the last update.
@@ -561,7 +561,7 @@ namespace rF2SMMonitor
 
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
-    struct rF2Scoring
+    public struct rF2Scoring
     {
       public byte mCurrentRead;                 // True indicates buffer is safe to read under mutex.
       public int mBytesUpdatedHint;             // How many bytes of the structure were written during the last update.
@@ -575,7 +575,7 @@ namespace rF2SMMonitor
 
 
     [StructLayout(LayoutKind.Sequential, Pack = 4)]
-    struct rF2TrackedDamage
+    public struct rF2TrackedDamage
     {
       public double mMaxImpactMagnitude;                 // Max impact magnitude.  Tracked on every telemetry update, and reset on visit to pits or Session restart.
       public double mAccumulatedImpactMagnitude;         // Accumulated impact magnitude.  Tracked on every telemetry update, and reset on visit to pits or Session restart.
@@ -583,7 +583,7 @@ namespace rF2SMMonitor
 
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
-    struct rF2Extended
+    public struct rF2Extended
     {
       public byte mCurrentRead;                          // True indicates buffer is safe to read under mutex.
 
@@ -606,7 +606,7 @@ namespace rF2SMMonitor
 
 
     [StructLayout(LayoutKind.Sequential, Pack = 4)]
-    struct rF2BufferHeader
+    public struct rF2BufferHeader
     {
       internal byte mCurrentRead;                        // True indicates buffer is safe to read under mutex.
     }
