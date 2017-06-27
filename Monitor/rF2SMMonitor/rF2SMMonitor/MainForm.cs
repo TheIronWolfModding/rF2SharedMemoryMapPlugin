@@ -212,7 +212,6 @@ namespace rF2SMMonitor
           handle.Free();
         }
       }
-
     }
 
     MappedDoubleBuffer<rF2Telemetry> telemetryBuffer = new MappedDoubleBuffer<rF2Telemetry>(rFactor2Constants.MM_TELEMETRY_FILE_NAME1, 
@@ -508,7 +507,7 @@ namespace rF2SMMonitor
         ++this.frame;
     }
 
-    private static string getStringFromBytes(byte[] bytes)
+    private static string GetStringFromBytes(byte[] bytes)
     {
       if (bytes == null)
         return "";
@@ -552,7 +551,7 @@ namespace rF2SMMonitor
         float yStep = SystemFonts.DefaultFont.Height;
         var gameStateText = new StringBuilder();
         gameStateText.Append(
-          $"Plugin Version:    Expected: 2.0.0.0 64bit   Actual: {MainForm.getStringFromBytes(this.extended.mVersion)} {(this.extended.is64bit == 1 ? "64bit" : "32bit")}    FPS: {this.fps}");
+          $"Plugin Version:    Expected: 2.0.0.0 64bit   Actual: {MainForm.GetStringFromBytes(this.extended.mVersion)} {(this.extended.is64bit == 1 ? "64bit" : "32bit")}    FPS: {this.fps}");
 
         if (this.extended.is64bit == 0)
           throw new NotSupportedException("32bit rF2 is not supported.");
@@ -587,13 +586,13 @@ namespace rF2SMMonitor
                 + $"{(this.telemetry.mVehicles[0].mElapsedTime - this.scoring.mScoringInfo.mCurrentET):N3}\n"
                 + $"{this.telemetry.mVehicles[0].mDeltaTime:N3}\n"
                 + (this.extended.mPhysics.mInvulnerable == 0 ? "off" : "on") + "\n"
-                + $"{MainForm.getStringFromBytes(this.telemetry.mVehicles[0].mVehicleName)}\n"
-                + $"{MainForm.getStringFromBytes(this.telemetry.mVehicles[0].mTrackName)}\n"
+                + $"{MainForm.GetStringFromBytes(this.telemetry.mVehicles[0].mVehicleName)}\n"
+                + $"{MainForm.GetStringFromBytes(this.telemetry.mVehicles[0].mTrackName)}\n"
                 + $"{this.telemetry.mVehicles[0].mLapStartET:N3}\n"
                 + $"{this.scoring.mScoringInfo.mLapDist:N3}\n"
                 + (this.scoring.mScoringInfo.mEndET < 0.0 ? "Unknown" : this.scoring.mScoringInfo.mEndET.ToString("N3")) + "\n"
-                + $"{MainForm.getStringFromBytes(this.scoring.mScoringInfo.mPlayerName)}\n"
-                + $"{MainForm.getStringFromBytes(this.scoring.mScoringInfo.mPlrFileName)}\n");
+                + $"{MainForm.GetStringFromBytes(this.scoring.mScoringInfo.mPlayerName)}\n"
+                + $"{MainForm.GetStringFromBytes(this.scoring.mScoringInfo.mPlrFileName)}\n");
 
         // Col1 values
         g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Purple, currX + 145, currY);
@@ -667,7 +666,7 @@ namespace rF2SMMonitor
           + $"{playerVehScoring.mEstimatedLapTime:N3}\n"
           + $"{playerVehScoring.mTimeBehindNext:N3}\n"
           + $"{playerVehScoring.mTimeBehindLeader:N3}\n"
-          + $"{MainForm.getStringFromBytes(playerVehScoring.mPitGroup)}\n"
+          + $"{MainForm.GetStringFromBytes(playerVehScoring.mPitGroup)}\n"
           + $"{playerVehScoring.mLapDist:N3}\n"
           + $"{lapDistEstimated:N3}\n"
           + $"{yaw:N3}\n"
