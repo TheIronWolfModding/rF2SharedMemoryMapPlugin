@@ -448,22 +448,29 @@ namespace rF2SMMonitor
     {
       while (this.IsApplicationIdle())
       {
-        this.MainUpdate();
-
-        if (base.WindowState == FormWindowState.Minimized)
+        try
         {
-          // being lazy lazy lazy.
-          this.tracker.TrackPhase(ref this.scoring, ref this.telemetry, ref this.extended, null, this.logPhaseAndState);
-          this.tracker.TrackDamage(ref this.scoring, ref this.telemetry, ref this.extended, null, this.logPhaseAndState);
-          this.tracker.TrackTimings(ref this.scoring, ref this.telemetry, ref this.extended, null, this.logPhaseAndState);
-        }
-        else
-        {
-          this.MainRender();
-        }
+          this.MainUpdate();
 
-        if (this.logLightMode)
-          Thread.Sleep(LIGHT_MODE_REFRESH_MS);
+          if (base.WindowState == FormWindowState.Minimized)
+          {
+            // being lazy lazy lazy.
+            this.tracker.TrackPhase(ref this.scoring, ref this.telemetry, ref this.extended, null, this.logPhaseAndState);
+            this.tracker.TrackDamage(ref this.scoring, ref this.telemetry, ref this.extended, null, this.logPhaseAndState);
+            this.tracker.TrackTimings(ref this.scoring, ref this.telemetry, ref this.extended, null, this.logPhaseAndState);
+          }
+          else
+          {
+            this.MainRender();
+          }
+
+          if (this.logLightMode)
+            Thread.Sleep(LIGHT_MODE_REFRESH_MS);
+        }
+        catch (Exception)
+        {
+          this.Disconnect();
+        }
       }
     }
 

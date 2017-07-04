@@ -512,7 +512,7 @@ static_assert(sizeof(rF2PhysicsOptions) == sizeof(PhysicsOptionsV01), "rF2Physic
 struct rF2MappedBufferHeader
 {
   static int const MAX_MAPPED_VEHICLES = 128;
-  static int const MAX_MAPPED_IDS = 256;
+  static int const MAX_MAPPED_IDS = 1024;
 
   bool mCurrentRead;               // True indicates buffer is safe to read under mutex.
 };
