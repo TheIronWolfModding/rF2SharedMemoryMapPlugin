@@ -353,22 +353,23 @@ void SharedMemoryPlugin::TelemetryTraceSkipUpdate(TelemInfoV01 const& info) cons
 {
   if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::Timing) {
     char msg[512] = {};
-    sprintf(msg, "TELEMETRY - Skipping update due to no changes in the input data.  New ET: %f  Prev ET:%f", info.mElapsedTime, mLastTelemetryUpdateET);
+    sprintf(msg, "TELEMETRY - Skipping update due to no changes in the input data.  New ET: %f  Prev ET:%f  mID(new):%d", info.mElapsedTime, mLastTelemetryUpdateET, info.mID);
     DEBUG_MSG(DebugLevel::Timing, msg);
   }
 
-  if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::Warnings 
-    && !mTelemetry.RetryPending()) { // If we're in retry mode, below check makes no sense as read buffer is behind current state.
-    if (info.mPos.x != mTelemetry.mpCurReadBuf->mVehicles->mPos.x
-      || info.mPos.y != mTelemetry.mpCurReadBuf->mVehicles->mPos.y
-      || info.mPos.z != mTelemetry.mpCurReadBuf->mVehicles->mPos.z)
+  if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::Warnings) {
+    // We flip only on mElapsedTime changed, so when we skip the update, we need to compare to the write buffer.
+    auto const prevBuff = mTelemetry.mpCurWriteBuf;
+    if (info.mPos.x != prevBuff->mVehicles->mPos.x
+      || info.mPos.y != prevBuff->mVehicles->mPos.y
+      || info.mPos.z != prevBuff->mVehicles->mPos.z)
     {
       char msg[512] = {};
-      sprintf(msg, "WARNING - Pos Mismatch on skip update!!!  New ET: %f  Prev ET:%f  Prev Pos: %f %f %f  New Pos %f %f %f", info.mElapsedTime, mLastTelemetryUpdateET,
+      sprintf(msg, "WARNING - Pos Mismatch on skip update!!!  New ET: %f  Prev ET:%f  mID(old):%d  Prev Pos: %f %f %f  New Pos %f %f %f", info.mElapsedTime, mLastTelemetryUpdateET, mTelemetry.mpCurReadBuf->mVehicles->mID,
         info.mPos.x, info.mPos.y, info.mPos.z,
-        mTelemetry.mpCurReadBuf->mVehicles->mPos.x,
-        mTelemetry.mpCurReadBuf->mVehicles->mPos.y,
-        mTelemetry.mpCurReadBuf->mVehicles->mPos.z);
+        prevBuff->mVehicles->mPos.x,
+        prevBuff->mVehicles->mPos.y,
+        prevBuff->mVehicles->mPos.z);
       DEBUG_MSG(DebugLevel::Warnings, msg);
     }
   }
@@ -396,9 +397,11 @@ void SharedMemoryPlugin::TelemetryTraceBeginUpdate(double telUpdateET)
 void SharedMemoryPlugin::TelemetryTraceVehicleAdded(TelemInfoV01 const& info) const
 {
   if (SharedMemoryPlugin::msDebugOutputLevel == DebugLevel::Verbose) {
-    bool const samePos = info.mPos.x == mTelemetry.mpCurReadBuf->mVehicles[mCurrTelemetryVehicleIndex - 1].mPos.x
-      && info.mPos.y == mTelemetry.mpCurReadBuf->mVehicles[mCurrTelemetryVehicleIndex - 1].mPos.y
-      && info.mPos.z == mTelemetry.mpCurReadBuf->mVehicles[mCurrTelemetryVehicleIndex - 1].mPos.z;
+    // If retry is pending, previous data is in write buffer, otherwise it is in read buffer.
+    auto const prevBuff = mTelemetry.RetryPending() ? mTelemetry.mpCurWriteBuf : mTelemetry.mpCurReadBuf;
+    bool const samePos = info.mPos.x == prevBuff->mVehicles[mCurrTelemetryVehicleIndex].mPos.x
+      && info.mPos.y == prevBuff->mVehicles[mCurrTelemetryVehicleIndex].mPos.y
+      && info.mPos.z == prevBuff->mVehicles[mCurrTelemetryVehicleIndex].mPos.z;
 
     char msg[512] = {};
     sprintf(msg, "Telemetry added - mID:%d  ET:%f  Pos Changed:%s", info.mID, info.mElapsedTime, samePos ? "Same" : "Changed");
@@ -471,13 +474,10 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
   if (!mIsMapped)
     return;
 
-  if (info.mElapsedTime != mLastTelemetryUpdateET) {
-    // I saw zis vence and want to understand WTF??
-    if (info.mElapsedTime < mLastScoringUpdateET)
-      DEBUG_MSG(DebugLevel::Warnings, "WARNING: info.mElapsedTime < mLastTelemetryUpdateET");
-
+  if (info.mElapsedTime > mLastTelemetryUpdateET  // TODO: Explain
+    || mCurrTelemetryVehicleIndex >= rF2MappedBufferHeader::MAX_MAPPED_VEHICLES) {
     // This is the new frame.  End the previous frame:
-    mTelemetry.mpCurWriteBuf->mNumVehicles = mCurrTelemetryVehicleIndex;    
+    mTelemetry.mpCurWriteBuf->mNumVehicles = mCurrTelemetryVehicleIndex;
     mTelemetry.mpCurWriteBuf->mBytesUpdatedHint = static_cast<int>(offsetof(rF2Telemetry, mVehicles[mTelemetry.mpCurWriteBuf->mNumVehicles]));
     
     TelemetryTraceEndUpdate(mTelemetry.mpCurWriteBuf->mNumVehicles);
@@ -495,7 +495,7 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
     mLastTelemetryUpdateET = info.mElapsedTime;
   }
 
-  auto const partiticpantIndex = min(info.mID, MAX_PARTICIPANT_SLOTS - 1);
+  auto const partiticpantIndex = min(info.mID, SharedMemoryPlugin::MAX_PARTICIPANT_SLOTS - 1);
   auto const alreadyUpdated = mParticipantTelemetryUpdated[partiticpantIndex];
 
   if (alreadyUpdated) {
@@ -512,13 +512,19 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
     }
   }
   else {
+    if (mCurrTelemetryVehicleIndex >= rF2MappedBufferHeader::MAX_MAPPED_VEHICLES) {
+      DEBUG_MSG(DebugLevel::Errors, "TELEMETRY - Exceeded maximum of allowed mapped vehicles.");
+      return;
+    }
+
     // Mark participant as updated
     mParticipantTelemetryUpdated[partiticpantIndex] = true;
 
+    // Trace before write to detect changes.
+    TelemetryTraceVehicleAdded(info);
+
     memcpy(&(mTelemetry.mpCurWriteBuf->mVehicles[mCurrTelemetryVehicleIndex]), &info, sizeof(rF2VehicleTelemetry));
     ++mCurrTelemetryVehicleIndex;
-
-    TelemetryTraceVehicleAdded(info);
   }
 /*
   if (info.mID == 0 || alreadyUpdated) {
@@ -641,10 +647,14 @@ void SharedMemoryPlugin::UpdateScoring(ScoringInfoV01 const& info)
 
   memcpy(&(mScoring.mpCurWriteBuf->mScoringInfo), &info, sizeof(rF2ScoringInfo));
 
-  for (int i = 0; i < info.mNumVehicles; ++i)
+  if (info.mNumVehicles >= rF2MappedBufferHeader::MAX_MAPPED_VEHICLES)
+    DEBUG_MSG(DebugLevel::Errors, "ERROR: Scoring exceeded maximum of allowed mapped vehicles.");
+
+  auto const numScoringVehicles = min(info.mNumVehicles, rF2MappedBufferHeader::MAX_MAPPED_VEHICLES);
+  for (int i = 0; i < numScoringVehicles; ++i)
     memcpy(&(mScoring.mpCurWriteBuf->mVehicles[i]), &(info.mVehicle[i]), sizeof(rF2VehicleScoring));
 
-  mScoring.mpCurWriteBuf->mBytesUpdatedHint = static_cast<int>(offsetof(rF2Scoring, mVehicles[info.mNumVehicles]));
+  mScoring.mpCurWriteBuf->mBytesUpdatedHint = static_cast<int>(offsetof(rF2Scoring, mVehicles[numScoringVehicles]));
 
   mScoring.FlipBuffers();
 
@@ -761,7 +771,14 @@ void SharedMemoryPlugin::WriteDebugMsg(DebugLevel lvl, const char* const format,
     setvbuf(SharedMemoryPlugin::msDebugFile, nullptr, _IOFBF, SharedMemoryPlugin::BUFFER_IO_BYTES);
   }
 
-  fprintf(SharedMemoryPlugin::msDebugFile, "TID:0x%04x  ", GetCurrentThreadId());
+  // Form time string.
+  char timeBuff[20] = {};
+  time_t now = time(nullptr);
+  tm timeLocal = {};
+  (errno_t)localtime_s(&timeLocal, &now);
+  strftime(timeBuff, 20, "%H:%M:%S", &timeLocal);
+
+  fprintf(SharedMemoryPlugin::msDebugFile, "%s  TID:0x%04x  ", timeBuff, GetCurrentThreadId());
   if (SharedMemoryPlugin::msDebugFile != nullptr) {
     va_start(argList, format);
     vfprintf(SharedMemoryPlugin::msDebugFile, format, argList);
