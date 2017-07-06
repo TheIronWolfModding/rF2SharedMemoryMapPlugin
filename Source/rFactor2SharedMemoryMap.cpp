@@ -247,14 +247,16 @@ void SharedMemoryPlugin::Shutdown()
 
 void SharedMemoryPlugin::ClearTimingsAndCounters()
 {
+  mRetryOnSkipAttempted = false;
+
   mLastTelemetryUpdateMillis = 0.0;
   mLastScoringUpdateMillis = 0.0;
 
-  mLastTelemetryUpdateET = 0.0;
-  mLastScoringUpdateET = 0.0;
+  mLastTelemetryUpdateET = -1.0;
+  mLastScoringUpdateET = -1.0;
 
   mTelemetryUpdateInProgress = false;
-  mCurTelemetryVehicleIndex = 0;
+  mCurrTelemetryVehicleIndex = 0;
 
   memset(mParticipantTelemetryUpdated, 0, sizeof(mParticipantTelemetryUpdated));
 
@@ -394,9 +396,9 @@ void SharedMemoryPlugin::TelemetryTraceBeginUpdate(double telUpdateET)
 void SharedMemoryPlugin::TelemetryTraceVehicleAdded(TelemInfoV01 const& info) const
 {
   if (SharedMemoryPlugin::msDebugOutputLevel == DebugLevel::Verbose) {
-    bool const samePos = info.mPos.x == mTelemetry.mpCurReadBuf->mVehicles[mCurTelemetryVehicleIndex - 1].mPos.x
-      && info.mPos.y == mTelemetry.mpCurReadBuf->mVehicles[mCurTelemetryVehicleIndex - 1].mPos.y
-      && info.mPos.z == mTelemetry.mpCurReadBuf->mVehicles[mCurTelemetryVehicleIndex - 1].mPos.z;
+    bool const samePos = info.mPos.x == mTelemetry.mpCurReadBuf->mVehicles[mCurrTelemetryVehicleIndex - 1].mPos.x
+      && info.mPos.y == mTelemetry.mpCurReadBuf->mVehicles[mCurrTelemetryVehicleIndex - 1].mPos.y
+      && info.mPos.z == mTelemetry.mpCurReadBuf->mVehicles[mCurrTelemetryVehicleIndex - 1].mPos.z;
 
     char msg[512] = {};
     sprintf(msg, "Telemetry added - mID:%d  ET:%f  Pos Changed:%s", info.mID, info.mElapsedTime, samePos ? "Same" : "Changed");
@@ -469,8 +471,56 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
   if (!mIsMapped)
     return;
 
+  if (info.mElapsedTime != mLastTelemetryUpdateET) {
+    // I saw zis vence and want to understand WTF??
+    if (info.mElapsedTime < mLastScoringUpdateET)
+      DEBUG_MSG(DebugLevel::Warnings, "WARNING: info.mElapsedTime < mLastTelemetryUpdateET");
+
+    // This is the new frame.  End the previous frame:
+    mTelemetry.mpCurWriteBuf->mNumVehicles = mCurrTelemetryVehicleIndex;    
+    mTelemetry.mpCurWriteBuf->mBytesUpdatedHint = static_cast<int>(offsetof(rF2Telemetry, mVehicles[mTelemetry.mpCurWriteBuf->mNumVehicles]));
+    
+    TelemetryTraceEndUpdate(mTelemetry.mpCurWriteBuf->mNumVehicles);
+
+    // Try flipping the buffers.
+    TelemetryFlipBuffers();
+
+    // Begin the new frame.  Reset tracking variables.
+    TelemetryTraceBeginUpdate(info.mElapsedTime);
+    memset(mParticipantTelemetryUpdated, 0, sizeof(mParticipantTelemetryUpdated));
+    mRetryOnSkipAttempted = false;
+    mCurrTelemetryVehicleIndex = 0;
+
+    // Update telemetry frame Elapsed Time.
+    mLastTelemetryUpdateET = info.mElapsedTime;
+  }
+
   auto const partiticpantIndex = min(info.mID, MAX_PARTICIPANT_SLOTS - 1);
   auto const alreadyUpdated = mParticipantTelemetryUpdated[partiticpantIndex];
+
+  if (alreadyUpdated) {
+    // Try flip once per skipped update chain:
+    if (!mRetryOnSkipAttempted) {
+      TelemetryTraceSkipUpdate(info);
+
+      if (mTelemetry.RetryPending()) {
+        DEBUG_MSG(DebugLevel::Synchronization, "TELEMETRY - Retry pending buffer flip on update skip.");
+        TelemetryFlipBuffers();
+      }
+
+      mRetryOnSkipAttempted = true;
+    }
+  }
+  else {
+    // Mark participant as updated
+    mParticipantTelemetryUpdated[partiticpantIndex] = true;
+
+    memcpy(&(mTelemetry.mpCurWriteBuf->mVehicles[mCurrTelemetryVehicleIndex]), &info, sizeof(rF2VehicleTelemetry));
+    ++mCurrTelemetryVehicleIndex;
+
+    TelemetryTraceVehicleAdded(info);
+  }
+/*
   if (info.mID == 0 || alreadyUpdated) {
     if (info.mElapsedTime == mLastTelemetryUpdateET) {
       TelemetryTraceSkipUpdate(info);
@@ -496,8 +546,8 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
 
     // First, trace unusual cases as I need to better understand them better.
     // Previous chain did not end.
-    if (mCurTelemetryVehicleIndex != 0)
-      DEBUG_INT2(DebugLevel::Synchronization, "TELEMETRY - Previous update ended at:", mCurTelemetryVehicleIndex);
+    if (mCurrTelemetryVehicleIndex != 0)
+      DEBUG_INT2(DebugLevel::Synchronization, "TELEMETRY - Previous update ended at:", mCurrTelemetryVehicleIndex);
 
     // This is the case where cases where mID == 0 is not in the chain and we hit a loop. 
     if (alreadyUpdated)
@@ -506,7 +556,7 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
     // Start new telemetry update chain.
     mLastTelemetryUpdateET = info.mElapsedTime;
     mTelemetryUpdateInProgress = true;
-    mCurTelemetryVehicleIndex = 0;
+    mCurrTelemetryVehicleIndex = 0;
     memset(mParticipantTelemetryUpdated, 0, sizeof(mParticipantTelemetryUpdated));
     mTelemetry.mpCurWriteBuf->mNumVehicles = mScoringNumVehicles;
   }
@@ -521,28 +571,28 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
     assert(mParticipantTelemetryUpdated[partiticpantIndex] == false);
     mParticipantTelemetryUpdated[partiticpantIndex] = true;
 
-    memcpy(&(mTelemetry.mpCurWriteBuf->mVehicles[mCurTelemetryVehicleIndex]), &info, sizeof(rF2VehicleTelemetry));
-    ++mCurTelemetryVehicleIndex;
+    memcpy(&(mTelemetry.mpCurWriteBuf->mVehicles[mCurrTelemetryVehicleIndex]), &info, sizeof(rF2VehicleTelemetry));
+    ++mCurrTelemetryVehicleIndex;
 
     TelemetryTraceVehicleAdded(info);
 
     // See if this is the last vehicle to update.
-    if (mCurTelemetryVehicleIndex >= mTelemetry.mpCurWriteBuf->mNumVehicles
-      || mCurTelemetryVehicleIndex >= rF2Telemetry::MAX_MAPPED_VEHICLES) {
-      auto const numVehiclesInChain = mCurTelemetryVehicleIndex;
+    if (mCurrTelemetryVehicleIndex >= mTelemetry.mpCurWriteBuf->mNumVehicles
+      || mCurrTelemetryVehicleIndex >= rF2Telemetry::MAX_MAPPED_VEHICLES) {
+      auto const numVehiclesInChain = mCurrTelemetryVehicleIndex;
 
       mTelemetry.mpCurWriteBuf->mBytesUpdatedHint = offsetof(rF2Telemetry, mVehicles[mTelemetry.mpCurWriteBuf->mNumVehicles]);
 
       mTelemetryUpdateInProgress = false;
-      mCurTelemetryVehicleIndex = 0;
+      mCurrTelemetryVehicleIndex = 0;
       memset(mParticipantTelemetryUpdated, 0, sizeof(mParticipantTelemetryUpdated));
 
       TelemetryFlipBuffers();
       TelemetryTraceEndUpdate(numVehiclesInChain);
     }
-
+    
     return;
-  }
+  }*/
 }
 
 
@@ -594,7 +644,7 @@ void SharedMemoryPlugin::UpdateScoring(ScoringInfoV01 const& info)
   for (int i = 0; i < info.mNumVehicles; ++i)
     memcpy(&(mScoring.mpCurWriteBuf->mVehicles[i]), &(info.mVehicle[i]), sizeof(rF2VehicleScoring));
 
-  mScoring.mpCurWriteBuf->mBytesUpdatedHint = offsetof(rF2Scoring, mVehicles[info.mNumVehicles]);
+  mScoring.mpCurWriteBuf->mBytesUpdatedHint = static_cast<int>(offsetof(rF2Scoring, mVehicles[info.mNumVehicles]));
 
   mScoring.FlipBuffers();
 

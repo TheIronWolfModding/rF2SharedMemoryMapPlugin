@@ -560,9 +560,6 @@ namespace rF2SMMonitor
         gameStateText.Append(
           $"Plugin Version:    Expected: 2.0.0.0 64bit   Actual: {MainForm.GetStringFromBytes(this.extended.mVersion)} {(this.extended.is64bit == 1 ? "64bit" : "32bit")}    FPS: {this.fps}");
 
-        if (this.extended.is64bit == 0)
-          throw new NotSupportedException("32bit rF2 is not supported.");
-
         // Draw header
         g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, brush, currX, currY);
 

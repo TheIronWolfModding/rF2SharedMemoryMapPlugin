@@ -76,7 +76,7 @@ public:
   static char const* const DEBUG_OUTPUT_FILENAME;
   
   static int const MAX_ASYNC_RETRIES = 3;
-  static int const MAX_PARTICIPANT_SLOTS = 256;
+  static int const MAX_PARTICIPANT_SLOTS = 1024;
   static int const BUFFER_IO_BYTES = 2048;
   static int const DEBUG_IO_FLUSH_PERIOD_SECS = 10;
 
@@ -239,6 +239,8 @@ private:
 
 private:
 
+  bool mRetryOnSkipAttempted = false;
+
   // Only used for debugging in Timing level
   double mLastTelemetryUpdateMillis = 0.0;
   double mLastScoringUpdateMillis = 0.0;
@@ -246,13 +248,13 @@ private:
   ExtendedStateTracker mExtStateTracker;
 
   // Elapsed times reported by the game.
-  double mLastTelemetryUpdateET = 0.0;
-  double mLastScoringUpdateET = 0.0;
+  double mLastTelemetryUpdateET = -1.0;
+  double mLastScoringUpdateET = -1.0;
 
   // Telemetry update tracking variables:
   // If true, we're in progress of collecting telemetry updates for a frame.
   bool mTelemetryUpdateInProgress = false;
-  int mCurTelemetryVehicleIndex = 0;
+  int mCurrTelemetryVehicleIndex = 0;
   // Array used to track if mID telemetry is captured for this update.
   bool mParticipantTelemetryUpdated[MAX_PARTICIPANT_SLOTS];
   // Number of vehicles last reported by UpdateScoring.
