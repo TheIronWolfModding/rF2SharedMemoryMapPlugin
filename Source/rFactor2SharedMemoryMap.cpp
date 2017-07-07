@@ -37,6 +37,7 @@ State updates (buffer flips, see Double Buffering):
 
 
 Telemetry state:
+TODO: UPDATE
   rF2 calls UpdateTelemetry for each vehicle.  Plugin tries to guess when all vehicles received an update, and only after that flip is attempted (see Double Buffering).
 
 
@@ -248,6 +249,7 @@ void SharedMemoryPlugin::Shutdown()
 void SharedMemoryPlugin::ClearTimingsAndCounters()
 {
   mRetryOnSkipAttempted = false;
+  mTelemetryFrameComplete = false;
 
   mLastTelemetryUpdateMillis = 0.0;
   mLastScoringUpdateMillis = 0.0;
@@ -304,7 +306,7 @@ void SharedMemoryPlugin::UpdateInRealtimeFC(bool inRealTime)
   DEBUG_MSG(DebugLevel::Synchronization, inRealTime ? "Entering Realtime" : "Exiting Realtime");
 
   mExtStateTracker.mExtended.mInRealtimeFC = inRealTime;
-  memcpy(mExtended.mpCurWriteBuf, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
+  memcpy(mExtended.mpCurrWriteBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
   mExtended.FlipBuffers();
 }
 
@@ -358,14 +360,16 @@ void SharedMemoryPlugin::TelemetryTraceSkipUpdate(TelemInfoV01 const& info) cons
   }
 
   if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::Warnings) {
-    // We flip only on mElapsedTime changed, so when we skip the update, we need to compare to the write buffer.
-    auto const prevBuff = mTelemetry.mpCurWriteBuf;
+    // We flip only on mElapsedTime change, so on skip we need to compare to the current write buffer.
+    // Below assumes that we begin skip on the first vehicle, which is not guaranteed.  However, that's ok
+    // since this code is diagnostic.
+    auto const prevBuff = mTelemetry.mpCurrWriteBuff;
     if (info.mPos.x != prevBuff->mVehicles->mPos.x
       || info.mPos.y != prevBuff->mVehicles->mPos.y
       || info.mPos.z != prevBuff->mVehicles->mPos.z)
     {
       char msg[512] = {};
-      sprintf(msg, "WARNING - Pos Mismatch on skip update!!!  New ET: %f  Prev ET:%f  mID(old):%d  Prev Pos: %f %f %f  New Pos %f %f %f", info.mElapsedTime, mLastTelemetryUpdateET, mTelemetry.mpCurReadBuf->mVehicles->mID,
+      sprintf(msg, "WARNING - Pos Mismatch on skip update!!!  New ET: %f  Prev ET:%f  mID(old):%d  Prev Pos: %f %f %f  New Pos %f %f %f", info.mElapsedTime, mLastTelemetryUpdateET, prevBuff->mVehicles->mID,
         info.mPos.x, info.mPos.y, info.mPos.z,
         prevBuff->mVehicles->mPos.x,
         prevBuff->mVehicles->mPos.y,
@@ -385,7 +389,7 @@ void SharedMemoryPlugin::TelemetryTraceBeginUpdate(double telUpdateET)
 
     char msg[512] = {};
     sprintf(msg, "TELEMETRY - Begin Update: Buffer %s.  ET:%f  Delta since last update:%f",
-      mTelemetry.mpCurWriteBuf == mTelemetry.mpBuf1 ? "1" : "2", telUpdateET, delta / MICROSECONDS_IN_SECOND);
+      mTelemetry.mpCurrWriteBuff == mTelemetry.mpBuff1 ? "1" : "2", telUpdateET, delta / MICROSECONDS_IN_SECOND);
     
     DEBUG_MSG(DebugLevel::Timing, msg);
   }
@@ -398,7 +402,7 @@ void SharedMemoryPlugin::TelemetryTraceVehicleAdded(TelemInfoV01 const& info) co
 {
   if (SharedMemoryPlugin::msDebugOutputLevel == DebugLevel::Verbose) {
     // If retry is pending, previous data is in write buffer, otherwise it is in read buffer.
-    auto const prevBuff = mTelemetry.RetryPending() ? mTelemetry.mpCurWriteBuf : mTelemetry.mpCurReadBuf;
+    auto const prevBuff = mTelemetry.RetryPending() ? mTelemetry.mpCurrWriteBuff : mTelemetry.mpCurrReadBuff;
     bool const samePos = info.mPos.x == prevBuff->mVehicles[mCurrTelemetryVehicleIndex].mPos.x
       && info.mPos.y == prevBuff->mVehicles[mCurrTelemetryVehicleIndex].mPos.y
       && info.mPos.z == prevBuff->mVehicles[mCurrTelemetryVehicleIndex].mPos.z;
@@ -456,6 +460,7 @@ void SharedMemoryPlugin::TelemetryFlipBuffers()
 
 
 /*
+TODO: UPDATE
 rF2 sends telemetry updates for each vehicle.  The problem is that I do not know when all vehicles received an update.
 Below I am trying to flip buffers per-frame, where frame means all vehicles received telemetry update.
 
@@ -474,42 +479,71 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
   if (!mIsMapped)
     return;
 
-  if (info.mElapsedTime > mLastTelemetryUpdateET  // TODO: Explain
+  // We consider new update frame has started if info.mElapsedTime != mLastTelemetryUpdateET.  However, sometimes
+  // game reports player's vehicle mElapsedTime being ahead of the rest of the frame.  So, in order to
+  // avoid tearing the frame, use info.mElapsedTime > mLastTelemetryUpdateET, as player vehicle comes first and
+  // this condition remains true for the rest of a frame.
+  // TODO: verify for online.
+  if (info.mElapsedTime > mLastTelemetryUpdateET
     || mCurrTelemetryVehicleIndex >= rF2MappedBufferHeader::MAX_MAPPED_VEHICLES) {
-    // This is the new frame.  End the previous frame:
-    mTelemetry.mpCurWriteBuf->mNumVehicles = mCurrTelemetryVehicleIndex;
-    mTelemetry.mpCurWriteBuf->mBytesUpdatedHint = static_cast<int>(offsetof(rF2Telemetry, mVehicles[mTelemetry.mpCurWriteBuf->mNumVehicles]));
-    
-    TelemetryTraceEndUpdate(mTelemetry.mpCurWriteBuf->mNumVehicles);
+    // This is the new frame.  End the previous frame if it is still open:
+    if (!mTelemetryFrameComplete) {
+      mTelemetry.mpCurrWriteBuff->mNumVehicles = mCurrTelemetryVehicleIndex;
+      mTelemetry.mpCurrWriteBuff->mBytesUpdatedHint = static_cast<int>(offsetof(rF2Telemetry, mVehicles[mTelemetry.mpCurrWriteBuff->mNumVehicles]));
 
-    // Try flipping the buffers.
-    TelemetryFlipBuffers();
+      TelemetryTraceEndUpdate(mTelemetry.mpCurrWriteBuff->mNumVehicles);
+
+      // Try flipping the buffers.
+      TelemetryFlipBuffers();
+    }
+    else if (mTelemetry.RetryPending()) {  // Frame already complete, retry if flip is pending.
+      DEBUG_MSG(DebugLevel::Synchronization, "TELEMETRY - Retry pending buffer flip on new telemetry frame.");
+      TelemetryFlipBuffers();
+    }
 
     // Begin the new frame.  Reset tracking variables.
     TelemetryTraceBeginUpdate(info.mElapsedTime);
+    
     memset(mParticipantTelemetryUpdated, 0, sizeof(mParticipantTelemetryUpdated));
     mRetryOnSkipAttempted = false;
+    mTelemetryFrameComplete = false;
     mCurrTelemetryVehicleIndex = 0;
 
     // Update telemetry frame Elapsed Time.
     mLastTelemetryUpdateET = info.mElapsedTime;
   }
 
+  // TODO: this can be avoided.
   auto const partiticpantIndex = min(info.mID, SharedMemoryPlugin::MAX_PARTICIPANT_SLOTS - 1);
   auto const alreadyUpdated = mParticipantTelemetryUpdated[partiticpantIndex];
 
   if (alreadyUpdated) {
-    // Try flip once per skipped update chain:
-    if (!mRetryOnSkipAttempted) {
+    // The chain is complete.  Try flipping early.
+    if (!mTelemetryFrameComplete) {
       TelemetryTraceSkipUpdate(info);
 
-      if (mTelemetry.RetryPending()) {
+      mTelemetry.mpCurrWriteBuff->mNumVehicles = mCurrTelemetryVehicleIndex;
+      mTelemetry.mpCurrWriteBuff->mBytesUpdatedHint = static_cast<int>(offsetof(rF2Telemetry, mVehicles[mTelemetry.mpCurrWriteBuff->mNumVehicles]));
+
+      TelemetryTraceEndUpdate(mTelemetry.mpCurrWriteBuff->mNumVehicles);
+
+      // Try flipping the buffers.
+      TelemetryFlipBuffers();
+
+      mTelemetryFrameComplete = true;
+    }
+    // Try flip once per skipped update chain:
+    /*if (!mRetryOnSkipAttempted) {
+      TelemetryTraceSkipUpdate(info);
+
+/*      if (mTelemetry.RetryPending()) {
         DEBUG_MSG(DebugLevel::Synchronization, "TELEMETRY - Retry pending buffer flip on update skip.");
         TelemetryFlipBuffers();
       }
 
       mRetryOnSkipAttempted = true;
-    }
+    }*/
+
   }
   else {
     if (mCurrTelemetryVehicleIndex >= rF2MappedBufferHeader::MAX_MAPPED_VEHICLES) {
@@ -520,10 +554,9 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
     // Mark participant as updated
     mParticipantTelemetryUpdated[partiticpantIndex] = true;
 
-    // Trace before write to detect changes.
     TelemetryTraceVehicleAdded(info);
 
-    memcpy(&(mTelemetry.mpCurWriteBuf->mVehicles[mCurrTelemetryVehicleIndex]), &info, sizeof(rF2VehicleTelemetry));
+    memcpy(&(mTelemetry.mpCurrWriteBuff->mVehicles[mCurrTelemetryVehicleIndex]), &info, sizeof(rF2VehicleTelemetry));
     ++mCurrTelemetryVehicleIndex;
   }
 /*
@@ -609,7 +642,7 @@ void SharedMemoryPlugin::ScoringTraceBeginUpdate()
     ticksNow = TicksNow();
     auto const delta = ticksNow - mLastScoringUpdateMillis;
 
-    if (mScoring.mpCurWriteBuf == mScoring.mpBuf1)
+    if (mScoring.mpCurrWriteBuff == mScoring.mpBuff1)
       DEBUG_FLOAT2(DebugLevel::Timing, "SCORING - Begin Update: Buffer 1.  Delta since last update:", delta / MICROSECONDS_IN_SECOND);
     else
       DEBUG_FLOAT2(DebugLevel::Timing, "SCORING - Begin Update: Buffer 2.  Delta since last update:", delta / MICROSECONDS_IN_SECOND);
@@ -645,22 +678,22 @@ void SharedMemoryPlugin::UpdateScoring(ScoringInfoV01 const& info)
   if (mLastScoringUpdateET > mLastTelemetryUpdateET)
     DEBUG_MSG(DebugLevel::Warnings, "WARNING: Scoring update is ahead of telemetry.");
 
-  memcpy(&(mScoring.mpCurWriteBuf->mScoringInfo), &info, sizeof(rF2ScoringInfo));
+  memcpy(&(mScoring.mpCurrWriteBuff->mScoringInfo), &info, sizeof(rF2ScoringInfo));
 
   if (info.mNumVehicles >= rF2MappedBufferHeader::MAX_MAPPED_VEHICLES)
     DEBUG_MSG(DebugLevel::Errors, "ERROR: Scoring exceeded maximum of allowed mapped vehicles.");
 
   auto const numScoringVehicles = min(info.mNumVehicles, rF2MappedBufferHeader::MAX_MAPPED_VEHICLES);
   for (int i = 0; i < numScoringVehicles; ++i)
-    memcpy(&(mScoring.mpCurWriteBuf->mVehicles[i]), &(info.mVehicle[i]), sizeof(rF2VehicleScoring));
+    memcpy(&(mScoring.mpCurrWriteBuff->mVehicles[i]), &(info.mVehicle[i]), sizeof(rF2VehicleScoring));
 
-  mScoring.mpCurWriteBuf->mBytesUpdatedHint = static_cast<int>(offsetof(rF2Scoring, mVehicles[numScoringVehicles]));
+  mScoring.mpCurrWriteBuff->mBytesUpdatedHint = static_cast<int>(offsetof(rF2Scoring, mVehicles[numScoringVehicles]));
 
   mScoring.FlipBuffers();
 
   // Update extended state.
   mExtStateTracker.ProcessScoringUpdate(info);
-  memcpy(mExtended.mpCurWriteBuf, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
+  memcpy(mExtended.mpCurrWriteBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
   mExtended.FlipBuffers();
 }
 
@@ -681,7 +714,7 @@ void SharedMemoryPlugin::UpdateThreadState(long type, bool starting)
   if (!mIsMapped)
     return;
 
-  memcpy(mExtended.mpCurWriteBuf, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
+  memcpy(mExtended.mpCurrWriteBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
   mExtended.FlipBuffers();
 }
 
@@ -715,7 +748,7 @@ void SharedMemoryPlugin::SetPhysicsOptions(PhysicsOptionsV01& options)
 {
   DEBUG_MSG(DebugLevel::Timing, "PHYSICS - Updated.");
   memcpy(&(mExtStateTracker.mExtended.mPhysics), &options, sizeof(rF2PhysicsOptions));
-  memcpy(mExtended.mpCurWriteBuf, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
+  memcpy(mExtended.mpCurrWriteBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
   mExtended.FlipBuffers();
 }
 

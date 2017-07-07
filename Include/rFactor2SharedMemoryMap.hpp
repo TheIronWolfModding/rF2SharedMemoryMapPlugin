@@ -254,6 +254,7 @@ private:
   // Telemetry update tracking variables:
   // If true, we're in progress of collecting telemetry updates for a frame.
   bool mTelemetryUpdateInProgress = false;
+  bool mTelemetryFrameComplete = false;
   int mCurrTelemetryVehicleIndex = 0;
   // Array used to track if mID telemetry is captured for this update.
   bool mParticipantTelemetryUpdated[MAX_PARTICIPANT_SLOTS];

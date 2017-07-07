@@ -40,13 +40,13 @@ public:
   bool Initialize()
   {
     assert(!mMapped);
-    mhMap1 = MapMemoryFile(MM_FILE_NAME1, mpBuf1);
+    mhMap1 = MapMemoryFile(MM_FILE_NAME1, mpBuff1);
     if (mhMap1 == nullptr) {
       DEBUG_MSG(DebugLevel::Errors, "Failed to map file 1");
       return false;
     }
 
-    mhMap2 = MapMemoryFile(MM_FILE_NAME2, mpBuf2);
+    mhMap2 = MapMemoryFile(MM_FILE_NAME2, mpBuff2);
     if (mhMap2 == nullptr) {
       DEBUG_MSG(DebugLevel::Errors, "Failed to map file 2");
       return false;
@@ -77,21 +77,21 @@ public:
     auto ret = WaitForSingleObject(mhMutex, SharedMemoryPlugin::msMillisMutexWait);
 
     if (pInitialContents != nullptr) {
-      memcpy(mpBuf1, pInitialContents, sizeof(BuffT));
-      memcpy(mpBuf2, pInitialContents, sizeof(BuffT));
+      memcpy(mpBuff1, pInitialContents, sizeof(BuffT));
+      memcpy(mpBuff2, pInitialContents, sizeof(BuffT));
     }
     else {
-      memset(mpBuf1, 0, sizeof(BuffT));
-      memset(mpBuf2, 0, sizeof(BuffT));
+      memset(mpBuff1, 0, sizeof(BuffT));
+      memset(mpBuff2, 0, sizeof(BuffT));
     }
 
-    mpBuf1->mCurrentRead = true;
-    mpBuf2->mCurrentRead = false;
+    mpBuff1->mCurrentRead = true;
+    mpBuff2->mCurrentRead = false;
 
-    mpCurReadBuf = mpBuf1;
-    mpCurWriteBuf = mpBuf2;
-    assert(mpCurReadBuf->mCurrentRead);
-    assert(!mpCurWriteBuf->mCurrentRead);
+    mpCurrReadBuff = mpBuff1;
+    mpCurrWriteBuff = mpBuff2;
+    assert(mpCurrReadBuff->mCurrentRead);
+    assert(!mpCurrWriteBuff->mCurrentRead);
 
     if (ret == WAIT_OBJECT_0)
       ReleaseMutex(mhMutex);
@@ -105,10 +105,10 @@ public:
   {
     // Unmap views and close all handles.
     BOOL ret = TRUE;
-    if (mpBuf1 != nullptr) ret = UnmapViewOfFile(mpBuf1);
+    if (mpBuff1 != nullptr) ret = UnmapViewOfFile(mpBuff1);
     if (!ret) DEBUG_MSG(DebugLevel::Errors, "Failed to unmap buffer1");
 
-    if (mpBuf2 != nullptr) ret = UnmapViewOfFile(mpBuf2);
+    if (mpBuff2 != nullptr) ret = UnmapViewOfFile(mpBuff2);
     if (!ret) DEBUG_MSG(DebugLevel::Errors, "Failed to unmap buffer2");
 
     if (mhMap1 != nullptr) ret = CloseHandle(mhMap1);
@@ -120,13 +120,13 @@ public:
     if (mhMutex != nullptr) ret = CloseHandle(mhMutex);
     if (!ret) DEBUG_MSG(DebugLevel::Errors, "Failed to close mutex handle");
 
-    mpBuf1 = nullptr;
-    mpBuf2 = nullptr;
+    mpBuff1 = nullptr;
+    mpBuff2 = nullptr;
     mhMap1 = nullptr;
     mhMap2 = nullptr;
     mhMutex = nullptr;
-    mpCurWriteBuf = nullptr;
-    mpCurReadBuf = nullptr;
+    mpCurrWriteBuff = nullptr;
+    mpCurrReadBuff = nullptr;
   }
 
   void FlipBuffersHelper()
@@ -138,26 +138,26 @@ public:
     }
 
     // Handle fucked up case:
-    if (mpBuf1->mCurrentRead == mpBuf2->mCurrentRead) {
-      mpBuf1->mCurrentRead = true;
-      mpBuf2->mCurrentRead = false;
+    if (mpBuff1->mCurrentRead == mpBuff2->mCurrentRead) {
+      mpBuff1->mCurrentRead = true;
+      mpBuff2->mCurrentRead = false;
       DEBUG_MSG(DebugLevel::Errors, "ERROR: - Buffers out of sync.");
     }
 
     // Update read buffer.
-    assert(mpCurReadBuf->mCurrentRead);
-    assert(!mpCurWriteBuf->mCurrentRead);
-    mpCurReadBuf = mpCurWriteBuf;
+    assert(mpCurrReadBuff->mCurrentRead);
+    assert(!mpCurrWriteBuff->mCurrentRead);
+    mpCurrReadBuff = mpCurrWriteBuff;
 
     // Pick previous read buffer.
-    mpCurWriteBuf = mpBuf1->mCurrentRead ? mpBuf1 : mpBuf2;
+    mpCurrWriteBuff = mpBuff1->mCurrentRead ? mpBuff1 : mpBuff2;
 
     // Switch the read and write buffers.
-    mpBuf1->mCurrentRead = !mpBuf1->mCurrentRead;
-    mpBuf2->mCurrentRead = !mpBuf2->mCurrentRead;
+    mpBuff1->mCurrentRead = !mpBuff1->mCurrentRead;
+    mpBuff2->mCurrentRead = !mpBuff2->mCurrentRead;
 
-    assert(!mpCurWriteBuf->mCurrentRead);
-    assert(mpCurReadBuf->mCurrentRead);
+    assert(!mpCurrWriteBuff->mCurrentRead);
+    assert(mpCurrReadBuff->mCurrentRead);
   }
 
 
@@ -259,11 +259,11 @@ private:
 
   public:
     // Flip between 2 buffers.  Clients should read the one with mCurrentRead == true.
-    BuffT* mpBuf1 = nullptr;
-    BuffT* mpBuf2 = nullptr;
+    BuffT* mpBuff1 = nullptr;
+    BuffT* mpBuff2 = nullptr;
 
-    BuffT* mpCurWriteBuf = nullptr;
-    BuffT* mpCurReadBuf = nullptr;
+    BuffT* mpCurrWriteBuff = nullptr;
+    BuffT* mpCurrReadBuff = nullptr;
 
   private:
     int const MAX_RETRIES;
