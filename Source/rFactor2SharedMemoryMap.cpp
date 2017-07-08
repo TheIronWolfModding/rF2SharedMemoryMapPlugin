@@ -493,23 +493,19 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
 
   bool isNewFrame = false;
   auto const deltaET = info.mElapsedTime - mLastTelemetryUpdateET;
-  if (deltaET >= 0.02)  // Apparent rF2 telemetry update step is 2ms.
+  if (deltaET >= 0.0199)  // Apparently, rF2 telemetry update step is 2ms.
     isNewFrame = true;
   else {
-    // Player vehicle telemetry is sometimes updated in between.  What that means is that ET of player is
+    // Sometimes player vehicle telemetry is update more frequently than other vehicles.  What that means is that ET of player is
     // ahead of other vehicles.  This creates torn frames, and is a problem especially in online due player
     // vehicle not having predefined pos in a chain.
     // The current solution is to detect when 2ms step happens, which means that we effectively limit refresh
-    // to 50FPS.  This however seems to be what game's doing.
+    // to 50FPS.  This however seems to be what game's doing anyway.
+    
+    // We need to pick min for the frame because one of the vehicles in a frame might be slightly ahead of the rest.
     mLastTelemetryUpdateET = min(mLastTelemetryUpdateET, info.mElapsedTime);
   }
 
-  // We consider new update frame has started if info.mElapsedTime != mLastTelemetryUpdateET.  However, sometimes
-  // game reports player's vehicle mElapsedTime being ahead of the rest of the frame.  So, in order to
-  // avoid tearing the frame, use info.mElapsedTime > mLastTelemetryUpdateET, as player vehicle comes first and
-  // this condition remains true for the rest of a frame.  Alternative approach is to use some sort of delta to 
-  // detect new frame.
-  // TODO: verify for online.
   if (isNewFrame
     || mCurrTelemetryVehicleIndex >= rF2MappedBufferHeader::MAX_MAPPED_VEHICLES) {
     // This is the new frame.  End the previous frame if it is still open:

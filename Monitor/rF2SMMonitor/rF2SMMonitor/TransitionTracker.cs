@@ -172,12 +172,16 @@ namespace rF2SMMonitor
           idsToTelIndices.Add(telemetry.mVehicles[i].mID, i);
       }
 
-      var scoringPlrId = scoring.mVehicles[0].mID;
+      var playerVeh = MainForm.GetPlayerScoring(ref scoring);
+
+      if (playerVeh.mIsPlayer != 1)
+        return;
+
+      var scoringPlrId = playerVeh.mID;
       if (!idsToTelIndices.ContainsKey(scoringPlrId))
         return;
 
       var resolvedIdx = idsToTelIndices[scoringPlrId];
-      var playerVeh = scoring.mVehicles[0];
       var playerVehTelemetry = telemetry.mVehicles[resolvedIdx];
 
       var ps = new PhaseAndState();
@@ -572,12 +576,16 @@ namespace rF2SMMonitor
           idsToTelIndices.Add(telemetry.mVehicles[i].mID, i);
       }
 
-      var scoringPlrId = scoring.mVehicles[0].mID;
+      var playerVeh = MainForm.GetPlayerScoring(ref scoring);
+
+      if (playerVeh.mIsPlayer != 1)
+        return;
+
+      var scoringPlrId = playerVeh.mID;
       if (!idsToTelIndices.ContainsKey(scoringPlrId))
         return;
 
       var resolvedIdx = idsToTelIndices[scoringPlrId];
-      var playerVeh = scoring.mVehicles[0];
       var playerVehTelemetry = telemetry.mVehicles[resolvedIdx];
 
       var di = new DamageInfo();
@@ -838,12 +846,16 @@ namespace rF2SMMonitor
           idsToTelIndices.Add(telemetry.mVehicles[i].mID, i);
       }
 
-      var scoringPlrId = scoring.mVehicles[0].mID;
+      var playerVeh = MainForm.GetPlayerScoring(ref scoring);
+
+      if (playerVeh.mIsPlayer != 1)
+        return;
+
+      var scoringPlrId = playerVeh.mID;
       if (!idsToTelIndices.ContainsKey(scoringPlrId))
         return;
 
       var resolvedIdx = idsToTelIndices[scoringPlrId];
-      var playerVeh = scoring.mVehicles[0];
       var playerVehTelemetry = telemetry.mVehicles[resolvedIdx];
 
       bool sectorChanged = this.lastTimingSector != this.getSector(playerVeh.mSector);

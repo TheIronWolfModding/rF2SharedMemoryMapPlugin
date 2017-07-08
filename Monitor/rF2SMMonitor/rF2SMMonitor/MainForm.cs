@@ -565,6 +565,27 @@ namespace rF2SMMonitor
 
         gameStateText.Clear();
 
+        // Build map of mID -> telemetry.mVehicles[i]. 
+        // They are typically matching values, however, we need to handle online cases and dropped vehicles (mID can be reused).
+        var idsToTelIndices = new Dictionary<long, int>();
+        for (int i = 0; i < this.telemetry.mNumVehicles; ++i)
+        {
+          if (!idsToTelIndices.ContainsKey(this.telemetry.mVehicles[i].mID))
+            idsToTelIndices.Add(this.telemetry.mVehicles[i].mID, i);
+        }
+
+        var playerVehScoring = GetPlayerScoring(ref this.scoring);
+
+        if (playerVehScoring.mIsPlayer != 1)
+          return;
+
+        var scoringPlrId = playerVehScoring.mID;
+        if (!idsToTelIndices.ContainsKey(scoringPlrId))
+          return;
+
+        var resolvedPlayerIdx = idsToTelIndices[scoringPlrId];
+        var playerVeh = this.telemetry.mVehicles[resolvedPlayerIdx];
+
         gameStateText.Append(
           "mElapsedTime:\n"
           + "mCurrentET:\n"
@@ -585,14 +606,14 @@ namespace rF2SMMonitor
         gameStateText.Clear();
 
         gameStateText.Append(
-                $"{this.telemetry.mVehicles[0].mElapsedTime:N3}\n"
+                $"{playerVeh.mElapsedTime:N3}\n"
                 + $"{this.scoring.mScoringInfo.mCurrentET:N3}\n"
-                + $"{(this.telemetry.mVehicles[0].mElapsedTime - this.scoring.mScoringInfo.mCurrentET):N3}\n"
-                + $"{this.telemetry.mVehicles[0].mDeltaTime:N3}\n"
+                + $"{(playerVeh.mElapsedTime - this.scoring.mScoringInfo.mCurrentET):N3}\n"
+                + $"{playerVeh.mDeltaTime:N3}\n"
                 + (this.extended.mPhysics.mInvulnerable == 0 ? "off" : "on") + "\n"
-                + $"{MainForm.GetStringFromBytes(this.telemetry.mVehicles[0].mVehicleName)}\n"
-                + $"{MainForm.GetStringFromBytes(this.telemetry.mVehicles[0].mTrackName)}\n"
-                + $"{this.telemetry.mVehicles[0].mLapStartET:N3}\n"
+                + $"{MainForm.GetStringFromBytes(playerVeh.mVehicleName)}\n"
+                + $"{MainForm.GetStringFromBytes(playerVeh.mTrackName)}\n"
+                + $"{playerVeh.mLapStartET:N3}\n"
                 + $"{this.scoring.mScoringInfo.mLapDist:N3}\n"
                 + (this.scoring.mScoringInfo.mEndET < 0.0 ? "Unknown" : this.scoring.mScoringInfo.mEndET.ToString("N3")) + "\n"
                 + $"{MainForm.GetStringFromBytes(this.scoring.mScoringInfo.mPlayerName)}\n"
@@ -623,29 +644,13 @@ namespace rF2SMMonitor
         g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, brush, currX += 275, currY);
         gameStateText.Clear();
 
-        // Build map of mID -> telemetry.mVehicles[i]. 
-        // They are typically matching values, however, we need to handle online cases and dropped vehicles (mID can be reused).
-        var idsToTelIndices = new Dictionary<long, int>();
-        for (int i = 0; i < this.telemetry.mNumVehicles; ++i)
-        {
-          if (!idsToTelIndices.ContainsKey(this.telemetry.mVehicles[i].mID))
-            idsToTelIndices.Add(this.telemetry.mVehicles[i].mID, i);
-        }
-
-        var scoringPlrId = this.scoring.mVehicles[0].mID;
-        if (!idsToTelIndices.ContainsKey(scoringPlrId))
-          return;
-
-        var resolvedIdx = idsToTelIndices[scoringPlrId];
-        var playerVeh = this.telemetry.mVehicles[resolvedIdx];
-        var playerVehScoring = this.scoring.mVehicles[0];
 
         // Calculate derivatives:
         var yaw = Math.Atan2(playerVeh.mOri[RowZ].x, playerVeh.mOri[RowZ].z);
 
         var pitch = Math.Atan2(-playerVeh.mOri[RowY].z,
           Math.Sqrt(playerVeh.mOri[RowX].z * playerVeh.mOri[RowX].z + playerVeh.mOri[RowZ].z * playerVeh.mOri[RowZ].z));
-      
+
         var roll = Math.Atan2(playerVeh.mOri[RowY].x,
           Math.Sqrt(playerVeh.mOri[RowX].x * playerVeh.mOri[RowX].x + playerVeh.mOri[RowZ].x * playerVeh.mOri[RowZ].x));
 
@@ -694,7 +699,7 @@ namespace rF2SMMonitor
         var zVeh = (float)playerVeh.mPos.z;
         var yawVeh = yaw;
 
-         // View center
+        // View center
         var xScrOrigin = this.view.Width / 2.0f;
         var yScrOrigin = this.view.Height / 2.0f;
         if (!this.centerOnVehicle)
@@ -706,8 +711,11 @@ namespace rF2SMMonitor
 
           RenderCar(g, xVeh, -zVeh, -(float)yawVeh, Brushes.Green);
 
-          for (int i = 1; i < this.telemetry.mNumVehicles; ++i)
+          for (int i = 0; i < this.telemetry.mNumVehicles; ++i)
           {
+            if (i == resolvedPlayerIdx)
+              continue;
+
             var veh = this.telemetry.mVehicles[i];
             var thisYaw = Math.Atan2(veh.mOri[2].x, veh.mOri[2].z);
             this.RenderCar(g,
@@ -729,8 +737,11 @@ namespace rF2SMMonitor
 
           RenderCar(g, xVeh, -zVeh, -(float)yawVeh, Brushes.Green);
 
-          for (int i = 1; i < this.telemetry.mNumVehicles; ++i)
+          for (int i = 0; i < this.telemetry.mNumVehicles; ++i)
           {
+            if (i == resolvedPlayerIdx)
+              continue;
+
             var veh = this.telemetry.mVehicles[i];
             var thisYaw = Math.Atan2(veh.mOri[2].x, veh.mOri[2].z);
             this.RenderCar(g,
@@ -740,6 +751,33 @@ namespace rF2SMMonitor
           }
         }
       }
+    }
+
+    public static rF2VehicleScoring GetPlayerScoring(ref rF2Scoring scoring)
+    {
+      var playerVehScoring = new rF2VehicleScoring();
+      for (int i = 0; i < scoring.mScoringInfo.mNumVehicles; ++i)
+      {
+        var vehicle = scoring.mVehicles[i];
+        switch ((rFactor2Constants.rF2Control)vehicle.mControl)
+        {
+          case rFactor2Constants.rF2Control.AI:
+          case rFactor2Constants.rF2Control.Player:
+          case rFactor2Constants.rF2Control.Remote:
+            if (vehicle.mIsPlayer == 1)
+              playerVehScoring = vehicle;
+
+            break;
+
+          default:
+            continue;
+        }
+
+        if (playerVehScoring.mIsPlayer == 1)
+          break;
+      }
+
+      return playerVehScoring;
     }
 
 
