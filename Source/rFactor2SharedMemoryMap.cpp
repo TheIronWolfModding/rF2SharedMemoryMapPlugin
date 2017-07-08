@@ -249,7 +249,7 @@ void SharedMemoryPlugin::Shutdown()
 void SharedMemoryPlugin::ClearTimingsAndCounters()
 {
   mRetryOnSkipAttempted = false;
-  mTelemetryFrameComplete = false;
+  mTelemetryFrameCompleted = false;
 
   mLastTelemetryUpdateMillis = 0.0;
   mLastScoringUpdateMillis = 0.0;
@@ -351,11 +351,11 @@ double TicksNow() {
 }
 
 
-void SharedMemoryPlugin::TelemetryTraceSkipUpdate(TelemInfoV01 const& info) const
+void SharedMemoryPlugin::TelemetryTraceSkipUpdate(TelemInfoV01 const& info, double deltaET) const
 {
   if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::Timing) {
     char msg[512] = {};
-    sprintf(msg, "TELEMETRY - Skipping update due to no changes in the input data.  New ET: %f  Prev ET:%f  mID(new):%d", info.mElapsedTime, mLastTelemetryUpdateET, info.mID);
+    sprintf(msg, "TELEMETRY - Skipping update due to no changes in the input data.  Delta ET: %f  New ET: %f  Prev ET:%f  mID(new):%d", deltaET, info.mElapsedTime, mLastTelemetryUpdateET, info.mID);
     DEBUG_MSG(DebugLevel::Timing, msg);
   }
 
@@ -380,7 +380,7 @@ void SharedMemoryPlugin::TelemetryTraceSkipUpdate(TelemInfoV01 const& info) cons
 }
 
 
-void SharedMemoryPlugin::TelemetryTraceBeginUpdate(double telUpdateET)
+void SharedMemoryPlugin::TelemetryTraceBeginUpdate(double telUpdateET, double deltaET)
 {
   auto ticksNow = 0.0;
   if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::Timing) {
@@ -388,8 +388,8 @@ void SharedMemoryPlugin::TelemetryTraceBeginUpdate(double telUpdateET)
     auto const delta = ticksNow - mLastTelemetryUpdateMillis;
 
     char msg[512] = {};
-    sprintf(msg, "TELEMETRY - Begin Update: Buffer %s.  ET:%f  Delta since last update:%f",
-      mTelemetry.mpCurrWriteBuff == mTelemetry.mpBuff1 ? "1" : "2", telUpdateET, delta / MICROSECONDS_IN_SECOND);
+    sprintf(msg, "TELEMETRY - Begin Update: Buffer %s.  ET:%f  ET delta:%f  Time delta since last update:%f",
+      mTelemetry.mpCurrWriteBuff == mTelemetry.mpBuff1 ? "1" : "2", telUpdateET, deltaET, delta / MICROSECONDS_IN_SECOND);
     
     DEBUG_MSG(DebugLevel::Timing, msg);
   }
@@ -430,7 +430,7 @@ void SharedMemoryPlugin::TelemetryTraceEndUpdate(int numVehiclesInChain) const
 
 void SharedMemoryPlugin::TelemetryFlipBuffers()
 {
-  if (mLastTelemetryUpdateET <= mLastScoringUpdateET) {
+  if (mLastTelemetryUpdateET > 0.0 && mLastTelemetryUpdateET <= mLastScoringUpdateET) {
     // If scoring update is ahead of this telemetry update, force flip.
     DEBUG_MSG(DebugLevel::Synchronization, "TELEMETRY - Force flip due to: mLastTelemetryUpdateET <= mLastScoringUpdateET.");
     mTelemetry.FlipBuffers();
@@ -459,6 +459,18 @@ void SharedMemoryPlugin::TelemetryFlipBuffers()
 }
 
 
+void SharedMemoryPlugin::TelemetryCompleteFrame()
+{
+  mTelemetry.mpCurrWriteBuff->mNumVehicles = mCurrTelemetryVehicleIndex;
+  mTelemetry.mpCurrWriteBuff->mBytesUpdatedHint = static_cast<int>(offsetof(rF2Telemetry, mVehicles[mTelemetry.mpCurrWriteBuff->mNumVehicles]));
+
+  TelemetryTraceEndUpdate(mTelemetry.mpCurrWriteBuff->mNumVehicles);
+
+  // Try flipping the buffers.
+  TelemetryFlipBuffers();
+}
+
+
 /*
 TODO: UPDATE
 rF2 sends telemetry updates for each vehicle.  The problem is that I do not know when all vehicles received an update.
@@ -479,85 +491,84 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
   if (!mIsMapped)
     return;
 
+  bool isNewFrame = false;
+  auto const deltaET = info.mElapsedTime - mLastTelemetryUpdateET;
+  if (deltaET >= 0.02)  // Apparent rF2 telemetry update step is 2ms.
+    isNewFrame = true;
+  else {
+    // Player vehicle telemetry is sometimes updated in between.  What that means is that ET of player is
+    // ahead of other vehicles.  This creates torn frames, and is a problem especially in online due player
+    // vehicle not having predefined pos in a chain.
+    // The current solution is to detect when 2ms step happens, which means that we effectively limit refresh
+    // to 50FPS.  This however seems to be what game's doing.
+    mLastTelemetryUpdateET = min(mLastTelemetryUpdateET, info.mElapsedTime);
+  }
+
   // We consider new update frame has started if info.mElapsedTime != mLastTelemetryUpdateET.  However, sometimes
   // game reports player's vehicle mElapsedTime being ahead of the rest of the frame.  So, in order to
   // avoid tearing the frame, use info.mElapsedTime > mLastTelemetryUpdateET, as player vehicle comes first and
-  // this condition remains true for the rest of a frame.
+  // this condition remains true for the rest of a frame.  Alternative approach is to use some sort of delta to 
+  // detect new frame.
   // TODO: verify for online.
-  if (info.mElapsedTime > mLastTelemetryUpdateET
+  if (isNewFrame
     || mCurrTelemetryVehicleIndex >= rF2MappedBufferHeader::MAX_MAPPED_VEHICLES) {
     // This is the new frame.  End the previous frame if it is still open:
-    if (!mTelemetryFrameComplete) {
-      mTelemetry.mpCurrWriteBuff->mNumVehicles = mCurrTelemetryVehicleIndex;
-      mTelemetry.mpCurrWriteBuff->mBytesUpdatedHint = static_cast<int>(offsetof(rF2Telemetry, mVehicles[mTelemetry.mpCurrWriteBuff->mNumVehicles]));
-
-      TelemetryTraceEndUpdate(mTelemetry.mpCurrWriteBuff->mNumVehicles);
-
-      // Try flipping the buffers.
-      TelemetryFlipBuffers();
-    }
+    if (!mTelemetryFrameCompleted)
+      TelemetryCompleteFrame();
     else if (mTelemetry.RetryPending()) {  // Frame already complete, retry if flip is pending.
       DEBUG_MSG(DebugLevel::Synchronization, "TELEMETRY - Retry pending buffer flip on new telemetry frame.");
       TelemetryFlipBuffers();
     }
 
     // Begin the new frame.  Reset tracking variables.
-    TelemetryTraceBeginUpdate(info.mElapsedTime);
+    TelemetryTraceBeginUpdate(info.mElapsedTime, deltaET);
     
     memset(mParticipantTelemetryUpdated, 0, sizeof(mParticipantTelemetryUpdated));
     mRetryOnSkipAttempted = false;
-    mTelemetryFrameComplete = false;
+    mTelemetryFrameCompleted = false;
     mCurrTelemetryVehicleIndex = 0;
 
     // Update telemetry frame Elapsed Time.
     mLastTelemetryUpdateET = info.mElapsedTime;
   }
 
-  // TODO: this can be avoided.
+  if (mTelemetryFrameCompleted)
+    return;  // Nothing to do.
+
+  // See if we are in a cycle.
   auto const partiticpantIndex = min(info.mID, SharedMemoryPlugin::MAX_PARTICIPANT_SLOTS - 1);
   auto const alreadyUpdated = mParticipantTelemetryUpdated[partiticpantIndex];
 
-  if (alreadyUpdated) {
-    // The chain is complete.  Try flipping early.
-    if (!mTelemetryFrameComplete) {
-      TelemetryTraceSkipUpdate(info);
-
-      mTelemetry.mpCurrWriteBuff->mNumVehicles = mCurrTelemetryVehicleIndex;
-      mTelemetry.mpCurrWriteBuff->mBytesUpdatedHint = static_cast<int>(offsetof(rF2Telemetry, mVehicles[mTelemetry.mpCurrWriteBuff->mNumVehicles]));
-
-      TelemetryTraceEndUpdate(mTelemetry.mpCurrWriteBuff->mNumVehicles);
-
-      // Try flipping the buffers.
-      TelemetryFlipBuffers();
-
-      mTelemetryFrameComplete = true;
-    }
-    // Try flip once per skipped update chain:
-    /*if (!mRetryOnSkipAttempted) {
-      TelemetryTraceSkipUpdate(info);
-
-/*      if (mTelemetry.RetryPending()) {
-        DEBUG_MSG(DebugLevel::Synchronization, "TELEMETRY - Retry pending buffer flip on update skip.");
-        TelemetryFlipBuffers();
-      }
-
-      mRetryOnSkipAttempted = true;
-    }*/
-
-  }
-  else {
+  if (!alreadyUpdated) {
     if (mCurrTelemetryVehicleIndex >= rF2MappedBufferHeader::MAX_MAPPED_VEHICLES) {
       DEBUG_MSG(DebugLevel::Errors, "TELEMETRY - Exceeded maximum of allowed mapped vehicles.");
       return;
     }
 
+    // Update extended state for this vehicle.
+    // Since I do not want to miss impact data, and it is not accumulated in any way
+    // I am aware of in rF2 internals, process on every telemetr update.
+    mExtStateTracker.ProcessTelemetryUpdate(info);
+
     // Mark participant as updated
+    assert(mParticipantTelemetryUpdated[partiticpantIndex] == false);
     mParticipantTelemetryUpdated[partiticpantIndex] = true;
 
     TelemetryTraceVehicleAdded(info);
 
+    // Write vehicle telemetry.
     memcpy(&(mTelemetry.mpCurrWriteBuff->mVehicles[mCurrTelemetryVehicleIndex]), &info, sizeof(rF2VehicleTelemetry));
     ++mCurrTelemetryVehicleIndex;
+  }
+  else {
+    // The chain is complete.  Try flipping early.
+    if (!mTelemetryFrameCompleted) {
+      TelemetryTraceSkipUpdate(info, deltaET);
+
+      TelemetryCompleteFrame();
+
+      mTelemetryFrameCompleted = true;
+    }
   }
 /*
   if (info.mID == 0 || alreadyUpdated) {

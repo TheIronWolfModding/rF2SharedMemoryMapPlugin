@@ -229,11 +229,12 @@ private:
   void ClearState();
   void ClearTimingsAndCounters();
 
-  void TelemetryTraceSkipUpdate(TelemInfoV01 const& info) const;
-  void TelemetryTraceBeginUpdate(double telUpdateET);
+  void TelemetryTraceSkipUpdate(TelemInfoV01 const& info, double deltaET) const;
+  void TelemetryTraceBeginUpdate(double telUpdateET, double deltaET);
   void TelemetryTraceVehicleAdded(TelemInfoV01 const& infos) const;
   void TelemetryTraceEndUpdate(int numVehiclesInChain) const;
   void TelemetryFlipBuffers();
+  void TelemetryCompleteFrame();
 
   void ScoringTraceBeginUpdate();
 
@@ -254,7 +255,7 @@ private:
   // Telemetry update tracking variables:
   // If true, we're in progress of collecting telemetry updates for a frame.
   bool mTelemetryUpdateInProgress = false;
-  bool mTelemetryFrameComplete = false;
+  bool mTelemetryFrameCompleted = false;
   int mCurrTelemetryVehicleIndex = 0;
   // Array used to track if mID telemetry is captured for this update.
   bool mParticipantTelemetryUpdated[MAX_PARTICIPANT_SLOTS];
