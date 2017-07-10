@@ -76,7 +76,7 @@ public:
   static char const* const DEBUG_OUTPUT_FILENAME;
   
   static int const MAX_ASYNC_RETRIES = 3;
-  static int const MAX_PARTICIPANT_SLOTS = 1024;
+  static int const MAX_PARTICIPANT_SLOTS = 2048;
   static int const BUFFER_IO_BYTES = 2048;
   static int const DEBUG_IO_FLUSH_PERIOD_SECS = 10;
 
@@ -231,7 +231,7 @@ private:
 
   void TelemetryTraceSkipUpdate(TelemInfoV01 const& info, double deltaET) const;
   void TelemetryTraceBeginUpdate(double telUpdateET, double deltaET);
-  void TelemetryTraceVehicleAdded(TelemInfoV01 const& infos) const;
+  void TelemetryTraceVehicleAdded(TelemInfoV01 const& infos);
   void TelemetryTraceEndUpdate(int numVehiclesInChain) const;
   void TelemetryFlipBuffers();
   void TelemetryCompleteFrame();
@@ -239,28 +239,27 @@ private:
   void ScoringTraceBeginUpdate();
 
 private:
-
-  bool mRetryOnSkipAttempted = false;
-
   // Only used for debugging in Timing level
   double mLastTelemetryUpdateMillis = 0.0;
+  double mLastTelemetryVehicleAddedMillis = 0.0;
   double mLastScoringUpdateMillis = 0.0;
 
   ExtendedStateTracker mExtStateTracker;
 
   // Elapsed times reported by the game.
   double mLastTelemetryUpdateET = -1.0;
-  double mLastScoringUpdateET = -1.0;
 
+  // For telemetry, this is min mElapsedTime in the telemetry update frame.
+  double mLastScoringUpdateET = -1.0;
   // Telemetry update tracking variables:
-  // If true, we're in progress of collecting telemetry updates for a frame.
-  bool mTelemetryUpdateInProgress = false;
   bool mTelemetryFrameCompleted = false;
   int mCurrTelemetryVehicleIndex = 0;
   // Array used to track if mID telemetry is captured for this update.
+  // NOTE: mIDs are reused on the server.  Once mIDs reach >= (MAX_PARTICIPANT_SLOTS - 1), we no longer can detect cycle.
+  // If this becomes a problem (people complain), different mechanism will be necessary.
+  // One way to handle this is to take first mID in a telemetry frame, and use it as a starting offset.
+  // This might be fine, because game appears to be sending mIDs in an ascending order.
   bool mParticipantTelemetryUpdated[MAX_PARTICIPANT_SLOTS];
-  // Number of vehicles last reported by UpdateScoring.
-  int mScoringNumVehicles = 0;
 
   MappedDoubleBuffer<rF2Telemetry> mTelemetry;
   MappedDoubleBuffer<rF2Scoring> mScoring;

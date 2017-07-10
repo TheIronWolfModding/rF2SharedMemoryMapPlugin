@@ -576,15 +576,14 @@ namespace rF2SMMonitor
 
         var playerVehScoring = GetPlayerScoring(ref this.scoring);
 
-        if (playerVehScoring.mIsPlayer != 1)
-          return;
-
         var scoringPlrId = playerVehScoring.mID;
-        if (!idsToTelIndices.ContainsKey(scoringPlrId))
-          return;
-
-        var resolvedPlayerIdx = idsToTelIndices[scoringPlrId];
-        var playerVeh = this.telemetry.mVehicles[resolvedPlayerIdx];
+        var playerVeh = new rF2VehicleTelemetry();
+        int resolvedPlayerIdx = -1;  // We're fine here with unitialized vehicle telemetry..
+        if (idsToTelIndices.ContainsKey(scoringPlrId))
+        {
+          resolvedPlayerIdx = idsToTelIndices[scoringPlrId];
+          playerVeh = this.telemetry.mVehicles[resolvedPlayerIdx];
+        }
 
         gameStateText.Append(
           "mElapsedTime:\n"
@@ -622,7 +621,8 @@ namespace rF2SMMonitor
         // Col1 values
         g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Purple, currX + 145, currY);
 
-        if (this.scoring.mScoringInfo.mNumVehicles == 0)
+        if (this.scoring.mScoringInfo.mNumVehicles == 0
+          || resolvedPlayerIdx == -1)  // We need telemetry for stats below.
           return;
 
         gameStateText.Clear();

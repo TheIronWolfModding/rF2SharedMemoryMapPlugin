@@ -37,7 +37,6 @@ State updates (buffer flips, see Double Buffering):
 
 
 Telemetry state:
-TODO: UPDATE
   rF2 calls UpdateTelemetry for each vehicle.  Plugin tries to guess when all vehicles received an update, and only after that flip is attempted (see Double Buffering).
 
 
@@ -60,8 +59,8 @@ Double Buffering:
 
   Buffers are flipped after each update (see State Updates) except for telemetry state buffers.
 
-  Telemetry buffer flip is designed so that we try to avoid waiting on the mutex if it is signaled.  There are three
-  attempts before wait will happen.  Retries only happen on new telemetry frame completion (or skip due to no changes).
+  Telemetry buffer flip is designed so that we try to avoid waiting on the mutex if it is signaled.  There are SharedMemoryPlugin::MAX_ASYNC_RETRIES
+  (three currently) attempts before wait will happen.  Retries only happen on telemetry frame completion, or new frame start.
 
 
 Synchronization:
@@ -248,21 +247,18 @@ void SharedMemoryPlugin::Shutdown()
 
 void SharedMemoryPlugin::ClearTimingsAndCounters()
 {
-  mRetryOnSkipAttempted = false;
   mTelemetryFrameCompleted = false;
 
   mLastTelemetryUpdateMillis = 0.0;
+  mLastTelemetryVehicleAddedMillis = 0.0;
   mLastScoringUpdateMillis = 0.0;
 
   mLastTelemetryUpdateET = -1.0;
   mLastScoringUpdateET = -1.0;
 
-  mTelemetryUpdateInProgress = false;
   mCurrTelemetryVehicleIndex = 0;
 
   memset(mParticipantTelemetryUpdated, 0, sizeof(mParticipantTelemetryUpdated));
-
-  mScoringNumVehicles = 0;
 }
 
 
@@ -398,7 +394,7 @@ void SharedMemoryPlugin::TelemetryTraceBeginUpdate(double telUpdateET, double de
 }
 
 
-void SharedMemoryPlugin::TelemetryTraceVehicleAdded(TelemInfoV01 const& info) const
+void SharedMemoryPlugin::TelemetryTraceVehicleAdded(TelemInfoV01 const& info) 
 {
   if (SharedMemoryPlugin::msDebugOutputLevel == DebugLevel::Verbose) {
     // If retry is pending, previous data is in write buffer, otherwise it is in read buffer.
@@ -411,14 +407,16 @@ void SharedMemoryPlugin::TelemetryTraceVehicleAdded(TelemInfoV01 const& info) co
     sprintf(msg, "Telemetry added - mID:%d  ET:%f  Pos Changed:%s", info.mID, info.mElapsedTime, samePos ? "Same" : "Changed");
     DEBUG_MSG(DebugLevel::Verbose, msg);
   }
+
+  if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::Timing)
+    mLastTelemetryVehicleAddedMillis = TicksNow();
 }
 
 
 void SharedMemoryPlugin::TelemetryTraceEndUpdate(int numVehiclesInChain) const
 {
   if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::Timing) {
-    auto const ticksNow = TicksNow();
-    auto const deltaSysTimeMicroseconds = ticksNow - mLastTelemetryUpdateMillis;
+    auto const deltaSysTimeMicroseconds = mLastTelemetryVehicleAddedMillis - mLastTelemetryUpdateMillis;
 
     char msg[512] = {};
     sprintf(msg, "TELEMETRY - End Update.  Telemetry chain update took %f:  Vehicles in chain: %d", deltaSysTimeMicroseconds / MICROSECONDS_IN_SECOND, numVehiclesInChain);
@@ -472,17 +470,16 @@ void SharedMemoryPlugin::TelemetryCompleteFrame()
 
 
 /*
-TODO: UPDATE
-rF2 sends telemetry updates for each vehicle.  The problem is that I do not know when all vehicles received an update.
-Below I am trying to flip buffers per-frame, where frame means all vehicles received telemetry update.
+rF2 sends telemetry updates for each vehicle.  The problem is that we do not know when all vehicles received an update.
+Below I am trying to flip buffers per-frame, where "frame" means all vehicles received telemetry update.
 
-I am detecting frame end in two ways:
-  * Count vehicles from mID == 0 to mScoringNumVehicles.
-  * As a backup for case where mID == 0 drops out of the session, I use mParticipantTelemetryUpdated index to detect the loop.
+I am detecting frame by checking time distance between mElapsedTime.  It appears that rF2 sends vehicle telemetry every 2ms
+(every 1ms really, but most of the time contents are duplicated).  As a consquence, we do flip every 2ms (50FPS).
 
-There's one more check that can be done - 10ms since update chain start will also work, but I am trying to avoid call to QPC.
+Note that sometimes mElapsedTime for player vehicle is slightly ahead of the rest of vehicles (but never more than 2ms, most often being 0.25ms).
 
-Note that I am seeing different ET for vehicles in frame (typically no more than 2 values), no idea WTF that is.
+There's an alternative approach that can be taken: it appears that game sends vehicle telemetry ordered by mID (ascending order).
+So we could detect new frame by checking mIDs and cut when mIDPrev >= mIDCurrent.
 */
 void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
 {
@@ -493,16 +490,16 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
 
   bool isNewFrame = false;
   auto const deltaET = info.mElapsedTime - mLastTelemetryUpdateET;
-  if (deltaET >= 0.0199)  // Apparently, rF2 telemetry update step is 2ms.
+  if (abs(deltaET) >= 0.0199)  // Apparently, rF2 telemetry update step is 2ms.
     isNewFrame = true;
   else {
-    // Sometimes player vehicle telemetry is update more frequently than other vehicles.  What that means is that ET of player is
-    // ahead of other vehicles.  This creates torn frames, and is a problem especially in online due player
-    // vehicle not having predefined pos in a chain.
-    // The current solution is to detect when 2ms step happens, which means that we effectively limit refresh
-    // to 50FPS.  This however seems to be what game's doing anyway.
+    // Sometimes, player vehicle telemetry is updated more frequently than other vehicles.  What that means is that ET of player is
+    // ahead of other vehicles.  This creates torn frames, and is a problem especially in online due to player
+    // vehicle not having predefined position in a chain.
+    // Current solution is to detect when 2ms step happens, which means that we effectively limit refresh
+    // to 50FPS (seems to be what game's doing anyway).
     
-    // We need to pick min for the frame because one of the vehicles in a frame might be slightly ahead of the rest.
+    // We need to pick min ET for the frame because one of the vehicles in a frame might be slightly ahead of the rest.
     mLastTelemetryUpdateET = min(mLastTelemetryUpdateET, info.mElapsedTime);
   }
 
@@ -520,7 +517,6 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
     TelemetryTraceBeginUpdate(info.mElapsedTime, deltaET);
     
     memset(mParticipantTelemetryUpdated, 0, sizeof(mParticipantTelemetryUpdated));
-    mRetryOnSkipAttempted = false;
     mTelemetryFrameCompleted = false;
     mCurrTelemetryVehicleIndex = 0;
 
@@ -566,79 +562,6 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
       mTelemetryFrameCompleted = true;
     }
   }
-/*
-  if (info.mID == 0 || alreadyUpdated) {
-    if (info.mElapsedTime == mLastTelemetryUpdateET) {
-      TelemetryTraceSkipUpdate(info);
-      assert(!mTelemetryUpdateInProgress);
-
-      // Once per skipped update, retry pending flip, if any.
-      if (mTelemetry.RetryPending()) {
-        DEBUG_MSG(DebugLevel::Synchronization, "TELEMETRY - Retry pending buffer flip on update skip.");
-        TelemetryFlipBuffers();
-      }
-
-      // Skip this update, there's no change in data (in most cases).
-      return;
-    }
-
-    // I saw zis vence and want to understand WTF??
-    if (info.mElapsedTime < mLastTelemetryUpdateET)
-      DEBUG_MSG(DebugLevel::Warnings, "WARNING: info.mElapsedTime < mLastTelemetryUpdateET");
-
-    TelemetryTraceBeginUpdate(info.mElapsedTime);
-
-    // Ok, this is the new sequence of telemetry updates, and it contains updated data (new ET).
-
-    // First, trace unusual cases as I need to better understand them better.
-    // Previous chain did not end.
-    if (mCurrTelemetryVehicleIndex != 0)
-      DEBUG_INT2(DebugLevel::Synchronization, "TELEMETRY - Previous update ended at:", mCurrTelemetryVehicleIndex);
-
-    // This is the case where cases where mID == 0 is not in the chain and we hit a loop. 
-    if (alreadyUpdated)
-      DEBUG_INT2(DebugLevel::Synchronization, "TELEMETRY - Update chain started at:", info.mID);
-
-    // Start new telemetry update chain.
-    mLastTelemetryUpdateET = info.mElapsedTime;
-    mTelemetryUpdateInProgress = true;
-    mCurrTelemetryVehicleIndex = 0;
-    memset(mParticipantTelemetryUpdated, 0, sizeof(mParticipantTelemetryUpdated));
-    mTelemetry.mpCurWriteBuf->mNumVehicles = mScoringNumVehicles;
-  }
-
-  if (mTelemetryUpdateInProgress) {
-    // Update extended state for this vehicle.
-    // Since I do not want to miss impact data, and it is not accumulated in any way
-    // I am aware of in rF2 internals, process on every telemetr update.
-    mExtStateTracker.ProcessTelemetryUpdate(info);
-
-    auto const partiticpantIndex = min(info.mID, MAX_PARTICIPANT_SLOTS - 1);
-    assert(mParticipantTelemetryUpdated[partiticpantIndex] == false);
-    mParticipantTelemetryUpdated[partiticpantIndex] = true;
-
-    memcpy(&(mTelemetry.mpCurWriteBuf->mVehicles[mCurrTelemetryVehicleIndex]), &info, sizeof(rF2VehicleTelemetry));
-    ++mCurrTelemetryVehicleIndex;
-
-    TelemetryTraceVehicleAdded(info);
-
-    // See if this is the last vehicle to update.
-    if (mCurrTelemetryVehicleIndex >= mTelemetry.mpCurWriteBuf->mNumVehicles
-      || mCurrTelemetryVehicleIndex >= rF2Telemetry::MAX_MAPPED_VEHICLES) {
-      auto const numVehiclesInChain = mCurrTelemetryVehicleIndex;
-
-      mTelemetry.mpCurWriteBuf->mBytesUpdatedHint = offsetof(rF2Telemetry, mVehicles[mTelemetry.mpCurWriteBuf->mNumVehicles]);
-
-      mTelemetryUpdateInProgress = false;
-      mCurrTelemetryVehicleIndex = 0;
-      memset(mParticipantTelemetryUpdated, 0, sizeof(mParticipantTelemetryUpdated));
-
-      TelemetryFlipBuffers();
-      TelemetryTraceEndUpdate(numVehiclesInChain);
-    }
-    
-    return;
-  }*/
 }
 
 
@@ -670,7 +593,6 @@ void SharedMemoryPlugin::UpdateScoring(ScoringInfoV01 const& info)
   if (!mIsMapped)
     return;
 
-  mScoringNumVehicles = info.mNumVehicles;
   mLastScoringUpdateET = info.mCurrentET;
 
   ScoringTraceBeginUpdate();
