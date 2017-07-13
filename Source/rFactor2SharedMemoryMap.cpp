@@ -528,7 +528,7 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
     return;  // Nothing to do.
 
   // See if we are in a cycle.
-  auto const partiticpantIndex = min(info.mID, SharedMemoryPlugin::MAX_PARTICIPANT_SLOTS - 1);
+  auto const partiticpantIndex = min(max(info.mID, 0L), SharedMemoryPlugin::MAX_PARTICIPANT_SLOTS - 1);
   auto const alreadyUpdated = mParticipantTelemetryUpdated[partiticpantIndex];
 
   if (!alreadyUpdated) {
