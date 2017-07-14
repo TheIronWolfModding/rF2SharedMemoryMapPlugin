@@ -353,9 +353,7 @@ void SharedMemoryPlugin::TelemetryTraceSkipUpdate(TelemInfoV01 const& info, doub
     char msg[512] = {};
     sprintf(msg, "TELEMETRY - Skipping update due to no changes in the input data.  Delta ET: %f  New ET: %f  Prev ET:%f  mID(new):%d", deltaET, info.mElapsedTime, mLastTelemetryUpdateET, info.mID);
     DEBUG_MSG(DebugLevel::Timing, msg);
-  }
 
-  if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::Warnings) {
     // We flip only on mElapsedTime change, so on skip we need to compare to the current write buffer.
     // Below assumes that we begin skip on the first vehicle, which is not guaranteed.  However, that's ok
     // since this code is diagnostic.
@@ -370,7 +368,7 @@ void SharedMemoryPlugin::TelemetryTraceSkipUpdate(TelemInfoV01 const& info, doub
         prevBuff->mVehicles->mPos.x,
         prevBuff->mVehicles->mPos.y,
         prevBuff->mVehicles->mPos.z);
-      DEBUG_MSG(DebugLevel::Warnings, msg);
+      DEBUG_MSG(DebugLevel::Timing, msg);
     }
   }
 }
@@ -429,8 +427,9 @@ void SharedMemoryPlugin::TelemetryTraceEndUpdate(int numVehiclesInChain) const
 void SharedMemoryPlugin::TelemetryFlipBuffers()
 {
   if (mLastTelemetryUpdateET > 0.0 && mLastTelemetryUpdateET <= mLastScoringUpdateET) {
-    // If scoring update is ahead of this telemetry update, force flip.
-    DEBUG_MSG(DebugLevel::Synchronization, "TELEMETRY - Force flip due to: mLastTelemetryUpdateET <= mLastScoringUpdateET.");
+    // At the ET when both Scoring and Telemetry are updated, Scoring updates are coming in between telemetry updates with same ET.
+    // We want scoring and telemetry to be close and not let telemetry update drag behind.
+    DEBUG_MSG(DebugLevel::Timing, "TELEMETRY - Force flip due to: mLastTelemetryUpdateET <= mLastScoringUpdateET.");
     mTelemetry.FlipBuffers();
   }
   else if (mTelemetry.AsyncRetriesLeft() > 0) {
@@ -598,6 +597,8 @@ void SharedMemoryPlugin::UpdateScoring(ScoringInfoV01 const& info)
   ScoringTraceBeginUpdate();
 
   if (mTelemetry.RetryPending()) {
+    // If this happens often, we need to change something, because forced flip is coming very soon
+    // after scoring update anyway.
     DEBUG_MSG(DebugLevel::Synchronization, "SCORING - Force telemetry flip due to retry pending.");
     mTelemetry.FlipBuffers();
   }
@@ -673,6 +674,7 @@ bool SharedMemoryPlugin::AccessPitMenu(PitMenuV01& /*info*/)
   return false;
 }
 
+
 void SharedMemoryPlugin::SetPhysicsOptions(PhysicsOptionsV01& options)
 {
   DEBUG_MSG(DebugLevel::Timing, "PHYSICS - Updated.");
@@ -680,6 +682,7 @@ void SharedMemoryPlugin::SetPhysicsOptions(PhysicsOptionsV01& options)
   memcpy(mExtended.mpCurrWriteBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
   mExtended.FlipBuffers();
 }
+
 
 ////////////////////////////////////////////
 // Config, files and debugging output helpers.
@@ -704,6 +707,7 @@ void SharedMemoryPlugin::LoadConfig()
   DEBUG_MSG2(DebugLevel::Verbose, "Loaded config from:", iniPath);
 }
 
+
 void SharedMemoryPlugin::WriteToAllExampleOutputFiles(const char * const openStr, const char * const msg)
 {
   if (!SharedMemoryPlugin::msDebugISIInternals)
@@ -721,6 +725,7 @@ void SharedMemoryPlugin::WriteToAllExampleOutputFiles(const char * const openStr
     fclose(fo);
   }
 }
+
 
 void SharedMemoryPlugin::WriteDebugMsg(DebugLevel lvl, const char* const format, ...)
 {
