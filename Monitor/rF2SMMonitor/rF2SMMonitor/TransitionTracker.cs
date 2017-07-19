@@ -591,8 +591,8 @@ namespace rF2SMMonitor
       var di = new DamageInfo();
       di.mDentSeverity = playerVehTelemetry.mDentSeverity;
       di.mLastImpactMagnitude = playerVehTelemetry.mLastImpactMagnitude;
-      di.mAccumulatedImpactMagnitude = extended.mTrackedDamages[playerVehTelemetry.mID].mAccumulatedImpactMagnitude;
-      di.mMaxImpactMagnitude = extended.mTrackedDamages[playerVehTelemetry.mID].mMaxImpactMagnitude;
+      di.mAccumulatedImpactMagnitude = extended.mTrackedDamages[playerVehTelemetry.mID % rFactor2Constants.MAX_MAPPED_IDS].mAccumulatedImpactMagnitude;
+      di.mMaxImpactMagnitude = extended.mTrackedDamages[playerVehTelemetry.mID % rFactor2Constants.MAX_MAPPED_IDS].mMaxImpactMagnitude;
       di.mLastImpactPos = playerVehTelemetry.mLastImpactPos;
       di.mLastImpactET = playerVehTelemetry.mLastImpactET;
       di.mOverheating = playerVehTelemetry.mOverheating;

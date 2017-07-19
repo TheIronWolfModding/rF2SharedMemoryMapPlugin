@@ -512,7 +512,7 @@ static_assert(sizeof(rF2PhysicsOptions) == sizeof(PhysicsOptionsV01), "rF2Physic
 struct rF2MappedBufferHeader
 {
   static int const MAX_MAPPED_VEHICLES = 128;
-  static int const MAX_MAPPED_IDS = 1024;
+  static int const MAX_MAPPED_IDS = 512;
 
   bool mCurrentRead;               // True indicates buffer is safe to read under mutex.
 };
@@ -555,7 +555,7 @@ struct rF2Extended : public rF2MappedBufferHeader
   // Physics options (updated on session start):
   rF2PhysicsOptions mPhysics;
 
-  // Damage tracking for each vehicle (indexed by mID):
+  // Damage tracking for each vehicle (indexed by mID % rF2MappedBufferHeader::MAX_MAPPED_IDS):
   rF2TrackedDamage mTrackedDamages[rF2MappedBufferHeader::MAX_MAPPED_IDS];
 
   // Function call based flags:

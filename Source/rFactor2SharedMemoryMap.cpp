@@ -80,6 +80,12 @@ Configuration file:
   See SharedMemoryPlugin::LoadConfig.
 
 
+Limitations:
+  - Negative mID is not supported.
+  - Distance between max(mID) and min(mID) in a session cannot exceed rF2MappedBufferHeader::MAX_MAPPED_IDS.
+  - Max mapped vehicles: rF2MappedBufferHeader::MAX_MAPPED_VEHICLES.
+
+
 Sample consumption:
   For sample C# client, see Monitor\rF2SMMonitor\rF2SMMonitor\MainForm.cs
 */
@@ -527,8 +533,8 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
     return;  // Nothing to do.
 
   // See if we are in a cycle.
-  auto const partiticpantIndex = min(max(info.mID, 0L), SharedMemoryPlugin::MAX_PARTICIPANT_SLOTS - 1);
-  auto const alreadyUpdated = mParticipantTelemetryUpdated[partiticpantIndex];
+  auto const participantIndex = max(info.mID, 0L) % rF2MappedBufferHeader::MAX_MAPPED_IDS;
+  auto const alreadyUpdated = mParticipantTelemetryUpdated[participantIndex];
 
   if (!alreadyUpdated) {
     if (mCurrTelemetryVehicleIndex >= rF2MappedBufferHeader::MAX_MAPPED_VEHICLES) {
@@ -542,8 +548,8 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
     mExtStateTracker.ProcessTelemetryUpdate(info);
 
     // Mark participant as updated
-    assert(mParticipantTelemetryUpdated[partiticpantIndex] == false);
-    mParticipantTelemetryUpdated[partiticpantIndex] = true;
+    assert(mParticipantTelemetryUpdated[participantIndex] == false);
+    mParticipantTelemetryUpdated[participantIndex] = true;
 
     TelemetryTraceVehicleAdded(info);
 

@@ -76,7 +76,6 @@ public:
   static char const* const DEBUG_OUTPUT_FILENAME;
   
   static int const MAX_ASYNC_RETRIES = 3;
-  static int const MAX_PARTICIPANT_SLOTS = 2048;
   static int const BUFFER_IO_BYTES = 2048;
   static int const DEBUG_IO_FLUSH_PERIOD_SECS = 10;
 
@@ -120,7 +119,7 @@ private:
 
     void ProcessTelemetryUpdate(TelemInfoV01 const& info)
     {
-      auto const id = min(max(info.mID, 0L), rF2MappedBufferHeader::MAX_MAPPED_IDS - 1);
+      auto const id = max(info.mID, 0L) % rF2MappedBufferHeader::MAX_MAPPED_IDS;
 
       auto& dti = mDamageTrackingInfos[id];
       if (info.mLastImpactET > dti.mLastPitStopET  // Is this new impact since last pit stop?
@@ -140,7 +139,7 @@ private:
       for (int i = 0; i < info.mNumVehicles; ++i) {
         if (info.mVehicle[i].mPitState == static_cast<unsigned char>(rF2PitState::Stopped)) {
           // If this car is pitting, clear out any damage tracked.
-          auto const id = min(max(info.mVehicle[i].mID, 0L), rF2MappedBufferHeader::MAX_MAPPED_IDS - 1);
+          auto const id = max(info.mVehicle[i].mID, 0L) % rF2MappedBufferHeader::MAX_MAPPED_IDS;
 
           memset(&(mExtended.mTrackedDamages[id]), 0, sizeof(rF2TrackedDamage));
 
@@ -255,11 +254,11 @@ private:
   bool mTelemetryFrameCompleted = false;
   int mCurrTelemetryVehicleIndex = 0;
   // Array used to track if mID telemetry is captured for this update.
-  // NOTE: mIDs are reused on the server.  Once mIDs reach >= (MAX_PARTICIPANT_SLOTS - 1), we no longer can detect cycle.
+  // Indexed by mID % rF2MappedBufferHeader::MAX_MAPPED_IDS, so will break down if max(mID) - min(mID) in a frame >= rF2MappedBufferHeader::MAX_MAPPED_IDS
   // If this becomes a problem (people complain), different mechanism will be necessary.
   // One way to handle this is to take first mID in a telemetry frame, and use it as a starting offset.
   // This might be fine, because game appears to be sending mIDs in an ascending order.
-  bool mParticipantTelemetryUpdated[MAX_PARTICIPANT_SLOTS];
+  bool mParticipantTelemetryUpdated[rF2MappedBufferHeader::MAX_MAPPED_IDS];
 
   MappedDoubleBuffer<rF2Telemetry> mTelemetry;
   MappedDoubleBuffer<rF2Scoring> mScoring;
