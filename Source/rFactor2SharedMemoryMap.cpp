@@ -80,10 +80,11 @@ Configuration file:
   See SharedMemoryPlugin::LoadConfig.
 
 
-Limitations:
+Limitations/Assumptions:
   - Negative mID is not supported.
   - Distance between max(mID) and min(mID) in a session cannot exceed rF2MappedBufferHeader::MAX_MAPPED_IDS.
   - Max mapped vehicles: rF2MappedBufferHeader::MAX_MAPPED_VEHICLES.
+  - Plugin assumes that delta Elapsed Time in a telemetry update frame cannot exceed 2ms (which effectively limits telemetry refresh rate to 50FPS).
 
 
 Sample consumption:

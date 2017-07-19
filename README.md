@@ -14,9 +14,15 @@ Plugin uses double buffering and offers optional weak synchronization on global 
 Plugin is built using VS 2015 Community Edition, targeting VC12 (VS 2013) runtime, since rF2 comes with VC12 redist.
 
 ## Refresh Rates:
-* Telemetry - 90FPS, but it appears that game sends same values twice, so effective rate is 50FPS (provided there's no mutex contention).  This might be due to my particular processor speed, so your mileage may vary.
+* Telemetry - 50FPS (provided there's no mutex contention).
 * Scoring - 5FPS.
 * Extended - 5FPS and on tracked callback by the game.
+
+## Limitations/Assumptions:
+* Negative mID is not supported.
+* Distance between max(mID) and min(mID) in a session cannot exceed 512.
+* Max mapped vehicles: 128.
+* Plugin assumes that delta Elapsed Time in a telemetry update frame cannot exceed 2ms (which effectively limits telemetry refresh rate to 50FPS).
 
 ## Monitor
 Plugin comes with rF2SMMonitor program that shows how to access exposed internals from C# program.  It is also useful for visualization of shared memory contents and general understanding of rFactor 2 internals.
