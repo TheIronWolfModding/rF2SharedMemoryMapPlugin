@@ -37,6 +37,10 @@ If you would like to support this project, you can donate [here.](http://thecrew
 
 # Release history
 
+7/22/2017 - v2.0.0.0
+
+  Complete redesign/rework to better reflect rFactor 2 internals read model.  Interpolation is removed, plugin is now essentially double buffered memcpy of rF2 internals.
+
 3/22/2017 - v1.1.0.1
 
   Plugin:
