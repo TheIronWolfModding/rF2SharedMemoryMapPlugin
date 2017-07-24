@@ -26,7 +26,7 @@ Website: thecrewchief.org
 #endif
 
 // Each component can be in [0:99] range.
-#define PLUGIN_VERSION_MAJOR "2.0"
+#define PLUGIN_VERSION_MAJOR "2.1"
 #define PLUGIN_VERSION_MINOR "0.0"
 #define PLUGIN_NAME_AND_VERSION "rFactor 2 Shared Memory Map Plugin - v" PLUGIN_VERSION_MAJOR
 #define SHARED_MEMORY_VERSION PLUGIN_VERSION_MAJOR "." PLUGIN_VERSION_MINOR
@@ -64,6 +64,10 @@ public:
   static char const* const MM_SCORING_FILE_NAME1;
   static char const* const MM_SCORING_FILE_NAME2;
   static char const* const MM_SCORING_FILE_ACCESS_MUTEX;
+
+  static char const* const MM_RULES_FILE_NAME1;
+  static char const* const MM_RULES_FILE_NAME2;
+  static char const* const MM_RULES_FILE_ACCESS_MUTEX;
 
   static char const* const MM_EXTENDED_FILE_NAME1;
   static char const* const MM_EXTENDED_FILE_NAME2;
@@ -206,7 +210,7 @@ public:
   void ThreadStarted(long type) override; // called just after a primary thread is started (type is 0=multimedia or 1=simulation)
   void ThreadStopping(long type) override;  // called just before a primary thread is stopped (type is 0=multimedia or 1=simulation)
 
-  bool WantsTrackRulesAccess() override { return false; } // change to true in order to read or write track order (during formation or caution laps)
+  bool WantsTrackRulesAccess() override { return true; } // change to true in order to read or write track order (during formation or caution laps)
   bool AccessTrackRules(TrackRulesV01& info) override; // current track order passed in; return true if you want to change it (note: this will be called immediately after UpdateScoring() when appropriate)
 
   // PIT MENU INFO (currently, the only way to edit the pit menu is to use this in conjunction with CheckHWControl())
@@ -237,11 +241,15 @@ private:
 
   void ScoringTraceBeginUpdate();
 
+  template <typename BuffT>
+  void TraceBeginUpdate(BuffT const& buffer, double& lastUpdateMillis, char const msgPrefix[]) const;
+
 private:
   // Only used for debugging in Timing level
   double mLastTelemetryUpdateMillis = 0.0;
   double mLastTelemetryVehicleAddedMillis = 0.0;
   double mLastScoringUpdateMillis = 0.0;
+  double mLastRulesUpdateMillis = 0.0;
 
   ExtendedStateTracker mExtStateTracker;
 
@@ -262,6 +270,7 @@ private:
 
   MappedDoubleBuffer<rF2Telemetry> mTelemetry;
   MappedDoubleBuffer<rF2Scoring> mScoring;
+  MappedDoubleBuffer<rF2Rules> mRules;
   MappedDoubleBuffer<rF2Extended> mExtended;
 
   // Buffers mapped successfully or not.

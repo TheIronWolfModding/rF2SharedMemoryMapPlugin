@@ -505,6 +505,174 @@ struct rF2PhysicsOptions
 static_assert(sizeof(rF2PhysicsOptions) == sizeof(PhysicsOptionsV01), "rF2PhysicsOptions and PhysicsOptionsV01 structures are out of sync");
 
 
+//////////////////////////////////////////////////////////////////////////////////////////
+// Identical to TrackRulesCommandV01, except where noted by MM_NEW/MM_NOT_USED comments.
+//////////////////////////////////////////////////////////////////////////////////////////
+enum class rF2TrackRulesCommand
+{
+  TRCMD_ADD_FROM_TRACK = 0,             // crossed s/f line for first time after full-course yellow was called
+  TRCMD_ADD_FROM_PIT,                   // exited pit during full-course yellow
+  TRCMD_ADD_FROM_UNDQ,                  // during a full-course yellow, the admin reversed a disqualification
+  TRCMD_REMOVE_TO_PIT,                  // entered pit during full-course yellow
+  TRCMD_REMOVE_TO_DNF,                  // vehicle DNF'd during full-course yellow
+  TRCMD_REMOVE_TO_DQ,                   // vehicle DQ'd during full-course yellow
+  TRCMD_REMOVE_TO_UNLOADED,             // vehicle unloaded (possibly kicked out or banned) during full-course yellow
+  TRCMD_MOVE_TO_BACK,                   // misbehavior during full-course yellow, resulting in the penalty of being moved to the back of their current line
+  TRCMD_LONGEST_LINE,                   // misbehavior during full-course yellow, resulting in the penalty of being moved to the back of the longest line
+  //------------------
+  TRCMD_MAXIMUM                         // should be last
+};
+static_assert(sizeof(rF2TrackRulesCommand) == sizeof(TrackRulesCommandV01), "rF2TrackRulesCommand and TrackRulesCommandV01 enums are out of sync");
+
+
+//////////////////////////////////////////////////////////////////////////////////////////
+// Identical to TrackRulesActionV01, except where noted by MM_NEW/MM_NOT_USED comments.
+//////////////////////////////////////////////////////////////////////////////////////////
+struct rF2TrackRulesAction
+{
+  // input only
+  rF2TrackRulesCommand mCommand;        // recommended action
+  long mID;                             // slot ID if applicable
+  double mET;                           // elapsed time that event occurred, if applicable
+};
+static_assert(sizeof(rF2TrackRulesAction) == sizeof(TrackRulesActionV01), "rF2TrackRulesAction and TrackRulesActionV01 structs are out of sync");
+
+
+//////////////////////////////////////////////////////////////////////////////////////////
+// Identical to TrackRulesColumnV01, except where noted by MM_NEW/MM_NOT_USED comments.
+//////////////////////////////////////////////////////////////////////////////////////////
+enum class rF2TrackRulesColumn
+{
+  TRCOL_LEFT_LANE = 0,                  // left (inside)
+  TRCOL_MIDLEFT_LANE,                   // mid-left
+  TRCOL_MIDDLE_LANE,                    // middle
+  TRCOL_MIDRIGHT_LANE,                  // mid-right
+  TRCOL_RIGHT_LANE,                     // right (outside)
+  //------------------
+  TRCOL_MAX_LANES,                      // should be after the valid static lane choices
+  //------------------
+  TRCOL_INVALID = TRCOL_MAX_LANES,      // currently invalid (hasn't crossed line or in pits/garage)
+  TRCOL_FREECHOICE,                     // free choice (dynamically chosen by driver)
+  TRCOL_PENDING,                        // depends on another participant's free choice (dynamically set after another driver chooses)
+  //------------------
+  TRCOL_MAXIMUM                         // should be last
+};
+static_assert(sizeof(rF2TrackRulesColumn) == sizeof(TrackRulesColumnV01), "rF2TrackRulesColumn and TrackRulesColumnV01 enums are out of sync");
+
+
+//////////////////////////////////////////////////////////////////////////////////////////
+// Identical to TrackRulesParticipantV01, except where noted by MM_NEW/MM_NOT_USED comments.
+//////////////////////////////////////////////////////////////////////////////////////////
+struct rF2TrackRulesParticipant
+{
+  // input only
+  long mID;                             // slot ID
+  short mFrozenOrder;                   // 0-based place when caution came out (not valid for formation laps)
+  short mPlace;                         // 1-based place (typically used for the initialization of the formation lap track order)
+  float mYellowSeverity;                // a rating of how much this vehicle is contributing to a yellow flag (the sum of all vehicles is compared to TrackRulesV01::mSafetyCarThreshold)
+  double mCurrentRelativeDistance;      // equal to ( ( ScoringInfoV01::mLapDist * this->mRelativeLaps ) + VehicleScoringInfoV01::mLapDist )
+
+  // input/output
+  long mRelativeLaps;                   // current formation/caution laps relative to safety car (should generally be zero except when safety car crosses s/f line); this can be decremented to implement 'wave around' or 'beneficiary rule' (a.k.a. 'lucky dog' or 'free pass')
+  rF2TrackRulesColumn mColumnAssignment;// which column (line/lane) that participant is supposed to be in
+  long mPositionAssignment;             // 0-based position within column (line/lane) that participant is supposed to be located at (-1 is invalid)
+  bool mAllowedToPit;                   // whether the rules allow this particular vehicle to enter pits right now
+  bool mUnused[ 3 ];                    //
+  double mGoalRelativeDistance;         // calculated based on where the leader is, and adjusted by the desired column spacing and the column/position assignments
+  char mMessage[ 96 ];                  // a message for this participant to explain what is going on (untranslated; it will get run through translator on client machines)
+
+  // future expansion
+  unsigned char mExpansion[ 192 ];
+};
+static_assert(sizeof(rF2TrackRulesParticipant) == sizeof(TrackRulesParticipantV01), "rF2TrackRulesParticipant and TrackRulesParticipantV01 structs are out of sync");
+
+
+//////////////////////////////////////////////////////////////////////////////////////////
+// Identical to TrackRulesStageV01, except where noted by MM_NEW/MM_NOT_USED comments.
+//////////////////////////////////////////////////////////////////////////////////////////
+enum class rF2TrackRulesStage
+{
+  TRSTAGE_FORMATION_INIT = 0,           // initialization of the formation lap
+  TRSTAGE_FORMATION_UPDATE,             // update of the formation lap
+  TRSTAGE_NORMAL,                       // normal (non-yellow) update
+  TRSTAGE_CAUTION_INIT,                 // initialization of a full-course yellow
+  TRSTAGE_CAUTION_UPDATE,               // update of a full-course yellow
+  //------------------
+  TRSTAGE_MAXIMUM                       // should be last
+};
+static_assert(sizeof(rF2TrackRulesColumn) == sizeof(TrackRulesColumnV01), "rF2TrackRulesColumn and TrackRulesColumnV01 enums are out of sync");
+
+
+//////////////////////////////////////////////////////////////////////////////////////////
+// Identical to TrackRulesV01, except where noted by MM_NEW/MM_NOT_USED comments.
+//////////////////////////////////////////////////////////////////////////////////////////
+struct rF2TrackRules
+{
+  // input only
+  double mCurrentET;                    // current time
+  rF2TrackRulesStage mStage;            // current stage
+  rF2TrackRulesColumn mPoleColumn;      // column assignment where pole position seems to be located
+  long mNumActions;                     // number of recent actions
+
+  // MM_NOT_USED
+  // TrackRulesActionV01 *mAction;         // array of recent actions
+  // MM_NEW
+#ifdef _AMD64_
+  unsigned char pointer1[8];
+#else
+  unsigned char pointer1[4];
+#endif
+
+  long mNumParticipants;                // number of participants (vehicles)
+
+  bool mYellowFlagDetected;             // whether yellow flag was requested or sum of participant mYellowSeverity's exceeds mSafetyCarThreshold
+  bool mYellowFlagLapsWasOverridden;    // whether mYellowFlagLaps (below) is an admin request
+
+  bool mSafetyCarExists;                // whether safety car even exists
+  bool mSafetyCarActive;                // whether safety car is active
+  long mSafetyCarLaps;                  // number of laps
+  float mSafetyCarThreshold;            // the threshold at which a safety car is called out (compared to the sum of TrackRulesParticipantV01::mYellowSeverity for each vehicle)
+  double mSafetyCarLapDist;             // safety car lap distance
+  float mSafetyCarLapDistAtStart;       // where the safety car starts from
+
+  float mPitLaneStartDist;              // where the waypoint branch to the pits breaks off (this may not be perfectly accurate)
+  float mTeleportLapDist;               // the front of the teleport locations (a useful first guess as to where to throw the green flag)
+
+  // future input expansion
+  unsigned char mInputExpansion[ 256 ];
+
+  // input/output
+  signed char mYellowFlagState;         // see ScoringInfoV01 for values
+  short mYellowFlagLaps;                // suggested number of laps to run under yellow (may be passed in with admin command)
+
+  long mSafetyCarInstruction;           // 0=no change, 1=go active, 2=head for pits
+  float mSafetyCarSpeed;                // maximum speed at which to drive
+  float mSafetyCarMinimumSpacing;       // minimum spacing behind safety car (-1 to indicate no limit)
+  float mSafetyCarMaximumSpacing;       // maximum spacing behind safety car (-1 to indicate no limit)
+
+  float mMinimumColumnSpacing;          // minimum desired spacing between vehicles in a column (-1 to indicate indeterminate/unenforced)
+  float mMaximumColumnSpacing;          // maximum desired spacing between vehicles in a column (-1 to indicate indeterminate/unenforced)
+
+  float mMinimumSpeed;                  // minimum speed that anybody should be driving (-1 to indicate no limit)
+  float mMaximumSpeed;                  // maximum speed that anybody should be driving (-1 to indicate no limit)
+
+  char mMessage[ 96 ];                  // a message for everybody to explain what is going on (which will get run through translator on client machines)
+  
+  // MM_NOT_USED
+  // TrackRulesParticipantV01 *mParticipant;         // array of partipants (vehicles)
+  // MM_NEW
+#ifdef _AMD64_
+  unsigned char pointer2[8];
+#else
+  unsigned char pointer2[4];
+#endif
+
+  // future input/output expansion
+  unsigned char mInputOutputExpansion[ 256 ];
+};
+static_assert(sizeof(rF2TrackRules) == sizeof(TrackRulesV01), "rF2TrackRules and TrackRulesV01 structs are out of sync");
+
+
 ///////////////////////////////////////////
 // Mapped wrapper structures
 ///////////////////////////////////////////
@@ -537,6 +705,14 @@ struct rF2Scoring : public rF2MappedBufferHeaderWithSize
 {
   rF2ScoringInfo mScoringInfo;
   rF2VehicleScoring mVehicles[rF2MappedBufferHeader::MAX_MAPPED_VEHICLES];
+};
+
+
+struct rF2Rules : public rF2MappedBufferHeaderWithSize
+{
+  rF2TrackRules mTrackRules;
+  // TODO: see if we need to expose mActions, and if so, how many?  To answer that need to see how fast that array grows.
+  rF2TrackRulesParticipant mParticipants[rF2MappedBufferHeader::MAX_MAPPED_VEHICLES];
 };
 
 

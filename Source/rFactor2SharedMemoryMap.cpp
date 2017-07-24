@@ -122,6 +122,10 @@ char const* const SharedMemoryPlugin::MM_SCORING_FILE_NAME1 = "$rFactor2SMMP_Sco
 char const* const SharedMemoryPlugin::MM_SCORING_FILE_NAME2 = "$rFactor2SMMP_ScoringBuffer2$";
 char const* const SharedMemoryPlugin::MM_SCORING_FILE_ACCESS_MUTEX = R"(Global\$rFactor2SMMP_ScoringMutex)";
 
+char const* const SharedMemoryPlugin::MM_RULES_FILE_NAME1 = "$rFactor2SMMP_RulesBuffer1$";
+char const* const SharedMemoryPlugin::MM_RULES_FILE_NAME2 = "$rFactor2SMMP_RulesBuffer2$";
+char const* const SharedMemoryPlugin::MM_RULES_FILE_ACCESS_MUTEX = R"(Global\$rFactor2SMMP_RulesMutex)";
+
 char const* const SharedMemoryPlugin::MM_EXTENDED_FILE_NAME1 = "$rFactor2SMMP_ExtendedBuffer1$";
 char const* const SharedMemoryPlugin::MM_EXTENDED_FILE_NAME2 = "$rFactor2SMMP_ExtendedBuffer2$";
 char const* const SharedMemoryPlugin::MM_EXTENDED_FILE_ACCESS_MUTEX = R"(Global\$rFactor2SMMP_ExtendedMutex)";
@@ -161,6 +165,10 @@ SharedMemoryPlugin::SharedMemoryPlugin()
       , SharedMemoryPlugin::MM_SCORING_FILE_NAME1
       , SharedMemoryPlugin::MM_SCORING_FILE_NAME2
       , SharedMemoryPlugin::MM_SCORING_FILE_ACCESS_MUTEX),
+    mRules(0 /*maxRetries*/
+      , SharedMemoryPlugin::MM_RULES_FILE_NAME1
+      , SharedMemoryPlugin::MM_RULES_FILE_NAME2
+      , SharedMemoryPlugin::MM_RULES_FILE_ACCESS_MUTEX),
     mExtended(0 /*maxRetries*/
       , SharedMemoryPlugin::MM_EXTENDED_FILE_NAME1
       , SharedMemoryPlugin::MM_EXTENDED_FILE_NAME2
@@ -184,6 +192,11 @@ void SharedMemoryPlugin::Startup(long version)
 
   if (!mScoring.Initialize()) {
     DEBUG_MSG(DebugLevel::Errors, "Failed to initialize scoring mapping");
+    return;
+  }
+
+  if (!mRules.Initialize()) {
+    DEBUG_MSG(DebugLevel::Errors, "Failed to initialize rules mapping");
     return;
   }
 
@@ -246,6 +259,9 @@ void SharedMemoryPlugin::Shutdown()
   mScoring.ClearState(nullptr /*pInitialContents*/);
   mScoring.ReleaseResources();
 
+  mRules.ClearState(nullptr /*pInitialContents*/);
+  mRules.ReleaseResources();
+
   mExtended.ClearState(nullptr /*pInitialContents*/);
   mExtended.ReleaseResources();
 
@@ -259,6 +275,7 @@ void SharedMemoryPlugin::ClearTimingsAndCounters()
   mLastTelemetryUpdateMillis = 0.0;
   mLastTelemetryVehicleAddedMillis = 0.0;
   mLastScoringUpdateMillis = 0.0;
+  mLastRulesUpdateMillis = 0.0;
 
   mLastTelemetryUpdateET = -1.0;
   mLastScoringUpdateET = -1.0;
@@ -276,6 +293,7 @@ void SharedMemoryPlugin::ClearState()
 
   mTelemetry.ClearState(nullptr /*pInitialContents*/);
   mScoring.ClearState(nullptr /*pInitialContents*/);
+  mRules.ClearState(nullptr /*pInitialContents*/);
 
   // Certain members of extended state persist between restarts/sessions.
   // So, clear the state but pass persisting state as initial state.
@@ -573,22 +591,34 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
 
 void SharedMemoryPlugin::ScoringTraceBeginUpdate()
 {
-  auto ticksNow = 0.0;
   if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::Timing) {
-    ticksNow = TicksNow();
-    auto const delta = ticksNow - mLastScoringUpdateMillis;
-
-    if (mScoring.mpCurrWriteBuff == mScoring.mpBuff1)
-      DEBUG_FLOAT2(DebugLevel::Timing, "SCORING - Begin Update: Buffer 1.  Delta since last update:", delta / MICROSECONDS_IN_SECOND);
-    else
-      DEBUG_FLOAT2(DebugLevel::Timing, "SCORING - Begin Update: Buffer 2.  Delta since last update:", delta / MICROSECONDS_IN_SECOND);
+    TraceBeginUpdate(mScoring, mLastScoringUpdateMillis, "SCORING");
 
     char msg[512] = {};
     sprintf(msg, "SCORING - Scoring ET:%f  Telemetry ET:%f", mLastScoringUpdateET, mLastTelemetryUpdateET);
     DEBUG_MSG(DebugLevel::Timing, msg);
   }
+}
 
-  mLastScoringUpdateMillis = ticksNow;
+
+template <typename BuffT>
+void SharedMemoryPlugin::TraceBeginUpdate(BuffT const& buffer, double& lastUpdateMillis, char const msgPrefix[]) const
+{
+  auto ticksNow = 0.0;
+  if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::Timing) {
+    ticksNow = TicksNow();
+    auto const delta = ticksNow - lastUpdateMillis;
+
+    char msg[512] = {};
+    if (buffer.mpCurrWriteBuff == buffer.mpBuff1)
+      sprintf(msg, "%s - Begin Update: Buffer 1.  Delta since last update:%f", msgPrefix, delta / MICROSECONDS_IN_SECOND);
+    else
+      sprintf(msg, "%s - Begin Update: Buffer 2.  Delta since last update:%f", msgPrefix, delta / MICROSECONDS_IN_SECOND);
+
+    DEBUG_MSG(DebugLevel::Timing, msg);
+
+    lastUpdateMillis = ticksNow;
+  }
 }
 
 
@@ -670,10 +700,29 @@ void SharedMemoryPlugin::ThreadStopping(long type)
 
 
 // Called roughly every 300ms.
-bool SharedMemoryPlugin::AccessTrackRules(TrackRulesV01& /*info*/)
+bool SharedMemoryPlugin::AccessTrackRules(TrackRulesV01& info)
 {
-  return false;
+  if (!mIsMapped)
+    return false;
+
+  TraceBeginUpdate(mRules, mLastRulesUpdateMillis, "RULES");
+
+  memcpy(&(mRules.mpCurrWriteBuff->mTrackRules), &info, sizeof(rF2TrackRules));
+
+  if (info.mNumParticipants >= rF2MappedBufferHeader::MAX_MAPPED_VEHICLES)
+    DEBUG_MSG(DebugLevel::Errors, "ERROR: Rules exceeded maximum of allowed mapped vehicles.");
+
+  auto const numRulesVehicles = min(info.mNumParticipants, rF2MappedBufferHeader::MAX_MAPPED_VEHICLES);
+  for (int i = 0; i < numRulesVehicles; ++i)
+    memcpy(&(mRules.mpCurrWriteBuff->mParticipants[i]), &(info.mParticipant[i]), sizeof(rF2TrackRulesParticipant));
+
+  mRules.mpCurrWriteBuff->mBytesUpdatedHint = static_cast<int>(offsetof(rF2Rules, mParticipants[numRulesVehicles]));
+
+  mRules.FlipBuffers();
+
+  return false;  // No changes requested, we're simply reading.
 }
+
 
 // Invoked periodically.
 bool SharedMemoryPlugin::AccessPitMenu(PitMenuV01& /*info*/)
