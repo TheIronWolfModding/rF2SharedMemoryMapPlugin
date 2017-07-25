@@ -506,21 +506,21 @@ static_assert(sizeof(rF2PhysicsOptions) == sizeof(PhysicsOptionsV01), "rF2Physic
 
 
 //////////////////////////////////////////////////////////////////////////////////////////
-// Identical to TrackRulesCommandV01, except where noted by MM_NEW/MM_NOT_USED comments.
+// Identical to TrackRulesCommandV01, except where noted by MM_NEW/MM_NOT_USED comments.  Renamed to match plugin convention.
 //////////////////////////////////////////////////////////////////////////////////////////
 enum class rF2TrackRulesCommand
 {
-  TRCMD_ADD_FROM_TRACK = 0,             // crossed s/f line for first time after full-course yellow was called
-  TRCMD_ADD_FROM_PIT,                   // exited pit during full-course yellow
-  TRCMD_ADD_FROM_UNDQ,                  // during a full-course yellow, the admin reversed a disqualification
-  TRCMD_REMOVE_TO_PIT,                  // entered pit during full-course yellow
-  TRCMD_REMOVE_TO_DNF,                  // vehicle DNF'd during full-course yellow
-  TRCMD_REMOVE_TO_DQ,                   // vehicle DQ'd during full-course yellow
-  TRCMD_REMOVE_TO_UNLOADED,             // vehicle unloaded (possibly kicked out or banned) during full-course yellow
-  TRCMD_MOVE_TO_BACK,                   // misbehavior during full-course yellow, resulting in the penalty of being moved to the back of their current line
-  TRCMD_LONGEST_LINE,                   // misbehavior during full-course yellow, resulting in the penalty of being moved to the back of the longest line
+  AddFromTrack = 0,             // crossed s/f line for first time after full-course yellow was called
+  AddFromPit,                   // exited pit during full-course yellow
+  AddFromUndq,                  // during a full-course yellow, the admin reversed a disqualification
+  RemoveToPit,                  // entered pit during full-course yellow
+  RemoveToDnf,                  // vehicle DNF'd during full-course yellow
+  RemoveToDq,                   // vehicle DQ'd during full-course yellow
+  RemoveToUnloaded,             // vehicle unloaded (possibly kicked out or banned) during full-course yellow
+  MoveToBack,                   // misbehavior during full-course yellow, resulting in the penalty of being moved to the back of their current line
+  LongestTime,                  // misbehavior during full-course yellow, resulting in the penalty of being moved to the back of the longest line
   //------------------
-  TRCMD_MAXIMUM                         // should be last
+  Maximum                       // should be last
 };
 static_assert(sizeof(rF2TrackRulesCommand) == sizeof(TrackRulesCommandV01), "rF2TrackRulesCommand and TrackRulesCommandV01 enums are out of sync");
 
@@ -539,23 +539,23 @@ static_assert(sizeof(rF2TrackRulesAction) == sizeof(TrackRulesActionV01), "rF2Tr
 
 
 //////////////////////////////////////////////////////////////////////////////////////////
-// Identical to TrackRulesColumnV01, except where noted by MM_NEW/MM_NOT_USED comments.
+// Identical to TrackRulesColumnV01, except where noted by MM_NEW/MM_NOT_USED comments.  Renamed to match plugin convention.
 //////////////////////////////////////////////////////////////////////////////////////////
 enum class rF2TrackRulesColumn
 {
-  TRCOL_LEFT_LANE = 0,                  // left (inside)
-  TRCOL_MIDLEFT_LANE,                   // mid-left
-  TRCOL_MIDDLE_LANE,                    // middle
-  TRCOL_MIDRIGHT_LANE,                  // mid-right
-  TRCOL_RIGHT_LANE,                     // right (outside)
+  LeftLane = 0,                  // left (inside)
+  MidLefLane,                    // mid-left
+  MiddleLane,                    // middle
+  MidrRghtLane,                  // mid-right
+  RightLane,                     // right (outside)
   //------------------
-  TRCOL_MAX_LANES,                      // should be after the valid static lane choices
+  MaxLanes,                      // should be after the valid static lane choices
   //------------------
-  TRCOL_INVALID = TRCOL_MAX_LANES,      // currently invalid (hasn't crossed line or in pits/garage)
-  TRCOL_FREECHOICE,                     // free choice (dynamically chosen by driver)
-  TRCOL_PENDING,                        // depends on another participant's free choice (dynamically set after another driver chooses)
+  Invalid = MaxLanes,            // currently invalid (hasn't crossed line or in pits/garage)
+  FreeChoice,                    // free choice (dynamically chosen by driver)
+  Pending,                       // depends on another participant's free choice (dynamically set after another driver chooses)
   //------------------
-  TRCOL_MAXIMUM                         // should be last
+  Maximum                        // should be last
 };
 static_assert(sizeof(rF2TrackRulesColumn) == sizeof(TrackRulesColumnV01), "rF2TrackRulesColumn and TrackRulesColumnV01 enums are out of sync");
 
@@ -588,17 +588,17 @@ static_assert(sizeof(rF2TrackRulesParticipant) == sizeof(TrackRulesParticipantV0
 
 
 //////////////////////////////////////////////////////////////////////////////////////////
-// Identical to TrackRulesStageV01, except where noted by MM_NEW/MM_NOT_USED comments.
+// Identical to TrackRulesStageV01, except where noted by MM_NEW/MM_NOT_USED comments.  Renamed to match plugin convention.
 //////////////////////////////////////////////////////////////////////////////////////////
 enum class rF2TrackRulesStage
 {
-  TRSTAGE_FORMATION_INIT = 0,           // initialization of the formation lap
-  TRSTAGE_FORMATION_UPDATE,             // update of the formation lap
-  TRSTAGE_NORMAL,                       // normal (non-yellow) update
-  TRSTAGE_CAUTION_INIT,                 // initialization of a full-course yellow
-  TRSTAGE_CAUTION_UPDATE,               // update of a full-course yellow
+  FormationInit = 0,           // initialization of the formation lap
+  FormationUpdate,             // update of the formation lap
+  Normal,                      // normal (non-yellow) update
+  CautionInit,                 // initialization of a full-course yellow
+  CautionUpdate,               // update of a full-course yellow
   //------------------
-  TRSTAGE_MAXIMUM                       // should be last
+  Maximum                      // should be last
 };
 static_assert(sizeof(rF2TrackRulesColumn) == sizeof(TrackRulesColumnV01), "rF2TrackRulesColumn and TrackRulesColumnV01 enums are out of sync");
 
