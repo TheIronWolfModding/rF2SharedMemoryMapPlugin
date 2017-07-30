@@ -678,9 +678,6 @@ void SharedMemoryPlugin::UpdateThreadState(long type, bool starting)
   (type == 0 ? mExtStateTracker.mExtended.mMultimediaThreadStarted : mExtStateTracker.mExtended.mSimulationThreadStarted)
     = starting;
 
-  if (!mIsMapped)
-    return;
-
   memcpy(mExtended.mpCurrWriteBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
   mExtended.FlipBuffers();
 }
@@ -688,12 +685,18 @@ void SharedMemoryPlugin::UpdateThreadState(long type, bool starting)
 
 void SharedMemoryPlugin::ThreadStarted(long type)
 {
+  if (!mIsMapped)
+    return;
+
   DEBUG_MSG(DebugLevel::Synchronization, type == 0 ? "Multimedia thread started" : "Simulation thread started");
   UpdateThreadState(type, true /*starting*/);
 }
 
 void SharedMemoryPlugin::ThreadStopping(long type)
 {
+  if (!mIsMapped)
+    return;
+
   DEBUG_MSG(DebugLevel::Synchronization, type == 0 ? "Multimedia thread stopped" : "Simulation thread stopped");
   UpdateThreadState(type, false /*starting*/);
 }
@@ -727,12 +730,18 @@ bool SharedMemoryPlugin::AccessTrackRules(TrackRulesV01& info)
 // Invoked periodically.
 bool SharedMemoryPlugin::AccessPitMenu(PitMenuV01& /*info*/)
 {
+  if (!mIsMapped)
+    return false;
+
   return false;
 }
 
 
 void SharedMemoryPlugin::SetPhysicsOptions(PhysicsOptionsV01& options)
 {
+  if (!mIsMapped)
+    return;
+
   DEBUG_MSG(DebugLevel::Timing, "PHYSICS - Updated.");
   memcpy(&(mExtStateTracker.mExtended.mPhysics), &options, sizeof(rF2PhysicsOptions));
   memcpy(mExtended.mpCurrWriteBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
