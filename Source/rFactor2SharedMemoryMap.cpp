@@ -226,6 +226,13 @@ void SharedMemoryPlugin::Startup(long version)
     assert(sizeof(rF2Scoring) == offsetof(rF2Scoring, mVehicles[rF2MappedBufferHeader::MAX_MAPPED_VEHICLES]));
 
     sizeSz[0] = '\0';
+    size = static_cast<int>(sizeof(rF2Rules));
+    _itoa_s(size, sizeSz, 10);
+    DEBUG_MSG3(DebugLevel::Errors, "Size of rules buffers:", sizeSz, "bytes each.");
+
+    assert(sizeof(rF2Rules) == offsetof(rF2Rules, mParticipants[rF2MappedBufferHeader::MAX_MAPPED_VEHICLES]));
+
+    sizeSz[0] = '\0';
     size = static_cast<int>(sizeof(rF2Extended));
     _itoa_s(size, sizeSz, 10);
     DEBUG_MSG3(DebugLevel::Errors, "Size of extended buffers:", sizeSz, "bytes each.");
