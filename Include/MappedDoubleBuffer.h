@@ -52,9 +52,10 @@ public:
       return false;
     }
 
-    mhMutex = CreateMutex(nullptr, FALSE, MM_FILE_ACCESS_MUTEX);
+    mhMutex = ::CreateMutexA(nullptr, FALSE, MM_FILE_ACCESS_MUTEX);
     if (mhMutex == nullptr) {
       DEBUG_MSG(DebugLevel::Errors, "Failed to create mutex");
+      SharedMemoryPlugin::TraceLastWin32Error();
       return false;
     }
 
@@ -74,7 +75,7 @@ public:
     mRetryPending = false;
     mAsyncRetriesLeft = MAX_RETRIES;
 
-    auto ret = WaitForSingleObject(mhMutex, SharedMemoryPlugin::msMillisMutexWait);
+    auto ret = ::WaitForSingleObject(mhMutex, SharedMemoryPlugin::msMillisMutexWait);
 
     if (pInitialContents != nullptr) {
       memcpy(mpBuff1, pInitialContents, sizeof(BuffT));
@@ -93,32 +94,55 @@ public:
     assert(mpCurrReadBuff->mCurrentRead);
     assert(!mpCurrWriteBuff->mCurrentRead);
 
-    if (ret == WAIT_OBJECT_0)
-      ReleaseMutex(mhMutex);
+    if (ret == WAIT_OBJECT_0) {
+      if (!::ReleaseMutex(mhMutex)) {
+        DEBUG_MSG(DebugLevel::Errors, "Failed to release mutex.");
+        SharedMemoryPlugin::TraceLastWin32Error();
+      }
+    }
     else if (ret == WAIT_TIMEOUT)
       DEBUG_MSG(DebugLevel::Warnings, "WARNING: - Timed out while waiting on mutex.");
-    else
+    else {
       DEBUG_MSG(DebugLevel::Errors, "ERROR: - wait on mutex failed.");
+      SharedMemoryPlugin::TraceLastWin32Error();
+    }
   }
 
   void ReleaseResources()
   {
+    mMapped = false;
+
     // Unmap views and close all handles.
     BOOL ret = TRUE;
-    if (mpBuff1 != nullptr) ret = UnmapViewOfFile(mpBuff1);
-    if (!ret) DEBUG_MSG(DebugLevel::Errors, "Failed to unmap buffer1");
+    if (mpBuff1 != nullptr) ret = ::UnmapViewOfFile(mpBuff1);
+    if (!ret) {
+      DEBUG_MSG(DebugLevel::Errors, "Failed to unmap buffer1");
+      SharedMemoryPlugin::TraceLastWin32Error();
+    }
 
-    if (mpBuff2 != nullptr) ret = UnmapViewOfFile(mpBuff2);
-    if (!ret) DEBUG_MSG(DebugLevel::Errors, "Failed to unmap buffer2");
+    if (mpBuff2 != nullptr) ret = ::UnmapViewOfFile(mpBuff2);
+    if (!ret) {
+      DEBUG_MSG(DebugLevel::Errors, "Failed to unmap buffer2");
+      SharedMemoryPlugin::TraceLastWin32Error();
+    }
 
-    if (mhMap1 != nullptr) ret = CloseHandle(mhMap1);
-    if (!ret) DEBUG_MSG(DebugLevel::Errors, "Failed to close map1 handle");
+    if (mhMap1 != nullptr) ret = ::CloseHandle(mhMap1);
+    if (!ret) {
+      DEBUG_MSG(DebugLevel::Errors, "Failed to close map1 handle");
+      SharedMemoryPlugin::TraceLastWin32Error();
+    }
 
-    if (mhMap2 != nullptr) ret = CloseHandle(mhMap2);
-    if (!ret) DEBUG_MSG(DebugLevel::Errors, "Failed to close map2 handle");
+    if (mhMap2 != nullptr) ret = ::CloseHandle(mhMap2);
+    if (!ret) {
+      DEBUG_MSG(DebugLevel::Errors, "Failed to close map2 handle");
+      SharedMemoryPlugin::TraceLastWin32Error();
+    }
 
-    if (mhMutex != nullptr) ret = CloseHandle(mhMutex);
-    if (!ret) DEBUG_MSG(DebugLevel::Errors, "Failed to close mutex handle");
+    if (mhMutex != nullptr) ret = ::CloseHandle(mhMutex);
+    if (!ret) {
+      DEBUG_MSG(DebugLevel::Errors, "Failed to close mutex handle");
+      SharedMemoryPlugin::TraceLastWin32Error();
+    }
 
     mpBuff1 = nullptr;
     mpBuff2 = nullptr;
@@ -173,16 +197,22 @@ public:
     mRetryPending = false;
     mAsyncRetriesLeft = MAX_RETRIES;
 
-    auto const ret = WaitForSingleObject(mhMutex, SharedMemoryPlugin::msMillisMutexWait);
+    auto const ret = ::WaitForSingleObject(mhMutex, SharedMemoryPlugin::msMillisMutexWait);
 
     FlipBuffersHelper();
 
-    if (ret == WAIT_OBJECT_0)
-      ReleaseMutex(mhMutex);
+    if (ret == WAIT_OBJECT_0) {
+      if (!::ReleaseMutex(mhMutex)) {
+        DEBUG_MSG(DebugLevel::Errors, "Failed to release mutex.");
+        SharedMemoryPlugin::TraceLastWin32Error();
+      }
+    }
     else if (ret == WAIT_TIMEOUT)
       DEBUG_MSG(DebugLevel::Warnings, "WARNING: - Timed out while waiting on mutex.");
-    else
+    else {
       DEBUG_MSG(DebugLevel::Errors, "ERROR: - wait on mutex failed.");
+      SharedMemoryPlugin::TraceLastWin32Error();
+    }
   }
 
   void TryFlipBuffers()
@@ -194,7 +224,7 @@ public:
     }
 
     // Do not wait on mutex if it is held.
-    auto const ret = WaitForSingleObject(mhMutex, 0);
+    auto const ret = ::WaitForSingleObject(mhMutex, 0);
     if (ret == WAIT_TIMEOUT) {
       mRetryPending = true;
       --mAsyncRetriesLeft;
@@ -208,8 +238,12 @@ public:
     // Do the actual flip.
     FlipBuffersHelper();
 
-    if (ret == WAIT_OBJECT_0)
-      ReleaseMutex(mhMutex);
+    if (ret == WAIT_OBJECT_0) {
+      if (!::ReleaseMutex(mhMutex)) {
+        DEBUG_MSG(DebugLevel::Errors, "Failed to release mutex.");
+        SharedMemoryPlugin::TraceLastWin32Error();
+      }
+    }
   }
 
   int AsyncRetriesLeft() const { return mAsyncRetriesLeft; }
@@ -221,36 +255,41 @@ private:
 
   HANDLE MapMemoryFile(char const* const fileName, BuffT*& pBuf) const
   {
-    char tag[256] = {};
-    strcpy_s(tag, fileName);
+    char mappingName[256] = {};
+    strcpy_s(mappingName, fileName);
 
-    char exe[1024] = {};
-    GetModuleFileName(nullptr, exe, sizeof(exe));
+    char moduleName[1024] = {};
+    ::GetModuleFileNameA(nullptr, moduleName, sizeof(moduleName));
 
     char pid[8] = {};
-    sprintf(pid, "%d", GetCurrentProcessId());
+    sprintf(pid, "%d", ::GetCurrentProcessId());
 
     // Append processId for dedicated server to allow multiple instances
     // TODO: Verify for rF2.
-    if (strstr(exe, "Dedicated.exe") != nullptr)
-      strcat(tag, pid);
+    if (strstr(moduleName, "Dedicated.exe") != nullptr)
+      strcat(mappingName, pid);
 
     // Init handle and try to create, read if existing
-    HANDLE hMap = INVALID_HANDLE_VALUE;
-    hMap = CreateFileMapping(INVALID_HANDLE_VALUE, nullptr, PAGE_READWRITE, 0, sizeof(BuffT), TEXT(tag));
+    auto hMap = ::CreateFileMappingA(INVALID_HANDLE_VALUE, nullptr, PAGE_READWRITE, 0, sizeof(BuffT), mappingName);
     if (hMap == nullptr) {
-      if (GetLastError() == ERROR_ALREADY_EXISTS) {
-        hMap = OpenFileMapping(FILE_MAP_ALL_ACCESS, FALSE, TEXT(tag));
-        if (hMap == nullptr) {
-          return nullptr;
-        }
-      }
+      DEBUG_MSG2(DebugLevel::Errors, "Failed to create file mapping for file:", mappingName);
+      SharedMemoryPlugin::TraceLastWin32Error();
+      return nullptr;
     }
+    
+    if (::GetLastError() == ERROR_ALREADY_EXISTS)
+      DEBUG_MSG2(DebugLevel::Warnings, "WARNING: File mapping already exists for file:", mappingName);
 
-    pBuf = static_cast<BuffT*>(MapViewOfFile(hMap, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(BuffT)));
+    pBuf = static_cast<BuffT*>(::MapViewOfFile(hMap, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(BuffT)));
     if (pBuf == nullptr) {
-      // Failed to map memory buffer
-      CloseHandle(hMap);
+      SharedMemoryPlugin::TraceLastWin32Error();
+
+      // Failed to map memory buffer.
+      if (!::CloseHandle(hMap)) {
+        DEBUG_MSG(DebugLevel::Errors, "Failed to close mapped file handle.");
+        SharedMemoryPlugin::TraceLastWin32Error();
+      }
+
       return nullptr;
     }
 

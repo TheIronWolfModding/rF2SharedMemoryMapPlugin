@@ -260,6 +260,8 @@ void SharedMemoryPlugin::Shutdown()
     msIsiScoringFile = nullptr;
   }
 
+  mIsMapped = false;
+
   mTelemetry.ClearState(nullptr /*pInitialContents*/);
   mTelemetry.ReleaseResources();
 
@@ -271,8 +273,6 @@ void SharedMemoryPlugin::Shutdown()
 
   mExtended.ClearState(nullptr /*pInitialContents*/);
   mExtended.ReleaseResources();
-
-  mIsMapped = false;
 }
 
 void SharedMemoryPlugin::ClearTimingsAndCounters()
@@ -831,4 +831,27 @@ void SharedMemoryPlugin::WriteDebugMsg(DebugLevel lvl, const char* const format,
     fflush(SharedMemoryPlugin::msDebugFile);
     lastFlushTicks = ticksNow;
   }
+}
+
+
+void SharedMemoryPlugin::TraceLastWin32Error()
+{
+  if (SharedMemoryPlugin::msDebugOutputLevel < DebugLevel::Errors)
+    return;
+
+  auto const lastError = ::GetLastError();
+  if (lastError == 0)
+    return;
+
+  LPSTR messageBuffer = nullptr;
+  auto const retChars = ::FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+    nullptr  /*lpSource*/, lastError, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), reinterpret_cast<LPSTR>(&messageBuffer), 
+    0  /*nSize*/, nullptr  /*argunments*/);
+
+  DEBUG_INT2(DebugLevel::Errors, "Win32 error code:", lastError);
+  
+  if (retChars > 0 && messageBuffer != nullptr)
+    DEBUG_MSG2(DebugLevel::Errors, "Win32 error description:", messageBuffer);
+
+  ::LocalFree(messageBuffer);
 }
