@@ -220,12 +220,16 @@ namespace rF2SMMonitor
     MappedDoubleBuffer<rF2Scoring> scoringBuffer = new MappedDoubleBuffer<rF2Scoring>(rFactor2Constants.MM_SCORING_FILE_NAME1,
       rFactor2Constants.MM_SCORING_FILE_NAME2, rFactor2Constants.MM_SCORING_FILE_ACCESS_MUTEX);
 
+    MappedDoubleBuffer<rF2Rules> rulesBuffer = new MappedDoubleBuffer<rF2Rules>(rFactor2Constants.MM_RULES_FILE_NAME1,
+      rFactor2Constants.MM_RULES_FILE_NAME2, rFactor2Constants.MM_RULES_FILE_ACCESS_MUTEX);
+
     MappedDoubleBuffer<rF2Extended> extendedBuffer = new MappedDoubleBuffer<rF2Extended>(rFactor2Constants.MM_EXTENDED_FILE_NAME1,
       rFactor2Constants.MM_EXTENDED_FILE_NAME2, rFactor2Constants.MM_EXTENDED_FILE_ACCESS_MUTEX);
 
     // Marshalled views:
     rF2Telemetry telemetry;
     rF2Scoring scoring;
+    rF2Rules rules;
     rF2Extended extended;
 
     // Track rF2 transitions.
@@ -458,6 +462,8 @@ namespace rF2SMMonitor
             this.tracker.TrackPhase(ref this.scoring, ref this.telemetry, ref this.extended, null, this.logPhaseAndState);
             this.tracker.TrackDamage(ref this.scoring, ref this.telemetry, ref this.extended, null, this.logPhaseAndState);
             this.tracker.TrackTimings(ref this.scoring, ref this.telemetry, ref this.extended, null, this.logPhaseAndState);
+
+            // TODO: Rules possibly.
           }
           else
           {
@@ -484,6 +490,7 @@ namespace rF2SMMonitor
         extendedBuffer.GetMappedData(ref extended);
         scoringBuffer.GetMappedDataPartial(ref scoring);
         telemetryBuffer.GetMappedDataPartial(ref telemetry);
+        rulesBuffer.GetMappedDataPartial(ref rules);
       }
       catch (Exception)
       {
@@ -538,6 +545,7 @@ namespace rF2SMMonitor
       this.tracker.TrackPhase(ref this.scoring, ref this.telemetry, ref this.extended, g, this.logPhaseAndState);
       this.tracker.TrackDamage(ref this.scoring, ref this.telemetry, ref this.extended, g, this.logPhaseAndState);
       this.tracker.TrackTimings(ref this.scoring, ref this.telemetry, ref this.extended, g, this.logPhaseAndState);
+      // TODO: possibly move rules to tracker.
 
       this.UpdateFPS();
 
@@ -682,6 +690,28 @@ namespace rF2SMMonitor
           + $"{pitch:N3}\n"
           + $"{roll:N3}\n"
           + string.Format("{0:n3} m/s {1:n4} km/h\n", speed, speed * 3.6));
+
+        // Col2 values
+        g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Purple, currX + 120, currY);
+
+        ////////////////////////////////////////////////////////////
+        // Rules
+        // TODO: possibly move rules to tracker.
+        gameStateText.Clear();
+
+        gameStateText.Append(
+          "mNumActions:\n"
+          + "mNumParticipants:\n");
+
+        // Col 2 labels
+        currY = 3.0f;
+        g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, brush, currX += 900, currY);
+        
+        gameStateText.Clear();
+
+        gameStateText.Append(
+          $"{rules.mTrackRules.mNumActions}\n"
+          + $"{rules.mTrackRules.mNumParticipants}\n");
 
         // Col2 values
         g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Purple, currX + 120, currY);
@@ -866,6 +896,7 @@ namespace rF2SMMonitor
         {
           this.telemetryBuffer.Connect();
           this.scoringBuffer.Connect();
+          this.rulesBuffer.Connect();
           this.extendedBuffer.Connect();
 
           this.connected = true;
@@ -901,6 +932,7 @@ namespace rF2SMMonitor
     {
       this.extendedBuffer.Disconnect();
       this.scoringBuffer.Disconnect();
+      this.rulesBuffer.Disconnect();
       this.telemetryBuffer.Disconnect();
 
       this.connected = false;
