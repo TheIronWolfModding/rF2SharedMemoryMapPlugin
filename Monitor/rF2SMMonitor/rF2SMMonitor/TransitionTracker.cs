@@ -23,8 +23,10 @@ namespace rF2SMMonitor
     private static readonly string basePath = Path.GetDirectoryName(System.Reflection.Assembly.GetEntryAssembly().Location) + "\\logs";
     private static readonly string phaseAndStateTrackingFilePath = $"{basePath}\\{fileTimesTampString}___PhaseAndStateTracking.log";
     private static readonly string damageTrackingFilePath = $"{basePath}\\{fileTimesTampString}___DamageTracking.log";
+    private static readonly string rulesTrackingFilePath = $"{basePath}\\{fileTimesTampString}___RulesTracking.log";
     private static readonly string phaseAndStateDeltaTrackingFilePath = $"{basePath}\\{fileTimesTampString}___PhaseAndStateTrackingDelta.log";
     private static readonly string damageTrackingDeltaFilePath = $"{basePath}\\{fileTimesTampString}___DamageTrackingDelta.log";
+    private static readonly string rulesTrackingDeltaFilePath = $"{basePath}\\{fileTimesTampString}___RulesTrackingDelta.log";
     private static readonly string timingTrackingFilePath = $"{basePath}\\{fileTimesTampString}___TimingTracking.log";
 
     internal TransitionTracker()
@@ -132,6 +134,7 @@ namespace rF2SMMonitor
     rF2GamePhase lastDamageTrackingGamePhase = (rF2GamePhase)Enum.ToObject(typeof(rF2GamePhase), -255);
     rF2GamePhase lastPhaseTrackingGamePhase = (rF2GamePhase)Enum.ToObject(typeof(rF2GamePhase), -255);
     rF2GamePhase lastTimingTrackingGamePhase = (rF2GamePhase)Enum.ToObject(typeof(rF2GamePhase), -255);
+    rF2GamePhase lastRulesTrackingGamePhase = (rF2GamePhase)Enum.ToObject(typeof(rF2GamePhase), -255);
 
     private float screenYStart = 170.0f;
 
@@ -1199,6 +1202,288 @@ namespace rF2SMMonitor
       sbDetails.Append($"lastS1: {this.lapTimeStr(pti.lastS1Time)}    lastS2: {this.lapTimeStr(pti.lastS2Time)}    lastS3: {this.lapTimeStr(pti.lastS3Time)}\n");
       sbDetails.Append($"currS1: {this.lapTimeStr(pti.currS1Time)}    currS2: {this.lapTimeStr(pti.currS2Time)}    currS3: {this.lapTimeStr(pti.currS3Time)}\n");
       sbDetails.Append($"bestS1: {this.lapTimeStr(pti.bestS1Time)}    bestS2: {this.lapTimeStr(pti.bestS2Time)}    bestS3: {this.lapTimeStr(pti.bestS3Time)}    bestTotal: {this.lapTimeStr(pti.bestS1Time + pti.bestS2Time + pti.bestS3Time)}\n");
+    }
+
+    internal class Rules
+    {
+      public rF2TrackRulesStage mStage = (rF2TrackRulesStage)Enum.ToObject(typeof(rF2TrackRulesStage), -255);
+      public rF2TrackRulesColumn mPoleColumn = (rF2TrackRulesColumn)Enum.ToObject(typeof(rF2TrackRulesColumn), -255);      // column assignment where pole position seems to be located
+      public int mNumActions = -1;                     // number of recent actions
+      public int mNumParticipants = -1;                // number of participants (vehicles)
+
+      public byte mYellowFlagDetected = 255;             // whether yellow flag was requested or sum of participant mYellowSeverity's exceeds mSafetyCarThreshold
+      public byte mYellowFlagLapsWasOverridden = 255;    // whether mYellowFlagLaps (below) is an admin request
+
+      public byte mSafetyCarExists = 255;                // whether safety car even exists
+      public byte mSafetyCarActive = 255;                // whether safety car is active
+      public int mSafetyCarLaps = 255;                  // number of laps
+      public float mSafetyCarThreshold = -1.0f;            // the threshold at which a safety car is called out (compared to the sum of TrackRulesParticipantV01::mYellowSeverity for each vehicle)
+      //public double mSafetyCarLapDist;             // safety car lap distance
+      //public float mSafetyCarLapDistAtStart;       // where the safety car starts from
+
+      public float mPitLaneStartDist = -1.0f;              // where the waypoint branch to the pits breaks off (this may not be perfectly accurate)
+      public float mTeleportLapDist = -1.0f;               // the front of the teleport locations (a useful first guess as to where to throw the green flag)
+
+      // input/output
+      public sbyte mYellowFlagState = 127;         // see ScoringInfoV01 for values
+      public short mYellowFlagLaps = 127;                // suggested number of laps to run under yellow (may be passed in with admin command)
+
+      public rF2SafetyCarInstruction mSafetyCarInstruction = (rF2SafetyCarInstruction)Enum.ToObject(typeof(rF2SafetyCarInstruction), -255);
+      public float mSafetyCarSpeed = -1.0f;                // maximum speed at which to drive
+      public float mSafetyCarMinimumSpacing = -2.0f;       // minimum spacing behind safety car (-1 to indicate no limit)
+      public float mSafetyCarMaximumSpacing = -2.0f;       // maximum spacing behind safety car (-1 to indicate no limit)
+
+      public float mMinimumColumnSpacing = -2.0f;          // minimum desired spacing between vehicles in a column (-1 to indicate indeterminate/unenforced)
+      public float mMaximumColumnSpacing = -2.0f;          // maximum desired spacing between vehicles in a column (-1 to indicate indeterminate/unenforced)
+
+      public float mMinimumSpeed = -2.0f;                  // minimum speed that anybody should be driving (-1 to indicate no limit)
+      public float mMaximumSpeed = -2.0f;                  // maximum speed that anybody should be driving (-1 to indicate no limit)
+
+      public string mMessage = "unknown";                  // a message for everybody to explain what is going on (which will get run through translator on client machines)
+    }
+
+    internal Rules prevRules = new Rules();
+    internal StringBuilder sbRulesChanged = new StringBuilder();
+    internal StringBuilder sbRulesLabel = new StringBuilder();
+    internal StringBuilder sbRulesValues = new StringBuilder();
+
+    internal void TrackRules(ref rF2Scoring scoring, ref rF2Telemetry telemetry, ref rF2Rules rules, ref rF2Extended extended, Graphics g, bool logToFile)
+    {
+      if (logToFile)
+      {
+        if ((this.lastRulesTrackingGamePhase == rF2GamePhase.Garage
+              || this.lastRulesTrackingGamePhase == rF2GamePhase.SessionOver
+              || this.lastRulesTrackingGamePhase == rF2GamePhase.SessionStopped
+              || (int)this.lastRulesTrackingGamePhase == 9)  // What is 9? 
+            && ((rF2GamePhase)scoring.mScoringInfo.mGamePhase == rF2GamePhase.Countdown
+              || (rF2GamePhase)scoring.mScoringInfo.mGamePhase == rF2GamePhase.Formation
+              || (rF2GamePhase)scoring.mScoringInfo.mGamePhase == rF2GamePhase.GridWalk
+              || (rF2GamePhase)scoring.mScoringInfo.mGamePhase == rF2GamePhase.GreenFlag))
+        {
+          var lines = new List<string>();
+          lines.Add("\n");
+          lines.Add("************************************************************************************");
+          lines.Add("* NEW SESSION **********************************************************************");
+          lines.Add("************************************************************************************");
+          File.AppendAllLines(rulesTrackingFilePath, lines);
+          File.AppendAllLines(rulesTrackingDeltaFilePath, lines);
+        }
+      }
+
+      this.lastRulesTrackingGamePhase = (rF2GamePhase)scoring.mScoringInfo.mGamePhase;
+
+      if (scoring.mScoringInfo.mNumVehicles == 0)
+        return;
+
+      // Build map of mID -> telemetry.mVehicles[i]. 
+      // They are typically matching values, however, we need to handle online cases and dropped vehicles (mID can be reused).
+      var idsToTelIndices = new Dictionary<long, int>();
+      for (int i = 0; i < telemetry.mNumVehicles; ++i)
+      {
+        if (!idsToTelIndices.ContainsKey(telemetry.mVehicles[i].mID))
+          idsToTelIndices.Add(telemetry.mVehicles[i].mID, i);
+      }
+
+      var playerVeh = MainForm.GetPlayerScoring(ref scoring);
+
+      if (playerVeh.mIsPlayer != 1)
+        return;
+
+      var scoringPlrId = playerVeh.mID;
+      if (!idsToTelIndices.ContainsKey(scoringPlrId))
+        return;
+
+      var resolvedIdx = idsToTelIndices[scoringPlrId];
+      var playerVehTelemetry = telemetry.mVehicles[resolvedIdx];
+
+      var rs = new Rules();
+
+      rs.mStage = rules.mTrackRules.mStage;
+      rs.mPoleColumn = rules.mTrackRules.mPoleColumn;
+      rs.mNumActions = rules.mTrackRules.mNumActions;
+      rs.mNumParticipants = rules.mTrackRules.mNumParticipants;
+      rs.mYellowFlagDetected = rules.mTrackRules.mYellowFlagDetected;
+      rs.mYellowFlagLapsWasOverridden = rules.mTrackRules.mYellowFlagLapsWasOverridden;
+      rs.mSafetyCarExists = rules.mTrackRules.mSafetyCarExists;
+      rs.mSafetyCarActive = rules.mTrackRules.mSafetyCarActive;
+      rs.mSafetyCarLaps = rules.mTrackRules.mSafetyCarLaps;
+      rs.mSafetyCarThreshold = rules.mTrackRules.mSafetyCarThreshold;
+      //public double mSafetyCarLapDist;             // safety car lap distance
+      //public float mSafetyCarLapDistAtStart;       // where the safety car starts from
+      rs.mPitLaneStartDist = rules.mTrackRules.mPitLaneStartDist;
+      rs.mTeleportLapDist = rules.mTrackRules.mTeleportLapDist;
+      rs.mYellowFlagState = rules.mTrackRules.mYellowFlagState;
+      rs.mYellowFlagLaps = rules.mTrackRules.mYellowFlagLaps;
+      rs.mSafetyCarInstruction = (rF2SafetyCarInstruction)rules.mTrackRules.mSafetyCarInstruction;
+      rs.mSafetyCarSpeed = rules.mTrackRules.mSafetyCarSpeed;
+      rs.mSafetyCarMinimumSpacing = rules.mTrackRules.mSafetyCarMinimumSpacing;
+      rs.mSafetyCarMaximumSpacing = rules.mTrackRules.mSafetyCarMaximumSpacing;
+      rs.mMinimumColumnSpacing = rules.mTrackRules.mMinimumColumnSpacing;
+      rs.mMaximumColumnSpacing = rules.mTrackRules.mMaximumColumnSpacing;
+      rs.mMinimumSpeed = rules.mTrackRules.mMinimumSpeed;
+      rs.mMaximumSpeed = rules.mTrackRules.mMaximumSpeed;
+      rs.mMessage = TransitionTracker.getStringFromBytes(rules.mTrackRules.mMessage);
+   
+      // Only refresh UI if there's change.
+      if (rs.mStage != this.prevRules.mStage
+        || rs.mPoleColumn != this.prevRules.mPoleColumn
+        || rs.mNumActions != this.prevRules.mNumActions
+        || rs.mNumParticipants != this.prevRules.mNumParticipants
+        || rs.mYellowFlagDetected != this.prevRules.mYellowFlagDetected
+        || rs.mYellowFlagLapsWasOverridden != this.prevRules.mYellowFlagLapsWasOverridden
+        || rs.mSafetyCarExists != this.prevRules.mSafetyCarExists
+        || rs.mSafetyCarActive != this.prevRules.mSafetyCarActive
+        || rs.mSafetyCarLaps != this.prevRules.mSafetyCarLaps
+        || rs.mSafetyCarThreshold != this.prevRules.mSafetyCarThreshold
+        //public double mSafetyCarLapDist             // safety car lap distance
+        //public float mSafetyCarLapDistAtStart       // where the safety car starts from
+        || rs.mPitLaneStartDist != this.prevRules.mPitLaneStartDist
+        || rs.mTeleportLapDist != this.prevRules.mTeleportLapDist
+        || rs.mYellowFlagState != this.prevRules.mYellowFlagState
+        || rs.mYellowFlagLaps != this.prevRules.mYellowFlagLaps
+        || rs.mSafetyCarInstruction != this.prevRules.mSafetyCarInstruction
+        || rs.mSafetyCarSpeed != this.prevRules.mSafetyCarSpeed
+        || rs.mSafetyCarMinimumSpacing != this.prevRules.mSafetyCarMinimumSpacing
+        || rs.mSafetyCarMaximumSpacing != this.prevRules.mSafetyCarMaximumSpacing
+        || rs.mMinimumColumnSpacing != this.prevRules.mMinimumColumnSpacing
+        || rs.mMaximumColumnSpacing != this.prevRules.mMaximumColumnSpacing
+        || rs.mMinimumSpeed != this.prevRules.mMinimumSpeed
+        || rs.mMaximumSpeed != this.prevRules.mMaximumSpeed
+        || rs.mMessage != this.prevRules.mMessage)
+      {
+        this.sbRulesChanged = new StringBuilder();
+        sbRulesChanged.Append((rs.mStage != this.prevRules.mStage ? "***\n" : "\n")
+          + (rs.mPoleColumn != this.prevRules.mPoleColumn ? "***\n" : "\n")
+          + (rs.mNumActions != this.prevRules.mNumActions ? "***\n" : "\n")
+          + (rs.mNumParticipants != this.prevRules.mNumParticipants ? "***\n" : "\n")
+          + (rs.mYellowFlagDetected != this.prevRules.mYellowFlagDetected ? "***\n" : "\n")
+          + (rs.mYellowFlagLapsWasOverridden != this.prevRules.mYellowFlagLapsWasOverridden ? "***\n" : "\n")
+          + (rs.mSafetyCarExists != this.prevRules.mSafetyCarExists ? "***\n" : "\n")
+          + (rs.mSafetyCarActive != this.prevRules.mSafetyCarActive ? "***\n" : "\n")
+          + (rs.mSafetyCarLaps != this.prevRules.mSafetyCarLaps ? "***\n" : "\n")
+          + (rs.mSafetyCarThreshold != this.prevRules.mSafetyCarThreshold ? "***\n" : "\n")
+          //public double mSafetyCarLapDist             // safety car lap distance
+          //public float mSafetyCarLapDistAtStart       // where the safety car starts from
+          + (rs.mPitLaneStartDist != this.prevRules.mPitLaneStartDist ? "***\n" : "\n")
+          + (rs.mTeleportLapDist != this.prevRules.mTeleportLapDist ? "***\n" : "\n")
+          + (rs.mYellowFlagState != this.prevRules.mYellowFlagState ? "***\n" : "\n")
+          + (rs.mYellowFlagLaps != this.prevRules.mYellowFlagLaps ? "***\n" : "\n")
+          + (rs.mSafetyCarInstruction != this.prevRules.mSafetyCarInstruction ? "***\n" : "\n")
+          + (rs.mSafetyCarSpeed != this.prevRules.mSafetyCarSpeed ? "***\n" : "\n")
+          + (rs.mSafetyCarMinimumSpacing != this.prevRules.mSafetyCarMinimumSpacing ? "***\n" : "\n")
+          + (rs.mSafetyCarMaximumSpacing != this.prevRules.mSafetyCarMaximumSpacing ? "***\n" : "\n")
+          + (rs.mMinimumColumnSpacing != this.prevRules.mMinimumColumnSpacing ? "***\n" : "\n")
+          + (rs.mMaximumColumnSpacing != this.prevRules.mMaximumColumnSpacing ? "***\n" : "\n")
+          + (rs.mMinimumSpeed != this.prevRules.mMinimumSpeed ? "***\n" : "\n")
+          + (rs.mMaximumSpeed != this.prevRules.mMaximumSpeed ? "***\n" : "\n")
+          + (rs.mMessage != this.prevRules.mMessage ? "***\n" : "\n"));
+
+        // Save current Rules and state.
+        this.prevRules = rs;
+
+        this.sbRulesLabel = new StringBuilder();
+        sbRulesLabel.Append("mStage:\n"
+          + "mPoleColumn:\n"
+          + "mNumActions:\n"
+          + "mNumParticipants:\n"
+          + "mYellowFlagDetected:\n"
+          + "mYellowFlagLapsWasOverridden:\n"
+          + "mSafetyCarExists:\n"
+          + "mSafetyCarActive:\n"
+          + "mSafetyCarLaps:\n"
+          + "mSafetyCarThreshold:\n"
+          //public double mSafetyCarLapDist;             // safety car lap distance
+          //public float mSafetyCarLapDistAtStart;       // where the safety car starts from
+          + "mPitLaneStartDist:\n"
+          + "mTeleportLapDist:\n"
+          + "mYellowFlagState:\n"
+          + "mYellowFlagLaps:\n"
+          + "mSafetyCarInstruction:\n"
+          + "mSafetyCarSpeed:\n"
+          + "mSafetyCarMinimumSpacing:\n"
+          + "mSafetyCarMaximumSpacing:\n"
+          + "mMinimumColumnSpacing:\n"
+          + "mMaximumColumnSpacing:\n"
+          + "mMinimumSpeed:\n"
+          + "mMaximumSpeed:\n"
+          + "mMessage:\n");
+
+        this.sbRulesValues = new StringBuilder();
+        sbRulesValues.Append($"{rs.mStage}\n"
+          + $"{rs.mPoleColumn}\n"
+          + $"{rs.mNumActions}\n"
+          + $"{rs.mNumParticipants}\n"
+          + $"{rs.mYellowFlagDetected}\n"
+          + (rs.mYellowFlagLapsWasOverridden == 0 ? $"false({rs.mYellowFlagLapsWasOverridden})" : $"true({rs.mYellowFlagLapsWasOverridden})") + "\n"
+          + (rs.mSafetyCarExists == 0 ? $"false({rs.mSafetyCarExists})" : $"true({rs.mSafetyCarExists})") + "\n"
+          + (rs.mSafetyCarActive == 0 ? $"false({rs.mSafetyCarActive})" : $"true({rs.mSafetyCarActive})") + "\n"
+          + $"{rs.mSafetyCarLaps}\n"
+          + $"{rs.mSafetyCarThreshold:N3}\n"
+          //public double mSafetyCarLapDist;             // safety car lap distance
+          //public float mSafetyCarLapDistAtStart;       // where the safety car starts from
+          + $"{rs.mPitLaneStartDist:N3}\n"
+          + $"{rs.mTeleportLapDist:N3}\n"         
+          + $"{GetEnumString<rF2YellowFlagState>(rs.mYellowFlagState)}\n"
+          + $"{rs.mYellowFlagLaps}\n"
+          + $"{rs.mSafetyCarInstruction}\n"
+          + $"{rs.mSafetyCarSpeed:N3}\n"
+          + $"{rs.mSafetyCarMinimumSpacing:N3}\n"
+          + $"{rs.mSafetyCarMaximumSpacing:N3}\n"
+          + $"{rs.mMinimumColumnSpacing:N3}\n"
+          + $"{rs.mMaximumColumnSpacing}\n"
+          + $"{rs.mMinimumSpeed:N3}\n"
+          + $"{rs.mMaximumSpeed:N3}\n"
+          + $"{rs.mMessage}\n");
+        //+ $"{GetEnumString<rF2YellowFlagState>(scoring.mScoringInfo.mYellowFlagState)}\n"
+
+
+        if (logToFile)
+        {
+          var changed = this.sbRulesChanged.ToString().Split('\n');
+          var labels = this.sbRulesLabel.ToString().Split('\n');
+          var values = this.sbRulesValues.ToString().Split('\n');
+
+          var list = new List<string>(changed);
+          changed = list.ToArray();
+
+          list = new List<string>(labels);
+          labels = list.ToArray();
+
+          list = new List<string>(values);
+          values = list.ToArray();
+
+          Debug.Assert(changed.Length == labels.Length && values.Length == labels.Length);
+
+          var lines = new List<string>();
+          var updateTime = DateTime.Now.ToString();
+
+          lines.Add($"\n{updateTime}");
+          for (int i = 0; i < changed.Length; ++i)
+            lines.Add($"{changed[i]}{labels[i]}{values[i]}");
+
+          File.AppendAllLines(rulesTrackingFilePath, lines);
+
+          lines.Clear();
+
+          lines.Add($"\n{updateTime}");
+          for (int i = 0; i < changed.Length; ++i)
+          {
+            if (changed[i].StartsWith("***"))
+              lines.Add($"{changed[i]}{labels[i]}{values[i]}");
+          }
+
+          File.AppendAllLines(rulesTrackingDeltaFilePath, lines);
+        }
+      }
+
+      if (g != null)
+      {
+        float rulesY = 3.0f;
+        float rulesX = 1200.0f;
+        g.DrawString(this.sbRulesChanged.ToString(), SystemFonts.DefaultFont, Brushes.Orange, rulesX, rulesY);
+        g.DrawString(this.sbRulesLabel.ToString(), SystemFonts.DefaultFont, Brushes.Green, rulesX + 30.0f, rulesY);
+        g.DrawString(this.sbRulesValues.ToString(), SystemFonts.DefaultFont, Brushes.Purple, rulesX + 200.0f, rulesY);
+      }
     }
   }
 }

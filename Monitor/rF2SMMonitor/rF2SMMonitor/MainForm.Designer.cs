@@ -35,10 +35,11 @@ namespace rF2SMMonitor
       this.xOffsetTextBox = new System.Windows.Forms.TextBox();
       this.xOffsetLabel = new System.Windows.Forms.Label();
       this.groupBoxLogging = new System.Windows.Forms.GroupBox();
-      this.checkBoxLightMode = new System.Windows.Forms.CheckBox();
+      this.checkBoxLogTiming = new System.Windows.Forms.CheckBox();
       this.checkBoxLogDamage = new System.Windows.Forms.CheckBox();
       this.checkBoxLogPhaseAndState = new System.Windows.Forms.CheckBox();
-      this.checkBoxLogTiming = new System.Windows.Forms.CheckBox();
+      this.checkBoxLightMode = new System.Windows.Forms.CheckBox();
+      this.checkBoxLogRules = new System.Windows.Forms.CheckBox();
       ((System.ComponentModel.ISupportInitialize)(this.view)).BeginInit();
       this.groupBoxFocus.SuspendLayout();
       this.globalGroupBox.SuspendLayout();
@@ -168,6 +169,7 @@ namespace rF2SMMonitor
       // 
       // groupBoxLogging
       // 
+      this.groupBoxLogging.Controls.Add(this.checkBoxLogRules);
       this.groupBoxLogging.Controls.Add(this.checkBoxLogTiming);
       this.groupBoxLogging.Controls.Add(this.checkBoxLogDamage);
       this.groupBoxLogging.Controls.Add(this.checkBoxLogPhaseAndState);
@@ -178,15 +180,15 @@ namespace rF2SMMonitor
       this.groupBoxLogging.TabStop = false;
       this.groupBoxLogging.Text = "File Logging";
       // 
-      // checkBoxLightMode
+      // checkBoxLogTiming
       // 
-      this.checkBoxLightMode.AutoSize = true;
-      this.checkBoxLightMode.Location = new System.Drawing.Point(5, 6);
-      this.checkBoxLightMode.Name = "checkBoxLightMode";
-      this.checkBoxLightMode.Size = new System.Drawing.Size(78, 17);
-      this.checkBoxLightMode.TabIndex = 11;
-      this.checkBoxLightMode.Text = "Light mode";
-      this.checkBoxLightMode.UseVisualStyleBackColor = true;
+      this.checkBoxLogTiming.AutoSize = true;
+      this.checkBoxLogTiming.Location = new System.Drawing.Point(109, 13);
+      this.checkBoxLogTiming.Name = "checkBoxLogTiming";
+      this.checkBoxLogTiming.Size = new System.Drawing.Size(57, 17);
+      this.checkBoxLogTiming.TabIndex = 11;
+      this.checkBoxLogTiming.Text = "Timing";
+      this.checkBoxLogTiming.UseVisualStyleBackColor = true;
       // 
       // checkBoxLogDamage
       // 
@@ -208,15 +210,25 @@ namespace rF2SMMonitor
       this.checkBoxLogPhaseAndState.Text = "Phase and State";
       this.checkBoxLogPhaseAndState.UseVisualStyleBackColor = true;
       // 
+      // checkBoxLightMode
+      // 
+      this.checkBoxLightMode.AutoSize = true;
+      this.checkBoxLightMode.Location = new System.Drawing.Point(5, 6);
+      this.checkBoxLightMode.Name = "checkBoxLightMode";
+      this.checkBoxLightMode.Size = new System.Drawing.Size(78, 17);
+      this.checkBoxLightMode.TabIndex = 11;
+      this.checkBoxLightMode.Text = "Light mode";
+      this.checkBoxLightMode.UseVisualStyleBackColor = true;
+      // 
       // checkBox1
       // 
-      this.checkBoxLogTiming.AutoSize = true;
-      this.checkBoxLogTiming.Location = new System.Drawing.Point(109, 13);
-      this.checkBoxLogTiming.Name = "checkBoxLogTiming";
-      this.checkBoxLogTiming.Size = new System.Drawing.Size(66, 17);
-      this.checkBoxLogTiming.TabIndex = 11;
-      this.checkBoxLogTiming.Text = "Timing";
-      this.checkBoxLogTiming.UseVisualStyleBackColor = true;
+      this.checkBoxLogRules.AutoSize = true;
+      this.checkBoxLogRules.Location = new System.Drawing.Point(109, 32);
+      this.checkBoxLogRules.Name = "checkBoxLogRules";
+      this.checkBoxLogRules.Size = new System.Drawing.Size(57, 17);
+      this.checkBoxLogRules.TabIndex = 12;
+      this.checkBoxLogRules.Text = "Rules";
+      this.checkBoxLogRules.UseVisualStyleBackColor = true;
       // 
       // MainForm
       // 
@@ -265,6 +277,7 @@ namespace rF2SMMonitor
     private System.Windows.Forms.CheckBox checkBoxLightMode;
     private System.Windows.Forms.CheckBox checkBoxLogDamage;
     private System.Windows.Forms.CheckBox checkBoxLogTiming;
+    private System.Windows.Forms.CheckBox checkBoxLogRules;
   }
 }
 

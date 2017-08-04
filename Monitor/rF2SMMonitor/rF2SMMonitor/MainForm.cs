@@ -246,6 +246,7 @@ namespace rF2SMMonitor
     bool logPhaseAndState = true;
     bool logDamage = true;
     bool logTiming = true;
+    bool logRules = true;
     bool logLightMode = false;
 
     [StructLayout(LayoutKind.Sequential)]
@@ -284,6 +285,7 @@ namespace rF2SMMonitor
       this.checkBoxLogPhaseAndState.CheckedChanged += CheckBoxLogPhaseAndState_CheckedChanged;
       this.checkBoxLogDamage.CheckedChanged += CheckBoxLogDamage_CheckedChanged;
       this.checkBoxLogTiming.CheckedChanged += CheckBoxLogTiming_CheckedChanged;
+      this.checkBoxLogRules.CheckedChanged += CheckBoxLogRules_CheckedChanged;
       this.checkBoxLightMode.CheckedChanged += CheckBoxLightMode_CheckedChanged;
       this.MouseWheel += MainForm_MouseWheel;
 
@@ -301,6 +303,12 @@ namespace rF2SMMonitor
       this.view.MouseClick += MainForm_MouseClick;
 
       Application.Idle += HandleApplicationIdle;
+    }
+
+    private void CheckBoxLogRules_CheckedChanged(object sender, EventArgs e)
+    {
+      this.logRules = this.checkBoxLogRules.Checked;
+      this.config.Write("logRules", this.logRules ? "1" : "0");
     }
 
     private void CheckBoxLightMode_CheckedChanged(object sender, EventArgs e)
@@ -460,10 +468,9 @@ namespace rF2SMMonitor
           {
             // being lazy lazy lazy.
             this.tracker.TrackPhase(ref this.scoring, ref this.telemetry, ref this.extended, null, this.logPhaseAndState);
-            this.tracker.TrackDamage(ref this.scoring, ref this.telemetry, ref this.extended, null, this.logPhaseAndState);
-            this.tracker.TrackTimings(ref this.scoring, ref this.telemetry, ref this.extended, null, this.logPhaseAndState);
-
-            // TODO: Rules possibly.
+            this.tracker.TrackDamage(ref this.scoring, ref this.telemetry, ref this.extended, null, this.logDamage);
+            this.tracker.TrackTimings(ref this.scoring, ref this.telemetry, ref this.extended, null, this.logTiming);
+            this.tracker.TrackRules(ref this.scoring, ref this.telemetry, ref this.rules, ref this.extended, null, this.logRules);
           }
           else
           {
@@ -543,9 +550,9 @@ namespace rF2SMMonitor
       var g = e.Graphics;
 
       this.tracker.TrackPhase(ref this.scoring, ref this.telemetry, ref this.extended, g, this.logPhaseAndState);
-      this.tracker.TrackDamage(ref this.scoring, ref this.telemetry, ref this.extended, g, this.logPhaseAndState);
-      this.tracker.TrackTimings(ref this.scoring, ref this.telemetry, ref this.extended, g, this.logPhaseAndState);
-      // TODO: possibly move rules to tracker.
+      this.tracker.TrackDamage(ref this.scoring, ref this.telemetry, ref this.extended, g, this.logDamage);
+      this.tracker.TrackTimings(ref this.scoring, ref this.telemetry, ref this.extended, g, this.logTiming);
+      this.tracker.TrackRules(ref this.scoring, ref this.telemetry, ref this.rules, ref this.extended, g, this.logRules);
 
       this.UpdateFPS();
 
@@ -690,28 +697,6 @@ namespace rF2SMMonitor
           + $"{pitch:N3}\n"
           + $"{roll:N3}\n"
           + string.Format("{0:n3} m/s {1:n4} km/h\n", speed, speed * 3.6));
-
-        // Col2 values
-        g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Purple, currX + 120, currY);
-
-        ////////////////////////////////////////////////////////////
-        // Rules
-        // TODO: possibly move rules to tracker.
-        gameStateText.Clear();
-
-        gameStateText.Append(
-          "mNumActions:\n"
-          + "mNumParticipants:\n");
-
-        // Col 2 labels
-        currY = 3.0f;
-        g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, brush, currX += 900, currY);
-        
-        gameStateText.Clear();
-
-        gameStateText.Append(
-          $"{rules.mTrackRules.mNumActions}\n"
-          + $"{rules.mTrackRules.mNumParticipants}\n");
 
         // Col2 values
         g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Purple, currX + 120, currY);
@@ -1034,8 +1019,15 @@ namespace rF2SMMonitor
       this.logTiming = true;
       if (int.TryParse(this.config.Read("logTiming"), out intResult) && intResult == 0)
         this.logTiming = false;
-
+      
       this.checkBoxLogTiming.Checked = this.logTiming;
+
+      intResult = 0;
+      this.logRules = true;
+      if (int.TryParse(this.config.Read("logRules"), out intResult) && intResult == 0)
+        this.logRules = false;
+
+      this.checkBoxLogRules.Checked = this.logRules;
     }
   }
 }

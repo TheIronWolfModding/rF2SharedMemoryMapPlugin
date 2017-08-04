@@ -173,6 +173,13 @@ namespace rF2SMMonitor
       Ignition = 1,
       IgnitionAndStarter = 2
     }
+
+    // 0=no change, 1=go active, 2=head for pits
+    public enum rF2SafetyCarInstruction {
+      NoChange = 0,
+      GoActive = 1,
+      HeadForPits = 2
+    }
   }
 
   namespace rFactor2Data
@@ -641,8 +648,8 @@ namespace rF2SMMonitor
     {
       // input only
       public double mCurrentET;                    // current time
-      rF2TrackRulesStage mStage;            // current stage
-      rF2TrackRulesColumn mPoleColumn;      // column assignment where pole position seems to be located
+      public rF2TrackRulesStage mStage;            // current stage
+      public rF2TrackRulesColumn mPoleColumn;      // column assignment where pole position seems to be located
       public int mNumActions;                     // number of recent actions
 
       // MM_NOT_USED

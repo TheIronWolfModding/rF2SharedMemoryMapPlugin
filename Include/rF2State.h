@@ -153,6 +153,13 @@ enum class rF2IgnitionStarterStatus {
   IgnitionAndStarter = 2
 };
 
+// 0=no change, 1=go active, 2=head for pits
+enum class rF2SafetyCarInstruction {
+  NoChange = 0,
+  GoActive = 1,
+  HeadForPits = 2
+};
+
 
 /////////////////////////////////////
 // Based on TelemVect3
