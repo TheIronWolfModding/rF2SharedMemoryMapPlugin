@@ -27,7 +27,7 @@ Website: thecrewchief.org
 
 // Each component can be in [0:99] range.
 #define PLUGIN_VERSION_MAJOR "2.1"
-#define PLUGIN_VERSION_MINOR "1.0"
+#define PLUGIN_VERSION_MINOR "1.1"
 #define PLUGIN_NAME_AND_VERSION "rFactor 2 Shared Memory Map Plugin - v" PLUGIN_VERSION_MAJOR
 #define SHARED_MEMORY_VERSION PLUGIN_VERSION_MAJOR "." PLUGIN_VERSION_MINOR
 
@@ -259,7 +259,7 @@ private:
   // For telemetry, this is min mElapsedTime in the telemetry update frame.
   double mLastScoringUpdateET = -1.0;
   // Telemetry update tracking variables:
-  bool mTelemetryFrameCompleted = false;
+  bool mTelemetryFrameCompleted = true;
   int mCurrTelemetryVehicleIndex = 0;
   // Array used to track if mID telemetry is captured for this update.
   // Indexed by mID % rF2MappedBufferHeader::MAX_MAPPED_IDS, so will break down if max(mID) - min(mID) in a frame >= rF2MappedBufferHeader::MAX_MAPPED_IDS

@@ -173,7 +173,9 @@ SharedMemoryPlugin::SharedMemoryPlugin()
       , SharedMemoryPlugin::MM_EXTENDED_FILE_NAME1
       , SharedMemoryPlugin::MM_EXTENDED_FILE_NAME2
       , SharedMemoryPlugin::MM_EXTENDED_FILE_ACCESS_MUTEX)
-{}
+{
+  memset(mParticipantTelemetryUpdated, 0, sizeof(mParticipantTelemetryUpdated));
+}
 
 
 void SharedMemoryPlugin::Startup(long version)
@@ -277,7 +279,7 @@ void SharedMemoryPlugin::Shutdown()
 
 void SharedMemoryPlugin::ClearTimingsAndCounters()
 {
-  mTelemetryFrameCompleted = false;
+  mTelemetryFrameCompleted = true;
 
   mLastTelemetryUpdateMillis = 0.0;
   mLastTelemetryVehicleAddedMillis = 0.0;
@@ -497,6 +499,8 @@ void SharedMemoryPlugin::TelemetryCompleteFrame()
 
   // Try flipping the buffers.
   TelemetryFlipBuffers();
+
+  mTelemetryFrameCompleted = true;
 }
 
 
@@ -548,6 +552,7 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
     TelemetryTraceBeginUpdate(info.mElapsedTime, deltaET);
     
     memset(mParticipantTelemetryUpdated, 0, sizeof(mParticipantTelemetryUpdated));
+    
     mTelemetryFrameCompleted = false;
     mCurrTelemetryVehicleIndex = 0;
 
@@ -589,8 +594,6 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
       TelemetryTraceSkipUpdate(info, deltaET);
 
       TelemetryCompleteFrame();
-
-      mTelemetryFrameCompleted = true;
     }
   }
 }
