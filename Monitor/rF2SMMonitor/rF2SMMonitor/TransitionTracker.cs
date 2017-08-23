@@ -1240,6 +1240,21 @@ namespace rF2SMMonitor
       public float mMaximumSpeed = -2.0f;                  // maximum speed that anybody should be driving (-1 to indicate no limit)
 
       public string mMessage = "unknown";                  // a message for everybody to explain what is going on (which will get run through translator on client machines)
+
+      public short mFrozenOrder = 127;                           // 0-based place when caution came out (not valid for formation laps)
+      public short mPlace = 127;                                 // 1-based place (typically used for the initialization of the formation lap track order)
+      public float mYellowSeverity = -1.0f;                        // a rating of how much this vehicle is contributing to a yellow flag (the sum of all vehicles is compared to TrackRulesV01::mSafetyCarThreshold)
+      public double mCurrentRelativeDistance = -1.0;              // equal to ( ( ScoringInfoV01::mLapDist * this->mRelativeLaps ) + VehicleScoringInfoV01::mLapDist )
+
+      // input/output
+      public int mRelativeLaps = -1;                            // current formation/caution laps relative to safety car (should generally be zero except when safety car crosses s/f line); this can be decremented to implement 'wave around' or 'beneficiary rule' (a.k.a. 'lucky dog' or 'free pass')
+      public rF2TrackRulesColumn mColumnAssignment = (rF2TrackRulesColumn)Enum.ToObject(typeof(rF2TrackRulesColumn), -255);        // which column (line/lane) that participant is supposed to be in
+      public int mPositionAssignment = -1;                      // 0-based position within column (line/lane) that participant is supposed to be located at (-1 is invalid)
+      public byte mAllowedToPit = 255;                           // whether the rules allow this particular vehicle to enter pits right now
+
+      public double mGoalRelativeDistance = -1.0;                 // calculated based on where the leader is, and adjusted by the desired column spacing and the column/position assignments
+
+      public string mMessage_Participant = "unknown";                  // a message for this participant to explain what is going on (untranslated; it will get run through translator on client machines)
     }
 
     internal Rules prevRules = new Rules();
@@ -1296,6 +1311,20 @@ namespace rF2SMMonitor
       var resolvedIdx = idsToTelIndices[scoringPlrId];
       var playerVehTelemetry = telemetry.mVehicles[resolvedIdx];
 
+      var playerRules = new rF2TrackRulesParticipant();
+      bool playerRulesFound = false;
+      foreach (var participant in rules.mParticipants)
+      {
+        if (participant.mID == scoringPlrId)
+        {
+          playerRules = participant;
+          playerRulesFound = true;
+          break;
+        }
+      }
+
+      Debug.Assert(playerRulesFound);
+
       var rs = new Rules();
 
       rs.mStage = rules.mTrackRules.mStage;
@@ -1323,7 +1352,19 @@ namespace rF2SMMonitor
       rs.mMinimumSpeed = rules.mTrackRules.mMinimumSpeed;
       rs.mMaximumSpeed = rules.mTrackRules.mMaximumSpeed;
       rs.mMessage = TransitionTracker.getStringFromBytes(rules.mTrackRules.mMessage);
-   
+
+      // Player specific:
+      rs.mFrozenOrder = playerRules.mFrozenOrder;
+      rs.mPlace = playerRules.mPlace;
+      rs.mYellowSeverity = playerRules.mYellowSeverity;
+      rs.mCurrentRelativeDistance = playerRules.mCurrentRelativeDistance;
+      rs.mRelativeLaps = playerRules.mRelativeLaps;
+      rs.mColumnAssignment = playerRules.mColumnAssignment;
+      rs.mPositionAssignment = playerRules.mPositionAssignment;
+      rs.mAllowedToPit = playerRules.mAllowedToPit;
+      rs.mGoalRelativeDistance = playerRules.mGoalRelativeDistance;
+      rs.mMessage_Participant = TransitionTracker.getStringFromBytes(playerRules.mMessage);
+
       // Only refresh UI if there's change.
       if (rs.mStage != this.prevRules.mStage
         || rs.mPoleColumn != this.prevRules.mPoleColumn
@@ -1349,7 +1390,17 @@ namespace rF2SMMonitor
         || rs.mMaximumColumnSpacing != this.prevRules.mMaximumColumnSpacing
         || rs.mMinimumSpeed != this.prevRules.mMinimumSpeed
         || rs.mMaximumSpeed != this.prevRules.mMaximumSpeed
-        || rs.mMessage != this.prevRules.mMessage)
+        || rs.mMessage != this.prevRules.mMessage
+        || rs.mFrozenOrder != this.prevRules.mFrozenOrder
+        || rs.mPlace != this.prevRules.mPlace
+        || rs.mYellowSeverity != this.prevRules.mYellowSeverity
+        || rs.mCurrentRelativeDistance != this.prevRules.mCurrentRelativeDistance
+        || rs.mRelativeLaps != this.prevRules.mRelativeLaps
+        || rs.mColumnAssignment != this.prevRules.mColumnAssignment
+        || rs.mPositionAssignment != this.prevRules.mPositionAssignment
+        || rs.mAllowedToPit != this.prevRules.mAllowedToPit
+        || rs.mGoalRelativeDistance != this.prevRules.mGoalRelativeDistance
+        || rs.mMessage_Participant != this.prevRules.mMessage_Participant)
       {
         this.sbRulesChanged = new StringBuilder();
         sbRulesChanged.Append((rs.mStage != this.prevRules.mStage ? "***\n" : "\n")
@@ -1376,7 +1427,17 @@ namespace rF2SMMonitor
           + (rs.mMaximumColumnSpacing != this.prevRules.mMaximumColumnSpacing ? "***\n" : "\n")
           + (rs.mMinimumSpeed != this.prevRules.mMinimumSpeed ? "***\n" : "\n")
           + (rs.mMaximumSpeed != this.prevRules.mMaximumSpeed ? "***\n" : "\n")
-          + (rs.mMessage != this.prevRules.mMessage ? "***\n" : "\n"));
+          + (rs.mMessage != this.prevRules.mMessage ? "***\n" : "\n")
+          + (rs.mFrozenOrder != this.prevRules.mFrozenOrder ? "***\n" : "\n")
+          + (rs.mPlace != this.prevRules.mPlace ? "***\n" : "\n")
+          + (rs.mYellowSeverity != this.prevRules.mYellowSeverity ? "***\n" : "\n")
+          + (rs.mCurrentRelativeDistance != this.prevRules.mCurrentRelativeDistance ? "***\n" : "\n")
+          + (rs.mRelativeLaps != this.prevRules.mRelativeLaps ? "***\n" : "\n")
+          + (rs.mColumnAssignment != this.prevRules.mColumnAssignment ? "***\n" : "\n")
+          + (rs.mPositionAssignment != this.prevRules.mPositionAssignment ? "***\n" : "\n")
+          + (rs.mAllowedToPit != this.prevRules.mAllowedToPit ? "***\n" : "\n")
+          + (rs.mGoalRelativeDistance != this.prevRules.mGoalRelativeDistance ? "***\n" : "\n")
+          + (rs.mMessage_Participant != this.prevRules.mMessage_Participant ? "***\n" : "\n"));
 
         // Save current Rules and state.
         this.prevRules = rs;
@@ -1406,7 +1467,17 @@ namespace rF2SMMonitor
           + "mMaximumColumnSpacing:\n"
           + "mMinimumSpeed:\n"
           + "mMaximumSpeed:\n"
-          + "mMessage:\n");
+          + "mMessage:\n"
+          + "mFrozenOrder:\n"
+          + "mPlace:\n"
+          + "mYellowSeverity:\n"
+          + "mCurrentRelativeDistance:\n"
+          + "mRelativeLaps:\n"
+          + "mColumnAssignment:\n"
+          + "mPositionAssignment:\n"
+          + "mAllowedToPit:\n"
+          + "mGoalRelativeDistance:\n"
+          + "mMessage_Participant:\n");
 
         this.sbRulesValues = new StringBuilder();
         sbRulesValues.Append($"{rs.mStage}\n"
@@ -1433,7 +1504,17 @@ namespace rF2SMMonitor
           + $"{rs.mMaximumColumnSpacing}\n"
           + $"{rs.mMinimumSpeed:N3}\n"
           + $"{rs.mMaximumSpeed:N3}\n"
-          + $"{rs.mMessage}\n");
+          + $"{rs.mMessage}\n"
+          + $"{rs.mFrozenOrder}\n"
+          + $"{rs.mPlace}\n"
+          + $"{rs.mYellowSeverity:N3}\n"
+          + $"{rs.mCurrentRelativeDistance:N3}\n"
+          + $"{rs.mRelativeLaps}\n"
+          + $"{rs.mColumnAssignment}\n"
+          + $"{rs.mPositionAssignment}\n"
+          + $"{rs.mAllowedToPit}\n"
+          + (rs.mGoalRelativeDistance > 20000 ? $"too large" : $"{rs.mGoalRelativeDistance:N3})") + "\n"
+          + $"{rs.mMessage_Participant}\n");
         //+ $"{GetEnumString<rF2YellowFlagState>(scoring.mScoringInfo.mYellowFlagState)}\n"
 
 
