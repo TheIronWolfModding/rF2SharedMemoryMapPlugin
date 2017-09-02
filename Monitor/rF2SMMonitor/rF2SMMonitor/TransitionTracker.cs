@@ -1218,8 +1218,8 @@ namespace rF2SMMonitor
       public byte mSafetyCarActive = 255;                // whether safety car is active
       public int mSafetyCarLaps = 255;                  // number of laps
       public float mSafetyCarThreshold = -1.0f;            // the threshold at which a safety car is called out (compared to the sum of TrackRulesParticipantV01::mYellowSeverity for each vehicle)
-      //public double mSafetyCarLapDist;             // safety car lap distance
-      //public float mSafetyCarLapDistAtStart;       // where the safety car starts from
+      public double mSafetyCarLapDist;             // safety car lap distance
+      public float mSafetyCarLapDistAtStart;       // where the safety car starts from
 
       public float mPitLaneStartDist = -1.0f;              // where the waypoint branch to the pits breaks off (this may not be perfectly accurate)
       public float mTeleportLapDist = -1.0f;               // the front of the teleport locations (a useful first guess as to where to throw the green flag)
@@ -1337,8 +1337,8 @@ namespace rF2SMMonitor
       rs.mSafetyCarActive = rules.mTrackRules.mSafetyCarActive;
       rs.mSafetyCarLaps = rules.mTrackRules.mSafetyCarLaps;
       rs.mSafetyCarThreshold = rules.mTrackRules.mSafetyCarThreshold;
-      //public double mSafetyCarLapDist;             // safety car lap distance
-      //public float mSafetyCarLapDistAtStart;       // where the safety car starts from
+      rs.mSafetyCarLapDist = rules.mTrackRules.mSafetyCarLapDist;
+      rs.mSafetyCarLapDistAtStart = rules.mTrackRules.mSafetyCarLapDistAtStart;
       rs.mPitLaneStartDist = rules.mTrackRules.mPitLaneStartDist;
       rs.mTeleportLapDist = rules.mTrackRules.mTeleportLapDist;
       rs.mYellowFlagState = rules.mTrackRules.mYellowFlagState;
@@ -1366,6 +1366,7 @@ namespace rF2SMMonitor
       rs.mMessage_Participant = TransitionTracker.getStringFromBytes(playerRules.mMessage);
 
       // Only refresh UI if there's change.
+      // some fields are commented out because they change pretty much every frame.
       if (rs.mStage != this.prevRules.mStage
         || rs.mPoleColumn != this.prevRules.mPoleColumn
         || rs.mNumActions != this.prevRules.mNumActions
@@ -1394,7 +1395,7 @@ namespace rF2SMMonitor
         || rs.mFrozenOrder != this.prevRules.mFrozenOrder
         || rs.mPlace != this.prevRules.mPlace
         || rs.mYellowSeverity != this.prevRules.mYellowSeverity
-        || rs.mCurrentRelativeDistance != this.prevRules.mCurrentRelativeDistance
+        //|| rs.mCurrentRelativeDistance != this.prevRules.mCurrentRelativeDistance
         || rs.mRelativeLaps != this.prevRules.mRelativeLaps
         || rs.mColumnAssignment != this.prevRules.mColumnAssignment
         || rs.mPositionAssignment != this.prevRules.mPositionAssignment
@@ -1413,8 +1414,8 @@ namespace rF2SMMonitor
           + (rs.mSafetyCarActive != this.prevRules.mSafetyCarActive ? "***\n" : "\n")
           + (rs.mSafetyCarLaps != this.prevRules.mSafetyCarLaps ? "***\n" : "\n")
           + (rs.mSafetyCarThreshold != this.prevRules.mSafetyCarThreshold ? "***\n" : "\n")
-          //public double mSafetyCarLapDist             // safety car lap distance
-          //public float mSafetyCarLapDistAtStart       // where the safety car starts from
+          + (rs.mSafetyCarLapDist != this.prevRules.mSafetyCarLapDist ? "***\n" : "\n")
+          + (rs.mSafetyCarLapDistAtStart != this.prevRules.mSafetyCarLapDistAtStart ? "***\n" : "\n")
           + (rs.mPitLaneStartDist != this.prevRules.mPitLaneStartDist ? "***\n" : "\n")
           + (rs.mTeleportLapDist != this.prevRules.mTeleportLapDist ? "***\n" : "\n")
           + (rs.mYellowFlagState != this.prevRules.mYellowFlagState ? "***\n" : "\n")
@@ -1453,8 +1454,8 @@ namespace rF2SMMonitor
           + "mSafetyCarActive:\n"
           + "mSafetyCarLaps:\n"
           + "mSafetyCarThreshold:\n"
-          //public double mSafetyCarLapDist;             // safety car lap distance
-          //public float mSafetyCarLapDistAtStart;       // where the safety car starts from
+          + "mSafetyCarLapDist:\n"
+          + "mSafetyCarLapDistAtStart:\n"
           + "mPitLaneStartDist:\n"
           + "mTeleportLapDist:\n"
           + "mYellowFlagState:\n"
@@ -1490,8 +1491,8 @@ namespace rF2SMMonitor
           + (rs.mSafetyCarActive == 0 ? $"false({rs.mSafetyCarActive})" : $"true({rs.mSafetyCarActive})") + "\n"
           + $"{rs.mSafetyCarLaps}\n"
           + $"{rs.mSafetyCarThreshold:N3}\n"
-          //public double mSafetyCarLapDist;             // safety car lap distance
-          //public float mSafetyCarLapDistAtStart;       // where the safety car starts from
+          + $"{rs.mSafetyCarLapDist}\n"
+          + $"{rs.mSafetyCarLapDistAtStart}\n"
           + $"{rs.mPitLaneStartDist:N3}\n"
           + $"{rs.mTeleportLapDist:N3}\n"         
           + $"{GetEnumString<rF2YellowFlagState>(rs.mYellowFlagState)}\n"
@@ -1515,8 +1516,6 @@ namespace rF2SMMonitor
           + $"{rs.mAllowedToPit}\n"
           + (rs.mGoalRelativeDistance > 20000 ? $"too large" : $"{rs.mGoalRelativeDistance:N3})") + "\n"
           + $"{rs.mMessage_Participant}\n");
-        //+ $"{GetEnumString<rF2YellowFlagState>(scoring.mScoringInfo.mYellowFlagState)}\n"
-
 
         if (logToFile)
         {
