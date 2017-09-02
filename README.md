@@ -39,15 +39,15 @@ If you would like to support this project, you can donate [here.](http://thecrew
 # Release history
 
 9/01/2017 - v2.1.1.1
-Plugin:
-    * Fix crash in physics update that happens when buffer can't be mapped.
-    * Expose TrackRules01 as rF2Rules buffer.
-    * Improve Win32 error tracing.
-    * Minor reliability improvements.
+  Plugin:
+  * Fix crash in physics update that happens when buffer can't be mapped.
+  * Expose TrackRules01 as rF2Rules buffer.
+  * Improve Win32 error tracing.
+  * Minor reliability improvements.
 
-Monitor:
-    * Add rF2Rules tracking.
-    * Force invariant culture on the app.
+  Monitor:
+  * Add rF2Rules tracking.
+  * Force invariant culture on the app.
 
 7/22/2017 - v2.0.0.0
 
