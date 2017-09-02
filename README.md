@@ -39,6 +39,7 @@ If you would like to support this project, you can donate [here.](http://thecrew
 # Release history
 
 9/01/2017 - v2.1.1.1
+
   Plugin:
   * Fix crash in physics update that happens when buffer can't be mapped.
   * Expose TrackRules01 as rF2Rules buffer.
