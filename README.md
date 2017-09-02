@@ -16,6 +16,7 @@ Plugin is built using VS 2015 Community Edition, targeting VC12 (VS 2013) runtim
 ## Refresh Rates:
 * Telemetry - 50FPS (provided there's no mutex contention).
 * Scoring - 5FPS.
+* Rules - 3FPS.
 * Extended - 5FPS and on tracked callback by the game.
 
 ## Limitations/Assumptions:
@@ -36,6 +37,17 @@ Plugin comes with rF2SMMonitor program that shows how to access exposed internal
 If you would like to support this project, you can donate [here.](http://thecrewchief.org/misc.php?do=donate)
 
 # Release history
+
+9/01/2017 - v2.1.1.1
+Plugin:
+    * Fix crash in physics update that happens when buffer can't be mapped.
+    * Expose TrackRules01 as rF2Rules buffer.
+    * Improve Win32 error tracing.
+    * Minor reliability improvements.
+
+Monitor:
+    * Add rF2Rules tracking.
+    * Force invariant culture on the app.
 
 7/22/2017 - v2.0.0.0
 

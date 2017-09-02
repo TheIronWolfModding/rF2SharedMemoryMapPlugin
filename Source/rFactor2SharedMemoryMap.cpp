@@ -21,6 +21,7 @@ Shared resources:
   where <BUFFER_TYPE> is one of the following:
     * Telemetry - mapped view of rF2Telemetry structure
     * Scoring - mapped view of rF2Scoring structure
+    * Rules - mapped view of rF2Scoring structure
     * Extended - mapped view of rF2Extended structure
 
   Those types are (with few exceptions) exact mirror of ISI structures, plugin constantly memcpy'es them from game to memory mapped files.
@@ -29,6 +30,7 @@ Shared resources:
 State updates (buffer flips, see Double Buffering):
   Telemetry - updated every 10ms, but in practice only every other update contains updated data, so real update rate is around 50FPS.
   Scoring - every 200ms (5FPS)
+  Rules - every 300ms (3FPS)
   Extended - every 200ms or on tracked function call.
 
   Plugin does not add artificial delays, except:
