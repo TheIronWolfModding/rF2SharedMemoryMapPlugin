@@ -35,15 +35,18 @@ namespace rF2SMMonitor
       this.xOffsetTextBox = new System.Windows.Forms.TextBox();
       this.xOffsetLabel = new System.Windows.Forms.Label();
       this.groupBoxLogging = new System.Windows.Forms.GroupBox();
+      this.groupBoxMisc = new System.Windows.Forms.GroupBox();
+      this.checkBoxLogRules = new System.Windows.Forms.CheckBox();
       this.checkBoxLogTiming = new System.Windows.Forms.CheckBox();
       this.checkBoxLogDamage = new System.Windows.Forms.CheckBox();
       this.checkBoxLogPhaseAndState = new System.Windows.Forms.CheckBox();
       this.checkBoxLightMode = new System.Windows.Forms.CheckBox();
-      this.checkBoxLogRules = new System.Windows.Forms.CheckBox();
+      this.checkBoxStockCarRules = new System.Windows.Forms.CheckBox();
       ((System.ComponentModel.ISupportInitialize)(this.view)).BeginInit();
       this.groupBoxFocus.SuspendLayout();
       this.globalGroupBox.SuspendLayout();
       this.groupBoxLogging.SuspendLayout();
+      this.groupBoxMisc.SuspendLayout();
       this.SuspendLayout();
       // 
       // view
@@ -105,7 +108,7 @@ namespace rF2SMMonitor
       this.groupBoxFocus.Controls.Add(this.focusVehLabel);
       this.groupBoxFocus.Location = new System.Drawing.Point(433, -1);
       this.groupBoxFocus.Name = "groupBoxFocus";
-      this.groupBoxFocus.Size = new System.Drawing.Size(290, 54);
+      this.groupBoxFocus.Size = new System.Drawing.Size(265, 54);
       this.groupBoxFocus.TabIndex = 7;
       this.groupBoxFocus.TabStop = false;
       this.groupBoxFocus.Text = "Focus";
@@ -173,12 +176,32 @@ namespace rF2SMMonitor
       this.groupBoxLogging.Controls.Add(this.checkBoxLogTiming);
       this.groupBoxLogging.Controls.Add(this.checkBoxLogDamage);
       this.groupBoxLogging.Controls.Add(this.checkBoxLogPhaseAndState);
-      this.groupBoxLogging.Location = new System.Drawing.Point(730, -1);
+      this.groupBoxLogging.Location = new System.Drawing.Point(706, -1);
       this.groupBoxLogging.Name = "groupBoxLogging";
       this.groupBoxLogging.Size = new System.Drawing.Size(256, 54);
       this.groupBoxLogging.TabIndex = 9;
       this.groupBoxLogging.TabStop = false;
       this.groupBoxLogging.Text = "File Logging";
+      // 
+      // groupBoxMisc
+      // 
+      this.groupBoxMisc.Controls.Add(this.checkBoxStockCarRules);
+      this.groupBoxMisc.Location = new System.Drawing.Point(970, -1);
+      this.groupBoxMisc.Name = "groupBoxMisc";
+      this.groupBoxMisc.Size = new System.Drawing.Size(300, 54);
+      this.groupBoxMisc.TabIndex = 13;
+      this.groupBoxMisc.TabStop = false;
+      this.groupBoxMisc.Text = "Miscellaneous";
+      // 
+      // checkBoxLogRules
+      // 
+      this.checkBoxLogRules.AutoSize = true;
+      this.checkBoxLogRules.Location = new System.Drawing.Point(109, 32);
+      this.checkBoxLogRules.Name = "checkBoxLogRules";
+      this.checkBoxLogRules.Size = new System.Drawing.Size(53, 17);
+      this.checkBoxLogRules.TabIndex = 12;
+      this.checkBoxLogRules.Text = "Rules";
+      this.checkBoxLogRules.UseVisualStyleBackColor = true;
       // 
       // checkBoxLogTiming
       // 
@@ -220,15 +243,15 @@ namespace rF2SMMonitor
       this.checkBoxLightMode.Text = "Light mode";
       this.checkBoxLightMode.UseVisualStyleBackColor = true;
       // 
-      // checkBox1
+      // checkBoxStockCarRules
       // 
-      this.checkBoxLogRules.AutoSize = true;
-      this.checkBoxLogRules.Location = new System.Drawing.Point(109, 32);
-      this.checkBoxLogRules.Name = "checkBoxLogRules";
-      this.checkBoxLogRules.Size = new System.Drawing.Size(57, 17);
-      this.checkBoxLogRules.TabIndex = 12;
-      this.checkBoxLogRules.Text = "Rules";
-      this.checkBoxLogRules.UseVisualStyleBackColor = true;
+      this.checkBoxStockCarRules.AutoSize = true;
+      this.checkBoxStockCarRules.Location = new System.Drawing.Point(7, 14);
+      this.checkBoxStockCarRules.Name = "checkBoxStockCarRules";
+      this.checkBoxStockCarRules.Size = new System.Drawing.Size(57, 17);
+      this.checkBoxStockCarRules.TabIndex = 12;
+      this.checkBoxStockCarRules.Text = "Use StockCarRules.dll";
+      this.checkBoxStockCarRules.UseVisualStyleBackColor = true;
       // 
       // MainForm
       // 
@@ -239,6 +262,7 @@ namespace rF2SMMonitor
       this.Controls.Add(this.groupBoxLogging);
       this.Controls.Add(this.globalGroupBox);
       this.Controls.Add(this.groupBoxFocus);
+      this.Controls.Add(this.groupBoxMisc);
       this.Controls.Add(this.view);
       this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.Fixed3D;
       this.MaximizeBox = false;
@@ -251,6 +275,8 @@ namespace rF2SMMonitor
       this.globalGroupBox.PerformLayout();
       this.groupBoxLogging.ResumeLayout(false);
       this.groupBoxLogging.PerformLayout();
+      this.groupBoxMisc.ResumeLayout(false);
+      this.groupBoxMisc.PerformLayout();
       this.ResumeLayout(false);
       this.PerformLayout();
 
@@ -278,6 +304,8 @@ namespace rF2SMMonitor
     private System.Windows.Forms.CheckBox checkBoxLogDamage;
     private System.Windows.Forms.CheckBox checkBoxLogTiming;
     private System.Windows.Forms.CheckBox checkBoxLogRules;
+    private System.Windows.Forms.GroupBox groupBoxMisc;
+    private System.Windows.Forms.CheckBox checkBoxStockCarRules;
   }
 }
 

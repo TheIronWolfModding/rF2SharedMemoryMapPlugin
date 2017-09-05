@@ -248,6 +248,7 @@ namespace rF2SMMonitor
     bool logTiming = true;
     bool logRules = true;
     bool logLightMode = false;
+    bool useStockCarRulesPlugin = false;
 
     [StructLayout(LayoutKind.Sequential)]
     public struct NativeMessage
@@ -287,6 +288,7 @@ namespace rF2SMMonitor
       this.checkBoxLogTiming.CheckedChanged += CheckBoxLogTiming_CheckedChanged;
       this.checkBoxLogRules.CheckedChanged += CheckBoxLogRules_CheckedChanged;
       this.checkBoxLightMode.CheckedChanged += CheckBoxLightMode_CheckedChanged;
+      this.checkBoxStockCarRules.CheckedChanged += CheckBoxStockCarRules_CheckedChanged;
       this.MouseWheel += MainForm_MouseWheel;
 
       this.LoadConfig();
@@ -320,6 +322,13 @@ namespace rF2SMMonitor
       this.groupBoxFocus.Enabled = !this.logLightMode;
 
       this.config.Write("logLightMode", this.logLightMode ? "1" : "0");
+    }
+
+    private void CheckBoxStockCarRules_CheckedChanged(object sender, EventArgs e)
+    {
+      this.useStockCarRulesPlugin = this.checkBoxStockCarRules.Checked;
+
+      this.config.Write("useStockCarRules", this.useStockCarRulesPlugin ? "1" : "0");
     }
 
     private void CheckBoxLogDamage_CheckedChanged(object sender, EventArgs e)
@@ -469,7 +478,7 @@ namespace rF2SMMonitor
             // being lazy lazy lazy.
             this.tracker.TrackPhase(ref this.scoring, ref this.telemetry, ref this.extended, null, this.logPhaseAndState);
             this.tracker.TrackDamage(ref this.scoring, ref this.telemetry, ref this.extended, null, this.logDamage);
-            this.tracker.TrackTimings(ref this.scoring, ref this.telemetry, ref this.extended, null, this.logTiming);
+            this.tracker.TrackTimings(ref this.scoring, ref this.telemetry, ref this.rules, ref this.extended, null, this.logTiming);
             this.tracker.TrackRules(ref this.scoring, ref this.telemetry, ref this.rules, ref this.extended, null, this.logRules);
           }
           else
@@ -551,7 +560,7 @@ namespace rF2SMMonitor
 
       this.tracker.TrackPhase(ref this.scoring, ref this.telemetry, ref this.extended, g, this.logPhaseAndState);
       this.tracker.TrackDamage(ref this.scoring, ref this.telemetry, ref this.extended, g, this.logDamage);
-      this.tracker.TrackTimings(ref this.scoring, ref this.telemetry, ref this.extended, g, this.logTiming);
+      this.tracker.TrackTimings(ref this.scoring, ref this.telemetry, ref this.rules, ref this.extended, g, this.logTiming);
       this.tracker.TrackRules(ref this.scoring, ref this.telemetry, ref this.rules, ref this.extended, g, this.logRules);
 
       this.UpdateFPS();
@@ -930,6 +939,7 @@ namespace rF2SMMonitor
       this.globalGroupBox.Enabled = enable;
       this.groupBoxFocus.Enabled = enable;
       this.groupBoxLogging.Enabled = enable;
+      this.groupBoxMisc.Enabled = enable;
 
       this.focusVehLabel.Enabled = false;
       this.focusVehTextBox.Enabled = false;
@@ -937,7 +947,6 @@ namespace rF2SMMonitor
       this.xOffsetTextBox.Enabled = false;
       this.yOffsetLabel.Enabled = false;
       this.yOffsetTextBox.Enabled = false;
-
 
       if (enable)
       {
@@ -1028,6 +1037,13 @@ namespace rF2SMMonitor
         this.logRules = false;
 
       this.checkBoxLogRules.Checked = this.logRules;
+
+      intResult = 0;
+      this.useStockCarRulesPlugin = false;
+      if (int.TryParse(this.config.Read("useStockCarRules"), out intResult) && intResult == 1)
+        this.useStockCarRulesPlugin = true;
+
+      this.checkBoxStockCarRules.Checked = this.useStockCarRulesPlugin;
     }
   }
 }

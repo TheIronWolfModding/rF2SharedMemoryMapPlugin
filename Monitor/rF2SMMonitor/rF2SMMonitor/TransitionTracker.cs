@@ -772,6 +772,8 @@ namespace rF2SMMonitor
 
       internal string vehicleName = null;
       internal string vehicleClass = null;
+
+      internal long mID = -1;
     }
 
     // string -> lap data
@@ -802,7 +804,7 @@ namespace rF2SMMonitor
       return time > 0.0 ? TimeSpan.FromSeconds(time).ToString(@"mm\:ss\:fff") : time.ToString();
     }
 
-    internal void TrackTimings(ref rF2Scoring scoring, ref rF2Telemetry telemetry, ref rF2Extended extended, Graphics g, bool logToFile)
+    internal void TrackTimings(ref rF2Scoring scoring, ref rF2Telemetry telemetry, ref rF2Rules rules, ref rF2Extended extended, Graphics g, bool logToFile)
     {
       if ((this.lastTimingTrackingGamePhase == rF2GamePhase.Garage
             || this.lastTimingTrackingGamePhase == rF2GamePhase.SessionOver
@@ -876,6 +878,7 @@ namespace rF2SMMonitor
       {
         var veh = scoring.mVehicles[i];
         var o = new OpponentTimingInfo();
+        o.mID = veh.mID;
         o.name = TransitionTracker.getStringFromBytes(veh.mDriverName);
         o.position = veh.mPlace;
 
@@ -958,9 +961,15 @@ namespace rF2SMMonitor
         }
       }
 
-      // TODO: Remove best Ever values, they're not needed.
+      var idsToParticipantIndices = new Dictionary<long, int>();
+      for (int i = 0; i < rules.mTrackRules.mNumParticipants; ++i)
+      {
+        if (!idsToParticipantIndices.ContainsKey(rules.mParticipants[i].mID))
+          idsToParticipantIndices.Add(rules.mParticipants[i].mID, i);
+      }
+
       var sbOpponentStats = new StringBuilder();
-      sbOpponentStats.Append("Pos:  Lap:      Best Tracked:      Best S1:      Best S2:      Best S3:\n");
+      sbOpponentStats.Append("Pos:  Lap:      Best Tracked:      Best S1:      Best S2:      Best S3:     Col. Assigned:    Pos. Assigned:\n");
       foreach (var o in opponentInfos)
       {
         var skipLastLap = o.name == TransitionTracker.getStringFromBytes(playerVeh.mDriverName) && newLap;
@@ -971,7 +980,12 @@ namespace rF2SMMonitor
         var bestLapS3 = bestLapStats.S3Time;
         var bestLapTimeTracked = bestLapStats.lapTime;
 
-        sbOpponentStats.Append($"{o.position,5}{o.currLap,8}{this.lapTimeStr(bestLapTimeTracked),22:N3}{this.lapTimeStr(bestLapS1),13:N3}{this.lapTimeStr(bestLapS2),13:N3}{this.lapTimeStr(bestLapS3),13:N3}\n");
+        var opponetRules = new rF2TrackRulesParticipant();
+        int participantIdx = -1;
+        if (idsToParticipantIndices.TryGetValue(o.mID, out participantIdx))
+          opponetRules = rules.mParticipants[participantIdx];
+
+        sbOpponentStats.Append($"{o.position,5}{o.currLap,8}{this.lapTimeStr(bestLapTimeTracked),22:N3}{this.lapTimeStr(bestLapS1),13:N3}{this.lapTimeStr(bestLapS2),13:N3}{this.lapTimeStr(bestLapS3),13:N3}{opponetRules.mColumnAssignment,17}{opponetRules.mPositionAssignment,13}\n");
       }
 
       // Find fastest vehicle.
@@ -1124,8 +1138,8 @@ namespace rF2SMMonitor
         g.DrawString(sbPlayer.ToString(), SystemFonts.DefaultFont, Brushes.Magenta, 3.0f, timingsYStart);
         g.DrawString(sbPlayerDeltas.ToString(), SystemFonts.DefaultFont, Brushes.Black, 3.0f, timingsYStart + 90.0f);
         g.DrawString(sbFastest.ToString(), SystemFonts.DefaultFont, Brushes.OrangeRed, 3.0f, timingsYStart + 240.0f);
-        g.DrawString(sbOpponentNames.ToString(), SystemFonts.DefaultFont, Brushes.Green, 560.0f, 50.0f);
-        g.DrawString(sbOpponentStats.ToString(), SystemFonts.DefaultFont, Brushes.Purple, 850.0f, 50.0f);
+        g.DrawString(sbOpponentNames.ToString(), SystemFonts.DefaultFont, Brushes.Green, 530.0f, 3.0f);
+        g.DrawString(sbOpponentStats.ToString(), SystemFonts.DefaultFont, Brushes.Purple, 860.0f, 3.0f);
       }
     }
 
@@ -1491,8 +1505,8 @@ namespace rF2SMMonitor
           + (rs.mSafetyCarActive == 0 ? $"false({rs.mSafetyCarActive})" : $"true({rs.mSafetyCarActive})") + "\n"
           + $"{rs.mSafetyCarLaps}\n"
           + $"{rs.mSafetyCarThreshold:N3}\n"
-          + $"{rs.mSafetyCarLapDist}\n"
-          + $"{rs.mSafetyCarLapDistAtStart}\n"
+          + $"{rs.mSafetyCarLapDist:N3}\n"
+          + $"{rs.mSafetyCarLapDistAtStart:N3}\n"
           + $"{rs.mPitLaneStartDist:N3}\n"
           + $"{rs.mTeleportLapDist:N3}\n"         
           + $"{GetEnumString<rF2YellowFlagState>(rs.mYellowFlagState)}\n"
@@ -1559,7 +1573,7 @@ namespace rF2SMMonitor
       if (g != null)
       {
         float rulesY = 3.0f;
-        float rulesX = 1200.0f;
+        float rulesX = 1600.0f;
         g.DrawString(this.sbRulesChanged.ToString(), SystemFonts.DefaultFont, Brushes.Orange, rulesX, rulesY);
         g.DrawString(this.sbRulesLabel.ToString(), SystemFonts.DefaultFont, Brushes.Green, rulesX + 30.0f, rulesY);
         g.DrawString(this.sbRulesValues.ToString(), SystemFonts.DefaultFont, Brushes.Purple, rulesX + 200.0f, rulesY);
