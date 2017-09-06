@@ -798,8 +798,8 @@ namespace rF2SMMonitor
     int lastTimingSector = -1;
     string bestSplitString = "";
 
-    private int getSector(int rf2Sector) { return rf2Sector == 0 ? 3 : rf2Sector; }
-    private string lapTimeStr(double time)
+    private int GetSector(int rf2Sector) { return rf2Sector == 0 ? 3 : rf2Sector; }
+    private string LapTimeStr(double time)
     {
       return time > 0.0 ? TimeSpan.FromSeconds(time).ToString(@"mm\:ss\:fff") : time.ToString();
     }
@@ -863,10 +863,10 @@ namespace rF2SMMonitor
       var resolvedIdx = idsToTelIndices[scoringPlrId];
       var playerVehTelemetry = telemetry.mVehicles[resolvedIdx];
 
-      bool sectorChanged = this.lastTimingSector != this.getSector(playerVeh.mSector);
-      bool newLap = this.lastTimingSector == 3 && this.getSector(playerVeh.mSector) == 1;
+      bool sectorChanged = this.lastTimingSector != this.GetSector(playerVeh.mSector);
+      bool newLap = this.lastTimingSector == 3 && this.GetSector(playerVeh.mSector) == 1;
 
-      this.lastTimingSector = this.getSector(playerVeh.mSector);
+      this.lastTimingSector = this.GetSector(playerVeh.mSector);
 
       StringBuilder sbPlayer = null;
       PlayerTimingInfo ptiPlayer = null;
@@ -985,7 +985,7 @@ namespace rF2SMMonitor
         if (idsToParticipantIndices.TryGetValue(o.mID, out participantIdx))
           opponetRules = rules.mParticipants[participantIdx];
 
-        sbOpponentStats.Append($"{o.position,5}{o.currLap,8}{this.lapTimeStr(bestLapTimeTracked),22:N3}{this.lapTimeStr(bestLapS1),13:N3}{this.lapTimeStr(bestLapS2),13:N3}{this.lapTimeStr(bestLapS3),13:N3}{opponetRules.mColumnAssignment,17}{opponetRules.mPositionAssignment,13}\n");
+        sbOpponentStats.Append($"{o.position,5}{o.currLap,8}{this.LapTimeStr(bestLapTimeTracked),22:N3}{this.LapTimeStr(bestLapS1),13:N3}{this.LapTimeStr(bestLapS2),13:N3}{this.LapTimeStr(bestLapS3),13:N3}{opponetRules.mColumnAssignment,17}{opponetRules.mPositionAssignment,13}\n");
       }
 
       // Find fastest vehicle.
@@ -1066,7 +1066,7 @@ namespace rF2SMMonitor
         if (sectorChanged)
         {
           // Calculate "Best Split" to match rFactor 2 HUDs
-          var currSector = this.getSector(playerVeh.mSector);
+          var currSector = this.GetSector(playerVeh.mSector);
           double bestSplit = 0.0;
           if (currSector == 1)
             bestSplit = ptiPlayer.lastLapTime - ptiFastest.bestLapTime;
@@ -1212,10 +1212,10 @@ namespace rF2SMMonitor
       pti.currLap = vehicle.mTotalLaps;
 
       sbDetails = new StringBuilder();
-      sbDetails.Append($"{name} {pti.name}\ncurrLapET: {this.lapTimeStr(pti.currLapET)}    lastLapTime: {this.lapTimeStr(pti.lastLapTime)}    currLapTime: {this.lapTimeStr(pti.currLapTime)}    bestLapTime: {this.lapTimeStr(pti.bestLapTime)}\n");
-      sbDetails.Append($"lastS1: {this.lapTimeStr(pti.lastS1Time)}    lastS2: {this.lapTimeStr(pti.lastS2Time)}    lastS3: {this.lapTimeStr(pti.lastS3Time)}\n");
-      sbDetails.Append($"currS1: {this.lapTimeStr(pti.currS1Time)}    currS2: {this.lapTimeStr(pti.currS2Time)}    currS3: {this.lapTimeStr(pti.currS3Time)}\n");
-      sbDetails.Append($"bestS1: {this.lapTimeStr(pti.bestS1Time)}    bestS2: {this.lapTimeStr(pti.bestS2Time)}    bestS3: {this.lapTimeStr(pti.bestS3Time)}    bestTotal: {this.lapTimeStr(pti.bestS1Time + pti.bestS2Time + pti.bestS3Time)}\n");
+      sbDetails.Append($"{name} {pti.name}\ncurrLapET: {this.LapTimeStr(pti.currLapET)}    lastLapTime: {this.LapTimeStr(pti.lastLapTime)}    currLapTime: {this.LapTimeStr(pti.currLapTime)}    bestLapTime: {this.LapTimeStr(pti.bestLapTime)}\n");
+      sbDetails.Append($"lastS1: {this.LapTimeStr(pti.lastS1Time)}    lastS2: {this.LapTimeStr(pti.lastS2Time)}    lastS3: {this.LapTimeStr(pti.lastS3Time)}\n");
+      sbDetails.Append($"currS1: {this.LapTimeStr(pti.currS1Time)}    currS2: {this.LapTimeStr(pti.currS2Time)}    currS3: {this.LapTimeStr(pti.currS3Time)}\n");
+      sbDetails.Append($"bestS1: {this.LapTimeStr(pti.bestS1Time)}    bestS2: {this.LapTimeStr(pti.bestS2Time)}    bestS3: {this.LapTimeStr(pti.bestS3Time)}    bestTotal: {this.LapTimeStr(pti.bestS1Time + pti.bestS2Time + pti.bestS3Time)}\n");
     }
 
     internal class Rules
@@ -1315,6 +1315,9 @@ namespace rF2SMMonitor
       // 0 means follow Safety Car.
       public int PositionToFollow = -1;
       public string DriverToFollow = "";
+
+      public float SafetyCarSpeed = -1.0f;
+      public bool DrivingTooSlowWarning = false;
     }
 
     internal void TrackRules(ref rF2Scoring scoring, ref rF2Telemetry telemetry, ref rF2Rules rules, ref rF2Extended extended, Graphics g, bool logToFile)
@@ -1609,7 +1612,9 @@ namespace rF2SMMonitor
 
           File.AppendAllLines(rulesTrackingDeltaFilePath, lines);
         }
-        var fod = new FrozenOrderData();
+
+        var fod = this.GetFrozenOrderData(ref scoring, ref rules);
+        
         this.sbFrozenOrderInfo = new StringBuilder();
         this.sbFrozenOrderInfo.Append(
           $"Frozen Order Phase: {fod.Phase}\n"
@@ -1618,7 +1623,10 @@ namespace rF2SMMonitor
           + $"Assigned Column: {fod.AssignedColumn}\n"
           + $"Assigned Grid Position: {fod.AssignedGridPosition}\n"
           + $"Position To Follow: {fod.PositionToFollow}\n"
-          + $"Driver To Follow: {fod.DriverToFollow}\n");
+          + $"Driver To Follow: {fod.DriverToFollow}\n"
+          + $"Safety Car Speed: {(fod.SafetyCarSpeed == -1.0f ? "Not Present" : string.Format("{0:N3}km/h", fod.SafetyCarSpeed * 3.6f))}\n"
+          + $"Driving too slow: {fod.DrivingTooSlowWarning}\n"
+          );
       }
 
       if (g != null)
@@ -1630,6 +1638,35 @@ namespace rF2SMMonitor
         g.DrawString(this.sbRulesValues.ToString(), SystemFonts.DefaultFont, Brushes.Purple, rulesX + 200.0f, rulesY);
         g.DrawString(this.sbFrozenOrderInfo.ToString(), SystemFonts.DefaultFont, Brushes.DarkCyan, rulesX, rulesY + 450);
       }
+    }
+
+    private FrozenOrderData GetFrozenOrderData(ref rF2Scoring scoring, ref rF2Rules rules)
+    {
+      var fod = new FrozenOrderData();
+
+      var foStage = rules.mTrackRules.mStage;
+      if (foStage == rF2TrackRulesStage.Normal)
+        return fod;
+
+      // Figure out the phase:
+      if (foStage == rF2TrackRulesStage.CautionInit || foStage == rF2TrackRulesStage.CautionUpdate)
+        fod.Phase = FrozenOrderPhase.FullCourseYellow;
+      else if (foStage == rF2TrackRulesStage.FormationInit || foStage == rF2TrackRulesStage.FormationUpdate)
+      {
+        if (rules.mTrackRules.mSafetyCarActive == 1)
+          fod.Phase = FrozenOrderPhase.Rolling;
+        else
+        {
+          //sthis.getSector();
+          // TODO: If player sector is 3, and it is still Init, it's fast rolling.
+          // Formation / Standing has no Safety Car.
+          fod.Phase = rules.mTrackRules.mStage == rF2TrackRulesStage.FormationUpdate
+            ? FrozenOrderPhase.FormationStanding
+            : FrozenOrderPhase.FastRolling;  // Fast rolling never goes into FormationUpdate
+        }
+      }
+
+      return fod;
     }
   }
 }
