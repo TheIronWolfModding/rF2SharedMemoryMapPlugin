@@ -1275,6 +1275,47 @@ namespace rF2SMMonitor
     internal StringBuilder sbRulesChanged = new StringBuilder();
     internal StringBuilder sbRulesLabel = new StringBuilder();
     internal StringBuilder sbRulesValues = new StringBuilder();
+    internal StringBuilder sbFrozenOrderInfo = new StringBuilder();
+
+    public enum FrozenOrderPhase
+    {
+      None,
+      FullCourseYellow,
+      FormationStanding,
+      Rolling,
+      FastRolling
+    }
+
+    public enum FrozenOrderColumn
+    {
+      None,
+      Left,
+      Right
+    }
+
+    public enum FrozenOrderAction
+    {
+      None,
+      Follow,
+      CatchUp,
+      AllowToPass
+    }
+
+    public class FrozenOrderData
+    {
+      public FrozenOrderPhase Phase = FrozenOrderPhase.None;
+      public FrozenOrderAction Action = FrozenOrderAction.None;
+      public int AssignedPosition = -1;
+
+      public FrozenOrderColumn AssignedColumn = FrozenOrderColumn.None;
+
+      // Only matters if AssignedColumn != None
+      public int AssignedGridPosition = -1;
+
+      // 0 means follow Safety Car.
+      public int PositionToFollow = -1;
+      public string DriverToFollow = "";
+    }
 
     internal void TrackRules(ref rF2Scoring scoring, ref rF2Telemetry telemetry, ref rF2Rules rules, ref rF2Extended extended, Graphics g, bool logToFile)
     {
@@ -1508,7 +1549,7 @@ namespace rF2SMMonitor
           + $"{rs.mSafetyCarLapDist:N3}\n"
           + $"{rs.mSafetyCarLapDistAtStart:N3}\n"
           + $"{rs.mPitLaneStartDist:N3}\n"
-          + $"{rs.mTeleportLapDist:N3}\n"         
+          + $"{rs.mTeleportLapDist:N3}\n"
           + $"{GetEnumString<rF2YellowFlagState>(rs.mYellowFlagState)}\n"
           + $"{rs.mYellowFlagLaps}\n"
           + $"{rs.mSafetyCarInstruction}\n"
@@ -1568,6 +1609,16 @@ namespace rF2SMMonitor
 
           File.AppendAllLines(rulesTrackingDeltaFilePath, lines);
         }
+        var fod = new FrozenOrderData();
+        this.sbFrozenOrderInfo = new StringBuilder();
+        this.sbFrozenOrderInfo.Append(
+          $"Frozen Order Phase: {fod.Phase}\n"
+          + $"Frozen Order Action: {fod.Action}\n"
+          + $"Assigned Position: {fod.AssignedPosition}\n"
+          + $"Assigned Column: {fod.AssignedColumn}\n"
+          + $"Assigned Grid Position: {fod.AssignedGridPosition}\n"
+          + $"Position To Follow: {fod.PositionToFollow}\n"
+          + $"Driver To Follow: {fod.DriverToFollow}\n");
       }
 
       if (g != null)
@@ -1577,6 +1628,7 @@ namespace rF2SMMonitor
         g.DrawString(this.sbRulesChanged.ToString(), SystemFonts.DefaultFont, Brushes.Orange, rulesX, rulesY);
         g.DrawString(this.sbRulesLabel.ToString(), SystemFonts.DefaultFont, Brushes.Green, rulesX + 30.0f, rulesY);
         g.DrawString(this.sbRulesValues.ToString(), SystemFonts.DefaultFont, Brushes.Purple, rulesX + 200.0f, rulesY);
+        g.DrawString(this.sbFrozenOrderInfo.ToString(), SystemFonts.DefaultFont, Brushes.DarkCyan, rulesX, rulesY + 450);
       }
     }
   }
