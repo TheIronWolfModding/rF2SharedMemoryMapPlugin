@@ -219,8 +219,8 @@ namespace rF2SMMonitor
       ps.mSpeedLimiter = playerVehTelemetry.mSpeedLimiter;
       ps.mFrontTireCompoundIndex = playerVehTelemetry.mFrontTireCompoundIndex;
       ps.mRearTireCompoundIndex = playerVehTelemetry.mRearTireCompoundIndex;
-      ps.mFrontTireCompoundName = TransitionTracker.getStringFromBytes(playerVehTelemetry.mFrontTireCompoundName);
-      ps.mRearTireCompoundName = TransitionTracker.getStringFromBytes(playerVehTelemetry.mRearTireCompoundName);
+      ps.mFrontTireCompoundName = TransitionTracker.GetStringFromBytes(playerVehTelemetry.mFrontTireCompoundName);
+      ps.mRearTireCompoundName = TransitionTracker.GetStringFromBytes(playerVehTelemetry.mRearTireCompoundName);
       ps.mFrontFlapActivated = playerVehTelemetry.mFrontFlapActivated;
       ps.mRearFlapActivated = playerVehTelemetry.mRearFlapActivated;
       ps.mRearFlapLegalStatus = (rF2RearFlapLegalStatus)playerVehTelemetry.mRearFlapLegalStatus;
@@ -502,7 +502,7 @@ namespace rF2SMMonitor
       }
     }
 
-    private static string getStringFromBytes(byte[] bytes)
+    private static string GetStringFromBytes(byte[] bytes)
     {
       if (bytes == null)
         return "";
@@ -870,7 +870,7 @@ namespace rF2SMMonitor
 
       StringBuilder sbPlayer = null;
       PlayerTimingInfo ptiPlayer = null;
-      var bls = this.getBestLapStats(TransitionTracker.getStringFromBytes(playerVeh.mDriverName), newLap /*skipLastLap*/);
+      var bls = this.getBestLapStats(TransitionTracker.GetStringFromBytes(playerVeh.mDriverName), newLap /*skipLastLap*/);
       this.getDetailedVehTiming("Player:", ref playerVeh, bls, ref scoring, out sbPlayer, out ptiPlayer);
 
       var opponentInfos = new List<OpponentTimingInfo>();
@@ -879,7 +879,7 @@ namespace rF2SMMonitor
         var veh = scoring.mVehicles[i];
         var o = new OpponentTimingInfo();
         o.mID = veh.mID;
-        o.name = TransitionTracker.getStringFromBytes(veh.mDriverName);
+        o.name = TransitionTracker.GetStringFromBytes(veh.mDriverName);
         o.position = veh.mPlace;
 
         o.lastS1Time = veh.mLastSector1 > 0.0 ? veh.mLastSector1 : -1.0;
@@ -911,8 +911,8 @@ namespace rF2SMMonitor
         o.currLapTime = scoring.mScoringInfo.mCurrentET - veh.mLapStartET;
         o.bestLapTime = veh.mBestLapTime;
         o.currLap = veh.mTotalLaps;
-        o.vehicleName = TransitionTracker.getStringFromBytes(veh.mVehicleName);
-        o.vehicleClass = TransitionTracker.getStringFromBytes(veh.mVehicleClass);
+        o.vehicleName = TransitionTracker.GetStringFromBytes(veh.mVehicleName);
+        o.vehicleClass = TransitionTracker.GetStringFromBytes(veh.mVehicleClass);
 
         opponentInfos.Add(o);
       }
@@ -928,7 +928,7 @@ namespace rF2SMMonitor
       for (int i = 0; i < scoring.mScoringInfo.mNumVehicles; ++i)
       {
         var veh = scoring.mVehicles[i];
-        var driverName = TransitionTracker.getStringFromBytes(veh.mDriverName);
+        var driverName = TransitionTracker.GetStringFromBytes(veh.mDriverName);
 
         // If we don't have this vehicle in a map, add it. (And initialize laps completed).
         if (!this.lapDataMap.ContainsKey(driverName))
@@ -972,7 +972,7 @@ namespace rF2SMMonitor
       sbOpponentStats.Append("Pos:  Lap:      Best Tracked:      Best S1:      Best S2:      Best S3:     Col. Assigned:    Pos. Assigned:\n");
       foreach (var o in opponentInfos)
       {
-        var skipLastLap = o.name == TransitionTracker.getStringFromBytes(playerVeh.mDriverName) && newLap;
+        var skipLastLap = o.name == TransitionTracker.GetStringFromBytes(playerVeh.mDriverName) && newLap;
         var bestLapStats = this.getBestLapStats(o.name, skipLastLap);
 
         var bestLapS1 = bestLapStats.S1Time;
@@ -994,7 +994,7 @@ namespace rF2SMMonitor
       foreach (var lapData in this.lapDataMap)
       {
         // If this is the new lap, ignore just completed lap for the player vehicle, and use time of one lap before.
-        bool skipLastLap = newLap && lapData.Key == TransitionTracker.getStringFromBytes(playerVeh.mDriverName);
+        bool skipLastLap = newLap && lapData.Key == TransitionTracker.GetStringFromBytes(playerVeh.mDriverName);
 
         var blsCandidate = this.getBestLapStats(lapData.Key, skipLastLap);
         if (blsCandidate.lapTime < 0.0)
@@ -1011,7 +1011,7 @@ namespace rF2SMMonitor
       int fastestIndex = -1;
       for (int i = 0; i < scoring.mScoringInfo.mNumVehicles; ++i)
       {
-        if (fastestName == TransitionTracker.getStringFromBytes(scoring.mVehicles[i].mDriverName))
+        if (fastestName == TransitionTracker.GetStringFromBytes(scoring.mVehicles[i].mDriverName))
         {
           fastestIndex = i;
           break;
@@ -1173,7 +1173,7 @@ namespace rF2SMMonitor
     private void getDetailedVehTiming(string name, ref rF2VehicleScoring vehicle, LapData.LapStats bestLapStats, ref rF2Scoring scoring, out StringBuilder sbDetails, out PlayerTimingInfo pti)
     {
       pti = new PlayerTimingInfo();
-      pti.name = TransitionTracker.getStringFromBytes(vehicle.mDriverName);
+      pti.name = TransitionTracker.GetStringFromBytes(vehicle.mDriverName);
       pti.lastS1Time = vehicle.mLastSector1 > 0.0 ? vehicle.mLastSector1 : -1.0;
       pti.lastS2Time = vehicle.mLastSector1 > 0.0 && vehicle.mLastSector2 > 0.0
         ? vehicle.mLastSector2 - vehicle.mLastSector1 : -1.0;
@@ -1305,15 +1305,13 @@ namespace rF2SMMonitor
     {
       public FrozenOrderPhase Phase = FrozenOrderPhase.None;
       public FrozenOrderAction Action = FrozenOrderAction.None;
+
       public int AssignedPosition = -1;
 
       public FrozenOrderColumn AssignedColumn = FrozenOrderColumn.None;
-
       // Only matters if AssignedColumn != None
       public int AssignedGridPosition = -1;
 
-      // 0 means follow Safety Car.
-      public int PositionToFollow = -1;
       public string DriverToFollow = "";
 
       public float SafetyCarSpeed = -1.0f;
@@ -1409,7 +1407,7 @@ namespace rF2SMMonitor
       rs.mMaximumColumnSpacing = rules.mTrackRules.mMaximumColumnSpacing;
       rs.mMinimumSpeed = rules.mTrackRules.mMinimumSpeed;
       rs.mMaximumSpeed = rules.mTrackRules.mMaximumSpeed;
-      rs.mMessage = TransitionTracker.getStringFromBytes(rules.mTrackRules.mMessage);
+      rs.mMessage = TransitionTracker.GetStringFromBytes(rules.mTrackRules.mMessage);
 
       // Player specific:
       rs.mFrozenOrder = playerRules.mFrozenOrder;
@@ -1421,7 +1419,7 @@ namespace rF2SMMonitor
       rs.mPositionAssignment = playerRules.mPositionAssignment;
       rs.mAllowedToPit = playerRules.mAllowedToPit;
       rs.mGoalRelativeDistance = playerRules.mGoalRelativeDistance;
-      rs.mMessage_Participant = TransitionTracker.getStringFromBytes(playerRules.mMessage);
+      rs.mMessage_Participant = TransitionTracker.GetStringFromBytes(playerRules.mMessage);
 
       // Only refresh UI if there's change.
       // some fields are commented out because they change pretty much every frame.
@@ -1612,22 +1610,21 @@ namespace rF2SMMonitor
 
           File.AppendAllLines(rulesTrackingDeltaFilePath, lines);
         }
-
-        var fod = this.GetFrozenOrderData(ref scoring, ref rules);
-        
-        this.sbFrozenOrderInfo = new StringBuilder();
-        this.sbFrozenOrderInfo.Append(
-          $"Frozen Order Phase: {fod.Phase}\n"
-          + $"Frozen Order Action: {fod.Action}\n"
-          + $"Assigned Position: {fod.AssignedPosition}\n"
-          + $"Assigned Column: {fod.AssignedColumn}\n"
-          + $"Assigned Grid Position: {fod.AssignedGridPosition}\n"
-          + $"Position To Follow: {fod.PositionToFollow}\n"
-          + $"Driver To Follow: {fod.DriverToFollow}\n"
-          + $"Safety Car Speed: {(fod.SafetyCarSpeed == -1.0f ? "Not Present" : string.Format("{0:N3}km/h", fod.SafetyCarSpeed * 3.6f))}\n"
-          + $"Driving too slow: {fod.DrivingTooSlowWarning}\n"
-          );
       }
+
+      var fod = this.GetFrozenOrderData(ref playerVeh, ref scoring, ref playerRules, ref rules);
+
+      this.sbFrozenOrderInfo = new StringBuilder();
+      this.sbFrozenOrderInfo.Append(
+        $"Frozen Order Phase: {fod.Phase}\n"
+        + $"Frozen Order Action: {fod.Action}\n"
+        + $"Assigned Position: {fod.AssignedPosition}\n"
+        + $"Assigned Column: {fod.AssignedColumn}\n"
+        + $"Assigned Grid Position: {fod.AssignedGridPosition}\n"
+        + $"Driver To Follow: {fod.DriverToFollow}\n"
+        + $"Safety Car Speed: {(fod.SafetyCarSpeed == -1.0f ? "Not Present" : string.Format("{0:N3}km/h", fod.SafetyCarSpeed * 3.6f))}\n"
+        + $"Driving too slow: {fod.DrivingTooSlowWarning}\n"
+        );
 
       if (g != null)
       {
@@ -1640,13 +1637,14 @@ namespace rF2SMMonitor
       }
     }
 
-    private FrozenOrderData GetFrozenOrderData(ref rF2Scoring scoring, ref rF2Rules rules)
+    private FrozenOrderData GetFrozenOrderData(ref rF2VehicleScoring vehicle,  ref rF2Scoring scoring, ref rF2TrackRulesParticipant vehicleRules, ref rF2Rules rules)
     {
       var fod = new FrozenOrderData();
 
       var foStage = rules.mTrackRules.mStage;
-      if (foStage == rF2TrackRulesStage.Normal)
-        return fod;
+      if (foStage == rF2TrackRulesStage.Normal
+        || scoring.mScoringInfo.mGamePhase == (int)rF2GamePhase.GridWalk)  // Do not try figuring this out during Gridwalk, not enough data.
+        return fod;                                                        // Note, there's slight race between scoring and rules here, FO messages should have validation on them.
 
       // Figure out the phase:
       if (foStage == rF2TrackRulesStage.CautionInit || foStage == rF2TrackRulesStage.CautionUpdate)
@@ -1657,14 +1655,52 @@ namespace rF2SMMonitor
           fod.Phase = FrozenOrderPhase.Rolling;
         else
         {
-          //sthis.getSector();
-          // TODO: If player sector is 3, and it is still Init, it's fast rolling.
-          // Formation / Standing has no Safety Car.
-          fod.Phase = rules.mTrackRules.mStage == rF2TrackRulesStage.FormationUpdate
-            ? FrozenOrderPhase.FormationStanding
-            : FrozenOrderPhase.FastRolling;  // Fast rolling never goes into FormationUpdate
+          // Formation / Standing and Fast Rolling have no Safety Car.
+          fod.Phase = rules.mTrackRules.mStage == rF2TrackRulesStage.FormationInit && this.GetSector(vehicle.mSector) == 3
+            ? FrozenOrderPhase.FastRolling  // Fast rolling never goes into FormationUpdate and usually starts in S3.
+            : FrozenOrderPhase.FormationStanding;
         }
       }
+
+      Debug.Assert(fod.Phase != FrozenOrderPhase.None);
+
+      if (fod.Phase == FrozenOrderPhase.FullCourseYellow
+        && vehicleRules.mPositionAssignment != -1)
+      {
+        // TODO: Depends on SCR value
+        fod.AssignedPosition = vehicleRules.mPositionAssignment + 1;  // + 1, because it is zero based with 0 meaning follow SC.
+
+        // Figure out Driver Name to follow.
+        if (fod.AssignedPosition > 1)
+        {
+          // Find the mID of a vehicle in front of us by frozen order.
+          var vehToFollowId = -1;
+          for (int i = 0; i < rules.mTrackRules.mNumParticipants; ++i)
+          {
+            var p = rules.mParticipants[i];
+            if (p.mPositionAssignment == (vehicleRules.mPositionAssignment - 1))
+            {
+              vehToFollowId = p.mID;
+              break;
+            }
+          }
+
+          // Now find the vehicle to follow from the scoring info.
+          for (int i = 0; i < scoring.mScoringInfo.mNumVehicles; ++i)
+          {
+            var v = scoring.mVehicles[i];
+            if (v.mID == vehToFollowId)
+            {
+              fod.DriverToFollow = TransitionTracker.GetStringFromBytes(v.mDriverName);
+
+               // TODO: assign action 
+
+              break;
+            }
+          }
+        }
+      }
+
 
       return fod;
     }
