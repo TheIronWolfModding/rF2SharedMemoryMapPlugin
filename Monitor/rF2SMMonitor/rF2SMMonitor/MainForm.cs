@@ -248,7 +248,7 @@ namespace rF2SMMonitor
     bool logTiming = true;
     bool logRules = true;
     bool logLightMode = false;
-    bool useStockCarRulesPlugin = false;
+    public static bool useStockCarRulesPlugin = false;
 
     [StructLayout(LayoutKind.Sequential)]
     public struct NativeMessage
@@ -326,9 +326,9 @@ namespace rF2SMMonitor
 
     private void CheckBoxStockCarRules_CheckedChanged(object sender, EventArgs e)
     {
-      this.useStockCarRulesPlugin = this.checkBoxStockCarRules.Checked;
+      MainForm.useStockCarRulesPlugin = this.checkBoxStockCarRules.Checked;
 
-      this.config.Write("useStockCarRules", this.useStockCarRulesPlugin ? "1" : "0");
+      this.config.Write("useStockCarRules", MainForm.useStockCarRulesPlugin ? "1" : "0");
     }
 
     private void CheckBoxLogDamage_CheckedChanged(object sender, EventArgs e)
@@ -1039,11 +1039,11 @@ namespace rF2SMMonitor
       this.checkBoxLogRules.Checked = this.logRules;
 
       intResult = 0;
-      this.useStockCarRulesPlugin = false;
+      MainForm.useStockCarRulesPlugin = false;
       if (int.TryParse(this.config.Read("useStockCarRules"), out intResult) && intResult == 1)
-        this.useStockCarRulesPlugin = true;
+        MainForm.useStockCarRulesPlugin = true;
 
-      this.checkBoxStockCarRules.Checked = this.useStockCarRulesPlugin;
+      this.checkBoxStockCarRules.Checked = MainForm.useStockCarRulesPlugin;
     }
   }
 }
