@@ -1315,7 +1315,6 @@ namespace rF2SMMonitor
       public string DriverToFollow = "";
 
       public float SafetyCarSpeed = -1.0f;
-      public bool DrivingTooSlowWarning = false;
     }
 
     internal void TrackRules(ref rF2Scoring scoring, ref rF2Telemetry telemetry, ref rF2Rules rules, ref rF2Extended extended, Graphics g, bool logToFile)
@@ -1623,7 +1622,6 @@ namespace rF2SMMonitor
         + $"Assigned Grid Position: {fod.AssignedGridPosition}\n"
         + $"Driver To Follow: {fod.DriverToFollow}\n"
         + $"Safety Car Speed: {(fod.SafetyCarSpeed == -1.0f ? "Not Present" : string.Format("{0:N3}km/h", fod.SafetyCarSpeed * 3.6f))}\n"
-        + $"Driving too slow: {fod.DrivingTooSlowWarning}\n"
         );
 
       if (g != null)
@@ -1643,8 +1641,9 @@ namespace rF2SMMonitor
 
       var foStage = rules.mTrackRules.mStage;
       if (foStage == rF2TrackRulesStage.Normal
-        || scoring.mScoringInfo.mGamePhase == (int)rF2GamePhase.GridWalk)  // Do not try figuring this out during Gridwalk, not enough data.
-        return fod;                                                        // Note, there's slight race between scoring and rules here, FO messages should have validation on them.
+        || scoring.mScoringInfo.mGamePhase == (int)rF2GamePhase.GridWalk  // Do not try figuring this out during Gridwalk, not enough data.
+        || scoring.mScoringInfo.mGamePhase == (int)rF2GamePhase.Countdown)  // Definetely no FO during Countdown.
+        return fod; // Note, there's slight race between scoring and rules here, FO messages should have validation on them.
 
       // Figure out the phase:
       if (foStage == rF2TrackRulesStage.CautionInit || foStage == rF2TrackRulesStage.CautionUpdate)
@@ -1693,7 +1692,16 @@ namespace rF2SMMonitor
             {
               fod.DriverToFollow = TransitionTracker.GetStringFromBytes(v.mDriverName);
 
-               // TODO: assign action 
+              var playerDist = this.GetDistanceCompleteded(ref scoring, ref vehicle);
+              var toFollowDist = this.GetDistanceCompleteded(ref scoring, ref v);
+
+              fod.Action = FrozenOrderAction.Follow;
+
+              var distDelta = toFollowDist - playerDist;
+              if (distDelta < 0.0)
+                fod.Action = FrozenOrderAction.AllowToPass;
+              else if (distDelta > 70.0)
+                fod.Action = FrozenOrderAction.CatchUp;
 
               break;
             }
@@ -1703,6 +1711,12 @@ namespace rF2SMMonitor
 
 
       return fod;
+    }
+
+    private double GetDistanceCompleteded(ref rF2Scoring scoring, ref rF2VehicleScoring vehicle)
+    {
+      // Note: Can be interpolated a bit.
+      return vehicle.mTotalLaps * scoring.mScoringInfo.mLapDist + vehicle.mLapDist;
     }
   }
 }
