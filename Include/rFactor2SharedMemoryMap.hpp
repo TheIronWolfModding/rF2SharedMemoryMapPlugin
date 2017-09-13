@@ -26,8 +26,8 @@ Website: thecrewchief.org
 #endif
 
 // Each component can be in [0:99] range.
-#define PLUGIN_VERSION_MAJOR "2.1"
-#define PLUGIN_VERSION_MINOR "1.1"
+#define PLUGIN_VERSION_MAJOR "2.2"
+#define PLUGIN_VERSION_MINOR "0.0"
 #define PLUGIN_NAME_AND_VERSION "rFactor 2 Shared Memory Map Plugin - v" PLUGIN_VERSION_MAJOR
 #define SHARED_MEMORY_VERSION PLUGIN_VERSION_MAJOR "." PLUGIN_VERSION_MINOR
 
@@ -155,7 +155,22 @@ private:
 
     void ProcessEndSession(rF2Scoring const& scoring)
     {
+      // Capture the interesting session end state.
+      mExtended.mPrevSessionEndState.mGamePhase = scoring.mScoringInfo.mGamePhase;
+      mExtended.mPrevSessionEndState.mSession = scoring.mScoringInfo.mSession;
 
+      auto const numScoringVehicles = min(scoring.mScoringInfo.mNumVehicles, rF2MappedBufferHeader::MAX_MAPPED_VEHICLES);
+      mExtended.mPrevSessionEndState.mNumScoringVehicles = numScoringVehicles;
+
+      for (int i = 0; i < numScoringVehicles; ++i) {
+        auto& sessEndVeh = mExtended.mPrevSessionEndState.mScoringVehicles[i];
+        auto const& sv = scoring.mVehicles[i];
+
+        sessEndVeh.mID = sv.mID;
+        sessEndVeh.mFinishStatus = sv.mFinishStatus;
+        sessEndVeh.mIsPlayer = sv.mIsPlayer;
+        sessEndVeh.mPlace = sv.mPlace;
+      }
     }
 
     void ClearState()

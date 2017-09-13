@@ -730,8 +730,9 @@ struct rF2TrackedDamage
 };
 
 
-struct rF2PartialScoringInfo
+struct rF2PartialVehScoringInfo
 {
+  // VehicleScoringInfoV01 members:
   long mID;                      // slot ID (note that it can be re-used in multiplayer after someone leaves)
   unsigned char mPlace;
   bool mIsPlayer;
@@ -741,8 +742,13 @@ struct rF2PartialScoringInfo
 
 struct rF2PrevSessionEndState
 {
+  // ScoringInfoV01 members:
+  unsigned char mGamePhase;
+  long mSession;
+
+  // VehicleScoringInfoV01 members:
   long mNumScoringVehicles;
-  rF2PartialScoringInfo mParticipants[rF2MappedBufferHeader::MAX_MAPPED_VEHICLES];
+  rF2PartialVehScoringInfo mScoringVehicles[rF2MappedBufferHeader::MAX_MAPPED_VEHICLES];
 };
 
 

@@ -771,6 +771,31 @@ namespace rF2SMMonitor
     };
 
 
+    [StructLayout(LayoutKind.Sequential, Pack = 4)]
+    public struct rF2PartialVehScoringInfo
+    {
+      // VehicleScoringInfoV01 members:
+      public int mID;                      // slot ID (note that it can be re-used in multiplayer after someone leaves)
+      public byte mPlace;
+      public byte mIsPlayer;
+      public sbyte mFinishStatus;     // 0=none, 1=finished, 2=dnf, 3=dq
+    };
+
+
+    [StructLayout(LayoutKind.Sequential, Pack = 4)]
+    public struct rF2PrevSessionEndState
+    {
+      // ScoringInfoV01 members:
+      public byte mGamePhase;
+      public int mSession;
+
+      // VehicleScoringInfoV01 members:
+      public int mNumScoringVehicles;
+      [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = rFactor2Constants.MAX_MAPPED_VEHICLES)]
+      public rF2PartialVehScoringInfo[] mScoringVehicles;
+    };
+
+
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
     public struct rF2Extended
     {
@@ -791,6 +816,8 @@ namespace rF2SMMonitor
       public byte mInRealtimeFC;                         // in realtime as opposed to at the monitor (reported via last EnterRealtime/ExitRealtime calls).
       public byte mMultimediaThreadStarted;              // multimedia thread started (reported via ThreadStarted/ThreadStopped calls).
       public byte mSimulationThreadStarted;              // simulation thread started (reported via ThreadStarted/ThreadStopped calls).
+
+      public rF2PrevSessionEndState mPrevSessionEndState;
     }
 
 

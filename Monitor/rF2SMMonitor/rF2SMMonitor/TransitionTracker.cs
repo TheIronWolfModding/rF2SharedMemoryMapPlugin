@@ -51,7 +51,7 @@ namespace rF2SMMonitor
       return Enum.IsDefined(enumType, enumValue) ? $"{enumValue.ToString()}({value})" : string.Format("Unknown({0})", value);
     }
 
-    private string GetSessionString(int session)
+    public static string GetSessionString(int session)
     {
       // current session (0=testday 1-4=practice 5-8=qual 9=warmup 10-13=race)
       if (session == 0)
@@ -136,7 +136,8 @@ namespace rF2SMMonitor
     rF2GamePhase lastTimingTrackingGamePhase = (rF2GamePhase)Enum.ToObject(typeof(rF2GamePhase), -255);
     rF2GamePhase lastRulesTrackingGamePhase = (rF2GamePhase)Enum.ToObject(typeof(rF2GamePhase), -255);
 
-    private float screenYStart = 170.0f;
+    // 170
+    private float screenYStart = 250.0f;
 
     internal void TrackPhase(ref rF2Scoring scoring, ref rF2Telemetry telemetry, ref rF2Extended extended, Graphics g, bool logToFile)
     {
@@ -1134,10 +1135,10 @@ namespace rF2SMMonitor
 
       if (g != null)
       {
-        var timingsYStart = this.screenYStart + 440.0f;
+        var timingsYStart = this.screenYStart + 435.0f;
         g.DrawString(sbPlayer.ToString(), SystemFonts.DefaultFont, Brushes.Magenta, 3.0f, timingsYStart);
-        g.DrawString(sbPlayerDeltas.ToString(), SystemFonts.DefaultFont, Brushes.Black, 3.0f, timingsYStart + 90.0f);
-        g.DrawString(sbFastest.ToString(), SystemFonts.DefaultFont, Brushes.OrangeRed, 3.0f, timingsYStart + 240.0f);
+        g.DrawString(sbPlayerDeltas.ToString(), SystemFonts.DefaultFont, Brushes.Black, 3.0f, timingsYStart + 70.0f);
+        g.DrawString(sbFastest.ToString(), SystemFonts.DefaultFont, Brushes.OrangeRed, 3.0f, timingsYStart + 210.0f);
         g.DrawString(sbOpponentNames.ToString(), SystemFonts.DefaultFont, Brushes.Green, 530.0f, 3.0f);
         g.DrawString(sbOpponentStats.ToString(), SystemFonts.DefaultFont, Brushes.Purple, 860.0f, 3.0f);
       }

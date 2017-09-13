@@ -316,6 +316,8 @@ void SharedMemoryPlugin::ClearState()
 
 void SharedMemoryPlugin::StartSession()
 {
+  DEBUG_MSG(DebugLevel::Timing, "SESSION - Started.");
+
   WriteToAllExampleOutputFiles("a", "--STARTSESSION--");
 
   ClearState();
@@ -324,7 +326,12 @@ void SharedMemoryPlugin::StartSession()
 
 void SharedMemoryPlugin::EndSession()
 {
+  DEBUG_MSG(DebugLevel::Timing, "SESSION - Ended.");
+
   WriteToAllExampleOutputFiles("a", "--ENDSESSION--");
+
+  // Current read buffer for Scoring info contains last Scoring Update.
+  mExtStateTracker.ProcessEndSession(*mScoring.mpCurrReadBuff);
 
   ClearState();
 }

@@ -609,6 +609,15 @@ namespace rF2SMMonitor
           playerVeh = this.telemetry.mVehicles[resolvedPlayerIdx];
         }
 
+        // Figure out prev session end player mID
+        var playerSessionEndInfo = new rF2PartialVehScoringInfo();
+        for (int i = 0; i < this.extended.mPrevSessionEndState.mNumScoringVehicles; ++i)
+        {
+          var veh = this.extended.mPrevSessionEndState.mScoringVehicles[i];
+          if (veh.mIsPlayer == 1)
+            playerSessionEndInfo = veh;
+        }
+
         gameStateText.Append(
           "mElapsedTime:\n"
           + "mCurrentET:\n"
@@ -621,7 +630,12 @@ namespace rF2SMMonitor
           + "mLapDist:\n"
           + "mEndET:\n"
           + "mPlayerName:\n"
-          + "mPlrFileName:\n");
+          + "mPlrFileName:\n\n"
+          + "Sess. End Session:\n"
+          + "Sess. End Phase:\n"
+          + "Sess. End Place:\n"
+          + "Sess. End Finish:\n"
+          );
 
         // Col 1 labels
         g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, brush, currX, currY += yStep);
@@ -640,7 +654,12 @@ namespace rF2SMMonitor
                 + $"{this.scoring.mScoringInfo.mLapDist:N3}\n"
                 + (this.scoring.mScoringInfo.mEndET < 0.0 ? "Unknown" : this.scoring.mScoringInfo.mEndET.ToString("N3")) + "\n"
                 + $"{MainForm.GetStringFromBytes(this.scoring.mScoringInfo.mPlayerName)}\n"
-                + $"{MainForm.GetStringFromBytes(this.scoring.mScoringInfo.mPlrFileName)}\n");
+                + $"{MainForm.GetStringFromBytes(this.scoring.mScoringInfo.mPlrFileName)}\n\n"
+                + $"{TransitionTracker.GetSessionString(this.extended.mPrevSessionEndState.mSession)}\n"
+                + $"{(rFactor2Constants.rF2GamePhase)this.extended.mPrevSessionEndState.mGamePhase}\n"
+                + $"{playerSessionEndInfo.mPlace}\n"
+                + $"{(rFactor2Constants.rF2FinishStatus)playerSessionEndInfo.mFinishStatus}\n"
+                );
 
         // Col1 values
         g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Purple, currX + 145, currY);
