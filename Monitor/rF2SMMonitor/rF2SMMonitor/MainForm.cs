@@ -1040,10 +1040,12 @@ namespace rF2SMMonitor
 
       intResult = 0;
       MainForm.useStockCarRulesPlugin = false;
-      if (int.TryParse(this.config.Read("useStockCarRules"), out intResult) && intResult == 1)
-        MainForm.useStockCarRulesPlugin = true;
+      this.checkBoxStockCarRules.Enabled = false;
+      // Disable this option for now, it might come in handy down the line.
+      //if (int.TryParse(this.config.Read("useStockCarRules"), out intResult) && intResult == 1)
+      // MainForm.useStockCarRulesPlugin = true;
 
-      this.checkBoxStockCarRules.Checked = MainForm.useStockCarRulesPlugin;
+      //this.checkBoxStockCarRules.Checked = MainForm.useStockCarRulesPlugin;
     }
   }
 }
