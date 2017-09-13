@@ -153,6 +153,11 @@ private:
       }
     }
 
+    void ProcessEndSession(rF2Scoring const& scoring)
+    {
+
+    }
+
     void ClearState()
     {
       ResetDamageState();

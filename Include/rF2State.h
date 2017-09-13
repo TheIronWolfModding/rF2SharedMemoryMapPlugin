@@ -730,6 +730,22 @@ struct rF2TrackedDamage
 };
 
 
+struct rF2PartialScoringInfo
+{
+  long mID;                      // slot ID (note that it can be re-used in multiplayer after someone leaves)
+  unsigned char mPlace;
+  bool mIsPlayer;
+  signed char mFinishStatus;     // 0=none, 1=finished, 2=dnf, 3=dq
+};
+
+
+struct rF2PrevSessionEndState
+{
+  long mNumScoringVehicles;
+  rF2PartialScoringInfo mParticipants[rF2MappedBufferHeader::MAX_MAPPED_VEHICLES];
+};
+
+
 struct rF2Extended : public rF2MappedBufferHeader
 {
   char mVersion[8];                            // API version
@@ -745,6 +761,8 @@ struct rF2Extended : public rF2MappedBufferHeader
   bool mInRealtimeFC;                         // in realtime as opposed to at the monitor (reported via last EnterRealtime/ExitRealtime calls).
   bool mMultimediaThreadStarted;              // multimedia thread started (reported via ThreadStarted/ThreadStopped calls).
   bool mSimulationThreadStarted;              // simulation thread started (reported via ThreadStarted/ThreadStopped calls).
+
+  rF2PrevSessionEndState mPrevSessionEndState;
 };
 
 #pragma pack(pop)
