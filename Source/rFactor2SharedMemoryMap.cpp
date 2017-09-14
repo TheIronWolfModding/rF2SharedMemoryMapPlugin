@@ -316,9 +316,12 @@ void SharedMemoryPlugin::ClearState()
 
 void SharedMemoryPlugin::StartSession()
 {
-  DEBUG_MSG(DebugLevel::Timing, "SESSION - Started.");
-
   WriteToAllExampleOutputFiles("a", "--STARTSESSION--");
+  
+  if (!mIsMapped)
+    return;
+
+  DEBUG_MSG(DebugLevel::Timing, "SESSION - Started.");
 
   ClearState();
 }
@@ -326,9 +329,12 @@ void SharedMemoryPlugin::StartSession()
 
 void SharedMemoryPlugin::EndSession()
 {
-  DEBUG_MSG(DebugLevel::Timing, "SESSION - Ended.");
-
   WriteToAllExampleOutputFiles("a", "--ENDSESSION--");
+
+  if (!mIsMapped)
+    return;
+
+  DEBUG_MSG(DebugLevel::Timing, "SESSION - Ended.");
 
   // Current read buffer for Scoring info contains last Scoring Update.
   mExtStateTracker.ProcessEndSession(*mScoring.mpCurrReadBuff);
@@ -765,6 +771,13 @@ void SharedMemoryPlugin::SetPhysicsOptions(PhysicsOptionsV01& options)
   memcpy(&(mExtStateTracker.mExtended.mPhysics), &options, sizeof(rF2PhysicsOptions));
   memcpy(mExtended.mpCurrWriteBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
   mExtended.FlipBuffers();
+}
+
+
+bool SharedMemoryPlugin::AccessMultiSessionRules(MultiSessionRulesV01& info)
+{
+  DEBUG_MSG(DebugLevel::Timing, "MSRULES - Updated.");
+  return false;
 }
 
 

@@ -680,6 +680,58 @@ struct rF2TrackRules
 static_assert(sizeof(rF2TrackRules) == sizeof(TrackRulesV01), "rF2TrackRules and TrackRulesV01 structs are out of sync");
 
 
+//////////////////////////////////////////////////////////////////////////////////////////
+// Identical to MultiSessionParticipantV01, except where noted by MM_NEW/MM_NOT_USED comments.
+//////////////////////////////////////////////////////////////////////////////////////////
+struct rF2MultiSessionParticipant
+{
+  // input only
+  long mID;                             // slot ID (if loaded) or -1 (if currently disconnected)
+  char mDriverName[32];               // driver name
+  char mVehicleName[64];              // vehicle name
+  unsigned char mUpgradePack[16];     // coded upgrades
+
+  float mBestPracticeTime;              // best practice time
+  long mQualParticipantIndex;           // once qualifying begins, this becomes valid and ranks participants according to practice time if possible
+  float mQualificationTime[4];        // best qualification time in up to 4 qual sessions
+  float mFinalRacePlace[4];           // final race place in up to 4 race sessions
+  float mFinalRaceTime[4];            // final race time in up to 4 race sessions
+
+                                      // input/output
+  bool mServerScored;                   // whether vehicle is allowed to participate in current session
+  long mGridPosition;                   // 1-based grid position for current race session (or upcoming race session if it is currently warmup), or -1 if currently disconnected
+                                        // long mPitIndex;
+                                        // long mGarageIndex;
+
+                                        // future expansion
+  unsigned char mExpansion[128];
+};
+
+
+//////////////////////////////////////////////////////////////////////////////////////////
+// Identical to MultiSessionRulesV01, except where noted by MM_NEW/MM_NOT_USED comments.
+//////////////////////////////////////////////////////////////////////////////////////////
+struct MultiSessionRulesV01
+{
+  // input only
+  long mSession;                        // current session (0=testday 1-4=practice 5-8=qual 9=warmup 10-13=race)
+  long mSpecialSlotID;                  // slot ID of someone who just joined, or -2 requesting to update qual order, or -1 (default/general)
+  char mTrackType[32];                // track type from GDB
+  long mNumParticipants;                // number of participants (vehicles)
+
+                                        // input/output
+  MultiSessionParticipantV01 *mParticipant;       // array of partipants (vehicles)
+  long mNumQualSessions;                // number of qualifying sessions configured
+  long mNumRaceSessions;                // number of race sessions configured
+  long mMaxLaps;                        // maximum laps allowed in current session (LONG_MAX = unlimited) (note: cannot currently edit in *race* sessions)
+  long mMaxSeconds;                     // maximum time allowed in current session (LONG_MAX = unlimited) (note: cannot currently edit in *race* sessions)
+  char mName[32];                     // untranslated name override for session (please use mixed case here, it should get uppercased if necessary)
+
+                                      // future expansion
+  unsigned char mExpansion[256];
+};
+
+
 ///////////////////////////////////////////
 // Mapped wrapper structures
 ///////////////////////////////////////////

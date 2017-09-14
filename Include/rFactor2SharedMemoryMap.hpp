@@ -239,9 +239,9 @@ public:
 
   void SetPhysicsOptions(PhysicsOptionsV01& options) override;
 
-  // FUTURE/V2: SCORING CONTROL (only available in single-player or on multiplayer server)
-  // virtual bool WantsMultiSessionRulesAccess() { return(false); } // change to true in order to read or write multi-session rules
-  // virtual bool AccessMultiSessionRules(MultiSessionRulesV01 &info) { return(false); } // current internal rules passed in; return true if you want to change them
+  // SCORING CONTROL (only available in single-player or on multiplayer server)
+  bool WantsMultiSessionRulesAccess() override { return true; } // change to true in order to read or write multi-session rules
+  bool AccessMultiSessionRules(MultiSessionRulesV01& info); // current internal rules passed in; return true if you want to change them
 
 private:
   SharedMemoryPlugin(SharedMemoryPlugin const& rhs) = delete;
