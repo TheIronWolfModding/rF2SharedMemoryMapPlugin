@@ -706,12 +706,13 @@ struct rF2MultiSessionParticipant
                                         // future expansion
   unsigned char mExpansion[128];
 };
+static_assert(sizeof(rF2MultiSessionParticipant) == sizeof(MultiSessionParticipantV01), "rF2MultiSessionParticipant and MultiSessionParticipantV01 structs are out of sync");
 
 
 //////////////////////////////////////////////////////////////////////////////////////////
 // Identical to MultiSessionRulesV01, except where noted by MM_NEW/MM_NOT_USED comments.
 //////////////////////////////////////////////////////////////////////////////////////////
-struct MultiSessionRulesV01
+struct rF2MultiSessionRules
 {
   // input only
   long mSession;                        // current session (0=testday 1-4=practice 5-8=qual 9=warmup 10-13=race)
@@ -720,7 +721,15 @@ struct MultiSessionRulesV01
   long mNumParticipants;                // number of participants (vehicles)
 
                                         // input/output
-  MultiSessionParticipantV01 *mParticipant;       // array of partipants (vehicles)
+  // MM_NOT_USED
+  // MultiSessionParticipantV01 *mParticipant;       // array of partipants (vehicles)
+  // MM_NEW
+#ifdef _AMD64_
+  unsigned char pointer1[8];
+#else
+  unsigned char pointer1[4];
+#endif
+
   long mNumQualSessions;                // number of qualifying sessions configured
   long mNumRaceSessions;                // number of race sessions configured
   long mMaxLaps;                        // maximum laps allowed in current session (LONG_MAX = unlimited) (note: cannot currently edit in *race* sessions)
@@ -730,6 +739,7 @@ struct MultiSessionRulesV01
                                       // future expansion
   unsigned char mExpansion[256];
 };
+static_assert(sizeof(rF2MultiSessionRules) == sizeof(MultiSessionRulesV01), "rF2MultiSessionRules and MultiSessionRulesV01 structs are out of sync");
 
 
 ///////////////////////////////////////////
@@ -770,8 +780,16 @@ struct rF2Scoring : public rF2MappedBufferHeaderWithSize
 struct rF2Rules : public rF2MappedBufferHeaderWithSize
 {
   rF2TrackRules mTrackRules;
-  // TODO: see if we need to expose mActions, and if so, how many?  To answer that need to see how fast that array grows.
+
+  rF2TrackRulesAction mActions[rF2MappedBufferHeader::MAX_MAPPED_VEHICLES];
   rF2TrackRulesParticipant mParticipants[rF2MappedBufferHeader::MAX_MAPPED_VEHICLES];
+};
+
+
+struct rF2MultiRules : public rF2MappedBufferHeaderWithSize
+{
+  rF2MultiSessionRules mMultiSessionRules;
+  rF2MultiSessionParticipant mParticipants[rF2MappedBufferHeader::MAX_MAPPED_VEHICLES];
 };
 
 

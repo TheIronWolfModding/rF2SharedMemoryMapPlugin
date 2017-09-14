@@ -270,6 +270,7 @@ private:
   double mLastTelemetryVehicleAddedMillis = 0.0;
   double mLastScoringUpdateMillis = 0.0;
   double mLastRulesUpdateMillis = 0.0;
+  double mLastMultiRulesUpdateMillis = 0.0;
 
   ExtendedStateTracker mExtStateTracker;
 

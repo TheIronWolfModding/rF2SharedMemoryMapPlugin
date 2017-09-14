@@ -287,6 +287,7 @@ void SharedMemoryPlugin::ClearTimingsAndCounters()
   mLastTelemetryVehicleAddedMillis = 0.0;
   mLastScoringUpdateMillis = 0.0;
   mLastRulesUpdateMillis = 0.0;
+  mLastMultiRulesUpdateMillis = 0.0;
 
   mLastTelemetryUpdateET = -1.0;
   mLastScoringUpdateET = -1.0;
@@ -735,8 +736,18 @@ bool SharedMemoryPlugin::AccessTrackRules(TrackRulesV01& info)
 
   TraceBeginUpdate(mRules, mLastRulesUpdateMillis, "RULES");
 
+  // Copy main struct.
   memcpy(&(mRules.mpCurrWriteBuff->mTrackRules), &info, sizeof(rF2TrackRules));
 
+  // Copy actions.
+  if (info.mNumActions >= rF2MappedBufferHeader::MAX_MAPPED_VEHICLES)
+    DEBUG_MSG(DebugLevel::Errors, "ERROR: Rules exceeded maximum of allowed actions.");
+
+  auto const numActions = min(info.mNumActions, rF2MappedBufferHeader::MAX_MAPPED_VEHICLES);
+  for (int i = 0; i < numActions; ++i)
+    memcpy(&(mRules.mpCurrWriteBuff->mActions[i]), &(info.mAction[i]), sizeof(rF2TrackRulesAction));
+
+  // Copy participants.
   if (info.mNumParticipants >= rF2MappedBufferHeader::MAX_MAPPED_VEHICLES)
     DEBUG_MSG(DebugLevel::Errors, "ERROR: Rules exceeded maximum of allowed mapped vehicles.");
 
@@ -776,8 +787,32 @@ void SharedMemoryPlugin::SetPhysicsOptions(PhysicsOptionsV01& options)
 
 bool SharedMemoryPlugin::AccessMultiSessionRules(MultiSessionRulesV01& info)
 {
-  DEBUG_MSG(DebugLevel::Timing, "MSRULES - Updated.");
-  return false;
+  TraceBeginUpdate(mMultiRules, mLastMultiRulesUpdateMillis, "MULTI RULES");
+
+  // Copy main struct.
+  memcpy(&(mRules.mpCurrWriteBuff->mTrackRules), &info, sizeof(rF2TrackRules));
+
+  // Copy actions.
+  if (info.mNumActions >= rF2MappedBufferHeader::MAX_MAPPED_VEHICLES)
+    DEBUG_MSG(DebugLevel::Errors, "ERROR: Rules exceeded maximum of allowed actions.");
+
+  auto const numActions = min(info.mNumActions, rF2MappedBufferHeader::MAX_MAPPED_VEHICLES);
+  for (int i = 0; i < numActions; ++i)
+    memcpy(&(mRules.mpCurrWriteBuff->mActions[i]), &(info.mAction[i]), sizeof(rF2TrackRulesAction));
+
+  // Copy participants.
+  if (info.mNumParticipants >= rF2MappedBufferHeader::MAX_MAPPED_VEHICLES)
+    DEBUG_MSG(DebugLevel::Errors, "ERROR: Rules exceeded maximum of allowed mapped vehicles.");
+
+  auto const numRulesVehicles = min(info.mNumParticipants, rF2MappedBufferHeader::MAX_MAPPED_VEHICLES);
+  for (int i = 0; i < numRulesVehicles; ++i)
+    memcpy(&(mRules.mpCurrWriteBuff->mParticipants[i]), &(info.mParticipant[i]), sizeof(rF2TrackRulesParticipant));
+
+  mRules.mpCurrWriteBuff->mBytesUpdatedHint = static_cast<int>(offsetof(rF2Rules, mParticipants[numRulesVehicles]));
+
+  mRules.FlipBuffers();
+
+  return false;  // No changes requested, we're simply reading.
 }
 
 
