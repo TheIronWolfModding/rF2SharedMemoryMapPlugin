@@ -817,6 +817,7 @@ namespace rF2SMMonitor
       public byte mMultimediaThreadStarted;              // multimedia thread started (reported via ThreadStarted/ThreadStopped calls).
       public byte mSimulationThreadStarted;              // simulation thread started (reported via ThreadStarted/ThreadStopped calls).
 
+      public byte mSessionStarted;                       // Set to true on Session Started, set to false on Session Ended.
       public rF2PrevSessionEndState mPrevSessionEndState;
     }
 

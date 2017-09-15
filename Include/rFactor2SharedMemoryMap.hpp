@@ -69,6 +69,10 @@ public:
   static char const* const MM_RULES_FILE_NAME2;
   static char const* const MM_RULES_FILE_ACCESS_MUTEX;
 
+  static char const* const MM_MULTI_RULES_FILE_NAME1;
+  static char const* const MM_MULTI_RULES_FILE_NAME2;
+  static char const* const MM_MULTI_RULES_FILE_ACCESS_MUTEX;
+
   static char const* const MM_EXTENDED_FILE_NAME1;
   static char const* const MM_EXTENDED_FILE_NAME2;
   static char const* const MM_EXTENDED_FILE_ACCESS_MUTEX;
@@ -153,7 +157,7 @@ private:
       }
     }
 
-    void ProcessEndSession(rF2Scoring const& scoring)
+    void CapturePrevSessionEnd(rF2Scoring const& scoring)
     {
       // Capture the interesting session end state.
       mExtended.mPrevSessionEndState.mGamePhase = scoring.mScoringInfo.mGamePhase;
@@ -177,7 +181,8 @@ private:
     {
       ResetDamageState();
 
-      memset(&(mExtended.mPhysics), 0, sizeof(rF2PhysicsOptions));
+      // TODO: possibly keep physics because they're updated between sessions.
+      //memset(&(mExtended.mPhysics), 0, sizeof(rF2PhysicsOptions));
     }
 
   public:
@@ -292,6 +297,7 @@ private:
   MappedDoubleBuffer<rF2Telemetry> mTelemetry;
   MappedDoubleBuffer<rF2Scoring> mScoring;
   MappedDoubleBuffer<rF2Rules> mRules;
+  MappedDoubleBuffer<rF2MultiRules> mMultiRules;
   MappedDoubleBuffer<rF2Extended> mExtended;
 
   // Buffers mapped successfully or not.

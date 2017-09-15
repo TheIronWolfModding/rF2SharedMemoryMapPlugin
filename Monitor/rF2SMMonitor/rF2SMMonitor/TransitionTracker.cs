@@ -831,7 +831,8 @@ namespace rF2SMMonitor
 
       this.lastTimingTrackingGamePhase = (rF2GamePhase)scoring.mScoringInfo.mGamePhase;
 
-      if (scoring.mScoringInfo.mNumVehicles == 0)
+      if (scoring.mScoringInfo.mNumVehicles == 0 
+        || extended.mSessionStarted == 0)
       {
         this.lastTimingSector = -1;
         this.lapDataMap = null;

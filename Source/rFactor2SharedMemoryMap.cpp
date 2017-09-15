@@ -110,12 +110,7 @@ FILE* SharedMemoryPlugin::msDebugFile;
 FILE* SharedMemoryPlugin::msIsiTelemetryFile;
 FILE* SharedMemoryPlugin::msIsiScoringFile;
 
-// Future/V2:  split into telemetry/scoring/rules etc.
-// _Telemetry - possibly no need to interpolate.
-// _Scoring
-// _Extended
-// _Rules
-// _Weather
+// _Weather ?
 char const* const SharedMemoryPlugin::MM_TELEMETRY_FILE_NAME1 = "$rFactor2SMMP_TelemetryBuffer1$";
 char const* const SharedMemoryPlugin::MM_TELEMETRY_FILE_NAME2 = "$rFactor2SMMP_TelemetryBuffer2$";
 char const* const SharedMemoryPlugin::MM_TELEMETRY_FILE_ACCESS_MUTEX = R"(Global\$rFactor2SMMP_TelemeteryMutex)";
@@ -127,6 +122,10 @@ char const* const SharedMemoryPlugin::MM_SCORING_FILE_ACCESS_MUTEX = R"(Global\$
 char const* const SharedMemoryPlugin::MM_RULES_FILE_NAME1 = "$rFactor2SMMP_RulesBuffer1$";
 char const* const SharedMemoryPlugin::MM_RULES_FILE_NAME2 = "$rFactor2SMMP_RulesBuffer2$";
 char const* const SharedMemoryPlugin::MM_RULES_FILE_ACCESS_MUTEX = R"(Global\$rFactor2SMMP_RulesMutex)";
+
+char const* const SharedMemoryPlugin::MM_MULTI_RULES_FILE_NAME1 = "$rFactor2SMMP_MultiRulesBuffer1$";
+char const* const SharedMemoryPlugin::MM_MULTI_RULES_FILE_NAME2 = "$rFactor2SMMP_MultiRulesBuffer2$";
+char const* const SharedMemoryPlugin::MM_MULTI_RULES_FILE_ACCESS_MUTEX = R"(Global\$rFactor2SMMP_MultiRulesMutex)";
 
 char const* const SharedMemoryPlugin::MM_EXTENDED_FILE_NAME1 = "$rFactor2SMMP_ExtendedBuffer1$";
 char const* const SharedMemoryPlugin::MM_EXTENDED_FILE_NAME2 = "$rFactor2SMMP_ExtendedBuffer2$";
@@ -171,6 +170,10 @@ SharedMemoryPlugin::SharedMemoryPlugin()
       , SharedMemoryPlugin::MM_RULES_FILE_NAME1
       , SharedMemoryPlugin::MM_RULES_FILE_NAME2
       , SharedMemoryPlugin::MM_RULES_FILE_ACCESS_MUTEX),
+    mMultiRules(0 /*maxRetries*/
+      , SharedMemoryPlugin::MM_MULTI_RULES_FILE_NAME1
+      , SharedMemoryPlugin::MM_MULTI_RULES_FILE_NAME2
+      , SharedMemoryPlugin::MM_MULTI_RULES_FILE_ACCESS_MUTEX),
     mExtended(0 /*maxRetries*/
       , SharedMemoryPlugin::MM_EXTENDED_FILE_NAME1
       , SharedMemoryPlugin::MM_EXTENDED_FILE_NAME2
@@ -322,9 +325,25 @@ void SharedMemoryPlugin::StartSession()
   if (!mIsMapped)
     return;
 
-  DEBUG_MSG(DebugLevel::Timing, "SESSION - Started.");
+  DEBUG_MSG(DebugLevel::Errors, "SESSION - Started.");
+  //DEBUG_MSG(DebugLevel::Timing, "SESSION - Started.");
 
-  ClearState();
+  mExtStateTracker.mExtended.mSessionStarted = true;
+  // Sometimes, game sends updates between Session Start/End.  We need to capture
+  // some of that info.
+  // Current read buffer for Scoring info contains last Scoring Update.
+  mExtStateTracker.CapturePrevSessionEnd(*mScoring.mpCurrReadBuff);
+
+  // Clear Extended state damage tracking info.
+  mExtStateTracker.ClearState();
+  mExtended.ClearState(&(mExtStateTracker.mExtended));
+
+  memcpy(mExtended.mpCurrWriteBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
+  mExtended.FlipBuffers();
+
+  ClearTimingsAndCounters();
+
+//  ClearState();
 }
 
 
@@ -335,12 +354,17 @@ void SharedMemoryPlugin::EndSession()
   if (!mIsMapped)
     return;
 
-  DEBUG_MSG(DebugLevel::Timing, "SESSION - Ended.");
+  DEBUG_MSG(DebugLevel::Errors, "SESSION - Ended.");
+  //DEBUG_MSG(DebugLevel::Timing, "SESSION - Ended.");
 
-  // Current read buffer for Scoring info contains last Scoring Update.
-  mExtStateTracker.ProcessEndSession(*mScoring.mpCurrReadBuff);
+  // TODO: how to detect abrupt race end, if we will be checking for ended/started transition?
+  // TODO: print last reported scoring pos in Ended and Started.  We need to know if it ever changes.
+  mExtStateTracker.mExtended.mSessionStarted = false;
+  memcpy(mExtended.mpCurrWriteBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
+  mExtended.FlipBuffers();
 
-  ClearState();
+  // Do not clear buffers until next session start.
+  //ClearState();
 }
 
 
@@ -655,6 +679,7 @@ void SharedMemoryPlugin::UpdateScoring(ScoringInfoV01 const& info)
   if (!mIsMapped)
     return;
 
+  DEBUG_INT2(DebugLevel::Errors, "SCORING - session:", info.mGamePhase);
   mLastScoringUpdateET = info.mCurrentET;
 
   ScoringTraceBeginUpdate();
@@ -788,7 +813,7 @@ void SharedMemoryPlugin::SetPhysicsOptions(PhysicsOptionsV01& options)
 bool SharedMemoryPlugin::AccessMultiSessionRules(MultiSessionRulesV01& info)
 {
   TraceBeginUpdate(mMultiRules, mLastMultiRulesUpdateMillis, "MULTI RULES");
-
+  /*
   // Copy main struct.
   memcpy(&(mRules.mpCurrWriteBuff->mTrackRules), &info, sizeof(rF2TrackRules));
 
@@ -811,7 +836,7 @@ bool SharedMemoryPlugin::AccessMultiSessionRules(MultiSessionRulesV01& info)
   mRules.mpCurrWriteBuff->mBytesUpdatedHint = static_cast<int>(offsetof(rF2Rules, mParticipants[numRulesVehicles]));
 
   mRules.FlipBuffers();
-
+  */
   return false;  // No changes requested, we're simply reading.
 }
 
