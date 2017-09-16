@@ -207,6 +207,11 @@ void SharedMemoryPlugin::Startup(long version)
     return;
   }
 
+  if (!mMultiRules.Initialize()) {
+    DEBUG_MSG(DebugLevel::Errors, "Failed to initialize multi rules mapping");
+    return;
+  }
+
   if (!mExtended.Initialize()) {
     DEBUG_MSG(DebugLevel::Errors, "Failed to initialize extended mapping");
     return;
@@ -215,6 +220,9 @@ void SharedMemoryPlugin::Startup(long version)
   mIsMapped = true;
 
   ClearState();
+
+  // Keep multi rules as a special case for now, zero initialize here.
+  mMultiRules.ClearState(nullptr /*pInitialContents*/);
 
   DEBUG_MSG(DebugLevel::Errors, "Files mapped successfully");
   if (SharedMemoryPlugin::msDebugOutputLevel != DebugLevel::Off) {
@@ -238,6 +246,13 @@ void SharedMemoryPlugin::Startup(long version)
     DEBUG_MSG3(DebugLevel::Errors, "Size of rules buffers:", sizeSz, "bytes each.");
 
     assert(sizeof(rF2Rules) == offsetof(rF2Rules, mParticipants[rF2MappedBufferHeader::MAX_MAPPED_VEHICLES]));
+
+    sizeSz[0] = '\0';
+    size = static_cast<int>(sizeof(rF2MultiRules));
+    _itoa_s(size, sizeSz, 10);
+    DEBUG_MSG3(DebugLevel::Errors, "Size of multi rules buffers:", sizeSz, "bytes each.");
+
+    assert(sizeof(rF2MultiRules) == offsetof(rF2MultiRules, mParticipants[rF2MappedBufferHeader::MAX_MAPPED_VEHICLES]));
 
     sizeSz[0] = '\0';
     size = static_cast<int>(sizeof(rF2Extended));
@@ -278,6 +293,9 @@ void SharedMemoryPlugin::Shutdown()
   mRules.ClearState(nullptr /*pInitialContents*/);
   mRules.ReleaseResources();
 
+  mMultiRules.ClearState(nullptr /*pInitialContents*/);
+  mMultiRules.ReleaseResources();
+
   mExtended.ClearState(nullptr /*pInitialContents*/);
   mExtended.ReleaseResources();
 }
@@ -309,6 +327,7 @@ void SharedMemoryPlugin::ClearState()
   mTelemetry.ClearState(nullptr /*pInitialContents*/);
   mScoring.ClearState(nullptr /*pInitialContents*/);
   mRules.ClearState(nullptr /*pInitialContents*/);
+  // Do not clear mMultiRules as they're updated in between sessions.
 
   // Certain members of the extended state persist between restarts/sessions.
   // So, clear the state but pass persisting state as initial state.
@@ -325,8 +344,9 @@ void SharedMemoryPlugin::StartSession()
   if (!mIsMapped)
     return;
 
-  DEBUG_MSG(DebugLevel::Errors, "SESSION - Started.");
-  //DEBUG_MSG(DebugLevel::Timing, "SESSION - Started.");
+  // TODO: Remove
+  //DEBUG_MSG(DebugLevel::Errors, "SESSION - Started.");
+  DEBUG_MSG(DebugLevel::Timing, "SESSION - Started.");
 
   mExtStateTracker.mExtended.mSessionStarted = true;
   
@@ -348,12 +368,10 @@ void SharedMemoryPlugin::EndSession()
   if (!mIsMapped)
     return;
 
-  DEBUG_MSG(DebugLevel::Errors, "SESSION - Ended.");
-  //DEBUG_MSG(DebugLevel::Timing, "SESSION - Ended.");
+  // TODO: remove
+  //DEBUG_MSG(DebugLevel::Errors, "SESSION - Ended.");
+  DEBUG_MSG(DebugLevel::Timing, "SESSION - Ended.");
 
-  // TODO: how to detect abrupt race end, if we will be checking for ended/started transition?
-  // Race needs to be treated specially - it does not go from session start false to true, so detect abrupt
-  // finish differently (basically, as soon as it goes to started).
   mExtStateTracker.mExtended.mSessionStarted = false;
 
   // Capture Session End state.
@@ -675,8 +693,9 @@ void SharedMemoryPlugin::UpdateScoring(ScoringInfoV01 const& info)
   if (!mIsMapped)
     return;
 
-  DEBUG_INT2(DebugLevel::Errors, "SCORING - session:", info.mGamePhase);
-  DEBUG_INT2(DebugLevel::Errors, "SCORING - place:", info.mVehicle[0].mPlace);
+  // TODO: Remove
+  //DEBUG_INT2(DebugLevel::Errors, "SCORING - session:", info.mGamePhase);
+  //DEBUG_INT2(DebugLevel::Errors, "SCORING - place:", info.mVehicle[0].mPlace);
   mLastScoringUpdateET = info.mCurrentET;
 
   ScoringTraceBeginUpdate();
@@ -810,30 +829,22 @@ void SharedMemoryPlugin::SetPhysicsOptions(PhysicsOptionsV01& options)
 bool SharedMemoryPlugin::AccessMultiSessionRules(MultiSessionRulesV01& info)
 {
   TraceBeginUpdate(mMultiRules, mLastMultiRulesUpdateMillis, "MULTI RULES");
-  /*
+ 
   // Copy main struct.
-  memcpy(&(mRules.mpCurrWriteBuff->mTrackRules), &info, sizeof(rF2TrackRules));
-
-  // Copy actions.
-  if (info.mNumActions >= rF2MappedBufferHeader::MAX_MAPPED_VEHICLES)
-    DEBUG_MSG(DebugLevel::Errors, "ERROR: Rules exceeded maximum of allowed actions.");
-
-  auto const numActions = min(info.mNumActions, rF2MappedBufferHeader::MAX_MAPPED_VEHICLES);
-  for (int i = 0; i < numActions; ++i)
-    memcpy(&(mRules.mpCurrWriteBuff->mActions[i]), &(info.mAction[i]), sizeof(rF2TrackRulesAction));
+  memcpy(&(mMultiRules.mpCurrWriteBuff->mMultiSessionRules), &info, sizeof(rF2MultiSessionRules));
 
   // Copy participants.
   if (info.mNumParticipants >= rF2MappedBufferHeader::MAX_MAPPED_VEHICLES)
-    DEBUG_MSG(DebugLevel::Errors, "ERROR: Rules exceeded maximum of allowed mapped vehicles.");
+    DEBUG_MSG(DebugLevel::Errors, "ERROR: Multi rules exceeded maximum of allowed mapped vehicles.");
 
-  auto const numRulesVehicles = min(info.mNumParticipants, rF2MappedBufferHeader::MAX_MAPPED_VEHICLES);
-  for (int i = 0; i < numRulesVehicles; ++i)
-    memcpy(&(mRules.mpCurrWriteBuff->mParticipants[i]), &(info.mParticipant[i]), sizeof(rF2TrackRulesParticipant));
+  auto const numMultiRulesVehicles = min(info.mNumParticipants, rF2MappedBufferHeader::MAX_MAPPED_VEHICLES);
+  for (int i = 0; i < numMultiRulesVehicles; ++i)
+    memcpy(&(mMultiRules.mpCurrWriteBuff->mParticipants[i]), &(info.mParticipant[i]), sizeof(rF2MultiSessionParticipant));
 
-  mRules.mpCurrWriteBuff->mBytesUpdatedHint = static_cast<int>(offsetof(rF2Rules, mParticipants[numRulesVehicles]));
+  mMultiRules.mpCurrWriteBuff->mBytesUpdatedHint = static_cast<int>(offsetof(rF2MultiRules, mParticipants[numMultiRulesVehicles]));
 
-  mRules.FlipBuffers();
-  */
+  mMultiRules.FlipBuffers();
+
   return false;  // No changes requested, we're simply reading.
 }
 
