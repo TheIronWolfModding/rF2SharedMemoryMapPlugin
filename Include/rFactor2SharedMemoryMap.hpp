@@ -157,17 +157,17 @@ private:
       }
     }
 
-    void CapturePrevSessionEnd(rF2Scoring const& scoring)
+    void CaptureSessionTransition(rF2Scoring const& scoring)
     {
       // Capture the interesting session end state.
-      mExtended.mPrevSessionEndState.mGamePhase = scoring.mScoringInfo.mGamePhase;
-      mExtended.mPrevSessionEndState.mSession = scoring.mScoringInfo.mSession;
+      mExtended.mSessionTransitionCapture.mGamePhase = scoring.mScoringInfo.mGamePhase;
+      mExtended.mSessionTransitionCapture.mSession = scoring.mScoringInfo.mSession;
 
       auto const numScoringVehicles = min(scoring.mScoringInfo.mNumVehicles, rF2MappedBufferHeader::MAX_MAPPED_VEHICLES);
-      mExtended.mPrevSessionEndState.mNumScoringVehicles = numScoringVehicles;
+      mExtended.mSessionTransitionCapture.mNumScoringVehicles = numScoringVehicles;
 
       for (int i = 0; i < numScoringVehicles; ++i) {
-        auto& sessEndVeh = mExtended.mPrevSessionEndState.mScoringVehicles[i];
+        auto& sessEndVeh = mExtended.mSessionTransitionCapture.mScoringVehicles[i];
         auto const& sv = scoring.mVehicles[i];
 
         sessEndVeh.mID = sv.mID;
@@ -180,9 +180,6 @@ private:
     void ClearState()
     {
       ResetDamageState();
-
-      // TODO: possibly keep physics because they're updated between sessions.
-      //memset(&(mExtended.mPhysics), 0, sizeof(rF2PhysicsOptions));
     }
 
   public:

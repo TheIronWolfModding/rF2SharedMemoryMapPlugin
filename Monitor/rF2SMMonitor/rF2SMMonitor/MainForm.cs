@@ -610,10 +610,10 @@ namespace rF2SMMonitor
         }
 
         // Figure out prev session end player mID
-        var playerSessionEndInfo = new rF2PartialVehScoringInfo();
-        for (int i = 0; i < this.extended.mPrevSessionEndState.mNumScoringVehicles; ++i)
+        var playerSessionEndInfo = new rF2VehScoringCapture();
+        for (int i = 0; i < this.extended.mSessionTransitionCapture.mNumScoringVehicles; ++i)
         {
-          var veh = this.extended.mPrevSessionEndState.mScoringVehicles[i];
+          var veh = this.extended.mSessionTransitionCapture.mScoringVehicles[i];
           if (veh.mIsPlayer == 1)
             playerSessionEndInfo = veh;
         }
@@ -657,8 +657,8 @@ namespace rF2SMMonitor
                 + $"{MainForm.GetStringFromBytes(this.scoring.mScoringInfo.mPlayerName)}\n"
                 + $"{MainForm.GetStringFromBytes(this.scoring.mScoringInfo.mPlrFileName)}\n\n"
                 + $"{this.extended.mSessionStarted != 0}\n"
-                + $"{TransitionTracker.GetSessionString(this.extended.mPrevSessionEndState.mSession)}\n"
-                + $"{(rFactor2Constants.rF2GamePhase)this.extended.mPrevSessionEndState.mGamePhase}\n"
+                + $"{TransitionTracker.GetSessionString(this.extended.mSessionTransitionCapture.mSession)}\n"
+                + $"{(rFactor2Constants.rF2GamePhase)this.extended.mSessionTransitionCapture.mGamePhase}\n"
                 + $"{playerSessionEndInfo.mPlace}\n"
                 + $"{(rFactor2Constants.rF2FinishStatus)playerSessionEndInfo.mFinishStatus}\n"
                 );

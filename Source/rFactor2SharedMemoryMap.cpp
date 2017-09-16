@@ -310,7 +310,7 @@ void SharedMemoryPlugin::ClearState()
   mScoring.ClearState(nullptr /*pInitialContents*/);
   mRules.ClearState(nullptr /*pInitialContents*/);
 
-  // Certain members of extended state persist between restarts/sessions.
+  // Certain members of the extended state persist between restarts/sessions.
   // So, clear the state but pass persisting state as initial state.
   mExtStateTracker.ClearState();
   mExtended.ClearState(&(mExtStateTracker.mExtended));
@@ -329,21 +329,15 @@ void SharedMemoryPlugin::StartSession()
   //DEBUG_MSG(DebugLevel::Timing, "SESSION - Started.");
 
   mExtStateTracker.mExtended.mSessionStarted = true;
-  // Sometimes, game sends updates between Session Start/End.  We need to capture
-  // some of that info.
+  
+  // Sometimes, game sends updates, including final qualification positions,
+  // between Session Start/End.  We need to capture some of that info, because
+  // it might be overwritten by the next session.
   // Current read buffer for Scoring info contains last Scoring Update.
-  mExtStateTracker.CapturePrevSessionEnd(*mScoring.mpCurrReadBuff);
+  mExtStateTracker.CaptureSessionTransition(*mScoring.mpCurrReadBuff);
 
-  // Clear Extended state damage tracking info.
-  mExtStateTracker.ClearState();
-  mExtended.ClearState(&(mExtStateTracker.mExtended));
-
-  memcpy(mExtended.mpCurrWriteBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
-  mExtended.FlipBuffers();
-
-  ClearTimingsAndCounters();
-
-//  ClearState();
+  // Clear state will do the flip for extended state.
+  ClearState();
 }
 
 
@@ -358,13 +352,15 @@ void SharedMemoryPlugin::EndSession()
   //DEBUG_MSG(DebugLevel::Timing, "SESSION - Ended.");
 
   // TODO: how to detect abrupt race end, if we will be checking for ended/started transition?
-  // TODO: print last reported scoring pos in Ended and Started.  We need to know if it ever changes.
+  // Race needs to be treated specially - it does not go from session start false to true, so detect abrupt
+  // finish differently (basically, as soon as it goes to started).
   mExtStateTracker.mExtended.mSessionStarted = false;
+
+  // Capture Session End state.
+  mExtStateTracker.CaptureSessionTransition(*mScoring.mpCurrReadBuff);
+
   memcpy(mExtended.mpCurrWriteBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
   mExtended.FlipBuffers();
-
-  // Do not clear buffers until next session start.
-  //ClearState();
 }
 
 
@@ -680,6 +676,7 @@ void SharedMemoryPlugin::UpdateScoring(ScoringInfoV01 const& info)
     return;
 
   DEBUG_INT2(DebugLevel::Errors, "SCORING - session:", info.mGamePhase);
+  DEBUG_INT2(DebugLevel::Errors, "SCORING - place:", info.mVehicle[0].mPlace);
   mLastScoringUpdateET = info.mCurrentET;
 
   ScoringTraceBeginUpdate();

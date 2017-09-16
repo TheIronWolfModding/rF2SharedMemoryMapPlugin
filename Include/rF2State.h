@@ -800,7 +800,7 @@ struct rF2TrackedDamage
 };
 
 
-struct rF2PartialVehScoringInfo
+struct rF2VehScoringCapture
 {
   // VehicleScoringInfoV01 members:
   long mID;                      // slot ID (note that it can be re-used in multiplayer after someone leaves)
@@ -810,7 +810,7 @@ struct rF2PartialVehScoringInfo
 };
 
 
-struct rF2PrevSessionEndState
+struct rF2SessionTransitionCapture
 {
   // ScoringInfoV01 members:
   unsigned char mGamePhase;
@@ -818,7 +818,7 @@ struct rF2PrevSessionEndState
 
   // VehicleScoringInfoV01 members:
   long mNumScoringVehicles;
-  rF2PartialVehScoringInfo mScoringVehicles[rF2MappedBufferHeader::MAX_MAPPED_VEHICLES];
+  rF2VehScoringCapture mScoringVehicles[rF2MappedBufferHeader::MAX_MAPPED_VEHICLES];
 };
 
 
@@ -839,7 +839,7 @@ struct rF2Extended : public rF2MappedBufferHeader
   bool mSimulationThreadStarted;              // simulation thread started (reported via ThreadStarted/ThreadStopped calls).
 
   bool mSessionStarted;                       // Set to true on Session Started, set to false on Session Ended.
-  rF2PrevSessionEndState mPrevSessionEndState;
+  rF2SessionTransitionCapture mSessionTransitionCapture;  // Contains partial internals capture at session transition time.
 };
 
 #pragma pack(pop)
