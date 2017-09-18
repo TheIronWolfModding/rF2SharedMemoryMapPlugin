@@ -349,6 +349,7 @@ void SharedMemoryPlugin::StartSession()
   DEBUG_MSG(DebugLevel::Timing, "SESSION - Started.");
 
   mExtStateTracker.mExtended.mSessionStarted = true;
+  mExtStateTracker.mExtended.mTicksSessionStarted = ::GetTickCount64();
   
   // Sometimes, game sends updates, including final qualification positions,
   // between Session Start/End.  We need to capture some of that info, because
@@ -373,6 +374,7 @@ void SharedMemoryPlugin::EndSession()
   DEBUG_MSG(DebugLevel::Timing, "SESSION - Ended.");
 
   mExtStateTracker.mExtended.mSessionStarted = false;
+  mExtStateTracker.mExtended.mTicksSessionEnded = ::GetTickCount64();
 
   // Capture Session End state.
   mExtStateTracker.CaptureSessionTransition(*mScoring.mpCurrReadBuff);
