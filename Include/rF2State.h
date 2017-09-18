@@ -839,6 +839,8 @@ struct rF2Extended : public rF2MappedBufferHeader
   bool mSimulationThreadStarted;              // simulation thread started (reported via ThreadStarted/ThreadStopped calls).
 
   bool mSessionStarted;                       // Set to true on Session Started, set to false on Session Ended.
+
+  // FUTURE: It might be worth to keep the whole scoring capture as a separate double buffer instead of this.
   rF2SessionTransitionCapture mSessionTransitionCapture;  // Contains partial internals capture at session transition time.
 };
 
