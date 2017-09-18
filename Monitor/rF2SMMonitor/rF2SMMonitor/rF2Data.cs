@@ -42,7 +42,6 @@ namespace rF2SMMonitor
     public const int MAX_MAPPED_IDS = 512;
     public const string RFACTOR2_PROCESS_NAME = "rFactor2";
 
-    // TODO: remove if not needed
     public const byte RowX = 0;
     public const byte RowY = 1;
     public const byte RowZ = 2;
@@ -757,7 +756,10 @@ namespace rF2SMMonitor
                                                 // 0 means unknown (whole buffer should be considered as updated).
 
       public rF2TrackRules mTrackRules;
-      // TODO: see if we need to expose mActions, and if so, how many?  To answer that need to see how fast that array grows.
+
+      [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = rFactor2Constants.MAX_MAPPED_VEHICLES)]
+      public rF2TrackRulesAction[] mActions;
+
       [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = rFactor2Constants.MAX_MAPPED_VEHICLES)]
       public rF2TrackRulesParticipant[] mParticipants;
     }
