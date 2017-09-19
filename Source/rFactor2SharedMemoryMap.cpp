@@ -21,7 +21,8 @@ Shared resources:
   where <BUFFER_TYPE> is one of the following:
     * Telemetry - mapped view of rF2Telemetry structure
     * Scoring - mapped view of rF2Scoring structure
-    * Rules - mapped view of rF2Scoring structure
+    * Rules - mapped view of rF2Rules structure
+    * MultiRules - mapped view of rF2MultiRules structure
     * Extended - mapped view of rF2Extended structure
 
   Those types are (with few exceptions) exact mirror of ISI structures, plugin constantly memcpy'es them from game to memory mapped files.
@@ -31,6 +32,7 @@ State updates (buffer flips, see Double Buffering):
   Telemetry - updated every 10ms, but in practice only every other update contains updated data, so real update rate is around 50FPS.
   Scoring - every 200ms (5FPS)
   Rules - every 300ms (3FPS)
+  MultiRules - updated only on state change.
   Extended - every 200ms or on tracked function call.
 
   Plugin does not add artificial delays, except:
@@ -51,7 +53,10 @@ Extended state:
   * Heuristic data exposed as an attempt to compensate for values not currently available from the game:
       Damage state is tracked, since game provides no accumulated damage data.  Tracking happens on _every_ telemetry/scoring
       update for full precision.
-      
+
+  * Captures parts of rF2Scoring contents when SessionEnd/SessionStart is invoked.  This helps callers to last update information
+    from the previous session.  Note: In future, might get replaced with full capture of rF2Scoring.
+
   See SharedMemoryPlugin::ExtendedStateTracker struct for details.
 
 
@@ -344,8 +349,6 @@ void SharedMemoryPlugin::StartSession()
   if (!mIsMapped)
     return;
 
-  // TODO: Remove
-  //DEBUG_MSG(DebugLevel::Errors, "SESSION - Started.");
   DEBUG_MSG(DebugLevel::Timing, "SESSION - Started.");
 
   mExtStateTracker.mExtended.mSessionStarted = true;
@@ -369,8 +372,6 @@ void SharedMemoryPlugin::EndSession()
   if (!mIsMapped)
     return;
 
-  // TODO: remove
-  //DEBUG_MSG(DebugLevel::Errors, "SESSION - Ended.");
   DEBUG_MSG(DebugLevel::Timing, "SESSION - Ended.");
 
   mExtStateTracker.mExtended.mSessionStarted = false;
@@ -695,9 +696,6 @@ void SharedMemoryPlugin::UpdateScoring(ScoringInfoV01 const& info)
   if (!mIsMapped)
     return;
 
-  // TODO: Remove
-  //DEBUG_INT2(DebugLevel::Errors, "SCORING - session:", info.mGamePhase);
-  //DEBUG_INT2(DebugLevel::Errors, "SCORING - place:", info.mVehicle[0].mPlace);
   mLastScoringUpdateET = info.mCurrentET;
 
   ScoringTraceBeginUpdate();

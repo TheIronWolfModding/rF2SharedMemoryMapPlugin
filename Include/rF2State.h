@@ -838,8 +838,6 @@ struct rF2Extended : public rF2MappedBufferHeader
   bool mMultimediaThreadStarted;              // multimedia thread started (reported via ThreadStarted/ThreadStopped calls).
   bool mSimulationThreadStarted;              // simulation thread started (reported via ThreadStarted/ThreadStopped calls).
 
-  // TODO: not sure  below is needed.
-  // TODO: add to monitor.
   bool mSessionStarted;                       // True if Session Started was called.
   ULONGLONG mTicksSessionStarted;             // Ticks when session started.
   ULONGLONG mTicksSessionEnded;               // Ticks when session ended.
