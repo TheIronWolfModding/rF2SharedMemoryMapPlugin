@@ -1139,7 +1139,7 @@ namespace rF2SMMonitor
         var timingsYStart = this.screenYStart + 435.0f;
         g.DrawString(sbPlayer.ToString(), SystemFonts.DefaultFont, Brushes.Magenta, 3.0f, timingsYStart);
         g.DrawString(sbPlayerDeltas.ToString(), SystemFonts.DefaultFont, Brushes.Black, 3.0f, timingsYStart + 70.0f);
-        g.DrawString(sbFastest.ToString(), SystemFonts.DefaultFont, Brushes.OrangeRed, 3.0f, timingsYStart + 210.0f);
+        g.DrawString(sbFastest.ToString(), SystemFonts.DefaultFont, Brushes.OrangeRed, 3.0f, timingsYStart + 200.0f);
         g.DrawString(sbOpponentNames.ToString(), SystemFonts.DefaultFont, Brushes.Green, 530.0f, 3.0f);
         g.DrawString(sbOpponentStats.ToString(), SystemFonts.DefaultFont, Brushes.Purple, 860.0f, 3.0f);
       }

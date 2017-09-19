@@ -820,6 +820,8 @@ namespace rF2SMMonitor
       public byte mSimulationThreadStarted;              // simulation thread started (reported via ThreadStarted/ThreadStopped calls).
 
       public byte mSessionStarted;                       // Set to true on Session Started, set to false on Session Ended.
+      public Int64 mTicksSessionStarted;                 // Ticks when session started.
+      public Int64 mTicksSessionEnded;                   // Ticks when session ended.
       public rF2SessionTransitionCapture mSessionTransitionCapture;  // Contains partial internals capture at session transition time.
     }
 
