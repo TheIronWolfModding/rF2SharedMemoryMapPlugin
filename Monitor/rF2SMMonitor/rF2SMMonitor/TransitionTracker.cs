@@ -1373,11 +1373,11 @@ namespace rF2SMMonitor
 
       var playerRules = new rF2TrackRulesParticipant();
       bool playerRulesFound = false;
-      foreach (var participant in rules.mParticipants)
+      for (int i = 0; i < rules.mTrackRules.mNumParticipants; ++i)
       {
-        if (participant.mID == scoringPlrId)
+        if (rules.mParticipants[i].mID == scoringPlrId)
         {
-          playerRules = participant;
+          playerRules = rules.mParticipants[i];
           playerRulesFound = true;
           break;
         }

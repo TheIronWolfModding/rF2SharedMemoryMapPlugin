@@ -20,6 +20,7 @@ namespace rF2SMMonitor
   // bool          ->    byte
   // long          ->    int
   // short         ->    short
+  // ULONGLONG     ->    Int64
   public class rFactor2Constants
   {
     public const string MM_TELEMETRY_FILE_NAME1 = "$rFactor2SMMP_TelemetryBuffer1$";
@@ -747,6 +748,7 @@ namespace rF2SMMonitor
       [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = rFactor2Constants.MAX_MAPPED_VEHICLES)]
       public rF2VehicleScoring[] mVehicles;
     }
+
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
     public struct rF2Rules
