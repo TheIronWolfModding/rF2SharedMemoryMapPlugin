@@ -1278,6 +1278,7 @@ namespace rF2SMMonitor
     internal StringBuilder sbRulesLabel = new StringBuilder();
     internal StringBuilder sbRulesValues = new StringBuilder();
     internal StringBuilder sbFrozenOrderInfo = new StringBuilder();
+    private FrozenOrderData prevFrozenOrderData;
 
     public enum FrozenOrderPhase
     {
@@ -1372,18 +1373,14 @@ namespace rF2SMMonitor
       var playerVehTelemetry = telemetry.mVehicles[resolvedIdx];
 
       var playerRules = new rF2TrackRulesParticipant();
-      bool playerRulesFound = false;
       for (int i = 0; i < rules.mTrackRules.mNumParticipants; ++i)
       {
         if (rules.mParticipants[i].mID == scoringPlrId)
         {
           playerRules = rules.mParticipants[i];
-          playerRulesFound = true;
           break;
         }
       }
-
-      Debug.Assert(playerRulesFound);
 
       var rs = new Rules();
 
@@ -1616,7 +1613,8 @@ namespace rF2SMMonitor
         }
       }
 
-      var fod = this.GetFrozenOrderData(ref playerVeh, ref scoring, ref playerRules, ref rules);
+      var fod = this.GetFrozenOrderData(prevFrozenOrderData, ref playerVeh, ref scoring, ref playerRules, ref rules);
+      prevFrozenOrderData = fod;
 
       this.sbFrozenOrderInfo = new StringBuilder();
       this.sbFrozenOrderInfo.Append(
@@ -1640,14 +1638,17 @@ namespace rF2SMMonitor
       }
     }
 
-    private FrozenOrderData GetFrozenOrderData(ref rF2VehicleScoring vehicle, ref rF2Scoring scoring, ref rF2TrackRulesParticipant vehicleRules, ref rF2Rules rules)
+    private FrozenOrderData GetFrozenOrderData(FrozenOrderData prevFrozenOrderData, ref rF2VehicleScoring vehicle, ref rF2Scoring scoring, ref rF2TrackRulesParticipant vehicleRules, ref rF2Rules rules)
     {
       var fod = new FrozenOrderData();
 
+      // Only applies to formation laps and FCY.
+      if (scoring.mScoringInfo.mGamePhase != (int)rF2GamePhase.Formation 
+        && scoring.mScoringInfo.mGamePhase != (int)rF2GamePhase.FullCourseYellow)
+        return fod;
+
       var foStage = rules.mTrackRules.mStage;
-      if (foStage == rF2TrackRulesStage.Normal
-        || scoring.mScoringInfo.mGamePhase == (int)rF2GamePhase.GridWalk  // Do not try figuring this out during Gridwalk, not enough data.
-        || scoring.mScoringInfo.mGamePhase == (int)rF2GamePhase.Countdown)  // Definetely no FO during Countdown.
+      if (foStage == rF2TrackRulesStage.Normal)
         return fod; // Note, there's slight race between scoring and rules here, FO messages should have validation on them.
 
       // Figure out the phase:
@@ -1655,7 +1656,8 @@ namespace rF2SMMonitor
         fod.Phase = FrozenOrderPhase.FullCourseYellow;
       else if (foStage == rF2TrackRulesStage.FormationInit || foStage == rF2TrackRulesStage.FormationUpdate)
       {
-        if (rules.mTrackRules.mSafetyCarActive == 1)
+        if (rules.mTrackRules.mSafetyCarActive == 1
+          || prevFrozenOrderData.Phase == FrozenOrderPhase.Rolling)  // If FO started as Rolling, keep it as Rolling even after SC leaves the track
           fod.Phase = FrozenOrderPhase.Rolling;
         else
         {
