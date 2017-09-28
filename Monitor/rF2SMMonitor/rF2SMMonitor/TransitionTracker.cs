@@ -1279,6 +1279,7 @@ namespace rF2SMMonitor
     internal StringBuilder sbRulesValues = new StringBuilder();
     internal StringBuilder sbFrozenOrderInfo = new StringBuilder();
     private FrozenOrderData prevFrozenOrderData;
+    private short playerLapsWhenFCYPosAssigned = -1;
 
     public enum FrozenOrderPhase
     {
@@ -1343,6 +1344,8 @@ namespace rF2SMMonitor
           lines.Add("************************************************************************************");
           File.AppendAllLines(rulesTrackingFilePath, lines);
           File.AppendAllLines(rulesTrackingDeltaFilePath, lines);
+
+          playerLapsWhenFCYPosAssigned = -1;
         }
       }
 
@@ -1643,9 +1646,13 @@ namespace rF2SMMonitor
       var fod = new FrozenOrderData();
 
       // Only applies to formation laps and FCY.
-      if (scoring.mScoringInfo.mGamePhase != (int)rF2GamePhase.Formation 
+      if (scoring.mScoringInfo.mGamePhase != (int)rF2GamePhase.Formation
         && scoring.mScoringInfo.mGamePhase != (int)rF2GamePhase.FullCourseYellow)
+      {
+        playerLapsWhenFCYPosAssigned = -1;
+
         return fod;
+      }
 
       var foStage = rules.mTrackRules.mStage;
       if (foStage == rF2TrackRulesStage.Normal)
@@ -1678,6 +1685,9 @@ namespace rF2SMMonitor
         {
           gridOrder = false;
           fod.AssignedPosition = vehicleRules.mPositionAssignment + 1;  // + 1, because it is zero based with 0 meaning follow SC.
+
+          if (prevFrozenOrderData.Phase == FrozenOrderPhase.None)
+            this.playerLapsWhenFCYPosAssigned = vehicle.mTotalLaps;
         }
         else  // SCR plugin is enabled or this is not FCY case, the the order reported is grid order, with columns specified.
         {
@@ -1703,9 +1713,11 @@ namespace rF2SMMonitor
         // Figure out Driver Name to follow.
         // NOTE: In Formation/Standing, game does not report those in UI, but we can.
         var vehToFollowId = -1;
+        var followSC = true;
         if ((gridOrder && fod.AssignedPosition > 2)  // In grid order, first 2 vehicles are following SC.
           || (!gridOrder && fod.AssignedPosition > 1))  // In non-grid order, 1st car is following SC.
         {
+          followSC = false;
           // Find the mID of a vehicle in front of us by frozen order.
           for (int i = 0; i < rules.mTrackRules.mNumParticipants; ++i)
           {
@@ -1720,65 +1732,11 @@ namespace rF2SMMonitor
           }
         }
 
-        // Now find the vehicle to follow from the scoring info.
-        for (int i = 0; i < scoring.mScoringInfo.mNumVehicles; ++i)
+        var playerDist = this.GetDistanceCompleteded(ref scoring, ref vehicle);
+        var toFollowDist = -1.0;
+
+        if (!followSC)
         {
-          var v = scoring.mVehicles[i];
-          if (v.mID == vehToFollowId)
-          {
-            fod.DriverToFollow = TransitionTracker.GetStringFromBytes(v.mDriverName);
-
-            var playerDist = this.GetDistanceCompleteded(ref scoring, ref vehicle);
-            var toFollowDist = this.GetDistanceCompleteded(ref scoring, ref v);
-
-            fod.Action = FrozenOrderAction.Follow;
-
-            var distDelta = toFollowDist - playerDist;
-            if (distDelta < 0.0)
-              fod.Action = FrozenOrderAction.AllowToPass;
-            else if (distDelta > 70.0)
-              fod.Action = FrozenOrderAction.CatchUp;
-
-            break;
-          }
-        }
-      }
-      else if ((fod.Phase == FrozenOrderPhase.Rolling || fod.Phase == FrozenOrderPhase.FastRolling || fod.Phase == FrozenOrderPhase.FormationStanding)
-        && vehicleRules.mPositionAssignment != -1)
-      {
-        fod.AssignedGridPosition = vehicleRules.mPositionAssignment + 1;
-        fod.AssignedColumn = vehicleRules.mColumnAssignment == rF2TrackRulesColumn.LeftLane ? FrozenOrderColumn.Left : FrozenOrderColumn.Right;
-
-        if (rules.mTrackRules.mPoleColumn == rF2TrackRulesColumn.LeftLane)
-        {
-          fod.AssignedPosition = (vehicleRules.mColumnAssignment == rF2TrackRulesColumn.LeftLane
-            ? vehicleRules.mPositionAssignment * 2
-            : vehicleRules.mPositionAssignment * 2 + 1) + 1;
-        }
-        else if (rules.mTrackRules.mPoleColumn == rF2TrackRulesColumn.RightLane)
-        {
-          fod.AssignedPosition = (vehicleRules.mColumnAssignment == rF2TrackRulesColumn.RightLane
-            ? vehicleRules.mPositionAssignment * 2
-            : vehicleRules.mPositionAssignment * 2 + 1) + 1;
-        }
-
-        // Figure out Driver Name to follow.
-        // NOTE: does not apply to Formation/Standing.
-        if (fod.AssignedPosition > 2) // First 2 vehicles are following SC.
-        {
-          // Find the mID of a vehicle in front of us by frozen order.
-          var vehToFollowId = -1;
-          for (int i = 0; i < rules.mTrackRules.mNumParticipants; ++i)
-          {
-            var p = rules.mParticipants[i];
-            if (p.mColumnAssignment == vehicleRules.mColumnAssignment  // Should be vehicle in the same column.
-              && p.mPositionAssignment == (vehicleRules.mPositionAssignment - 1))
-            {
-              vehToFollowId = p.mID;
-              break;
-            }
-          }
-
           // Now find the vehicle to follow from the scoring info.
           for (int i = 0; i < scoring.mScoringInfo.mNumVehicles; ++i)
           {
@@ -1787,21 +1745,29 @@ namespace rF2SMMonitor
             {
               fod.DriverToFollow = TransitionTracker.GetStringFromBytes(v.mDriverName);
 
-              var playerDist = this.GetDistanceCompleteded(ref scoring, ref vehicle);
-              var toFollowDist = this.GetDistanceCompleteded(ref scoring, ref v);
-
-              fod.Action = FrozenOrderAction.Follow;
-
-              var distDelta = toFollowDist - playerDist;
-              if (distDelta < 0.0)
-                fod.Action = FrozenOrderAction.AllowToPass;
-              else if (distDelta > 70.0)
-                fod.Action = FrozenOrderAction.CatchUp;
-
+              toFollowDist = this.GetDistanceCompleteded(ref scoring, ref v);
               break;
             }
           }
         }
+        else
+        {
+            var scLaps = this.playerLapsWhenFCYPosAssigned == -1
+                ? rules.mTrackRules.mSafetyCarLaps
+                : rules.mTrackRules.mSafetyCarLaps + this.playerLapsWhenFCYPosAssigned;  // During FCY, base SC laps off the number of laps user had when pos was assigned.
+
+            toFollowDist = scLaps * scoring.mScoringInfo.mLapDist + rules.mTrackRules.mSafetyCarLapDist;
+        }
+
+        Debug.Assert(toFollowDist != -1.0);
+
+        fod.Action = FrozenOrderAction.Follow;
+
+        var distDelta = toFollowDist - playerDist;
+        if (distDelta < 0.0)
+          fod.Action = FrozenOrderAction.AllowToPass;
+        else if (distDelta > 70.0)
+          fod.Action = FrozenOrderAction.CatchUp;
       }
 
       if (rules.mTrackRules.mSafetyCarActive == 1)
