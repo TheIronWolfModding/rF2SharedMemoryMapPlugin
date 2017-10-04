@@ -6,6 +6,7 @@ Reading shared memory allows creating  external tools running outside of rFactor
 
 #### This work is based on:
   * rF2 Internals Plugin sample #7 by ISI/S397 found at: https://www.studio-397.com/modding-resources/
+#### Was inspired by:
   * rF1 Shared Memory Map Plugin by Dan Allongo found at: https://github.com/dallongo/rFactorSharedMemoryMap
 
 ## Features
@@ -17,6 +18,7 @@ Plugin is built using VS 2015 Community Edition, targeting VC12 (VS 2013) runtim
 * Telemetry - 50FPS (provided there's no mutex contention).
 * Scoring - 5FPS.
 * Rules - 3FPS.
+* Multi Rules - on callback from a game, usually once a session and in between sessions.
 * Extended - 5FPS and on tracked callback by the game.
 
 ## Limitations/Assumptions:
@@ -37,6 +39,17 @@ Plugin comes with rF2SMMonitor program that shows how to access exposed internal
 If you would like to support this project, you can donate [here.](http://thecrewchief.org/misc.php?do=donate)
 
 # Release history
+
+10/04/2017 - v2.2.1.0
+
+  Plugin:
+  * Expose rF2MultiRules buffer
+  * Add rF2SessionTransitionCapture to rF2Extended.  This allows tracking some state on session transition.
+  * Add mSessionStarted, mTicksSessionStarted and mTicksSessionStarted to rF2Extended to help tracking session transitions.
+  * Buffers are no longer cleared out on EndSession.  This is neccessary to capture data in StartSession.
+
+  Monitor:
+  * Add Frozen Order rules detection.
 
 9/01/2017 - v2.1.1.1
 

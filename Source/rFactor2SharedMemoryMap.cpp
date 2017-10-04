@@ -55,7 +55,7 @@ Extended state:
       update for full precision.
 
   * Captures parts of rF2Scoring contents when SessionEnd/SessionStart is invoked.  This helps callers to last update information
-    from the previous session.  Note: In future, might get replaced with full capture of rF2Scoring.
+    from the previous session.  Note: In future, might get replaced with the full capture of rF2Scoring.
 
   See SharedMemoryPlugin::ExtendedStateTracker struct for details.
 
