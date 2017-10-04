@@ -8,6 +8,7 @@ Website: thecrewchief.org
 Acknowledgements:
   This work is based on:
     - rF2 Internals Plugin sample #7 by ISI/S397 found at: https://www.studio-397.com/modding-resources/
+  Was inspired by:
     - rF1 Shared Memory Map Plugin by Dan Allongo found at: https://github.com/dallongo/rFactorSharedMemoryMap
 
 

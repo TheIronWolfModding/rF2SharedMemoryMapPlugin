@@ -44,6 +44,7 @@ If you would like to support this project, you can donate [here.](http://thecrew
 
   Plugin:
   * Expose rF2MultiRules buffer
+  * Expose rF2TrackRulesAction on rF2Rules
   * Add rF2SessionTransitionCapture to rF2Extended.  This allows tracking some state on session transition.
   * Add mSessionStarted, mTicksSessionStarted and mTicksSessionStarted to rF2Extended to help tracking session transitions.
   * Buffers are no longer cleared out on EndSession.  This is neccessary to capture data in StartSession.
