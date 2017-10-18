@@ -326,7 +326,7 @@ namespace rF2SMMonitor
           + (this.prevPhaseAndSate.mRearFlapActivated != ps.mRearFlapActivated ? "***\n" : "\n")
           + (this.prevPhaseAndSate.mRearFlapLegalStatus != ps.mRearFlapLegalStatus ? "***\n" : "\n")
           + (this.prevPhaseAndSate.mIgnitionStarter != ps.mIgnitionStarter ? "***\n" : "\n")
-          + (this.prevPhaseAndSate.mSpeedLimiterAvailable != ps.mSpeedLimiter ? "***\n" : "\n")
+          + (this.prevPhaseAndSate.mSpeedLimiterAvailable != ps.mSpeedLimiterAvailable ? "***\n" : "\n")
           + (this.prevPhaseAndSate.mAntiStallActivated != ps.mAntiStallActivated ? "***\n" : "\n")
           + (this.prevPhaseAndSate.mStartLight != ps.mStartLight ? "***\n" : "\n")
           + (this.prevPhaseAndSate.mNumRedLights != ps.mNumRedLights ? "***\n" : "\n")
