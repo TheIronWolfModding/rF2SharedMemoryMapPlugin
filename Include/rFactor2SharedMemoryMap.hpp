@@ -245,6 +245,15 @@ public:
   bool WantsMultiSessionRulesAccess() override { return true; } // change to true in order to read or write multi-session rules
   bool AccessMultiSessionRules(MultiSessionRulesV01& info); // current internal rules passed in; return true if you want to change them
 
+  // CUSTOM PLUGIN VARIABLES
+  // This relatively simple feature allows plugins to store settings in a shared location without doing their own
+  // file I/O. Direct UI support may also be added in the future so that end users can control plugin settings within
+  // rFactor. But for now, users can access the data in UserData\Player\CustomPluginOptions.JSON.
+  // Plugins should only access these variables through this interface, though:
+  bool GetCustomVariable(long i, CustomVariableV01& var) override; // At startup, this will be called with increasing index (starting at zero) until false is returned. Feel free to add/remove/rearrange the variables when updating your plugin; the index does not have to be consistent from run to run.
+  void AccessCustomVariable(CustomVariableV01& var) override;      // This will be called at startup, shutdown, and any time that the variable is changed (within the UI).
+  void GetCustomVariableSetting(CustomVariableV01& var, long i, CustomSettingV01& setting) override; // This gets the name of each possible setting for a given variable.
+
 private:
   SharedMemoryPlugin(SharedMemoryPlugin const& rhs) = delete;
   SharedMemoryPlugin& operator =(SharedMemoryPlugin const& rhs) = delete;
@@ -299,4 +308,6 @@ private:
 
   // Buffers mapped successfully or not.
   bool mIsMapped = false;
+
+  bool mEnableStockCarRulesPlugin = false;
 };

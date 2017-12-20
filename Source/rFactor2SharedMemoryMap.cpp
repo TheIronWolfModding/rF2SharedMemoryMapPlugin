@@ -108,7 +108,7 @@ static double const MILLISECONDS_IN_SECOND = 1000.0;
 static double const MICROSECONDS_IN_MILLISECOND = 1000.0;
 static double const MICROSECONDS_IN_SECOND = MILLISECONDS_IN_SECOND * MICROSECONDS_IN_MILLISECOND;
 
-DebugLevel SharedMemoryPlugin::msDebugOutputLevel = DebugLevel::Off;
+DebugLevel SharedMemoryPlugin::msDebugOutputLevel = DebugLevel::Errors;
 bool SharedMemoryPlugin::msDebugISIInternals = false;
 DWORD SharedMemoryPlugin::msMillisMutexWait = 1;
 
@@ -153,10 +153,10 @@ extern "C" __declspec(dllexport)
 int __cdecl GetPluginVersion() { return(7); } // InternalsPluginV07 functionality (if you change this return value, you must derive from the appropriate class!)
 
 extern "C" __declspec(dllexport)
-PluginObject * __cdecl CreatePluginObject() { return((PluginObject *) new SharedMemoryPlugin); }
+PluginObject* __cdecl CreatePluginObject() { return((PluginObject*) new SharedMemoryPlugin); }
 
 extern "C" __declspec(dllexport)
-void __cdecl DestroyPluginObject(PluginObject *obj) { delete((SharedMemoryPlugin *)obj); }
+void __cdecl DestroyPluginObject(PluginObject* obj) { delete((SharedMemoryPlugin*) obj); }
 
 
 //////////////////////////////////////
@@ -193,6 +193,8 @@ void SharedMemoryPlugin::Startup(long version)
 {
   // Read configuration .ini if there's one.
   LoadConfig();
+
+  DEBUG_MSG(DebugLevel::Errors, "Main startup");
 
   char temp[80] = {};
   sprintf(temp, "-STARTUP- (version %.3f)", (float)version / 1000.0f);
@@ -847,6 +849,55 @@ bool SharedMemoryPlugin::AccessMultiSessionRules(MultiSessionRulesV01& info)
   mMultiRules.FlipBuffers();
 
   return false;  // No changes requested, we're simply reading.
+}
+
+
+bool SharedMemoryPlugin::GetCustomVariable(long i, CustomVariableV01& var)
+{
+  DEBUG_MSG(DebugLevel::Errors, "startup 1");
+  if (i == 0) {
+    // rF2 will automatically create this variable and default it to 1 (true) unless we create it first, in which case we can choose the default.
+    strcpy_s(var.mCaption, " Enabled");
+    var.mNumSettings = 2;
+    var.mCurrentSetting = 0;
+    return true;
+  }
+  else if (i == 1) {
+    strcpy_s(var.mCaption, "EnableStockCarRulesPlugin");
+    var.mNumSettings = 2;
+    var.mCurrentSetting = 0;
+    return true;
+  }
+
+  return false;
+}
+
+
+void SharedMemoryPlugin::AccessCustomVariable(CustomVariableV01& var)
+{
+  DEBUG_MSG(DebugLevel::Errors, "startup 2");
+  if (_stricmp(var.mCaption, " Enabled") == 0)
+    ; // Do nothing; this variable is just for rF2 to know whether to keep the plugin loaded.
+  else if (_stricmp(var.mCaption, "EnableStockCarRulesPlugin") == 0)
+    mEnableStockCarRulesPlugin = var.mCurrentSetting != 0;
+}
+
+
+void SharedMemoryPlugin::GetCustomVariableSetting(CustomVariableV01& var, long i, CustomSettingV01& setting)
+{
+  DEBUG_MSG(DebugLevel::Errors, "startup 3");
+  if (_stricmp(var.mCaption, " Enabled") == 0) {
+    if (i == 0)
+      strcpy_s(setting.mName, "False");
+    else
+      strcpy_s(setting.mName, "True");
+  }
+  else if (_stricmp(var.mCaption, "EnableStockCarRulesPlugin") == 0) {
+    if (i == 0)
+      strcpy_s(setting.mName, "False");
+    else
+      strcpy_s(setting.mName, "True");
+  }
 }
 
 
