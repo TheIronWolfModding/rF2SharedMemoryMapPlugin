@@ -281,12 +281,14 @@
     </CustomBuildStep>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\Source\PluginHost.cpp" />
     <ClCompile Include="..\Source\rFactor2SharedMemoryMap.cpp" />
     <ClCompile Include="ISIInternalsDump.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Include\InternalsPlugin.hpp" />
     <ClInclude Include="..\Include\MappedDoubleBuffer.h" />
+    <ClInclude Include="..\Include\PluginHost.h" />
     <ClInclude Include="..\Include\rF2State.h" />
     <ClInclude Include="..\Include\rFactor2SharedMemoryMap.hpp" />
     <ClInclude Include="..\Include\PluginObjects.hpp" />

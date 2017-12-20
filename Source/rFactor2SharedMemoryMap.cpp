@@ -108,7 +108,7 @@ static double const MILLISECONDS_IN_SECOND = 1000.0;
 static double const MICROSECONDS_IN_MILLISECOND = 1000.0;
 static double const MICROSECONDS_IN_SECOND = MILLISECONDS_IN_SECOND * MICROSECONDS_IN_MILLISECOND;
 
-DebugLevel SharedMemoryPlugin::msDebugOutputLevel = DebugLevel::Errors;
+DebugLevel SharedMemoryPlugin::msDebugOutputLevel = DebugLevel::Off;
 bool SharedMemoryPlugin::msDebugISIInternals = false;
 DWORD SharedMemoryPlugin::msMillisMutexWait = 1;
 
@@ -267,6 +267,9 @@ void SharedMemoryPlugin::Startup(long version)
     _itoa_s(size, sizeSz, 10);
     DEBUG_MSG3(DebugLevel::Errors, "Size of extended buffers:", sizeSz, "bytes each.");
   }
+
+  mPluginHost.Initialize(mEnableStockCarRulesPlugin);
+  //mPluginHost.Startup(version);
 }
 
 void SharedMemoryPlugin::Shutdown()
@@ -898,6 +901,12 @@ void SharedMemoryPlugin::GetCustomVariableSetting(CustomVariableV01& var, long i
     else
       strcpy_s(setting.mName, "True");
   }
+}
+
+
+void SharedMemoryPlugin::SetEnvironment(EnvironmentInfoV01 const& info)
+{
+  mPluginHost.SetEnvironment(info);
 }
 
 

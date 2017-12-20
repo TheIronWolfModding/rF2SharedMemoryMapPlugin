@@ -41,6 +41,7 @@ Website: thecrewchief.org
 
 #include "rF2State.h"
 #include "MappedDoubleBuffer.h"
+#include "PluginHost.h"
 
 enum DebugLevel
 {
@@ -254,6 +255,8 @@ public:
   void AccessCustomVariable(CustomVariableV01& var) override;      // This will be called at startup, shutdown, and any time that the variable is changed (within the UI).
   void GetCustomVariableSetting(CustomVariableV01& var, long i, CustomSettingV01& setting) override; // This gets the name of each possible setting for a given variable.
 
+  void SetEnvironment(const EnvironmentInfoV01 &info) override; // may be called whenever the environment changes
+
 private:
   SharedMemoryPlugin(SharedMemoryPlugin const& rhs) = delete;
   SharedMemoryPlugin& operator =(SharedMemoryPlugin const& rhs) = delete;
@@ -310,4 +313,5 @@ private:
   bool mIsMapped = false;
 
   bool mEnableStockCarRulesPlugin = false;
+  PluginHost mPluginHost;
 };
