@@ -268,13 +268,17 @@ void SharedMemoryPlugin::Startup(long version)
     DEBUG_MSG3(DebugLevel::Errors, "Size of extended buffers:", sizeSz, "bytes each.");
   }
 
+  // Initialize hosted plugins.
   mPluginHost.Initialize(mEnableStockCarRulesPlugin);
-  //mPluginHost.Startup(version);
+  mPluginHost.Startup(version);
 }
 
 void SharedMemoryPlugin::Shutdown()
 {
   WriteToAllExampleOutputFiles("a", "-SHUTDOWN-");
+
+  mPluginHost.Shutdown();
+  mPluginHost.Cleanup();
 
   DEBUG_MSG(DebugLevel::Errors, "Shutting down");
 
@@ -351,9 +355,11 @@ void SharedMemoryPlugin::ClearState()
 void SharedMemoryPlugin::StartSession()
 {
   WriteToAllExampleOutputFiles("a", "--STARTSESSION--");
-  
+
   if (!mIsMapped)
     return;
+
+  mPluginHost.StartSession();
 
   DEBUG_MSG(DebugLevel::Timing, "SESSION - Started.");
 
@@ -377,6 +383,8 @@ void SharedMemoryPlugin::EndSession()
 
   if (!mIsMapped)
     return;
+
+  mPluginHost.EndSession();
 
   DEBUG_MSG(DebugLevel::Timing, "SESSION - Ended.");
 
@@ -406,8 +414,13 @@ void SharedMemoryPlugin::UpdateInRealtimeFC(bool inRealTime)
 
 void SharedMemoryPlugin::EnterRealtime()
 {
+  if (!mIsMapped)
+    return;
+
   // start up timer every time we enter realtime
   WriteToAllExampleOutputFiles("a", "---ENTERREALTIME---");
+
+  mPluginHost.EnterRealtime();
 
   UpdateInRealtimeFC(true /*inRealtime*/);
 }
@@ -415,7 +428,12 @@ void SharedMemoryPlugin::EnterRealtime()
 
 void SharedMemoryPlugin::ExitRealtime()
 {
+  if (!mIsMapped)
+    return;
+
   WriteToAllExampleOutputFiles("a", "---EXITREALTIME---");
+
+  mPluginHost.ExitRealtime();
 
   UpdateInRealtimeFC(false /*inRealtime*/);
 }
@@ -586,6 +604,8 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
   if (!mIsMapped)
     return;
 
+  mPluginHost.UpdateTelemetry(info);
+
   bool isNewFrame = false;
   auto const deltaET = info.mElapsedTime - mLastTelemetryUpdateET;
   if (abs(deltaET) >= 0.0199)  // Apparently, rF2 telemetry update step is 2ms.
@@ -702,6 +722,8 @@ void SharedMemoryPlugin::UpdateScoring(ScoringInfoV01 const& info)
   if (!mIsMapped)
     return;
 
+  mPluginHost.UpdateScoring(info);
+
   mLastScoringUpdateET = info.mCurrentET;
 
   ScoringTraceBeginUpdate();
@@ -739,10 +761,10 @@ void SharedMemoryPlugin::UpdateScoring(ScoringInfoV01 const& info)
 
 
 // Invoked periodically.
-bool SharedMemoryPlugin::WantsToDisplayMessage(MessageInfoV01& /*msgInfo*/)
+bool SharedMemoryPlugin::WantsToDisplayMessage(MessageInfoV01& msgInfo)
 {
-  // Looks like this is write only API, can't read current text in MC
-  return false;
+  // Looks like this is write only API, can't read current text in MC.  Pass through to host.
+  return mPluginHost.WantsToDisplayMessage(msgInfo);
 }
 
 
@@ -761,6 +783,8 @@ void SharedMemoryPlugin::ThreadStarted(long type)
   if (!mIsMapped)
     return;
 
+  mPluginHost.ThreadStarted(type);
+
   DEBUG_MSG(DebugLevel::Synchronization, type == 0 ? "Multimedia thread started" : "Simulation thread started");
   UpdateThreadState(type, true /*starting*/);
 }
@@ -769,6 +793,8 @@ void SharedMemoryPlugin::ThreadStopping(long type)
 {
   if (!mIsMapped)
     return;
+
+  mPluginHost.ThreadStopping(type);
 
   DEBUG_MSG(DebugLevel::Synchronization, type == 0 ? "Multimedia thread stopped" : "Simulation thread stopped");
   UpdateThreadState(type, false /*starting*/);
@@ -780,6 +806,8 @@ bool SharedMemoryPlugin::AccessTrackRules(TrackRulesV01& info)
 {
   if (!mIsMapped)
     return false;
+
+  auto const updateRequested = mPluginHost.AccessTrackRules(info);
 
   TraceBeginUpdate(mRules, mLastRulesUpdateMillis, "RULES");
 
@@ -806,17 +834,17 @@ bool SharedMemoryPlugin::AccessTrackRules(TrackRulesV01& info)
 
   mRules.FlipBuffers();
 
-  return false;  // No changes requested, we're simply reading.
+  return updateRequested;
 }
 
 
 // Invoked periodically.
-bool SharedMemoryPlugin::AccessPitMenu(PitMenuV01& /*info*/)
+bool SharedMemoryPlugin::AccessPitMenu(PitMenuV01& info)
 {
   if (!mIsMapped)
     return false;
 
-  return false;
+  return mPluginHost.AccessPitMenu(info);
 }
 
 
@@ -824,6 +852,8 @@ void SharedMemoryPlugin::SetPhysicsOptions(PhysicsOptionsV01& options)
 {
   if (!mIsMapped)
     return;
+
+  mPluginHost.SetPhysicsOptions(options);
 
   DEBUG_MSG(DebugLevel::Timing, "PHYSICS - Updated.");
   memcpy(&(mExtStateTracker.mExtended.mPhysics), &options, sizeof(rF2PhysicsOptions));
@@ -834,6 +864,11 @@ void SharedMemoryPlugin::SetPhysicsOptions(PhysicsOptionsV01& options)
 
 bool SharedMemoryPlugin::AccessMultiSessionRules(MultiSessionRulesV01& info)
 {
+  if (!mIsMapped)
+    return false;
+
+  auto const updateRequested = mPluginHost.AccessMultiSessionRules(info);
+
   TraceBeginUpdate(mMultiRules, mLastMultiRulesUpdateMillis, "MULTI RULES");
  
   // Copy main struct.
@@ -851,13 +886,12 @@ bool SharedMemoryPlugin::AccessMultiSessionRules(MultiSessionRulesV01& info)
 
   mMultiRules.FlipBuffers();
 
-  return false;  // No changes requested, we're simply reading.
+  return updateRequested;
 }
 
 
 bool SharedMemoryPlugin::GetCustomVariable(long i, CustomVariableV01& var)
 {
-  DEBUG_MSG(DebugLevel::Errors, "startup 1");
   if (i == 0) {
     // rF2 will automatically create this variable and default it to 1 (true) unless we create it first, in which case we can choose the default.
     strcpy_s(var.mCaption, " Enabled");
@@ -878,7 +912,6 @@ bool SharedMemoryPlugin::GetCustomVariable(long i, CustomVariableV01& var)
 
 void SharedMemoryPlugin::AccessCustomVariable(CustomVariableV01& var)
 {
-  DEBUG_MSG(DebugLevel::Errors, "startup 2");
   if (_stricmp(var.mCaption, " Enabled") == 0)
     ; // Do nothing; this variable is just for rF2 to know whether to keep the plugin loaded.
   else if (_stricmp(var.mCaption, "EnableStockCarRulesPlugin") == 0)
@@ -888,7 +921,6 @@ void SharedMemoryPlugin::AccessCustomVariable(CustomVariableV01& var)
 
 void SharedMemoryPlugin::GetCustomVariableSetting(CustomVariableV01& var, long i, CustomSettingV01& setting)
 {
-  DEBUG_MSG(DebugLevel::Errors, "startup 3");
   if (_stricmp(var.mCaption, " Enabled") == 0) {
     if (i == 0)
       strcpy_s(setting.mName, "False");
@@ -906,6 +938,9 @@ void SharedMemoryPlugin::GetCustomVariableSetting(CustomVariableV01& var, long i
 
 void SharedMemoryPlugin::SetEnvironment(EnvironmentInfoV01 const& info)
 {
+  if (!mIsMapped)
+    return;
+
   mPluginHost.SetEnvironment(info);
 }
 

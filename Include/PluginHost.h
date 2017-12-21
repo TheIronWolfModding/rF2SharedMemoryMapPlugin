@@ -22,6 +22,7 @@ public:
   PluginHost() {}
 
   void Initialize(bool hostStockCarRules);
+  void Cleanup();
 
   ////////////////////////////////////////////////////
   // InternalsPluginV01 (InternalsPlugin)
@@ -51,8 +52,12 @@ public:
   bool AccessTrackRules(TrackRulesV01& info) override; // current track order passed in; return true if you want to change it (note: this will be called immediately after UpdateScoring() when appropriate)
 
   // PIT MENU INFO (currently, the only way to edit the pit menu is to use this in conjunction with CheckHWControl())
-  bool WantsPitMenuAccess();
   bool AccessPitMenu(PitMenuV01& info) override; // currently, the return code should always be false (because we may allow more direct editing in the future)
+
+  void SetPhysicsOptions(PhysicsOptionsV01& options) override;
+
+  // SCORING CONTROL (only available in single-player or on multiplayer server)
+  bool AccessMultiSessionRules(MultiSessionRulesV01& info); // current internal rules passed in; return true if you want to change them
 
   void SetEnvironment(const EnvironmentInfoV01 &info) override; // may be called whenever the environment changes
 
@@ -61,4 +66,7 @@ private:
 
   HMODULE mhModuleSCRPlugin = nullptr;
   InternalsPluginV07* mStockCarRulesPlugin = nullptr;
+
+  using PluginDestoryFunc = void (*)(PluginObject*);
+  PluginDestoryFunc mpfnDestroyPluginObject = nullptr;
 };

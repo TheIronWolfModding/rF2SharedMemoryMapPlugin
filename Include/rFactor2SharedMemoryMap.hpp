@@ -26,8 +26,8 @@ Website: thecrewchief.org
 #endif
 
 // Each component can be in [0:99] range.
-#define PLUGIN_VERSION_MAJOR "2.2"
-#define PLUGIN_VERSION_MINOR "1.0"
+#define PLUGIN_VERSION_MAJOR "2.3"
+#define PLUGIN_VERSION_MINOR "0.0"
 #define PLUGIN_NAME_AND_VERSION "rFactor 2 Shared Memory Map Plugin - v" PLUGIN_VERSION_MAJOR
 #define SHARED_MEMORY_VERSION PLUGIN_VERSION_MAJOR "." PLUGIN_VERSION_MINOR
 
@@ -237,7 +237,7 @@ public:
   bool AccessTrackRules(TrackRulesV01& info) override; // current track order passed in; return true if you want to change it (note: this will be called immediately after UpdateScoring() when appropriate)
 
   // PIT MENU INFO (currently, the only way to edit the pit menu is to use this in conjunction with CheckHWControl())
-  bool WantsPitMenuAccess() { return false; } // change to true in order to view pit menu info
+  bool WantsPitMenuAccess() { return true; } // change to true in order to view pit menu info
   bool AccessPitMenu(PitMenuV01& info) override; // currently, the return code should always be false (because we may allow more direct editing in the future)
 
   void SetPhysicsOptions(PhysicsOptionsV01& options) override;

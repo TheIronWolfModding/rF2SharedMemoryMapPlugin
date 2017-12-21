@@ -1,3 +1,5 @@
+// TODO: Destroy/cleanup.
+
 #include "PluginHost.h"
 #include "rFactor2SharedMemoryMap.hpp"
 
@@ -8,7 +10,7 @@ void PluginHost::Initialize(bool hostStockCarRules)
     return;  // Single plugin for now, nothing to do if not requested.
 
   char wd[MAX_PATH] = {};
-  GetCurrentDirectory(MAX_PATH, wd);
+  ::GetCurrentDirectory(MAX_PATH, wd);
 
   auto const scrDllPath = lstrcatA(wd, R"(\Bin64\Plugins\StockCarRules.dll)");
 
@@ -49,8 +51,8 @@ void PluginHost::Initialize(bool hostStockCarRules)
       break;
     }
 
-    auto const pfnDestroyPluginObject = reinterpret_cast<void(*)(PluginObject*)>(::GetProcAddress(mhModuleSCRPlugin, "DestroyPluginObject"));
-    if (pfnDestroyPluginObject == nullptr) {
+    mpfnDestroyPluginObject = reinterpret_cast<PluginHost::PluginDestoryFunc>(::GetProcAddress(mhModuleSCRPlugin, "DestroyPluginObject"));
+    if (mpfnDestroyPluginObject == nullptr) {
       DEBUG_MSG(DebugLevel::Errors, "Function DestroyPluginObject not found.");
       break;
     }
@@ -90,6 +92,7 @@ void PluginHost::Initialize(bool hostStockCarRules)
   if (!mInitialized)
     return;
 
+  // TODO abort if SCR is enabled.
   // Pass the SCR plugin parameters.  For now, just hardcode.
   CustomVariableV01 cvar;
   strcpy(cvar.mCaption, "AllowFrozenAdjustments");
@@ -130,6 +133,35 @@ void PluginHost::Initialize(bool hostStockCarRules)
 }
 
 
+void PluginHost::Cleanup()
+{
+  if (!mInitialized) {
+    assert(mhModuleSCRPlugin == nullptr);
+    assert(mStockCarRulesPlugin == nullptr);
+    return;
+  }
+
+  assert(mhModuleSCRPlugin != nullptr);
+  assert(mStockCarRulesPlugin != nullptr);
+  assert(mpfnDestroyPluginObject != nullptr);
+
+  if (mpfnDestroyPluginObject != nullptr)
+    mpfnDestroyPluginObject(mStockCarRulesPlugin);
+
+  mStockCarRulesPlugin = nullptr;
+
+  if (::FreeLibrary(mhModuleSCRPlugin) != 1) {
+    DEBUG_MSG(DebugLevel::Errors, "Failed to unload StockCarRules.dll library");
+    SharedMemoryPlugin::TraceLastWin32Error();
+  }
+
+  mhModuleSCRPlugin = nullptr;
+
+  mInitialized = false;
+  DEBUG_MSG(DebugLevel::Errors, "Successfully unloaded StockCarRules.dll plugin.");
+}
+
+
 void PluginHost::Startup(long version)
 {
   if (!mInitialized)
@@ -138,6 +170,7 @@ void PluginHost::Startup(long version)
   assert(mStockCarRulesPlugin != nullptr);
   mStockCarRulesPlugin->Startup(version);
 }
+
 
 void PluginHost::Shutdown()
 {
@@ -148,6 +181,7 @@ void PluginHost::Shutdown()
   mStockCarRulesPlugin->Shutdown();
 }
 
+
 void PluginHost::EnterRealtime()
 {
   if (!mInitialized)
@@ -156,6 +190,7 @@ void PluginHost::EnterRealtime()
   assert(mStockCarRulesPlugin != nullptr);
   mStockCarRulesPlugin->EnterRealtime();
 }
+
 
 void PluginHost::ExitRealtime()
 {
@@ -166,6 +201,7 @@ void PluginHost::ExitRealtime()
   mStockCarRulesPlugin->ExitRealtime();
 }
 
+
 void PluginHost::StartSession()
 {
   if (!mInitialized)
@@ -174,6 +210,7 @@ void PluginHost::StartSession()
   assert(mStockCarRulesPlugin != nullptr);
   mStockCarRulesPlugin->StartSession();
 }
+
 
 void PluginHost::EndSession()
 {
@@ -184,64 +221,111 @@ void PluginHost::EndSession()
   mStockCarRulesPlugin->EndSession();
 }
 
+
 void PluginHost::UpdateTelemetry(TelemInfoV01 const& info)
 {
   if (!mInitialized)
     return;
 
   assert(mStockCarRulesPlugin != nullptr);
+  if (mStockCarRulesPlugin->WantsTelemetryUpdates() == 0)
+    return;
+
   mStockCarRulesPlugin->UpdateTelemetry(info);
 }
+
 
 void PluginHost::UpdateScoring(ScoringInfoV01 const& info)
 {
   if (!mInitialized)
     return;
 
+  assert(mStockCarRulesPlugin != nullptr);
+  if (!mStockCarRulesPlugin->WantsScoringUpdates())
+    return;
+
+  mStockCarRulesPlugin->UpdateScoring(info);
 }
 
-bool PluginHost::WantsToDisplayMessage(MessageInfoV01 & msgInfo)
+
+bool PluginHost::WantsToDisplayMessage(MessageInfoV01& msgInfo)
 {
   if (!mInitialized)
     return false;
 
-  return false;
+  assert(mStockCarRulesPlugin != nullptr);
+  return mStockCarRulesPlugin->WantsToDisplayMessage(msgInfo);
 }
+
 
 void PluginHost::ThreadStarted(long type)
 {
+  if (!mInitialized)
+    return;
+
+  assert(mStockCarRulesPlugin != nullptr);
+  return mStockCarRulesPlugin->ThreadStarted(type);
 }
+
 
 void PluginHost::ThreadStopping(long type)
 {
+  if (!mInitialized)
+    return;
+
+  assert(mStockCarRulesPlugin != nullptr);
+  return mStockCarRulesPlugin->ThreadStopping(type);
 }
 
-bool PluginHost::AccessTrackRules(TrackRulesV01 & info)
+
+bool PluginHost::AccessTrackRules(TrackRulesV01& info)
 {
   if (!mInitialized)
     return false;
 
-  return false;
+  assert(mStockCarRulesPlugin != nullptr);
+  return mStockCarRulesPlugin->AccessTrackRules(info);
 }
 
-bool PluginHost::WantsPitMenuAccess()
+
+bool PluginHost::AccessPitMenu(PitMenuV01& info)
 {
   if (!mInitialized)
     return false;
 
-  return false;
+  assert(mStockCarRulesPlugin != nullptr);
+  if (!mStockCarRulesPlugin->WantsPitMenuAccess())
+    return false;
+
+  return mStockCarRulesPlugin->AccessPitMenu(info);
 }
 
-bool PluginHost::AccessPitMenu(PitMenuV01 & info)
+
+void PluginHost::SetPhysicsOptions(PhysicsOptionsV01& options)
+{
+  if (!mInitialized)
+    return;
+
+  assert(mStockCarRulesPlugin != nullptr);
+  mStockCarRulesPlugin->SetPhysicsOptions(options);
+}
+
+
+bool PluginHost::AccessMultiSessionRules(MultiSessionRulesV01 & info)
 {
   if (!mInitialized)
     return false;
 
-  return false;
+  assert(mStockCarRulesPlugin != nullptr);
+  return mStockCarRulesPlugin->AccessMultiSessionRules(info);
 }
+
 
 void PluginHost::SetEnvironment(const EnvironmentInfoV01& info)
 {
   if (!mInitialized)
     return;
+
+  assert(mStockCarRulesPlugin != nullptr);
+  mStockCarRulesPlugin->SetEnvironment(info);
 }
