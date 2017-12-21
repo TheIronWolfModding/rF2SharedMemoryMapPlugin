@@ -136,8 +136,7 @@ namespace rF2SMMonitor
     rF2GamePhase lastTimingTrackingGamePhase = (rF2GamePhase)Enum.ToObject(typeof(rF2GamePhase), -255);
     rF2GamePhase lastRulesTrackingGamePhase = (rF2GamePhase)Enum.ToObject(typeof(rF2GamePhase), -255);
 
-    // 170
-    private float screenYStart = 250.0f;
+    private float screenYStart = 253.0f;
 
     internal void TrackPhase(ref rF2Scoring scoring, ref rF2Telemetry telemetry, ref rF2Extended extended, Graphics g, bool logToFile)
     {
