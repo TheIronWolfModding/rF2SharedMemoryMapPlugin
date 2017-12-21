@@ -783,9 +783,10 @@ bool SharedMemoryPlugin::WantsToDisplayMessage(MessageInfoV01& msgInfo)
   // Looks like this is write only API, can't read current text in MC.  Pass through to host.
   auto const updateRequested = mPluginHost.WantsToDisplayMessage(msgInfo);
 
+  // But caputre the message if it was updated.
   if (updateRequested && msgInfo.mText[0] != '\0') {
     DEBUG_MSG2(DebugLevel::CriticalInfo, "New displayed messsage captured: ", msgInfo.mText);
-    strcpy_s(mExtStateTracker.mExtended.mMessageUpdateCapture, msgInfo.mText);
+    strcpy_s(mExtStateTracker.mExtended.mDisplayedMessageUpdateCapture, msgInfo.mText);
     memcpy(mExtended.mpCurrWriteBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
     mExtended.FlipBuffers();
   }

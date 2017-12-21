@@ -826,6 +826,10 @@ namespace rF2SMMonitor
       public Int64 mTicksSessionStarted;                 // Ticks when session started.
       public Int64 mTicksSessionEnded;                   // Ticks when session ended.
       public rF2SessionTransitionCapture mSessionTransitionCapture;  // Contains partial internals capture at session transition time.
+
+      // Captured non-empty MessageInfoV01::mText message.
+      [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = 128)]
+      public byte[] mDisplayedMessageUpdateCapture;
     }
 
 

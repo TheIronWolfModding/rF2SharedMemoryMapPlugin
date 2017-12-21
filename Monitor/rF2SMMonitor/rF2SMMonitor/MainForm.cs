@@ -636,6 +636,7 @@ namespace rF2SMMonitor
           + "Sess. End Phase:\n"
           + "Sess. End Place:\n"
           + "Sess. End Finish:\n"
+          + "Display msg capture:\n"
           );
 
         // Col 1 labels
@@ -661,6 +662,7 @@ namespace rF2SMMonitor
                 + $"{(rFactor2Constants.rF2GamePhase)this.extended.mSessionTransitionCapture.mGamePhase}\n"
                 + $"{playerSessionEndInfo.mPlace}\n"
                 + $"{(rFactor2Constants.rF2FinishStatus)playerSessionEndInfo.mFinishStatus}\n"
+                + $"{MainForm.GetStringFromBytes(this.extended.mDisplayedMessageUpdateCapture)}\n"
                 );
 
         // Col1 values
