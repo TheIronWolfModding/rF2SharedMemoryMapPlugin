@@ -808,6 +808,7 @@ namespace rF2SMMonitor
       [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = 8)]
       public byte[] mVersion;                            // API version
       public byte is64bit;                               // Is 64bit plugin?
+      public byte isStockCarRulesPluginHosted;           // Is StockCarRules.dll successfully loaded into SM plugin?
 
       // Physics options (updated on session start):
       public rF2PhysicsOptions mPhysics;

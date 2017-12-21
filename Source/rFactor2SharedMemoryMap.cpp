@@ -138,9 +138,9 @@ char const* const SharedMemoryPlugin::MM_EXTENDED_FILE_NAME2 = "$rFactor2SMMP_Ex
 char const* const SharedMemoryPlugin::MM_EXTENDED_FILE_ACCESS_MUTEX = R"(Global\$rFactor2SMMP_ExtendedMutex)";
 
 char const* const SharedMemoryPlugin::CONFIG_FILE_REL_PATH = R"(\UserData\player\rf2smmp.ini)";  // Relative to rF2 root.
-char const* const SharedMemoryPlugin::INTERNALS_TELEMETRY_FILENAME = "RF2SMMP_InternalsTelemetryOutput.txt";
-char const* const SharedMemoryPlugin::INTERNALS_SCORING_FILENAME = "RF2SMMP_InternalsScoringOutput.txt";
-char const* const SharedMemoryPlugin::DEBUG_OUTPUT_FILENAME = "RF2SMMP_DebugOutput.txt";
+char const* const SharedMemoryPlugin::INTERNALS_TELEMETRY_FILENAME = R"(UserData\Log\RF2SMMP_InternalsTelemetryOutput.txt)";
+char const* const SharedMemoryPlugin::INTERNALS_SCORING_FILENAME = R"(UserData\Log\RF2SMMP_InternalsScoringOutput.txt)";
+char const* const SharedMemoryPlugin::DEBUG_OUTPUT_FILENAME = R"(UserData\Log\RF2SMMP_DebugOutput.txt)";
 
 // plugin information
 extern "C" __declspec(dllexport)
@@ -194,8 +194,6 @@ void SharedMemoryPlugin::Startup(long version)
   // Read configuration .ini if there's one.
   LoadConfig();
 
-  DEBUG_MSG(DebugLevel::Errors, "Main startup");
-
   char temp[80] = {};
   sprintf(temp, "-STARTUP- (version %.3f)", (float)version / 1000.0f);
   WriteToAllExampleOutputFiles("w", temp);
@@ -232,45 +230,52 @@ void SharedMemoryPlugin::Startup(long version)
   // Keep multi rules as a special case for now, zero initialize here.
   mMultiRules.ClearState(nullptr /*pInitialContents*/);
 
-  DEBUG_MSG(DebugLevel::Errors, "Files mapped successfully");
+  DEBUG_MSG(DebugLevel::CriticalInfo, "Files mapped successfully");
   if (SharedMemoryPlugin::msDebugOutputLevel != DebugLevel::Off) {
     char sizeSz[20] = {};
     auto size = static_cast<int>(sizeof(rF2Telemetry));
     _itoa_s(size, sizeSz, 10);
-    DEBUG_MSG3(DebugLevel::Errors, "Size of telemetry buffers:", sizeSz, "bytes each.");
+    DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of telemetry buffers:", sizeSz, "bytes each.");
 
     assert(sizeof(rF2Telemetry) == offsetof(rF2Telemetry, mVehicles[rF2MappedBufferHeader::MAX_MAPPED_VEHICLES]));
 
     sizeSz[0] = '\0';
     size = static_cast<int>(sizeof(rF2Scoring));
     _itoa_s(size, sizeSz, 10);
-    DEBUG_MSG3(DebugLevel::Errors, "Size of scoring buffers:", sizeSz, "bytes each.");
+    DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of scoring buffers:", sizeSz, "bytes each.");
 
     assert(sizeof(rF2Scoring) == offsetof(rF2Scoring, mVehicles[rF2MappedBufferHeader::MAX_MAPPED_VEHICLES]));
 
     sizeSz[0] = '\0';
     size = static_cast<int>(sizeof(rF2Rules));
     _itoa_s(size, sizeSz, 10);
-    DEBUG_MSG3(DebugLevel::Errors, "Size of rules buffers:", sizeSz, "bytes each.");
+    DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of rules buffers:", sizeSz, "bytes each.");
 
     assert(sizeof(rF2Rules) == offsetof(rF2Rules, mParticipants[rF2MappedBufferHeader::MAX_MAPPED_VEHICLES]));
 
     sizeSz[0] = '\0';
     size = static_cast<int>(sizeof(rF2MultiRules));
     _itoa_s(size, sizeSz, 10);
-    DEBUG_MSG3(DebugLevel::Errors, "Size of multi rules buffers:", sizeSz, "bytes each.");
+    DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of multi rules buffers:", sizeSz, "bytes each.");
 
     assert(sizeof(rF2MultiRules) == offsetof(rF2MultiRules, mParticipants[rF2MappedBufferHeader::MAX_MAPPED_VEHICLES]));
 
     sizeSz[0] = '\0';
     size = static_cast<int>(sizeof(rF2Extended));
     _itoa_s(size, sizeSz, 10);
-    DEBUG_MSG3(DebugLevel::Errors, "Size of extended buffers:", sizeSz, "bytes each.");
+    DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of extended buffers:", sizeSz, "bytes each.");
   }
 
   // Initialize hosted plugins.
-  mPluginHost.Initialize(mEnableStockCarRulesPlugin);
+  mPluginHost.Initialize(mStockCarRulesPluginRequested);
   mPluginHost.Startup(version);
+
+  if (mStockCarRulesPluginRequested) {
+    mExtStateTracker.mExtended.isStockCarRulesPluginHosted = mPluginHost.IsStockCarRulesPluginHosted();
+
+    memcpy(mExtended.mpCurrWriteBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
+    mExtended.FlipBuffers();
+  }
 }
 
 void SharedMemoryPlugin::Shutdown()
@@ -280,7 +285,7 @@ void SharedMemoryPlugin::Shutdown()
   mPluginHost.Shutdown();
   mPluginHost.Cleanup();
 
-  DEBUG_MSG(DebugLevel::Errors, "Shutting down");
+  DEBUG_MSG(DebugLevel::CriticalInfo, "Shutting down");
 
   if (msDebugFile != nullptr) {
     fclose(msDebugFile);
@@ -817,17 +822,17 @@ bool SharedMemoryPlugin::AccessTrackRules(TrackRulesV01& info)
 
   // TODO: separate function.
   // If SCR plugin is enabled, cache the last non-empty messages during FCY.
-  if (mEnableStockCarRulesPlugin) {
+  if (mPluginHost.IsStockCarRulesPluginHosted()) {
     if (isFCY) {
       // Cache non-empty mMessage fields.
       if (info.mMessage[0] != '\0') {
-        DEBUG_MSG2(DebugLevel::Errors, "Non empty TR message: ", info.mMessage);
+        DEBUG_MSG2(DebugLevel::CriticalInfo, "Non empty TR message: ", info.mMessage);
         strcpy_s(mLastTrackRulesFCYMessage, info.mMessage);
       }
 
       for (int i = 0; i < info.mNumParticipants; ++i) {
         if (info.mParticipant[i].mMessage[0] != '\0') {
-          DEBUG_MSG2(DebugLevel::Errors, "Non empty TR Participant message: ", info.mParticipant[i].mMessage);
+          DEBUG_MSG2(DebugLevel::CriticalInfo, "Non empty TR Participant message: ", info.mParticipant[i].mMessage);
 
           auto const id = max(info.mParticipant[i].mID, 0L) % rF2MappedBufferHeader::MAX_MAPPED_IDS;
           strcpy_s(mLastRulesParticipantFCYMessages[id], info.mParticipant[i].mMessage);
@@ -850,7 +855,7 @@ bool SharedMemoryPlugin::AccessTrackRules(TrackRulesV01& info)
   // Copy main struct.
   memcpy(&(mRules.mpCurrWriteBuff->mTrackRules), &info, sizeof(rF2TrackRules));
 
-  if (mEnableStockCarRulesPlugin
+  if (mPluginHost.IsStockCarRulesPluginHosted()
     && isFCY
     && mLastTrackRulesFCYMessage[0] != '\0')
     strcpy_s(mRules.mpCurrWriteBuff->mTrackRules.mMessage, mLastTrackRulesFCYMessage);
@@ -872,7 +877,7 @@ bool SharedMemoryPlugin::AccessTrackRules(TrackRulesV01& info)
     memcpy(&(mRules.mpCurrWriteBuff->mParticipants[i]), &(info.mParticipant[i]), sizeof(rF2TrackRulesParticipant));
 
     // Pass out last SCR plugin mMessage.
-    if (mEnableStockCarRulesPlugin
+    if (mPluginHost.IsStockCarRulesPluginHosted()
       && isFCY) {
       auto const id = max(info.mParticipant[i].mID, 0L) % rF2MappedBufferHeader::MAX_MAPPED_IDS;
       if (mLastRulesParticipantFCYMessages[id] != '\0')
@@ -965,7 +970,7 @@ void SharedMemoryPlugin::AccessCustomVariable(CustomVariableV01& var)
   if (_stricmp(var.mCaption, " Enabled") == 0)
     ; // Do nothing; this variable is just for rF2 to know whether to keep the plugin loaded.
   else if (_stricmp(var.mCaption, "EnableStockCarRulesPlugin") == 0)
-    mEnableStockCarRulesPlugin = var.mCurrentSetting != 0;
+    mStockCarRulesPluginRequested = var.mCurrentSetting != 0;
 }
 
 

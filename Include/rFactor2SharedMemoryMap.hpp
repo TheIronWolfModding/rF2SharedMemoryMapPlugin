@@ -47,11 +47,12 @@ enum DebugLevel
 {
   Off = 0,
   Errors = 1,
-  Warnings = 2,          // Errors + Warnings
-  Synchronization = 3,   // Errors + Warnings + Sync messages
-  Perf = 4,              // Errors + Warnings + Sync messages + Perf
-  Timing = 5,            // Errors + Warnings + Sync messages + Perf + Timing deltas
-  Verbose = 6            // All
+  CriticalInfo = 2,      // Errors + Critical Info
+  Warnings = 3,          // Errors + Critical Info + Warnings
+  Synchronization = 4,   // Errors + Critical Info + Warnings + Sync messages
+  Perf = 5,              // Errors + Critical Info + Warnings + Sync messages + Perf
+  Timing = 6,            // Errors + Critical Info + Warnings + Sync messages + Perf + Timing deltas
+  Verbose = 7            // All
 };
 
 // This is used for the app to use the plugin for its intended purpose
@@ -120,6 +121,7 @@ private:
 
       strcpy_s(mExtended.mVersion, SHARED_MEMORY_VERSION);
       mExtended.is64bit = PLUGIN_64BIT;
+      mExtended.isStockCarRulesPluginHosted = false;
 
       assert(!mExtended.mCurrentRead);
       assert(!mExtended.mMultimediaThreadStarted);
@@ -315,18 +317,17 @@ private:
   //////////////////////////////////////////
   // Stock Cars Rules hackery
   //////////////////////////////////////////s
-  bool mEnableStockCarRulesPlugin = false;
+  bool mStockCarRulesPluginRequested = false;
   PluginHost mPluginHost;
 
   // Last rules update was FCY?
   bool mLastRulesUpdateWasFCY = false;
 
-  // Last non-empty FCY TrackRulesV01 message.
+  // Last non-empty FCY TrackRulesV01 message.  Must match rF2TrackRules::mMessage
   char mLastTrackRulesFCYMessage[96] = {};
 
-  // Last non-empty FCY TrackRulesParticipantV01 message.
+  // Last non-empty FCY TrackRulesParticipantV01 message.  Must match rF2TrackRulesParticipant::mMessage
   char mLastRulesParticipantFCYMessages[rF2MappedBufferHeader::MAX_MAPPED_IDS][96];
 };
 
-//static_assert(sizeof(SharedMemoryPlugin::mLastTrackRulesFCYMessage));
 

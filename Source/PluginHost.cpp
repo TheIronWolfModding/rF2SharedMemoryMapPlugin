@@ -78,7 +78,7 @@ void PluginHost::Initialize(bool hostStockCarRules)
     }
 
     auto const pluginName = pfnGetPluginName();
-    DEBUG_MSG2(DebugLevel::Errors, "Successfully loaded StockCarRules.dll plugin.  Name:", pluginName);
+    DEBUG_MSG2(DebugLevel::CriticalInfo, "Successfully loaded StockCarRules.dll plugin.  Name:", pluginName);
 
     mInitialized = true;
   } while (false);
@@ -158,7 +158,7 @@ void PluginHost::Cleanup()
   mhModuleSCRPlugin = nullptr;
 
   mInitialized = false;
-  DEBUG_MSG(DebugLevel::Errors, "Successfully unloaded StockCarRules.dll plugin.");
+  DEBUG_MSG(DebugLevel::CriticalInfo, "Successfully unloaded StockCarRules.dll plugin.");
 }
 
 

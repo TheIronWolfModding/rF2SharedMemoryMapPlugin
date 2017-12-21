@@ -23,6 +23,7 @@ public:
 
   void Initialize(bool hostStockCarRules);
   void Cleanup();
+  bool IsStockCarRulesPluginHosted() const { return mInitialized; }
 
   ////////////////////////////////////////////////////
   // InternalsPluginV01 (InternalsPlugin)

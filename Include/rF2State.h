@@ -826,6 +826,7 @@ struct rF2Extended : public rF2MappedBufferHeader
 {
   char mVersion[8];                            // API version
   bool is64bit;                                // Is 64bit plugin?
+  bool isStockCarRulesPluginHosted;            // Is StockCarRules.dll successfully loaded into SM plugin?
 
   // Physics options (updated on session start):
   rF2PhysicsOptions mPhysics;
