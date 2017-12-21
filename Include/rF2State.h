@@ -845,6 +845,9 @@ struct rF2Extended : public rF2MappedBufferHeader
 
   // FUTURE: It might be worth to keep the whole scoring capture as a separate double buffer instead of this.
   rF2SessionTransitionCapture mSessionTransitionCapture;  // Contains partial internals capture at session transition time.
+
+  // TODO: remove if doesn't prove necessary.
+  char mMessageUpdateCapture[128];
 };
 
 #pragma pack(pop)

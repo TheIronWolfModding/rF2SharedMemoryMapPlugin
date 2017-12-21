@@ -111,6 +111,7 @@ static double const MICROSECONDS_IN_SECOND = MILLISECONDS_IN_SECOND * MICROSECON
 DebugLevel SharedMemoryPlugin::msDebugOutputLevel = DebugLevel::Off;
 bool SharedMemoryPlugin::msDebugISIInternals = false;
 DWORD SharedMemoryPlugin::msMillisMutexWait = 1;
+bool SharedMemoryPlugin::msStockCarRulesPluginRequested = false;
 
 FILE* SharedMemoryPlugin::msDebugFile;
 FILE* SharedMemoryPlugin::msIsiTelemetryFile;
@@ -137,7 +138,6 @@ char const* const SharedMemoryPlugin::MM_EXTENDED_FILE_NAME1 = "$rFactor2SMMP_Ex
 char const* const SharedMemoryPlugin::MM_EXTENDED_FILE_NAME2 = "$rFactor2SMMP_ExtendedBuffer2$";
 char const* const SharedMemoryPlugin::MM_EXTENDED_FILE_ACCESS_MUTEX = R"(Global\$rFactor2SMMP_ExtendedMutex)";
 
-char const* const SharedMemoryPlugin::CONFIG_FILE_REL_PATH = R"(\UserData\player\rf2smmp.ini)";  // Relative to rF2 root.
 char const* const SharedMemoryPlugin::INTERNALS_TELEMETRY_FILENAME = R"(UserData\Log\RF2SMMP_InternalsTelemetryOutput.txt)";
 char const* const SharedMemoryPlugin::INTERNALS_SCORING_FILENAME = R"(UserData\Log\RF2SMMP_InternalsScoringOutput.txt)";
 char const* const SharedMemoryPlugin::DEBUG_OUTPUT_FILENAME = R"(UserData\Log\RF2SMMP_DebugOutput.txt)";
@@ -191,8 +191,16 @@ SharedMemoryPlugin::SharedMemoryPlugin()
 
 void SharedMemoryPlugin::Startup(long version)
 {
-  // Read configuration .ini if there's one.
-  LoadConfig();
+  // Remove previous debug output .
+  if (msDebugOutputLevel > 0)
+    remove(SharedMemoryPlugin::DEBUG_OUTPUT_FILENAME);
+
+  // Print out configuration.
+  DEBUG_MSG2(DebugLevel::CriticalInfo, "Starting rFactor 2 Shared Memory Map Plugin 64bit Version:", SHARED_MEMORY_VERSION);
+  DEBUG_MSG(DebugLevel::CriticalInfo, "Configuration:");
+  DEBUG_INT2(DebugLevel::CriticalInfo, "EnableStockCarRulesPlugin:", SharedMemoryPlugin::msStockCarRulesPluginRequested);
+  DEBUG_INT2(DebugLevel::CriticalInfo, "DebugOutputLevel:", SharedMemoryPlugin::msDebugOutputLevel);
+  DEBUG_INT2(DebugLevel::CriticalInfo, "DebugISIInternals:", SharedMemoryPlugin::msDebugISIInternals);
 
   char temp[80] = {};
   sprintf(temp, "-STARTUP- (version %.3f)", (float)version / 1000.0f);
@@ -267,10 +275,10 @@ void SharedMemoryPlugin::Startup(long version)
   }
 
   // Initialize hosted plugins.
-  mPluginHost.Initialize(mStockCarRulesPluginRequested);
+  mPluginHost.Initialize(msStockCarRulesPluginRequested);
   mPluginHost.Startup(version);
 
-  if (mStockCarRulesPluginRequested) {
+  if (msStockCarRulesPluginRequested) {
     mExtStateTracker.mExtended.isStockCarRulesPluginHosted = mPluginHost.IsStockCarRulesPluginHosted();
 
     memcpy(mExtended.mpCurrWriteBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
@@ -773,7 +781,16 @@ void SharedMemoryPlugin::UpdateScoring(ScoringInfoV01 const& info)
 bool SharedMemoryPlugin::WantsToDisplayMessage(MessageInfoV01& msgInfo)
 {
   // Looks like this is write only API, can't read current text in MC.  Pass through to host.
-  return mPluginHost.WantsToDisplayMessage(msgInfo);
+  auto const updateRequested = mPluginHost.WantsToDisplayMessage(msgInfo);
+
+  if (updateRequested && msgInfo.mText[0] != '\0') {
+    DEBUG_MSG2(DebugLevel::CriticalInfo, "New displayed messsage captured: ", msgInfo.mText);
+    strcpy_s(mExtStateTracker.mExtended.mMessageUpdateCapture, msgInfo.mText);
+    memcpy(mExtended.mpCurrWriteBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
+    mExtended.FlipBuffers();
+  }
+
+  return updateRequested;
 }
 
 
@@ -960,6 +977,18 @@ bool SharedMemoryPlugin::GetCustomVariable(long i, CustomVariableV01& var)
     var.mCurrentSetting = 0;
     return true;
   }
+  else if (i == 2) {
+    strcpy_s(var.mCaption, "DebugOutputLevel");
+    var.mNumSettings = 8;
+    var.mCurrentSetting = 0;
+    return true;
+  }
+  else if (i == 3) {
+    strcpy_s(var.mCaption, "DebugISIInternals");
+    var.mNumSettings = 2;
+    var.mCurrentSetting = 0;
+    return true;
+  }
 
   return false;
 }
@@ -970,7 +999,13 @@ void SharedMemoryPlugin::AccessCustomVariable(CustomVariableV01& var)
   if (_stricmp(var.mCaption, " Enabled") == 0)
     ; // Do nothing; this variable is just for rF2 to know whether to keep the plugin loaded.
   else if (_stricmp(var.mCaption, "EnableStockCarRulesPlugin") == 0)
-    mStockCarRulesPluginRequested = var.mCurrentSetting != 0;
+    msStockCarRulesPluginRequested = var.mCurrentSetting != 0;
+  else if (_stricmp(var.mCaption, "DebugOutputLevel") == 0) {
+    auto sanitized = min(max(var.mCurrentSetting, 0L), DebugLevel::Verbose);
+    msDebugOutputLevel = static_cast<DebugLevel>(sanitized);
+  }
+  else if (_stricmp(var.mCaption, "DebugISIInternals") == 0)
+    msDebugISIInternals = var.mCurrentSetting != 0;
 }
 
 
@@ -988,6 +1023,15 @@ void SharedMemoryPlugin::GetCustomVariableSetting(CustomVariableV01& var, long i
     else
       strcpy_s(setting.mName, "True");
   }
+  else if (_stricmp(var.mCaption, "DebugOutputLevel") == 0)
+    sprintf_s(setting.mName, "%d%%", i);
+  else if (_stricmp(var.mCaption, "DebugISIInternals") == 0) {
+    if (i == 0)
+      strcpy_s(setting.mName, "False");
+    else
+      strcpy_s(setting.mName, "True");
+  }
+
 }
 
 
@@ -1001,28 +1045,8 @@ void SharedMemoryPlugin::SetEnvironment(EnvironmentInfoV01 const& info)
 
 
 ////////////////////////////////////////////
-// Config, files and debugging output helpers.
+// Debug output helpers.
 ////////////////////////////////////////////
-void SharedMemoryPlugin::LoadConfig()
-{
-  char wd[MAX_PATH] = {};
-  GetCurrentDirectory(MAX_PATH, wd);
-
-  auto iniPath = lstrcatA(wd, SharedMemoryPlugin::CONFIG_FILE_REL_PATH);
-
-  auto outputLvl = GetPrivateProfileInt("config", "debugOutputLevel", 0, iniPath);
-  if (outputLvl > DebugLevel::Verbose)
-    outputLvl = 0;
-
-  msDebugOutputLevel = static_cast<DebugLevel>(outputLvl);
-  if (msDebugOutputLevel > 0)
-    remove(SharedMemoryPlugin::DEBUG_OUTPUT_FILENAME);  // Remove previous output.
-
-  msDebugISIInternals = GetPrivateProfileInt("config", "debugISIInternals", 0, iniPath) != 0;
-
-  DEBUG_MSG2(DebugLevel::Verbose, "Loaded config from:", iniPath);
-}
-
 
 void SharedMemoryPlugin::WriteToAllExampleOutputFiles(const char * const openStr, const char * const msg)
 {

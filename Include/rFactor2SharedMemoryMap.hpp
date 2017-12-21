@@ -79,8 +79,6 @@ public:
   static char const* const MM_EXTENDED_FILE_NAME2;
   static char const* const MM_EXTENDED_FILE_ACCESS_MUTEX;
 
-  static char const* const CONFIG_FILE_REL_PATH;
-
   static char const* const INTERNALS_TELEMETRY_FILENAME;
   static char const* const INTERNALS_SCORING_FILENAME;
   static char const* const DEBUG_OUTPUT_FILENAME;
@@ -317,14 +315,14 @@ private:
   //////////////////////////////////////////
   // Stock Cars Rules hackery
   //////////////////////////////////////////s
-  bool mStockCarRulesPluginRequested = false;
+  static bool msStockCarRulesPluginRequested;
   PluginHost mPluginHost;
 
   // Last rules update was FCY?
   bool mLastRulesUpdateWasFCY = false;
 
   // Last non-empty FCY TrackRulesV01 message.  Must match rF2TrackRules::mMessage
-  char mLastTrackRulesFCYMessage[96] = {};
+  char mLastTrackRulesFCYMessage[96];
 
   // Last non-empty FCY TrackRulesParticipantV01 message.  Must match rF2TrackRulesParticipant::mMessage
   char mLastRulesParticipantFCYMessages[rF2MappedBufferHeader::MAX_MAPPED_IDS][96];
