@@ -331,6 +331,10 @@ void SharedMemoryPlugin::ClearTimingsAndCounters()
   mCurrTelemetryVehicleIndex = 0;
 
   memset(mParticipantTelemetryUpdated, 0, sizeof(mParticipantTelemetryUpdated));
+
+  memset(mLastTrackRulesFCYMessage, 0, sizeof(mLastTrackRulesFCYMessage));
+  memset(mLastRulesParticipantFCYMessages, 0, sizeof(mLastRulesParticipantFCYMessages));
+  mLastRulesUpdateWasFCY = false;
 }
 
 
@@ -809,10 +813,47 @@ bool SharedMemoryPlugin::AccessTrackRules(TrackRulesV01& info)
 
   auto const updateRequested = mPluginHost.AccessTrackRules(info);
 
+  auto const isFCY = info.mYellowFlagState != 0;
+
+  // TODO: separate function.
+  // If SCR plugin is enabled, cache the last non-empty messages during FCY.
+  if (mEnableStockCarRulesPlugin) {
+    if (isFCY) {
+      // Cache non-empty mMessage fields.
+      if (info.mMessage[0] != '\0') {
+        DEBUG_MSG2(DebugLevel::Errors, "Non empty TR message: ", info.mMessage);
+        strcpy_s(mLastTrackRulesFCYMessage, info.mMessage);
+      }
+
+      for (int i = 0; i < info.mNumParticipants; ++i) {
+        if (info.mParticipant[i].mMessage[0] != '\0') {
+          DEBUG_MSG2(DebugLevel::Errors, "Non empty TR Participant message: ", info.mParticipant[i].mMessage);
+
+          auto const id = max(info.mParticipant[i].mID, 0L) % rF2MappedBufferHeader::MAX_MAPPED_IDS;
+          strcpy_s(mLastRulesParticipantFCYMessages[id], info.mParticipant[i].mMessage);
+        }
+      }
+
+      mLastRulesUpdateWasFCY = true;
+    }
+    else if (mLastRulesUpdateWasFCY) {
+      // Clear the cached values.
+      memset(mLastTrackRulesFCYMessage, 0, sizeof(mLastTrackRulesFCYMessage));
+      memset(mLastRulesParticipantFCYMessages, 0, sizeof(mLastRulesParticipantFCYMessages));
+
+      mLastRulesUpdateWasFCY = false;
+    }
+  }
+
   TraceBeginUpdate(mRules, mLastRulesUpdateMillis, "RULES");
 
   // Copy main struct.
   memcpy(&(mRules.mpCurrWriteBuff->mTrackRules), &info, sizeof(rF2TrackRules));
+
+  if (mEnableStockCarRulesPlugin
+    && isFCY
+    && mLastTrackRulesFCYMessage[0] != '\0')
+    strcpy_s(mRules.mpCurrWriteBuff->mTrackRules.mMessage, mLastTrackRulesFCYMessage);
 
   // Copy actions.
   if (info.mNumActions >= rF2MappedBufferHeader::MAX_MAPPED_VEHICLES)
@@ -827,8 +868,17 @@ bool SharedMemoryPlugin::AccessTrackRules(TrackRulesV01& info)
     DEBUG_MSG(DebugLevel::Errors, "ERROR: Rules exceeded maximum of allowed mapped vehicles.");
 
   auto const numRulesVehicles = min(info.mNumParticipants, rF2MappedBufferHeader::MAX_MAPPED_VEHICLES);
-  for (int i = 0; i < numRulesVehicles; ++i)
+  for (int i = 0; i < numRulesVehicles; ++i) {
     memcpy(&(mRules.mpCurrWriteBuff->mParticipants[i]), &(info.mParticipant[i]), sizeof(rF2TrackRulesParticipant));
+
+    // Pass out last SCR plugin mMessage.
+    if (mEnableStockCarRulesPlugin
+      && isFCY) {
+      auto const id = max(info.mParticipant[i].mID, 0L) % rF2MappedBufferHeader::MAX_MAPPED_IDS;
+      if (mLastRulesParticipantFCYMessages[id] != '\0')
+        strcpy_s(mRules.mpCurrWriteBuff->mParticipants[i].mMessage, mLastRulesParticipantFCYMessages[id]);
+    }
+  }
 
   mRules.mpCurrWriteBuff->mBytesUpdatedHint = static_cast<int>(offsetof(rF2Rules, mParticipants[numRulesVehicles]));
 

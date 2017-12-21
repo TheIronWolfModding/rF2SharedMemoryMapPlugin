@@ -312,6 +312,21 @@ private:
   // Buffers mapped successfully or not.
   bool mIsMapped = false;
 
+  //////////////////////////////////////////
+  // Stock Cars Rules hackery
+  //////////////////////////////////////////s
   bool mEnableStockCarRulesPlugin = false;
   PluginHost mPluginHost;
+
+  // Last rules update was FCY?
+  bool mLastRulesUpdateWasFCY = false;
+
+  // Last non-empty FCY TrackRulesV01 message.
+  char mLastTrackRulesFCYMessage[96] = {};
+
+  // Last non-empty FCY TrackRulesParticipantV01 message.
+  char mLastRulesParticipantFCYMessages[rF2MappedBufferHeader::MAX_MAPPED_IDS][96];
 };
+
+//static_assert(sizeof(SharedMemoryPlugin::mLastTrackRulesFCYMessage));
+
