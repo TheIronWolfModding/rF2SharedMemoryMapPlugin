@@ -184,7 +184,7 @@
       <OutputFile>.\Release/rFactor2SharedMemoryMapPlugin64.bsc</OutputFile>
     </Bscmake>
     <PostBuildEvent>
-      <Command>copy $(Platform)\$(Configuration)\rFactor2SharedMemoryMapPlugin64.dll "c:\Games\Steam\steamapps\common\rFactor 2\Bin64\Plugins\."  &amp;&amp; copy ..\Resources\rf2smmp.ini "c:\Games\Steam\steamapps\common\rFactor 2\UserData\player\."</Command>
+      <Command>copy $(Platform)\$(Configuration)\rFactor2SharedMemoryMapPlugin64.dll "c:\Games\Steam\steamapps\common\rFactor 2\Bin64\Plugins\."</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -273,7 +273,7 @@
       <OutputFile>.\Debug/rFactor2SharedMemoryMapPlugin64.bsc</OutputFile>
     </Bscmake>
     <PostBuildEvent>
-      <Command>copy $(Platform)\$(Configuration)\rFactor2SharedMemoryMapPlugin64.dll "c:\games\Steam\steamapps\common\rFactor 2\Bin64\Plugins\."  &amp;&amp; copy ..\Resources\rf2smmp.ini "c:\games\Steam\steamapps\common\rFactor 2\UserData\player\."</Command>
+      <Command>copy $(Platform)\$(Configuration)\rFactor2SharedMemoryMapPlugin64.dll "c:\games\Steam\steamapps\common\rFactor 2\Bin64\Plugins\."</Command>
     </PostBuildEvent>
     <CustomBuildStep>
       <Command>
@@ -297,7 +297,6 @@
     <None Include="..\.gitignore" />
     <None Include="..\LICENSE" />
     <None Include="..\README.md" />
-    <None Include="..\Resources\rf2smmp.ini" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

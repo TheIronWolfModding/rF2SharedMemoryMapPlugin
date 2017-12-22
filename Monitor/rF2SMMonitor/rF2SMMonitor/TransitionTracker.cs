@@ -1453,7 +1453,7 @@ namespace rF2SMMonitor
         || rs.mMessage != this.prevRules.mMessage
         || rs.mFrozenOrder != this.prevRules.mFrozenOrder
         || rs.mPlace != this.prevRules.mPlace
-        || rs.mYellowSeverity != this.prevRules.mYellowSeverity
+        //|| rs.mYellowSeverity != this.prevRules.mYellowSeverity
         //|| rs.mCurrentRelativeDistance != this.prevRules.mCurrentRelativeDistance
         || rs.mRelativeLaps != this.prevRules.mRelativeLaps
         || rs.mColumnAssignment != this.prevRules.mColumnAssignment
@@ -1663,7 +1663,7 @@ namespace rF2SMMonitor
       else if (foStage == rF2TrackRulesStage.FormationInit || foStage == rF2TrackRulesStage.FormationUpdate)
       {
         if (rules.mTrackRules.mSafetyCarActive == 1
-          || prevFrozenOrderData.Phase == FrozenOrderPhase.Rolling)  // If FO started as Rolling, keep it as Rolling even after SC leaves the track
+          || (prevFrozenOrderData != null && prevFrozenOrderData.Phase == FrozenOrderPhase.Rolling))  // If FO started as Rolling, keep it as Rolling even after SC leaves the track
           fod.Phase = FrozenOrderPhase.Rolling;
         else
         {
@@ -1685,7 +1685,7 @@ namespace rF2SMMonitor
           gridOrder = false;
           fod.AssignedPosition = vehicleRules.mPositionAssignment + 1;  // + 1, because it is zero based with 0 meaning follow SC.
 
-          if (prevFrozenOrderData.Phase == FrozenOrderPhase.None)
+          if (prevFrozenOrderData != null && prevFrozenOrderData.Phase == FrozenOrderPhase.None)
             this.playerLapsWhenFCYPosAssigned = vehicle.mTotalLaps;
         }
         else  // SCR plugin is enabled or this is not FCY case, the the order reported is grid order, with columns specified.

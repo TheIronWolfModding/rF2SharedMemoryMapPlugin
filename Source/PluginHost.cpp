@@ -95,12 +95,16 @@ void PluginHost::Initialize(bool hostStockCarRules)
   // TODO abort if SCR is enabled.
   // Pass the SCR plugin parameters.  For now, just hardcode.
   CustomVariableV01 cvar;
+  strcpy(cvar.mCaption, " Enabled");
+  cvar.mCurrentSetting = 1;
+  mStockCarRulesPlugin->AccessCustomVariable(cvar);
+
   strcpy(cvar.mCaption, "AllowFrozenAdjustments");
   cvar.mCurrentSetting = 25;
   mStockCarRulesPlugin->AccessCustomVariable(cvar);
 
   strcpy(cvar.mCaption, "AdjustUntilYellowFlagState");
-  cvar.mCurrentSetting = 4;
+  cvar.mCurrentSetting = 6;
   mStockCarRulesPlugin->AccessCustomVariable(cvar);
 
   strcpy(cvar.mCaption, "AllowFrozenAdjustments");
@@ -124,7 +128,7 @@ void PluginHost::Initialize(bool hostStockCarRules)
   mStockCarRulesPlugin->AccessCustomVariable(cvar);
 
   strcpy(cvar.mCaption, "YellowLapsMinimum");
-  cvar.mCurrentSetting = 6;
+  cvar.mCurrentSetting = 5;
   mStockCarRulesPlugin->AccessCustomVariable(cvar);
 
   strcpy(cvar.mCaption, "YellowLapsRandom");

@@ -851,6 +851,7 @@ bool SharedMemoryPlugin::AccessTrackRules(TrackRulesV01& info)
       for (int i = 0; i < info.mNumParticipants; ++i) {
         if (info.mParticipant[i].mMessage[0] != '\0') {
           DEBUG_MSG2(DebugLevel::CriticalInfo, "Non empty TR Participant message: ", info.mParticipant[i].mMessage);
+          DEBUG_INT2(DebugLevel::CriticalInfo, "Participant mID: ", info.mParticipant[i].mID);
 
           auto const id = max(info.mParticipant[i].mID, 0L) % rF2MappedBufferHeader::MAX_MAPPED_IDS;
           strcpy_s(mLastRulesParticipantFCYMessages[id], info.mParticipant[i].mMessage);
