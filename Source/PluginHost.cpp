@@ -122,7 +122,6 @@ void PluginHost::Initialize(bool hostStockCarRules)
 
   mInitialized = true;
   onFailure.Dismiss();
-
 }
 
 
@@ -352,7 +351,7 @@ char* PluginHost::GetFileContents(char const* const filePath)
     return nullptr;
   }
 
-  auto const fileBytes = ftell(fileHandle);
+  auto const fileBytes = static_cast<size_t>(ftell(fileHandle));
   rewind(fileHandle);
 
   fileContents = new char[fileBytes + 1];
