@@ -24,6 +24,9 @@
     <ClInclude Include="..\Include\PluginHost.h">
       <Filter>includes</Filter>
     </ClInclude>
+    <ClInclude Include="..\Include\Utils.h">
+      <Filter>includes</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="rf2_includes">

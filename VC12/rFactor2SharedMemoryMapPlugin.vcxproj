@@ -292,6 +292,7 @@
     <ClInclude Include="..\Include\rF2State.h" />
     <ClInclude Include="..\Include\rFactor2SharedMemoryMap.hpp" />
     <ClInclude Include="..\Include\PluginObjects.hpp" />
+    <ClInclude Include="..\Include\Utils.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\.gitignore" />

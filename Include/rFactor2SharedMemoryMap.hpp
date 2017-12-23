@@ -27,7 +27,7 @@ Website: thecrewchief.org
 
 // Each component can be in [0:99] range.
 #define PLUGIN_VERSION_MAJOR "2.3"
-#define PLUGIN_VERSION_MINOR "0.0"
+#define PLUGIN_VERSION_MINOR "1.0"
 #define PLUGIN_NAME_AND_VERSION "rFactor 2 Shared Memory Map Plugin - v" PLUGIN_VERSION_MAJOR
 #define SHARED_MEMORY_VERSION PLUGIN_VERSION_MAJOR "." PLUGIN_VERSION_MINOR
 
@@ -322,10 +322,10 @@ private:
   bool mLastRulesUpdateWasFCY = false;
 
   // Last non-empty FCY TrackRulesV01 message.  Must match rF2TrackRules::mMessage
-  char mLastTrackRulesFCYMessage[96];
+  char mLastTrackRulesFCYMessage[sizeof(decltype(rF2TrackRules::mMessage))];
 
   // Last non-empty FCY TrackRulesParticipantV01 message.  Must match rF2TrackRulesParticipant::mMessage
-  char mLastRulesParticipantFCYMessages[rF2MappedBufferHeader::MAX_MAPPED_IDS][96];
+  char mLastRulesParticipantFCYMessages[rF2MappedBufferHeader::MAX_MAPPED_IDS][sizeof(decltype(rF2TrackRulesParticipant::mMessage))];
 };
 
 

@@ -63,6 +63,11 @@ public:
   void SetEnvironment(const EnvironmentInfoV01 &info) override; // may be called whenever the environment changes
 
 private:
+  char* GetFileContents(char const* const filePath);
+  bool IsPluginDisabled(char* const configFileContents, char const* const pluginDllName, char** pluginConfig);
+  bool ForwardPluginConfig(char* const pluginConfig, InternalsPluginV07& plugin);
+
+private:
   bool mInitialized = false;
 
   HMODULE mhModuleSCRPlugin = nullptr;

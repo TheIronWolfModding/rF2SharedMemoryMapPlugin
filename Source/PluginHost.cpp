@@ -1,8 +1,15 @@
-// TODO: Destroy/cleanup.
+/*
+Definition of the PluginHost class which currently hosts StockCarRules plugin but could
+possibly be generalized in the future.
+
+Author: The Iron Wolf (vleonavicius@hotmail.com)
+Website: thecrewchief.org
+*/
 
 #include "PluginHost.h"
 #include "rFactor2SharedMemoryMap.hpp"
-
+#include "Utils.h"
+#include "errno.h"
 
 void PluginHost::Initialize(bool hostStockCarRules)
 {
@@ -12,9 +19,29 @@ void PluginHost::Initialize(bool hostStockCarRules)
   char wd[MAX_PATH] = {};
   ::GetCurrentDirectory(MAX_PATH, wd);
 
-  auto const scrDllPath = lstrcatA(wd, R"(\Bin64\Plugins\StockCarRules.dll)");
+  auto const configFilePath = lstrcatA(wd, R"(\UserData\player\CustomPluginVariables.JSON)");
+
+  auto configFileContents = GetFileContents(configFilePath);
+  if (configFileContents == nullptr) {
+    DEBUG_MSG(DebugLevel::Errors, "Failed to load CustomPluginVariables.JSON file");
+    return;
+  }
+
+  auto onExit = MakeScopeGuard([&]() {
+    delete[] configFileContents;
+  });
+
+  char* pluginConfig = nullptr;
+  if (!IsPluginDisabled(configFileContents, "StockCarRules.dll", &pluginConfig) || pluginConfig == nullptr) {
+    DEBUG_MSG(DebugLevel::Errors, "Error: StockCarRules.dll plugin is not disabled in CustomPluginVariables.JSON");
+    return;
+  }
 
   // Load the SCR plugin if requested.
+  ::GetCurrentDirectory(MAX_PATH, wd);
+
+  auto const scrDllPath = lstrcatA(wd, R"(\Bin64\Plugins\StockCarRules.dll)");
+
   mhModuleSCRPlugin = ::LoadLibraryEx(scrDllPath, nullptr /*reserved*/, 0 /*dwFlags*/);
   if (mhModuleSCRPlugin == nullptr) {
     DEBUG_MSG(DebugLevel::Errors, "Failed to load StockCarRules.dll library");
@@ -22,118 +49,80 @@ void PluginHost::Initialize(bool hostStockCarRules)
     return;
   }
 
-  do
-  {
+  auto onFailure = MakeScopeGuard(
+    [&]() {
+    if (!mInitialized
+      && ::FreeLibrary(mhModuleSCRPlugin) != 1) {
+      DEBUG_MSG(DebugLevel::Errors, "Failed to unload StockCarRules.dll library");
+      SharedMemoryPlugin::TraceLastWin32Error();
+    }
+  });
+
 #pragma warning(push)
 #pragma warning(disable : 4191)  // Allow casts to procedures other than FARPROC.
 
-    auto const pfnGetPluginName = reinterpret_cast<char* (*)()>(::GetProcAddress(mhModuleSCRPlugin, "GetPluginName"));
-    if (pfnGetPluginName == nullptr) {
-      DEBUG_MSG(DebugLevel::Errors, "Function GetPluginName not found.");
-      break;
-    }
+  auto const pfnGetPluginName = reinterpret_cast<char* (*)()>(::GetProcAddress(mhModuleSCRPlugin, "GetPluginName"));
+  if (pfnGetPluginName == nullptr) {
+    DEBUG_MSG(DebugLevel::Errors, "Function GetPluginName not found.");
+    return;
+  }
 
-    auto const pfnGetPluginType = reinterpret_cast<PluginObjectType(*)()>(::GetProcAddress(mhModuleSCRPlugin, "GetPluginType"));
-    if (pfnGetPluginType == nullptr) {
-      DEBUG_MSG(DebugLevel::Errors, "Function GetPluginType not found.");
-      break;
-    }
+  auto const pfnGetPluginType = reinterpret_cast<PluginObjectType(*)()>(::GetProcAddress(mhModuleSCRPlugin, "GetPluginType"));
+  if (pfnGetPluginType == nullptr) {
+    DEBUG_MSG(DebugLevel::Errors, "Function GetPluginType not found.");
+    return;
+  }
 
-    auto const pfnGetPluginVersion = reinterpret_cast<int(*)()>(::GetProcAddress(mhModuleSCRPlugin, "GetPluginVersion"));
-    if (pfnGetPluginVersion == nullptr) {
-      DEBUG_MSG(DebugLevel::Errors, "Function GetPluginVersion not found.");
-      break;
-    }
+  auto const pfnGetPluginVersion = reinterpret_cast<int(*)()>(::GetProcAddress(mhModuleSCRPlugin, "GetPluginVersion"));
+  if (pfnGetPluginVersion == nullptr) {
+    DEBUG_MSG(DebugLevel::Errors, "Function GetPluginVersion not found.");
+    return;
+  }
 
-    auto const pfnCreatePluginObject = reinterpret_cast<PluginObject* (*)()>(::GetProcAddress(mhModuleSCRPlugin, "CreatePluginObject"));
-    if (pfnCreatePluginObject == nullptr) {
-      DEBUG_MSG(DebugLevel::Errors, "Function CreatePluginObject not found.");
-      break;
-    }
+  auto const pfnCreatePluginObject = reinterpret_cast<PluginObject* (*)()>(::GetProcAddress(mhModuleSCRPlugin, "CreatePluginObject"));
+  if (pfnCreatePluginObject == nullptr) {
+    DEBUG_MSG(DebugLevel::Errors, "Function CreatePluginObject not found.");
+    return;
+  }
 
-    mpfnDestroyPluginObject = reinterpret_cast<PluginHost::PluginDestoryFunc>(::GetProcAddress(mhModuleSCRPlugin, "DestroyPluginObject"));
-    if (mpfnDestroyPluginObject == nullptr) {
-      DEBUG_MSG(DebugLevel::Errors, "Function DestroyPluginObject not found.");
-      break;
-    }
+  mpfnDestroyPluginObject = reinterpret_cast<PluginHost::PluginDestoryFunc>(::GetProcAddress(mhModuleSCRPlugin, "DestroyPluginObject"));
+  if (mpfnDestroyPluginObject == nullptr) {
+    DEBUG_MSG(DebugLevel::Errors, "Function DestroyPluginObject not found.");
+    return;
+  }
 
 #pragma warning(pop)  // Allow casts to procedures other than FARPROC.
 
-    auto const pluginType = pfnGetPluginType();
-    if (pluginType != PO_INTERNALS) {
-      DEBUG_INT2(DebugLevel::Errors, "Unexpected plugin type.", pluginType);
-      break;
-    }
-
-    auto const pluginVersion = pfnGetPluginVersion();
-    if (pluginVersion != 7) {
-      DEBUG_INT2(DebugLevel::Errors, "Unexpected plugin version.", pluginVersion);
-      break;
-    }
-
-    mStockCarRulesPlugin = static_cast<InternalsPluginV07*>(pfnCreatePluginObject());
-    if (mStockCarRulesPlugin == nullptr) {
-      DEBUG_MSG(DebugLevel::Errors, "Failed to create plugin object.");
-      break;
-    }
-
-    auto const pluginName = pfnGetPluginName();
-    DEBUG_MSG2(DebugLevel::CriticalInfo, "Successfully loaded StockCarRules.dll plugin.  Name:", pluginName);
-
-    mInitialized = true;
-  } while (false);
-  
-  if (!mInitialized
-    && ::FreeLibrary(mhModuleSCRPlugin) != 1) {
-    DEBUG_MSG(DebugLevel::Errors, "Failed to unload StockCarRules.dll library");
-    SharedMemoryPlugin::TraceLastWin32Error();
+  auto const pluginType = pfnGetPluginType();
+  if (pluginType != PO_INTERNALS) {
+    DEBUG_INT2(DebugLevel::Errors, "Unexpected plugin type.", pluginType);
+    return;
   }
 
-  if (!mInitialized)
+  auto const pluginVersion = pfnGetPluginVersion();
+  if (pluginVersion != 7) {
+    DEBUG_INT2(DebugLevel::Errors, "Unexpected plugin version.", pluginVersion);
     return;
+  }
 
-  // TODO abort if SCR is enabled.
-  // Pass the SCR plugin parameters.  For now, just hardcode.
-  CustomVariableV01 cvar;
-  strcpy(cvar.mCaption, " Enabled");
-  cvar.mCurrentSetting = 1;
-  mStockCarRulesPlugin->AccessCustomVariable(cvar);
+  mStockCarRulesPlugin = static_cast<InternalsPluginV07*>(pfnCreatePluginObject());
+  if (mStockCarRulesPlugin == nullptr) {
+    DEBUG_MSG(DebugLevel::Errors, "Failed to create plugin object.");
+    return;
+  }
 
-  strcpy(cvar.mCaption, "AllowFrozenAdjustments");
-  cvar.mCurrentSetting = 25;
-  mStockCarRulesPlugin->AccessCustomVariable(cvar);
+  DEBUG_MSG(DebugLevel::CriticalInfo, "Forwarding StockCarRules.dll plugin configuration:");
+  if (!ForwardPluginConfig(pluginConfig, *mStockCarRulesPlugin)) {
+    DEBUG_MSG(DebugLevel::Errors, "Failed to forward StockCarRules.dll plugin configuration.");
+    return;
+  }
 
-  strcpy(cvar.mCaption, "AdjustUntilYellowFlagState");
-  cvar.mCurrentSetting = 6;
-  mStockCarRulesPlugin->AccessCustomVariable(cvar);
+  auto const pluginName = pfnGetPluginName();
+  DEBUG_MSG2(DebugLevel::CriticalInfo, "Successfully loaded StockCarRules.dll plugin.  Name:", pluginName);
 
-  strcpy(cvar.mCaption, "AllowFrozenAdjustments");
-  cvar.mCurrentSetting = 1;
-  mStockCarRulesPlugin->AccessCustomVariable(cvar);
+  mInitialized = true;
+  onFailure.Dismiss();
 
-  strcpy(cvar.mCaption, "DoubleFileType");
-  cvar.mCurrentSetting = 2;
-  mStockCarRulesPlugin->AccessCustomVariable(cvar);
-
-  strcpy(cvar.mCaption, "Logging");
-  cvar.mCurrentSetting = 1;
-  mStockCarRulesPlugin->AccessCustomVariable(cvar);
-
-  strcpy(cvar.mCaption, "LuckyDogFreePass");
-  cvar.mCurrentSetting = 1;
-  mStockCarRulesPlugin->AccessCustomVariable(cvar);
-
-  strcpy(cvar.mCaption, "WaveArounds");
-  cvar.mCurrentSetting = 1;
-  mStockCarRulesPlugin->AccessCustomVariable(cvar);
-
-  strcpy(cvar.mCaption, "YellowLapsMinimum");
-  cvar.mCurrentSetting = 5;
-  mStockCarRulesPlugin->AccessCustomVariable(cvar);
-
-  strcpy(cvar.mCaption, "YellowLapsRandom");
-  cvar.mCurrentSetting = 0;
-  mStockCarRulesPlugin->AccessCustomVariable(cvar);
 }
 
 
@@ -332,4 +321,181 @@ void PluginHost::SetEnvironment(const EnvironmentInfoV01& info)
 
   assert(mStockCarRulesPlugin != nullptr);
   mStockCarRulesPlugin->SetEnvironment(info);
+}
+
+
+// Horrible stuff to avoid STL.  I don't know if it's worth it anymore.... hold, I just wanted to hoooold
+char* PluginHost::GetFileContents(char const* const filePath)
+{
+  FILE* fileHandle = nullptr;
+
+  auto onExit = MakeScopeGuard(
+    [&]() {
+    if (fileHandle != nullptr) {
+      auto ret = fclose(fileHandle);
+      if (ret != 0) {
+        DEBUG_INT2(DebugLevel::Errors, "fclose() failed with:", ret);
+      }
+    }
+  });
+
+  char* fileContents = nullptr;
+  auto ret = fopen_s(&fileHandle, filePath, "rb");
+  if (ret != 0) {
+    DEBUG_INT2(DebugLevel::Errors, "fopen_s() failed with:", ret);
+    return nullptr;
+  }
+
+  ret = fseek(fileHandle, 0, SEEK_END);
+  if (ret != 0) {
+    DEBUG_INT2(DebugLevel::Errors, "fseek() failed with:", ret);
+    return nullptr;
+  }
+
+  auto const fileBytes = ftell(fileHandle);
+  rewind(fileHandle);
+
+  fileContents = new char[fileBytes + 1];
+  auto elemsRead = fread(fileContents, fileBytes, 1 /*items*/, fileHandle);
+  if (elemsRead != 1 /*items*/) {
+    delete[] fileContents;
+    fileContents = nullptr;
+    DEBUG_MSG(DebugLevel::Errors, "fread() failed.");
+    return nullptr;
+  }
+
+  fileContents[fileBytes] = 0;
+
+  return fileContents;
+}
+
+
+bool PluginHost::IsPluginDisabled(char* const configFileContents, char const* const pluginDllName, char** pluginConfig)
+{
+  // See if plugin is enabled:
+  *pluginConfig = strstr(configFileContents, pluginDllName);
+  auto curLine = *pluginConfig;
+  while (curLine != nullptr) {
+    // Cut off next line from the current text.
+    auto const nextLine = strstr(curLine, "\r\n");
+    if (nextLine != nullptr)
+      *nextLine = '\0';
+
+    auto onExitOrNewIteration = MakeScopeGuard(
+      [&]() {
+      // Restore the original line.
+      if (nextLine != nullptr)
+        *nextLine = '\r';
+    });
+
+    auto const closingBrace = strchr(curLine, '}');
+    if (closingBrace != nullptr) {
+      // End of {} for a plugin.
+      return false;
+    }
+
+    // Check if plugin is disabled.
+    auto const enabled = strstr(curLine, " \" Enabled\":0");
+    if (enabled != nullptr)
+      return true;
+
+    curLine = nextLine != nullptr ? (nextLine + 2 /*skip \r\n*/) : nullptr;
+  }
+
+  return false;
+}
+
+
+bool PluginHost::ForwardPluginConfig(char* const pluginConfig, InternalsPluginV07& plugin)
+{
+  // Parse all the params:
+  auto curLine = pluginConfig;
+  while (curLine != nullptr) {
+    // Cut off next line from the current text.
+    auto const nextLine = strstr(curLine, "\r\n");
+    if (nextLine != nullptr)
+      *nextLine = '\0';
+
+    auto onExitOrNewIteration = MakeScopeGuard(
+      [&]() {
+      // Restore the original line.
+      if (nextLine != nullptr)
+        *nextLine = '\r';
+    });
+
+    auto const closingBrace = strchr(curLine, '}');
+    if (closingBrace != nullptr)
+      return true;  // End of {} for a plugin.
+
+    // Find opening "
+    auto const openQuote = strchr(curLine, '"');
+    if (openQuote == nullptr) {
+      DEBUG_MSG2(DebugLevel::Errors, "Failed to locate opening quoute in line:", curLine);
+      return false;
+    }
+
+    // Get variable name
+    int const MAX_VAR_LEN = sizeof(decltype(CustomVariableV01::mCaption));
+    char variable[MAX_VAR_LEN];
+    auto pch = openQuote + 1;
+    auto varIdx = 0;
+    auto gotVariable = true;
+    while (*pch != '\0' && *pch != '\"') {
+      if (*pch == '{') {  // Special case for config opening.
+        gotVariable = false;
+        break;
+      }
+
+      if (varIdx > MAX_VAR_LEN - 2) {
+        DEBUG_MSG2(DebugLevel::Errors, "Exceeded max variable length in line:", curLine);
+        return false;
+      }
+
+      variable[varIdx++] = *pch++;
+    }
+
+    auto value = 0L;
+    // Get value:
+    if (gotVariable && *pch == '\"' && *++pch != '\0' && *pch == ':' && *++pch != '\0') {
+      assert(varIdx < MAX_VAR_LEN);
+      variable[varIdx] = '\0';
+
+      int const MAX_VALUE_LEN = 7;
+      char number[MAX_VALUE_LEN];
+      auto valueIdx = 0;
+      while (*pch != '\0' && *pch != '\r' && *pch != ',' && isdigit(*pch)) {
+        if (valueIdx > MAX_VALUE_LEN - 2) {
+          DEBUG_MSG2(DebugLevel::Errors, "Exceeded max number length in line:", curLine);
+          return false;
+        }
+
+        number[valueIdx++] = *pch++;
+      }
+
+      assert(valueIdx < MAX_VALUE_LEN);
+      number[valueIdx] = '\0';
+
+      value = atol(number);
+      if (value == 0
+        && (errno == EINVAL || errno == ERANGE)) {
+        DEBUG_MSG2(DebugLevel::Errors, "Failed to convert line value part to number:", curLine);
+        return false;
+      }
+    }
+
+    if (gotVariable) {
+      if (strcmp(variable, " Enabled") == 0)
+        value = 1;  // Fake enable just in case.
+
+      CustomVariableV01 cvar;
+      strcpy(cvar.mCaption, variable);
+      cvar.mCurrentSetting = value;
+      plugin.AccessCustomVariable(cvar);
+      DEBUG_INT2(DebugLevel::CriticalInfo, variable, value);
+    }
+
+    curLine = nextLine != nullptr ? (nextLine + 2 /*skip \r\n*/) : nullptr;
+  }
+
+  return false;
 }
