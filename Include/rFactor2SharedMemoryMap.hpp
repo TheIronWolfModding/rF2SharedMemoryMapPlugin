@@ -105,7 +105,6 @@ public:
   static void TraceLastWin32Error();
 
 private:
-  static void LoadConfig();
 
   class ExtendedStateTracker
   {
