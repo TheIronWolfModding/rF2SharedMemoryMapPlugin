@@ -10,7 +10,7 @@ Reading shared memory allows creating  external tools running outside of rFactor
   * rF1 Shared Memory Map Plugin by Dan Allongo found at: https://github.com/dallongo/rFactorSharedMemoryMap
 
 ## Features
-Plugin uses double buffering and offers optional weak synchronization on global mutexes.
+Plugin uses double buffering and offers optional weak synchronization on global mutexes.  Plugin is also capable of hosting StockCarRules.dll plugin as a hack/workaround for accessing SCR set values.
 
 Plugin is built using VS 2015 Community Edition, targeting VC12 (VS 2013) runtime, since rF2 comes with VC12 redist.
 

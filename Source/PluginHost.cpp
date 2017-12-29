@@ -1,6 +1,11 @@
 /*
-Definition of the PluginHost class which currently hosts StockCarRules plugin but could
+Implementation of the PluginHost class which currently hosts StockCarRules plugin but could
 possibly be generalized in the future.
+
+Class simply forwards rF2 Internals model calls to the plugin loaded using LoadLibraryEx.  Minimal validation
+is performed in order to make sure hosted plugin is of V7 type and is currently disabled.
+
+Hosted plugin's custom variables from CustomPluginVariables.json are fowarded.
 
 Author: The Iron Wolf (vleonavicius@hotmail.com)
 Website: thecrewchief.org

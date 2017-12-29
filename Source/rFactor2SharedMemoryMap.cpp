@@ -83,9 +83,16 @@ Synchronization:
   before forcefully flipping buffers.  Also, if 1ms elapses on synchronized flip, buffer will be overwritten anyway.
 
 
-Configuration file:
-  Optional configuration file is supported (primarily for debugging purposes).
-  See SharedMemoryPlugin::LoadConfig.
+Hosted Stock Car Rules plugin:
+  This plugin is capable of hosting StockCarRules.dll plugin, mode enabled via EnableStockCarRules plugin variable.
+  The goal here is to break plugin isolation and capture mMessage members filled out by SCR plugin, and exposing
+  those values via SM (rF2Rules).  Otherwise, TrackRulesV01::mMessage and TrackRulesParticipantV01::mMessage strings
+  are always empty (game clears them out in between plugin calls).
+  See PluginHost.h/.cpp for more.
+
+
+Configuration:
+  Standard rF2 plugin configuration is used.  See: SharedMemoryPlugin::AccessCustomVariable.
 
 
 Limitations/Assumptions:
@@ -836,9 +843,54 @@ bool SharedMemoryPlugin::AccessTrackRules(TrackRulesV01& info)
 
   auto const updateRequested = mPluginHost.AccessTrackRules(info);
 
+  TraceBeginUpdate(mRules, mLastRulesUpdateMillis, "RULES");
+
+  CaptureSCRPluginMessages(info);
+  // Copy main struct.
+  memcpy(&(mRules.mpCurrWriteBuff->mTrackRules), &info, sizeof(rF2TrackRules));
+
+  // Pass out last global SCR plugin message.
+  auto const restoreSCRMessages = mPluginHost.IsStockCarRulesPluginHosted() && info.mYellowFlagState != 0;
+  if (restoreSCRMessages
+    && mLastTrackRulesFCYMessage[0] != '\0')
+    strcpy_s(mRules.mpCurrWriteBuff->mTrackRules.mMessage, mLastTrackRulesFCYMessage);
+
+  // Copy actions.
+  if (info.mNumActions >= rF2MappedBufferHeader::MAX_MAPPED_VEHICLES)
+    DEBUG_MSG(DebugLevel::Errors, "ERROR: Rules exceeded maximum of allowed actions.");
+
+  auto const numActions = min(info.mNumActions, rF2MappedBufferHeader::MAX_MAPPED_VEHICLES);
+  for (int i = 0; i < numActions; ++i)
+    memcpy(&(mRules.mpCurrWriteBuff->mActions[i]), &(info.mAction[i]), sizeof(rF2TrackRulesAction));
+
+  // Copy participants.
+  if (info.mNumParticipants >= rF2MappedBufferHeader::MAX_MAPPED_VEHICLES)
+    DEBUG_MSG(DebugLevel::Errors, "ERROR: Rules exceeded maximum of allowed mapped vehicles.");
+
+  auto const numRulesVehicles = min(info.mNumParticipants, rF2MappedBufferHeader::MAX_MAPPED_VEHICLES);
+  for (int i = 0; i < numRulesVehicles; ++i) {
+    memcpy(&(mRules.mpCurrWriteBuff->mParticipants[i]), &(info.mParticipant[i]), sizeof(rF2TrackRulesParticipant));
+
+    // Pass out last SCR plugin mMessage.
+    if (restoreSCRMessages) {
+      auto const id = max(info.mParticipant[i].mID, 0L) % rF2MappedBufferHeader::MAX_MAPPED_IDS;
+      if (mLastRulesParticipantFCYMessages[id] != '\0')
+        strcpy_s(mRules.mpCurrWriteBuff->mParticipants[i].mMessage, mLastRulesParticipantFCYMessages[id]);
+    }
+  }
+
+  mRules.mpCurrWriteBuff->mBytesUpdatedHint = static_cast<int>(offsetof(rF2Rules, mParticipants[numRulesVehicles]));
+
+  mRules.FlipBuffers();
+
+  return updateRequested;
+}
+
+
+void SharedMemoryPlugin::CaptureSCRPluginMessages(TrackRulesV01& info)
+{
   auto const isFCY = info.mYellowFlagState != 0;
 
-  // TODO: separate function.
   // If SCR plugin is enabled, cache the last non-empty messages during FCY.
   if (mPluginHost.IsStockCarRulesPluginHosted()) {
     if (isFCY) {
@@ -868,47 +920,6 @@ bool SharedMemoryPlugin::AccessTrackRules(TrackRulesV01& info)
       mLastRulesUpdateWasFCY = false;
     }
   }
-
-  TraceBeginUpdate(mRules, mLastRulesUpdateMillis, "RULES");
-
-  // Copy main struct.
-  memcpy(&(mRules.mpCurrWriteBuff->mTrackRules), &info, sizeof(rF2TrackRules));
-
-  if (mPluginHost.IsStockCarRulesPluginHosted()
-    && isFCY
-    && mLastTrackRulesFCYMessage[0] != '\0')
-    strcpy_s(mRules.mpCurrWriteBuff->mTrackRules.mMessage, mLastTrackRulesFCYMessage);
-
-  // Copy actions.
-  if (info.mNumActions >= rF2MappedBufferHeader::MAX_MAPPED_VEHICLES)
-    DEBUG_MSG(DebugLevel::Errors, "ERROR: Rules exceeded maximum of allowed actions.");
-
-  auto const numActions = min(info.mNumActions, rF2MappedBufferHeader::MAX_MAPPED_VEHICLES);
-  for (int i = 0; i < numActions; ++i)
-    memcpy(&(mRules.mpCurrWriteBuff->mActions[i]), &(info.mAction[i]), sizeof(rF2TrackRulesAction));
-
-  // Copy participants.
-  if (info.mNumParticipants >= rF2MappedBufferHeader::MAX_MAPPED_VEHICLES)
-    DEBUG_MSG(DebugLevel::Errors, "ERROR: Rules exceeded maximum of allowed mapped vehicles.");
-
-  auto const numRulesVehicles = min(info.mNumParticipants, rF2MappedBufferHeader::MAX_MAPPED_VEHICLES);
-  for (int i = 0; i < numRulesVehicles; ++i) {
-    memcpy(&(mRules.mpCurrWriteBuff->mParticipants[i]), &(info.mParticipant[i]), sizeof(rF2TrackRulesParticipant));
-
-    // Pass out last SCR plugin mMessage.
-    if (mPluginHost.IsStockCarRulesPluginHosted()
-      && isFCY) {
-      auto const id = max(info.mParticipant[i].mID, 0L) % rF2MappedBufferHeader::MAX_MAPPED_IDS;
-      if (mLastRulesParticipantFCYMessages[id] != '\0')
-        strcpy_s(mRules.mpCurrWriteBuff->mParticipants[i].mMessage, mLastRulesParticipantFCYMessages[id]);
-    }
-  }
-
-  mRules.mpCurrWriteBuff->mBytesUpdatedHint = static_cast<int>(offsetof(rF2Rules, mParticipants[numRulesVehicles]));
-
-  mRules.FlipBuffers();
-
-  return updateRequested;
 }
 
 
