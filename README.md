@@ -40,6 +40,15 @@ If you would like to support this project, you can donate [here.](http://thecrew
 
 # Release history
 
+12/32/2017 - v2.3.1.1
+
+  Plugin:
+  * Allow hosting of StockCarRules.dll plugin.  Capture mMessage members filled out by SCR plugin and pass them out via SM.
+  * Remove .ini file config and move to standard rF2 plugin config via CustomPluginVariables.json.
+
+  Monitor:
+  * Minor fixes and changes to support SCR plugin hosting feature.
+
 10/04/2017 - v2.2.1.0
 
   Plugin:
