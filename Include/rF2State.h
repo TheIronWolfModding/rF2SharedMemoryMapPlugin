@@ -847,7 +847,7 @@ struct rF2Extended : public rF2MappedBufferHeader
   rF2SessionTransitionCapture mSessionTransitionCapture;  // Contains partial internals capture at session transition time.
 
   // Captured non-empty MessageInfoV01::mText message.
-  char mDisplayedMessageUpdateCapture[128];
+  char mDisplayedMessageUpdateCapture[sizeof(decltype(MessageInfoV01::mText))];
 };
 
 #pragma pack(pop)

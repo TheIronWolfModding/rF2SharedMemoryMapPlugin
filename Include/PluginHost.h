@@ -20,6 +20,7 @@ class PluginHost : public InternalsPluginV07
 {
 public:
   PluginHost() {}
+  ~PluginHost() { Cleanup(); }
 
   void Initialize(bool hostStockCarRules);
   void Cleanup();

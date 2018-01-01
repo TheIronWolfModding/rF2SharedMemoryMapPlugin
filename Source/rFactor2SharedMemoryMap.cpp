@@ -199,7 +199,7 @@ SharedMemoryPlugin::SharedMemoryPlugin()
 void SharedMemoryPlugin::Startup(long version)
 {
   // Remove previous debug output .
-  if (msDebugOutputLevel > 0)
+  if (msDebugOutputLevel != DebugLevel::Off)
     remove(SharedMemoryPlugin::DEBUG_OUTPUT_FILENAME);
 
   // Print out configuration.
