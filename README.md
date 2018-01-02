@@ -40,7 +40,7 @@ If you would like to support this project, you can donate [here.](http://thecrew
 
 # Release history
 
-12/32/2017 - v2.3.1.2
+01/02/2018 - v2.3.1.2
 
   Plugin:
   * Allow hosting of StockCarRules.dll plugin.  Capture mMessage members filled out by SCR plugin and pass them out via SM.
