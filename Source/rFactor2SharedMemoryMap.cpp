@@ -198,10 +198,6 @@ SharedMemoryPlugin::SharedMemoryPlugin()
 
 void SharedMemoryPlugin::Startup(long version)
 {
-  // Remove previous debug output .
-  if (msDebugOutputLevel != DebugLevel::Off)
-    remove(SharedMemoryPlugin::DEBUG_OUTPUT_FILENAME);
-
   // Print out configuration.
   DEBUG_MSG2(DebugLevel::CriticalInfo, "Starting rFactor 2 Shared Memory Map Plugin 64bit Version:", SHARED_MEMORY_VERSION);
   DEBUG_MSG(DebugLevel::CriticalInfo, "Configuration:");
@@ -787,6 +783,8 @@ void SharedMemoryPlugin::UpdateScoring(ScoringInfoV01 const& info)
 // Invoked periodically.
 bool SharedMemoryPlugin::WantsToDisplayMessage(MessageInfoV01& msgInfo)
 {
+  DEBUG_MSG(DebugLevel::Timing, "WantsToDisplayMessage - Invoked.");
+
   // Looks like this is write only API, can't read current text in MC.  Pass through to host.
   auto const updateRequested = mPluginHost.WantsToDisplayMessage(msgInfo);
 
@@ -929,6 +927,8 @@ bool SharedMemoryPlugin::AccessPitMenu(PitMenuV01& info)
   if (!mIsMapped)
     return false;
 
+  DEBUG_MSG(DebugLevel::Timing, "AccessPitMenu - Invoked.");
+
   return mPluginHost.AccessPitMenu(info);
 }
 
@@ -977,6 +977,8 @@ bool SharedMemoryPlugin::AccessMultiSessionRules(MultiSessionRulesV01& info)
 
 bool SharedMemoryPlugin::GetCustomVariable(long i, CustomVariableV01& var)
 {
+  DEBUG_MSG2(DebugLevel::Timing, "GetCustomVariable - Invoked:  mCaption - ", var.mCaption);
+
   if (i == 0) {
     // rF2 will automatically create this variable and default it to 1 (true) unless we create it first, in which case we can choose the default.
     strcpy_s(var.mCaption, " Enabled");
@@ -1009,6 +1011,8 @@ bool SharedMemoryPlugin::GetCustomVariable(long i, CustomVariableV01& var)
 
 void SharedMemoryPlugin::AccessCustomVariable(CustomVariableV01& var)
 {
+  DEBUG_MSG(DebugLevel::Timing, "AccessCustomVariable - Invoked.");
+
   if (_stricmp(var.mCaption, " Enabled") == 0)
     ; // Do nothing; this variable is just for rF2 to know whether to keep the plugin loaded.
   else if (_stricmp(var.mCaption, "EnableStockCarRulesPlugin") == 0)
@@ -1016,6 +1020,10 @@ void SharedMemoryPlugin::AccessCustomVariable(CustomVariableV01& var)
   else if (_stricmp(var.mCaption, "DebugOutputLevel") == 0) {
     auto sanitized = min(max(var.mCurrentSetting, 0L), DebugLevel::Verbose);
     msDebugOutputLevel = static_cast<DebugLevel>(sanitized);
+
+    // Remove previous debug output.
+    if (msDebugOutputLevel != DebugLevel::Off)
+      remove(SharedMemoryPlugin::DEBUG_OUTPUT_FILENAME);
   }
   else if (_stricmp(var.mCaption, "DebugISIInternals") == 0)
     msDebugISIInternals = var.mCurrentSetting != 0;
@@ -1024,6 +1032,8 @@ void SharedMemoryPlugin::AccessCustomVariable(CustomVariableV01& var)
 
 void SharedMemoryPlugin::GetCustomVariableSetting(CustomVariableV01& var, long i, CustomSettingV01& setting)
 {
+  DEBUG_MSG(DebugLevel::Timing, "GetCustomVariableSetting - Invoked.");
+
   if (_stricmp(var.mCaption, " Enabled") == 0) {
     if (i == 0)
       strcpy_s(setting.mName, "False");
@@ -1052,6 +1062,8 @@ void SharedMemoryPlugin::SetEnvironment(EnvironmentInfoV01 const& info)
 {
   if (!mIsMapped)
     return;
+
+  DEBUG_MSG(DebugLevel::Timing, "SetEnvironment - Invoked.");
 
   mPluginHost.SetEnvironment(info);
 }
@@ -1091,14 +1103,10 @@ void SharedMemoryPlugin::WriteDebugMsg(DebugLevel lvl, const char* const format,
     setvbuf(SharedMemoryPlugin::msDebugFile, nullptr, _IOFBF, SharedMemoryPlugin::BUFFER_IO_BYTES);
   }
 
-  // Form time string.
-  char timeBuff[20] = {};
-  time_t now = time(nullptr);
-  tm timeLocal = {};
-  (errno_t)localtime_s(&timeLocal, &now);
-  strftime(timeBuff, 20, "%H:%M:%S", &timeLocal);
+  SYSTEMTIME st = {};
+  ::GetLocalTime(&st);
 
-  fprintf(SharedMemoryPlugin::msDebugFile, "%s  TID:0x%04x  ", timeBuff, GetCurrentThreadId());
+  fprintf(SharedMemoryPlugin::msDebugFile, "%.2d:%.2d:%.2d.%.3d TID:0x%04x  ", st.wHour, st.wMinute, st.wSecond , st.wMilliseconds, GetCurrentThreadId());
   if (SharedMemoryPlugin::msDebugFile != nullptr) {
     va_start(argList, format);
     vfprintf(SharedMemoryPlugin::msDebugFile, format, argList);

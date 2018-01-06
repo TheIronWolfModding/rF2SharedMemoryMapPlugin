@@ -27,7 +27,7 @@ Website: thecrewchief.org
 
 // Each component can be in [0:99] range.
 #define PLUGIN_VERSION_MAJOR "2.3"
-#define PLUGIN_VERSION_MINOR "1.2"
+#define PLUGIN_VERSION_MINOR "1.3"
 #define PLUGIN_NAME_AND_VERSION "rFactor 2 Shared Memory Map Plugin - v" PLUGIN_VERSION_MAJOR
 #define SHARED_MEMORY_VERSION PLUGIN_VERSION_MAJOR "." PLUGIN_VERSION_MINOR
 
