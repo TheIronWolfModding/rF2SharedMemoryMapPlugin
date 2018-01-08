@@ -278,10 +278,10 @@ void SharedMemoryPlugin::Startup(long version)
   }
 
   // Initialize hosted plugins.
-  mPluginHost.Initialize(msStockCarRulesPluginRequested);
+  mPluginHost.Initialize(SharedMemoryPlugin::msStockCarRulesPluginRequested);
   mPluginHost.Startup(version);
 
-  if (msStockCarRulesPluginRequested) {
+  if (SharedMemoryPlugin::msStockCarRulesPluginRequested) {
     mExtStateTracker.mExtended.isStockCarRulesPluginHosted = mPluginHost.IsStockCarRulesPluginHosted();
 
     memcpy(mExtended.mpCurrWriteBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
@@ -1016,17 +1016,17 @@ void SharedMemoryPlugin::AccessCustomVariable(CustomVariableV01& var)
   if (_stricmp(var.mCaption, " Enabled") == 0)
     ; // Do nothing; this variable is just for rF2 to know whether to keep the plugin loaded.
   else if (_stricmp(var.mCaption, "EnableStockCarRulesPlugin") == 0)
-    msStockCarRulesPluginRequested = var.mCurrentSetting != 0;
+    SharedMemoryPlugin::msStockCarRulesPluginRequested = var.mCurrentSetting != 0;
   else if (_stricmp(var.mCaption, "DebugOutputLevel") == 0) {
     auto sanitized = min(max(var.mCurrentSetting, 0L), DebugLevel::Verbose);
-    msDebugOutputLevel = static_cast<DebugLevel>(sanitized);
+    SharedMemoryPlugin::msDebugOutputLevel = static_cast<DebugLevel>(sanitized);
 
     // Remove previous debug output.
-    if (msDebugOutputLevel != DebugLevel::Off)
+    if (SharedMemoryPlugin::msDebugOutputLevel != DebugLevel::Off)
       remove(SharedMemoryPlugin::DEBUG_OUTPUT_FILENAME);
   }
   else if (_stricmp(var.mCaption, "DebugISIInternals") == 0)
-    msDebugISIInternals = var.mCurrentSetting != 0;
+    SharedMemoryPlugin::msDebugISIInternals = var.mCurrentSetting != 0;
 }
 
 
