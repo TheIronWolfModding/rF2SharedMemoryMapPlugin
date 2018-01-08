@@ -26,8 +26,8 @@ Website: thecrewchief.org
 #endif
 
 // Each component can be in [0:99] range.
-#define PLUGIN_VERSION_MAJOR "2.3"
-#define PLUGIN_VERSION_MINOR "1.3"
+#define PLUGIN_VERSION_MAJOR "2.4"
+#define PLUGIN_VERSION_MINOR "0.0"
 #define PLUGIN_NAME_AND_VERSION "rFactor 2 Shared Memory Map Plugin - v" PLUGIN_VERSION_MAJOR
 #define SHARED_MEMORY_VERSION PLUGIN_VERSION_MAJOR "." PLUGIN_VERSION_MINOR
 
@@ -118,7 +118,7 @@ private:
 
       strcpy_s(mExtended.mVersion, SHARED_MEMORY_VERSION);
       mExtended.is64bit = PLUGIN_64BIT;
-      mExtended.isStockCarRulesPluginHosted = false;
+      mExtended.mHostedPluginVars.StockCarRules_DoubleFileType = -1L;
 
       assert(!mExtended.mCurrentRead);
       assert(!mExtended.mMultimediaThreadStarted);

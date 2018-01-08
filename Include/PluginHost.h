@@ -24,7 +24,8 @@ public:
 
   void Initialize(bool hostStockCarRules);
   void Cleanup();
-  bool IsStockCarRulesPluginHosted() const { return mInitialized; }
+  bool GetStockCarRulesPlugin_IsHosted() const { return mInitialized; }
+  long GetStockCarRulesPlugin_DoubleFileType() const { return mStockCarRulesPlugin_DoubleFileType; }
 
   ////////////////////////////////////////////////////
   // InternalsPluginV01 (InternalsPlugin)
@@ -76,4 +77,6 @@ private:
 
   using PluginDestoryFunc = void (*)(PluginObject*);
   PluginDestoryFunc mpfnDestroyPluginObject = nullptr;
+
+  long mStockCarRulesPlugin_DoubleFileType = -1L;
 };

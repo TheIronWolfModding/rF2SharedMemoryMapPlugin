@@ -822,11 +822,17 @@ struct rF2SessionTransitionCapture
 };
 
 
+struct rF2HostedPluginVars
+{
+  bool StockCarRules_IsHosted;         // Is StockCarRules.dll successfully loaded into SM plugin?
+  long StockCarRules_DoubleFileType;   // DoubleFileType plugin variable value.
+};
+
+
 struct rF2Extended : public rF2MappedBufferHeader
 {
   char mVersion[8];                            // API version
   bool is64bit;                                // Is 64bit plugin?
-  bool isStockCarRulesPluginHosted;            // Is StockCarRules.dll successfully loaded into SM plugin?
 
   // Physics options (updated on session start):
   rF2PhysicsOptions mPhysics;
@@ -848,6 +854,8 @@ struct rF2Extended : public rF2MappedBufferHeader
 
   // Captured non-empty MessageInfoV01::mText message.
   char mDisplayedMessageUpdateCapture[sizeof(decltype(MessageInfoV01::mText))];
+
+  rF2HostedPluginVars mHostedPluginVars;
 };
 
 #pragma pack(pop)

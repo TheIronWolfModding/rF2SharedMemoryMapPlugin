@@ -282,9 +282,13 @@ void SharedMemoryPlugin::Startup(long version)
   mPluginHost.Startup(version);
 
   if (SharedMemoryPlugin::msStockCarRulesPluginRequested) {
-    mExtStateTracker.mExtended.isStockCarRulesPluginHosted = mPluginHost.IsStockCarRulesPluginHosted();
+    mExtStateTracker.mExtended.mHostedPluginVars.StockCarRules_IsHosted = mPluginHost.GetStockCarRulesPlugin_IsHosted();
+
+    if (mPluginHost.GetStockCarRulesPlugin_IsHosted())
+      mExtStateTracker.mExtended.mHostedPluginVars.StockCarRules_DoubleFileType = mPluginHost.GetStockCarRulesPlugin_DoubleFileType();
 
     memcpy(mExtended.mpCurrWriteBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
+
     mExtended.FlipBuffers();
   }
 }
@@ -783,6 +787,9 @@ void SharedMemoryPlugin::UpdateScoring(ScoringInfoV01 const& info)
 // Invoked periodically.
 bool SharedMemoryPlugin::WantsToDisplayMessage(MessageInfoV01& msgInfo)
 {
+  if (!mIsMapped)
+    return false;
+
   DEBUG_MSG(DebugLevel::Timing, "WantsToDisplayMessage - Invoked.");
 
   // Looks like this is write only API, can't read current text in MC.  Pass through to host.
@@ -848,7 +855,7 @@ bool SharedMemoryPlugin::AccessTrackRules(TrackRulesV01& info)
   memcpy(&(mRules.mpCurrWriteBuff->mTrackRules), &info, sizeof(rF2TrackRules));
 
   // Pass out last global SCR plugin message.
-  auto const restoreSCRMessages = mPluginHost.IsStockCarRulesPluginHosted() && info.mYellowFlagState != 0;
+  auto const restoreSCRMessages = mPluginHost.GetStockCarRulesPlugin_IsHosted() && info.mYellowFlagState != 0;
   if (restoreSCRMessages
     && mLastTrackRulesFCYMessage[0] != '\0')
     strcpy_s(mRules.mpCurrWriteBuff->mTrackRules.mMessage, mLastTrackRulesFCYMessage);
@@ -890,7 +897,7 @@ void SharedMemoryPlugin::CaptureSCRPluginMessages(TrackRulesV01& info)
   auto const isFCY = info.mYellowFlagState != 0;
 
   // If SCR plugin is enabled, cache the last non-empty messages during FCY.
-  if (mPluginHost.IsStockCarRulesPluginHosted()) {
+  if (mPluginHost.GetStockCarRulesPlugin_IsHosted()) {
     if (isFCY) {
       // Cache non-empty mMessage fields.
       if (info.mMessage[0] != '\0') {

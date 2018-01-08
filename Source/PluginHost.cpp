@@ -490,6 +490,8 @@ bool PluginHost::ForwardPluginConfig(char* const pluginConfig, InternalsPluginV0
     if (gotVariable) {
       if (strcmp(variable, " Enabled") == 0)
         value = 1;  // Fake enable just in case.
+      else if (strcmp(variable, "DoubleFileType") == 0)
+        mStockCarRulesPlugin_DoubleFileType = value;  // Capture DoubleFileType;
 
       CustomVariableV01 cvar;
       strcpy(cvar.mCaption, variable);
