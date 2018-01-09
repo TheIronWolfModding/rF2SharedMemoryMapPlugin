@@ -783,7 +783,7 @@ namespace rF2SMMonitor
       public byte mPlace;
       public byte mIsPlayer;
       public sbyte mFinishStatus;     // 0=none, 1=finished, 2=dnf, 3=dq
-    };
+    }
 
 
     [StructLayout(LayoutKind.Sequential, Pack = 4)]
@@ -797,7 +797,15 @@ namespace rF2SMMonitor
       public int mNumScoringVehicles;
       [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = rFactor2Constants.MAX_MAPPED_VEHICLES)]
       public rF2VehScoringCapture[] mScoringVehicles;
-    };
+    }
+
+
+    [StructLayout(LayoutKind.Sequential, Pack = 4)]
+    public struct rF2HostedPluginVars
+    {
+      public byte StockCarRules_IsHosted;        // Is StockCarRules.dll successfully loaded into SM plugin?
+      public int StockCarRules_DoubleFileType;   // DoubleFileType plugin variable value.
+    }
 
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
@@ -808,7 +816,6 @@ namespace rF2SMMonitor
       [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = 8)]
       public byte[] mVersion;                            // API version
       public byte is64bit;                               // Is 64bit plugin?
-      public byte isStockCarRulesPluginHosted;           // Is StockCarRules.dll successfully loaded into SM plugin?
 
       // Physics options (updated on session start):
       public rF2PhysicsOptions mPhysics;
@@ -830,6 +837,8 @@ namespace rF2SMMonitor
       // Captured non-empty MessageInfoV01::mText message.
       [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = 128)]
       public byte[] mDisplayedMessageUpdateCapture;
+
+      public rF2HostedPluginVars mHostedPluginVars;
     }
 
 
