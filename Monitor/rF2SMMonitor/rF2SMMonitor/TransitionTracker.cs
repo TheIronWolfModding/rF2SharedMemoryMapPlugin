@@ -1615,7 +1615,7 @@ namespace rF2SMMonitor
         }
       }
 
-      var fod = this.GetFrozenOrderData(prevFrozenOrderData, ref playerVeh, ref scoring, ref playerRules, ref rules);
+      var fod = this.GetFrozenOrderData(prevFrozenOrderData, ref playerVeh, ref scoring, ref playerRules, ref rules, ref extended);
       prevFrozenOrderData = fod;
 
       this.sbFrozenOrderInfo = new StringBuilder();
@@ -1627,6 +1627,7 @@ namespace rF2SMMonitor
         + $"Assigned Grid Position: {fod.AssignedGridPosition}\n"
         + $"Driver To Follow: {fod.DriverToFollow}\n"
         + $"Safety Car Speed: {(fod.SafetyCarSpeed == -1.0f ? "Not Present" : string.Format("{0:N3}km/h", fod.SafetyCarSpeed * 3.6f))}\n"
+        + $"SCR DoubleFileType: {extended.mHostedPluginVars.StockCarRules_DoubleFileType}\n"
         );
 
       if (g != null)
@@ -1640,7 +1641,7 @@ namespace rF2SMMonitor
       }
     }
 
-    private FrozenOrderData GetFrozenOrderData(FrozenOrderData prevFrozenOrderData, ref rF2VehicleScoring vehicle, ref rF2Scoring scoring, ref rF2TrackRulesParticipant vehicleRules, ref rF2Rules rules)
+    private FrozenOrderData GetFrozenOrderData(FrozenOrderData prevFrozenOrderData, ref rF2VehicleScoring vehicle, ref rF2Scoring scoring, ref rF2TrackRulesParticipant vehicleRules, ref rF2Rules rules, ref rF2Extended extended)
     {
       var fod = new FrozenOrderData();
 
@@ -1679,8 +1680,14 @@ namespace rF2SMMonitor
       if (vehicleRules.mPositionAssignment != -1)
       {
         var gridOrder = false;
+
+        var scrLastLapDoubleFile = fod.Phase == FrozenOrderPhase.FullCourseYellow
+          && extended.mHostedPluginVars.StockCarRules_IsHosted == 1
+          && extended.mHostedPluginVars.StockCarRules_DoubleFileType == 2
+          && scoring.mScoringInfo.mYellowFlagState == (sbyte)rF2YellowFlagState.LastLap;
+
         // Core FCY does not use grid order.
-        if (fod.Phase == FrozenOrderPhase.FullCourseYellow && !MainForm.useStockCarRulesPlugin)
+        if (fod.Phase == FrozenOrderPhase.FullCourseYellow && !scrLastLapDoubleFile)
         {
           gridOrder = false;
           fod.AssignedPosition = vehicleRules.mPositionAssignment + 1;  // + 1, because it is zero based with 0 meaning follow SC.

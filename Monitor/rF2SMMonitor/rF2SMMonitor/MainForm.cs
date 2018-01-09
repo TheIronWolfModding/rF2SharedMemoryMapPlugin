@@ -582,7 +582,7 @@ namespace rF2SMMonitor
         float yStep = SystemFonts.DefaultFont.Height;
         var gameStateText = new StringBuilder();
         gameStateText.Append(
-          $"Plugin Version:    Expected: 2.4.0.0 64bit   Actual: {MainForm.GetStringFromBytes(this.extended.mVersion)} {(this.extended.is64bit == 1 ? "64bit" : "32bit")}    {(this.extended.mHostedPluginVars.StockCarRules_DoubleFileType == 1 ? "SCR Plugin Hosted" : "")}    FPS: {this.fps}");
+          $"Plugin Version:    Expected: 2.4.0.0 64bit   Actual: {MainForm.GetStringFromBytes(this.extended.mVersion)} {(this.extended.is64bit == 1 ? "64bit" : "32bit")}    {(this.extended.mHostedPluginVars.StockCarRules_IsHosted == 1 ? "SCR Plugin Hosted" : "")}    FPS: {this.fps}");
 
         // Draw header
         g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, brush, currX, currY);
