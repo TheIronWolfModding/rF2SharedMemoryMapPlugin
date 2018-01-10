@@ -1683,11 +1683,11 @@ namespace rF2SMMonitor
 
         var scrLastLapDoubleFile = fod.Phase == FrozenOrderPhase.FullCourseYellow
           && extended.mHostedPluginVars.StockCarRules_IsHosted == 1
-          && extended.mHostedPluginVars.StockCarRules_DoubleFileType == 2
+          && (extended.mHostedPluginVars.StockCarRules_DoubleFileType == 1 || extended.mHostedPluginVars.StockCarRules_DoubleFileType == 2)
           && scoring.mScoringInfo.mYellowFlagState == (sbyte)rF2YellowFlagState.LastLap;
 
-        // Core FCY does not use grid order.
-        if (fod.Phase == FrozenOrderPhase.FullCourseYellow && !scrLastLapDoubleFile)
+        if (fod.Phase == FrozenOrderPhase.FullCourseYellow  // Core FCY does not use grid order. 
+          && !scrLastLapDoubleFile)  // With SCR rules, however, last lap might be double file depending on DoubleFileType configuration var value.
         {
           gridOrder = false;
           fod.AssignedPosition = vehicleRules.mPositionAssignment + 1;  // + 1, because it is zero based with 0 meaning follow SC.
@@ -1695,7 +1695,7 @@ namespace rF2SMMonitor
           if (prevFrozenOrderData != null && prevFrozenOrderData.Phase == FrozenOrderPhase.None)
             this.playerLapsWhenFCYPosAssigned = vehicle.mTotalLaps;
         }
-        else  // SCR plugin is enabled or this is not FCY case, the the order reported is grid order, with columns specified.
+        else  // This is not FCY, or last lap of Double File FCY with SCR plugin enabled.  The order reported is grid order, with columns specified.
         {
           gridOrder = true;
           fod.AssignedGridPosition = vehicleRules.mPositionAssignment + 1;
