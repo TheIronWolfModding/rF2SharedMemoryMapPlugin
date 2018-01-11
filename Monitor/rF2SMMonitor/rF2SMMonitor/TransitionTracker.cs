@@ -1278,7 +1278,6 @@ namespace rF2SMMonitor
     internal StringBuilder sbRulesValues = new StringBuilder();
     internal StringBuilder sbFrozenOrderInfo = new StringBuilder();
     private FrozenOrderData prevFrozenOrderData;
-    private short playerLapsWhenFCYPosAssigned = -1;
 
     public enum FrozenOrderPhase
     {
@@ -1343,8 +1342,6 @@ namespace rF2SMMonitor
           lines.Add("************************************************************************************");
           File.AppendAllLines(rulesTrackingFilePath, lines);
           File.AppendAllLines(rulesTrackingDeltaFilePath, lines);
-
-          playerLapsWhenFCYPosAssigned = -1;
         }
       }
 
@@ -1615,8 +1612,13 @@ namespace rF2SMMonitor
         }
       }
 
-      var fod = this.GetFrozenOrderData(prevFrozenOrderData, ref playerVeh, ref scoring, ref playerRules, ref rules, ref extended);
+      var distToSC = -1.0;
+      var fod = this.GetFrozenOrderData(prevFrozenOrderData, ref playerVeh, ref scoring, ref playerRules, ref rules, ref extended, ref distToSC);
       prevFrozenOrderData = fod;
+
+      var driverToFollow = fod.DriverToFollow;
+      if (fod.AssignedPosition == 1 && fod.SafetyCarSpeed > 0.0)
+        driverToFollow = "Safety Car";
 
       this.sbFrozenOrderInfo = new StringBuilder();
       this.sbFrozenOrderInfo.Append(
@@ -1625,9 +1627,10 @@ namespace rF2SMMonitor
         + $"Assigned Position: {fod.AssignedPosition}\n"
         + $"Assigned Column: {fod.AssignedColumn}\n"
         + $"Assigned Grid Position: {fod.AssignedGridPosition}\n"
-        + $"Driver To Follow: {fod.DriverToFollow}\n"
+        + $"Driver To Follow: {driverToFollow}\n"
         + $"Safety Car Speed: {(fod.SafetyCarSpeed == -1.0f ? "Not Present" : string.Format("{0:N3}km/h", fod.SafetyCarSpeed * 3.6f))}\n"
         + $"SCR DoubleFileType: {extended.mHostedPluginVars.StockCarRules_DoubleFileType}\n"
+        + $"Distance To Safety Car: {distToSC:N3}\n"
         );
 
       if (g != null)
@@ -1641,18 +1644,15 @@ namespace rF2SMMonitor
       }
     }
 
-    private FrozenOrderData GetFrozenOrderData(FrozenOrderData prevFrozenOrderData, ref rF2VehicleScoring vehicle, ref rF2Scoring scoring, ref rF2TrackRulesParticipant vehicleRules, ref rF2Rules rules, ref rF2Extended extended)
+    private FrozenOrderData GetFrozenOrderData(FrozenOrderData prevFrozenOrderData, ref rF2VehicleScoring vehicle,
+      ref rF2Scoring scoring, ref rF2TrackRulesParticipant vehicleRules, ref rF2Rules rules, ref rF2Extended extended, ref double distToSC)
     {
       var fod = new FrozenOrderData();
 
       // Only applies to formation laps and FCY.
       if (scoring.mScoringInfo.mGamePhase != (int)rF2GamePhase.Formation
         && scoring.mScoringInfo.mGamePhase != (int)rF2GamePhase.FullCourseYellow)
-      {
-        playerLapsWhenFCYPosAssigned = -1;
-
         return fod;
-      }
 
       var foStage = rules.mTrackRules.mStage;
       if (foStage == rF2TrackRulesStage.Normal)
@@ -1691,9 +1691,6 @@ namespace rF2SMMonitor
         {
           gridOrder = false;
           fod.AssignedPosition = vehicleRules.mPositionAssignment + 1;  // + 1, because it is zero based with 0 meaning follow SC.
-
-          if (prevFrozenOrderData != null && prevFrozenOrderData.Phase == FrozenOrderPhase.None)
-            this.playerLapsWhenFCYPosAssigned = vehicle.mTotalLaps;
         }
         else  // This is not FCY, or last lap of Double File FCY with SCR plugin enabled.  The order reported is grid order, with columns specified.
         {
@@ -1717,7 +1714,7 @@ namespace rF2SMMonitor
         }
 
         // Figure out Driver Name to follow.
-        // NOTE: In Formation/Standing, game does not report those in UI, but we can.
+        // NOTE: In Formation/Standing, game does not report those in UI, but we could.
         var vehToFollowId = -1;
         var followSC = true;
         if ((gridOrder && fod.AssignedPosition > 2)  // In grid order, first 2 vehicles are following SC.
@@ -1757,13 +1754,11 @@ namespace rF2SMMonitor
           }
         }
         else
-        {
-            var scLaps = this.playerLapsWhenFCYPosAssigned == -1
-                ? rules.mTrackRules.mSafetyCarLaps
-                : rules.mTrackRules.mSafetyCarLaps + this.playerLapsWhenFCYPosAssigned;  // During FCY, base SC laps off the number of laps user had when pos was assigned.
+          toFollowDist = ((vehicle.mTotalLaps - vehicleRules.mRelativeLaps) * scoring.mScoringInfo.mLapDist) + rules.mTrackRules.mSafetyCarLapDist;
 
-            toFollowDist = scLaps * scoring.mScoringInfo.mLapDist + rules.mTrackRules.mSafetyCarLapDist;
-        }
+        distToSC = rules.mTrackRules.mSafetyCarActive == 1
+          ? (((vehicle.mTotalLaps - vehicleRules.mRelativeLaps) * scoring.mScoringInfo.mLapDist) + rules.mTrackRules.mSafetyCarLapDist) - playerDist
+          : -1.0;
 
         Debug.Assert(toFollowDist != -1.0);
 
