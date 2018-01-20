@@ -1300,7 +1300,9 @@ namespace rF2SMMonitor
       None,
       Follow,
       CatchUp,
-      AllowToPass
+      AllowToPass,
+      StayInPole,  // Case of being assigned pole/pole row with no SC present (Rolling start in rF2 Karts, for example).
+      MoveToPole  // Case of falling behind assigned pole/pole row with no SC present (Rolling start in rF2 Karts, for example).
     }
 
     public class FrozenOrderData
@@ -1617,7 +1619,9 @@ namespace rF2SMMonitor
       prevFrozenOrderData = fod;
 
       var driverToFollow = fod.DriverToFollow;
-      if (fod.AssignedPosition == 1 && fod.SafetyCarSpeed > 0.0)
+      if (((fod.AssignedColumn == FrozenOrderColumn.None && fod.AssignedPosition == 1)  // Single file order.
+          || (fod.AssignedColumn != FrozenOrderColumn.None && fod.AssignedPosition <= 2))  // Double file (grid) order.
+        && fod.SafetyCarSpeed > 0.0)
         driverToFollow = "Safety Car";
 
       this.sbFrozenOrderInfo = new StringBuilder();
@@ -1785,15 +1789,41 @@ namespace rF2SMMonitor
           ? (((vehicle.mTotalLaps - vehicleRules.mRelativeLaps) * scoring.mScoringInfo.mLapDist) + rules.mTrackRules.mSafetyCarLapDist) - playerDist
           : -1.0;
 
-        Debug.Assert(toFollowDist != -1.0);
+        if (fod.Phase == FrozenOrderPhase.Rolling
+          && followSC 
+          && rules.mTrackRules.mSafetyCarExists == 0)
+        {
+          // Find distance to car next to us if we're in pole.
+          var neighborDist = -1.0;
+          for (int i = 0; i < scoring.mScoringInfo.mNumVehicles; ++i)
+          {
+            var veh = scoring.mVehicles[i];
+            if (veh.mPlace == (vehicle.mPlace == 1 ? 2 : 1))
+            {
+              neighborDist = this.GetDistanceCompleteded(ref scoring, ref veh);
+              break;
+            }
+          }
 
-        fod.Action = FrozenOrderAction.Follow;
+          var distDelta = neighborDist - playerDist;
+          // Special case if we have to stay in pole row, but there's no SC on this track.
+          if (fod.AssignedColumn == FrozenOrderColumn.None)
+            fod.Action = distDelta > 70.0 ? FrozenOrderAction.MoveToPole : FrozenOrderAction.StayInPole;
+          else
+            fod.Action = distDelta > 70.0 ? FrozenOrderAction.MoveToPole : FrozenOrderAction.StayInPole;
+        }
+        else
+        {
+          Debug.Assert(toFollowDist != -1.0);
 
-        var distDelta = toFollowDist - playerDist;
-        if (distDelta < 0.0)
-          fod.Action = FrozenOrderAction.AllowToPass;
-        else if (distDelta > 70.0)
-          fod.Action = FrozenOrderAction.CatchUp;
+          fod.Action = FrozenOrderAction.Follow;
+
+          var distDelta = toFollowDist - playerDist;
+          if (distDelta < 0.0)
+            fod.Action = FrozenOrderAction.AllowToPass;
+          else if (distDelta > 70.0)
+            fod.Action = FrozenOrderAction.CatchUp;
+        }
       }
 
       if (rules.mTrackRules.mSafetyCarActive == 1)
