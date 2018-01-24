@@ -40,6 +40,17 @@ If you would like to support this project, you can donate [here.](http://thecrew
 
 # Release history
 
+01/24/2018 - v2.4.0.0
+
+  Plugin:
+  * Expose Stock Car Rules plugin DoubleFileType setting.
+  * Rearrange rF2Extended to better expose hosted plugin variables.
+
+  Monitor:
+  * Improve Rolling Start detection when no SC present.
+  * Correctly calculate distance to the SC.
+  * Add Frozen Order sub-phases for Rolling start without SC, while assigned pole/pole row.
+
 01/02/2018 - v2.3.1.2
 
   Plugin:
