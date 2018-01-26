@@ -751,7 +751,8 @@ struct rF2MappedBufferHeader
   static int const MAX_MAPPED_VEHICLES = 128;
   static int const MAX_MAPPED_IDS = 512;
 
-  bool mCurrentRead;               // True indicates buffer is safe to read under mutex.
+  int mVersionUpdateBegin;
+  int mVersionUpdateEnd;
 };
 
 

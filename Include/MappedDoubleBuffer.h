@@ -17,22 +17,15 @@ Description:
 #pragma once
 
 template <typename BuffT>
-class MappedDoubleBuffer
+class MappedBuffer
 {
 public:
 
-  MappedDoubleBuffer(
-    int maxRetries
-    , char const* mmFileName1
-    , char const* mmFileName2
-    , char const* mmMutexName) 
-    : MAX_RETRIES(maxRetries)
-    , MM_FILE_NAME1(mmFileName1)
-    , MM_FILE_NAME2(mmFileName2)
-    , MM_FILE_ACCESS_MUTEX(mmMutexName)
+  MappedBuffer(char const* mmFileName) 
+    : MM_FILE_NAME(mmFileName1)
   {}
 
-  ~MappedDoubleBuffer()
+  ~MappedBuffer()
   {
     ReleaseResources();
   }
@@ -40,22 +33,9 @@ public:
   bool Initialize()
   {
     assert(!mMapped);
-    mhMap1 = MapMemoryFile(MM_FILE_NAME1, mpBuff1);
-    if (mhMap1 == nullptr) {
-      DEBUG_MSG(DebugLevel::Errors, "Failed to map file 1");
-      return false;
-    }
-
-    mhMap2 = MapMemoryFile(MM_FILE_NAME2, mpBuff2);
-    if (mhMap2 == nullptr) {
-      DEBUG_MSG(DebugLevel::Errors, "Failed to map file 2");
-      return false;
-    }
-
-    mhMutex = ::CreateMutexA(nullptr, FALSE, MM_FILE_ACCESS_MUTEX);
-    if (mhMutex == nullptr) {
-      DEBUG_MSG(DebugLevel::Errors, "Failed to create mutex");
-      SharedMemoryPlugin::TraceLastWin32Error();
+    mhMap = MapMemoryFile(MM_FILE_NAME, mpBuff);
+    if (mhMap == nullptr) {
+      DEBUG_MSG(DebugLevel::Errors, "Failed to map file");
       return false;
     }
 
@@ -72,40 +52,15 @@ public:
       return;
     }
 
-    mRetryPending = false;
-    mAsyncRetriesLeft = MAX_RETRIES;
+    // TODO: Exchange or increment?
+    ::InterlockedExchange(&mpBuff->mVersionUpdateBegin, 0);
 
-    auto ret = ::WaitForSingleObject(mhMutex, SharedMemoryPlugin::msMillisMutexWait);
+    if (pInitialContents != nullptr)
+      memcpy(mpBuff, pInitialContents, sizeof(BuffT));
+    else
+      memset(mpBuff, 0, sizeof(BuffT));
 
-    if (pInitialContents != nullptr) {
-      memcpy(mpBuff1, pInitialContents, sizeof(BuffT));
-      memcpy(mpBuff2, pInitialContents, sizeof(BuffT));
-    }
-    else {
-      memset(mpBuff1, 0, sizeof(BuffT));
-      memset(mpBuff2, 0, sizeof(BuffT));
-    }
-
-    mpBuff1->mCurrentRead = true;
-    mpBuff2->mCurrentRead = false;
-
-    mpCurrReadBuff = mpBuff1;
-    mpCurrWriteBuff = mpBuff2;
-    assert(mpCurrReadBuff->mCurrentRead);
-    assert(!mpCurrWriteBuff->mCurrentRead);
-
-    if (ret == WAIT_OBJECT_0) {
-      if (!::ReleaseMutex(mhMutex)) {
-        DEBUG_MSG(DebugLevel::Errors, "Failed to release mutex.");
-        SharedMemoryPlugin::TraceLastWin32Error();
-      }
-    }
-    else if (ret == WAIT_TIMEOUT)
-      DEBUG_MSG(DebugLevel::Warnings, "WARNING: - Timed out while waiting on mutex.");
-    else {
-      DEBUG_MSG(DebugLevel::Errors, "ERROR: - wait on mutex failed.");
-      SharedMemoryPlugin::TraceLastWin32Error();
-    }
+    ::InterlockedExchange(&mpBuff->mVersionUpdateEnd, 0);
   }
 
   void ReleaseResources()
@@ -114,45 +69,15 @@ public:
 
     // Unmap views and close all handles.
     BOOL ret = TRUE;
-    if (mpBuff1 != nullptr) ret = ::UnmapViewOfFile(mpBuff1);
+    if (mpBuff != nullptr) ret = ::UnmapViewOfFile(mpBuff);
     if (!ret) {
-      DEBUG_MSG(DebugLevel::Errors, "Failed to unmap buffer1");
+      DEBUG_MSG(DebugLevel::Errors, "Failed to unmap buffer");
       SharedMemoryPlugin::TraceLastWin32Error();
     }
 
-    if (mpBuff2 != nullptr) ret = ::UnmapViewOfFile(mpBuff2);
-    if (!ret) {
-      DEBUG_MSG(DebugLevel::Errors, "Failed to unmap buffer2");
-      SharedMemoryPlugin::TraceLastWin32Error();
-    }
-
-    if (mhMap1 != nullptr) ret = ::CloseHandle(mhMap1);
-    if (!ret) {
-      DEBUG_MSG(DebugLevel::Errors, "Failed to close map1 handle");
-      SharedMemoryPlugin::TraceLastWin32Error();
-    }
-
-    if (mhMap2 != nullptr) ret = ::CloseHandle(mhMap2);
-    if (!ret) {
-      DEBUG_MSG(DebugLevel::Errors, "Failed to close map2 handle");
-      SharedMemoryPlugin::TraceLastWin32Error();
-    }
-
-    if (mhMutex != nullptr) ret = ::CloseHandle(mhMutex);
-    if (!ret) {
-      DEBUG_MSG(DebugLevel::Errors, "Failed to close mutex handle");
-      SharedMemoryPlugin::TraceLastWin32Error();
-    }
-
-    mpBuff1 = nullptr;
-    mpBuff2 = nullptr;
-    mhMap1 = nullptr;
-    mhMap2 = nullptr;
-    mhMutex = nullptr;
-    mpCurrWriteBuff = nullptr;
-    mpCurrReadBuff = nullptr;
+    mpBuff = nullptr;
   }
-
+  /*
   void FlipBuffersHelper()
   {
     if (!mMapped) {
@@ -162,8 +87,8 @@ public:
     }
 
     // Handle fucked up case:
-    if (mpBuff1->mCurrentRead == mpBuff2->mCurrentRead) {
-      mpBuff1->mCurrentRead = true;
+    if (mpBuff->mCurrentRead == mpBuff2->mCurrentRead) {
+      mpBuff->mCurrentRead = true;
       mpBuff2->mCurrentRead = false;
       DEBUG_MSG(DebugLevel::Errors, "ERROR: - Buffers out of sync.");
     }
@@ -174,10 +99,10 @@ public:
     mpCurrReadBuff = mpCurrWriteBuff;
 
     // Pick previous read buffer.
-    mpCurrWriteBuff = mpBuff1->mCurrentRead ? mpBuff1 : mpBuff2;
+    mpCurrWriteBuff = mpBuff->mCurrentRead ? mpBuff : mpBuff2;
 
     // Switch the read and write buffers.
-    mpBuff1->mCurrentRead = !mpBuff1->mCurrentRead;
+    mpBuff->mCurrentRead = !mpBuff->mCurrentRead;
     mpBuff2->mCurrentRead = !mpBuff2->mCurrentRead;
 
     assert(!mpCurrWriteBuff->mCurrentRead);
@@ -247,11 +172,11 @@ public:
   }
 
   int AsyncRetriesLeft() const { return mAsyncRetriesLeft; }
-  int RetryPending() const { return mRetryPending; }
+  int RetryPending() const { return mRetryPending; }*/
 
 private:
-  MappedDoubleBuffer(MappedDoubleBuffer const&) = delete;
-  MappedDoubleBuffer& operator=(MappedDoubleBuffer const&) = delete;
+  MappedBuffer(MappedBuffer const&) = delete;
+  MappedBuffer& operator=(MappedBuffer const&) = delete;
 
   HANDLE MapMemoryFile(char const* const fileName, BuffT*& pBuf) const
   {
@@ -297,25 +222,10 @@ private:
   }
 
   public:
-    // Flip between 2 buffers.  Clients should read the one with mCurrentRead == true.
-    BuffT* mpBuff1 = nullptr;
-    BuffT* mpBuff2 = nullptr;
-
-    BuffT* mpCurrWriteBuff = nullptr;
-    BuffT* mpCurrReadBuff = nullptr;
+    BuffT* mpBuff = nullptr;
 
   private:
-    int const MAX_RETRIES;
-    char const* const MM_FILE_NAME1;
-    char const* const MM_FILE_NAME2;
-    char const* const MM_FILE_ACCESS_MUTEX;
-
-    HANDLE mhMutex = nullptr;
-    HANDLE mhMap1 = nullptr;
-    HANDLE mhMap2 = nullptr;
-
-    bool mRetryPending = false;
-    int mAsyncRetriesLeft = 0;
-
+    char const* const MM_FILE_NAME;
+    HANDLE mhMap = nullptr;
     bool mMapped = false;
 };

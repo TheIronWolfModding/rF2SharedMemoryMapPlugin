@@ -287,11 +287,11 @@ private:
   // This might be fine, because game appears to be sending mIDs in an ascending order.
   bool mParticipantTelemetryUpdated[rF2MappedBufferHeader::MAX_MAPPED_IDS];
 
-  MappedDoubleBuffer<rF2Telemetry> mTelemetry;
-  MappedDoubleBuffer<rF2Scoring> mScoring;
-  MappedDoubleBuffer<rF2Rules> mRules;
-  MappedDoubleBuffer<rF2MultiRules> mMultiRules;
-  MappedDoubleBuffer<rF2Extended> mExtended;
+  MappedBuffer<rF2Telemetry> mTelemetry;
+  MappedBuffer<rF2Scoring> mScoring;
+  MappedBuffer<rF2Rules> mRules;
+  MappedBuffer<rF2MultiRules> mMultiRules;
+  MappedBuffer<rF2Extended> mExtended;
 
   // Buffers mapped successfully or not.
   bool mIsMapped = false;
