@@ -59,38 +59,21 @@ enum DebugLevel
 class SharedMemoryPlugin : public InternalsPluginV07  // REMINDER: exported function GetPluginVersion() should return 1 if you are deriving from this InternalsPluginV01, 2 for InternalsPluginV02, etc.
 {
 public:
-  static char const* const MM_TELEMETRY_FILE_NAME1;
-  static char const* const MM_TELEMETRY_FILE_NAME2;
-  static char const* const MM_TELEMETRY_FILE_ACCESS_MUTEX;
-
-  static char const* const MM_SCORING_FILE_NAME1;
-  static char const* const MM_SCORING_FILE_NAME2;
-  static char const* const MM_SCORING_FILE_ACCESS_MUTEX;
-
-  static char const* const MM_RULES_FILE_NAME1;
-  static char const* const MM_RULES_FILE_NAME2;
-  static char const* const MM_RULES_FILE_ACCESS_MUTEX;
-
-  static char const* const MM_MULTI_RULES_FILE_NAME1;
-  static char const* const MM_MULTI_RULES_FILE_NAME2;
-  static char const* const MM_MULTI_RULES_FILE_ACCESS_MUTEX;
-
-  static char const* const MM_EXTENDED_FILE_NAME1;
-  static char const* const MM_EXTENDED_FILE_NAME2;
-  static char const* const MM_EXTENDED_FILE_ACCESS_MUTEX;
+  static char const* const MM_TELEMETRY_FILE_NAME;
+  static char const* const MM_SCORING_FILE_NAME;
+  static char const* const MM_RULES_FILE_NAME;
+  static char const* const MM_MULTI_RULES_FILE_NAME;
+  static char const* const MM_EXTENDED_FILE_NAME;
 
   static char const* const INTERNALS_TELEMETRY_FILENAME;
   static char const* const INTERNALS_SCORING_FILENAME;
   static char const* const DEBUG_OUTPUT_FILENAME;
   
-  static int const MAX_ASYNC_RETRIES = 3;
   static int const BUFFER_IO_BYTES = 2048;
   static int const DEBUG_IO_FLUSH_PERIOD_SECS = 10;
 
   static DebugLevel msDebugOutputLevel;
   static bool msDebugISIInternals;
-  static int msMillisRefresh;
-  static DWORD msMillisMutexWait;
 
   // Ouptut files:
   static FILE* msDebugFile;

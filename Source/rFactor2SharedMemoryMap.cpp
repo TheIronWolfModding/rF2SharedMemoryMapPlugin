@@ -117,7 +117,6 @@ static double const MICROSECONDS_IN_SECOND = MILLISECONDS_IN_SECOND * MICROSECON
 
 DebugLevel SharedMemoryPlugin::msDebugOutputLevel = DebugLevel::Off;
 bool SharedMemoryPlugin::msDebugISIInternals = false;
-DWORD SharedMemoryPlugin::msMillisMutexWait = 1;
 bool SharedMemoryPlugin::msStockCarRulesPluginRequested = false;
 
 FILE* SharedMemoryPlugin::msDebugFile;
@@ -125,25 +124,11 @@ FILE* SharedMemoryPlugin::msIsiTelemetryFile;
 FILE* SharedMemoryPlugin::msIsiScoringFile;
 
 // _Weather ?
-char const* const SharedMemoryPlugin::MM_TELEMETRY_FILE_NAME1 = "$rFactor2SMMP_TelemetryBuffer1$";
-char const* const SharedMemoryPlugin::MM_TELEMETRY_FILE_NAME2 = "$rFactor2SMMP_TelemetryBuffer2$";
-char const* const SharedMemoryPlugin::MM_TELEMETRY_FILE_ACCESS_MUTEX = R"(Global\$rFactor2SMMP_TelemeteryMutex)";
-
-char const* const SharedMemoryPlugin::MM_SCORING_FILE_NAME1 = "$rFactor2SMMP_ScoringBuffer1$";
-char const* const SharedMemoryPlugin::MM_SCORING_FILE_NAME2 = "$rFactor2SMMP_ScoringBuffer2$";
-char const* const SharedMemoryPlugin::MM_SCORING_FILE_ACCESS_MUTEX = R"(Global\$rFactor2SMMP_ScoringMutex)";
-
-char const* const SharedMemoryPlugin::MM_RULES_FILE_NAME1 = "$rFactor2SMMP_RulesBuffer1$";
-char const* const SharedMemoryPlugin::MM_RULES_FILE_NAME2 = "$rFactor2SMMP_RulesBuffer2$";
-char const* const SharedMemoryPlugin::MM_RULES_FILE_ACCESS_MUTEX = R"(Global\$rFactor2SMMP_RulesMutex)";
-
-char const* const SharedMemoryPlugin::MM_MULTI_RULES_FILE_NAME1 = "$rFactor2SMMP_MultiRulesBuffer1$";
-char const* const SharedMemoryPlugin::MM_MULTI_RULES_FILE_NAME2 = "$rFactor2SMMP_MultiRulesBuffer2$";
-char const* const SharedMemoryPlugin::MM_MULTI_RULES_FILE_ACCESS_MUTEX = R"(Global\$rFactor2SMMP_MultiRulesMutex)";
-
-char const* const SharedMemoryPlugin::MM_EXTENDED_FILE_NAME1 = "$rFactor2SMMP_ExtendedBuffer1$";
-char const* const SharedMemoryPlugin::MM_EXTENDED_FILE_NAME2 = "$rFactor2SMMP_ExtendedBuffer2$";
-char const* const SharedMemoryPlugin::MM_EXTENDED_FILE_ACCESS_MUTEX = R"(Global\$rFactor2SMMP_ExtendedMutex)";
+char const* const SharedMemoryPlugin::MM_TELEMETRY_FILE_NAME = "$rFactor2SMMP_Telemetry$";
+char const* const SharedMemoryPlugin::MM_SCORING_FILE_NAME = "$rFactor2SMMP_Scoring$";
+char const* const SharedMemoryPlugin::MM_RULES_FILE_NAME = "$rFactor2SMMP_Rules$";
+char const* const SharedMemoryPlugin::MM_MULTI_RULES_FILE_NAME = "$rFactor2SMMP_MultiRules$";
+char const* const SharedMemoryPlugin::MM_EXTENDED_FILE_NAME = "$rFactor2SMMP_Extended$";
 
 char const* const SharedMemoryPlugin::INTERNALS_TELEMETRY_FILENAME = R"(UserData\Log\RF2SMMP_InternalsTelemetryOutput.txt)";
 char const* const SharedMemoryPlugin::INTERNALS_SCORING_FILENAME = R"(UserData\Log\RF2SMMP_InternalsScoringOutput.txt)";
@@ -171,26 +156,11 @@ void __cdecl DestroyPluginObject(PluginObject* obj) { delete((SharedMemoryPlugin
 //////////////////////////////////////
 
 SharedMemoryPlugin::SharedMemoryPlugin()
-  : mTelemetry(SharedMemoryPlugin::MAX_ASYNC_RETRIES
-     , SharedMemoryPlugin::MM_TELEMETRY_FILE_NAME1
-     , SharedMemoryPlugin::MM_TELEMETRY_FILE_NAME2
-     , SharedMemoryPlugin::MM_TELEMETRY_FILE_ACCESS_MUTEX),
-    mScoring(0 /*maxRetries*/
-      , SharedMemoryPlugin::MM_SCORING_FILE_NAME1
-      , SharedMemoryPlugin::MM_SCORING_FILE_NAME2
-      , SharedMemoryPlugin::MM_SCORING_FILE_ACCESS_MUTEX),
-    mRules(0 /*maxRetries*/
-      , SharedMemoryPlugin::MM_RULES_FILE_NAME1
-      , SharedMemoryPlugin::MM_RULES_FILE_NAME2
-      , SharedMemoryPlugin::MM_RULES_FILE_ACCESS_MUTEX),
-    mMultiRules(0 /*maxRetries*/
-      , SharedMemoryPlugin::MM_MULTI_RULES_FILE_NAME1
-      , SharedMemoryPlugin::MM_MULTI_RULES_FILE_NAME2
-      , SharedMemoryPlugin::MM_MULTI_RULES_FILE_ACCESS_MUTEX),
-    mExtended(0 /*maxRetries*/
-      , SharedMemoryPlugin::MM_EXTENDED_FILE_NAME1
-      , SharedMemoryPlugin::MM_EXTENDED_FILE_NAME2
-      , SharedMemoryPlugin::MM_EXTENDED_FILE_ACCESS_MUTEX)
+  : mTelemetry(SharedMemoryPlugin::MM_TELEMETRY_FILE_NAME)
+    , mScoring(SharedMemoryPlugin::MM_SCORING_FILE_NAME)
+    , mRules(SharedMemoryPlugin::MM_RULES_FILE_NAME)
+    , mMultiRules(SharedMemoryPlugin::MM_MULTI_RULES_FILE_NAME)
+    , mExtended(SharedMemoryPlugin::MM_EXTENDED_FILE_NAME)
 {
   memset(mParticipantTelemetryUpdated, 0, sizeof(mParticipantTelemetryUpdated));
 }
