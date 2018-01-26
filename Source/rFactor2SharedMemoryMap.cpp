@@ -257,7 +257,7 @@ void SharedMemoryPlugin::Startup(long version)
     if (mPluginHost.GetStockCarRulesPlugin_IsHosted())
       mExtStateTracker.mExtended.mHostedPluginVars.StockCarRules_DoubleFileType = mPluginHost.GetStockCarRulesPlugin_DoubleFileType();
 
-    memcpy(mExtended.mpCurrWriteBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
+    memcpy(mExtended.mpBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
 
     mExtended.FlipBuffers();
   }
@@ -364,7 +364,7 @@ void SharedMemoryPlugin::StartSession()
   // between Session Start/End.  We need to capture some of that info, because
   // it might be overwritten by the next session.
   // Current read buffer for Scoring info contains last Scoring Update.
-  mExtStateTracker.CaptureSessionTransition(*mScoring.mpCurrReadBuff);
+  mExtStateTracker.CaptureSessionTransition(*mScoring.mpBuff);
 
   // Clear state will do the flip for extended state.
   ClearState();
@@ -401,7 +401,7 @@ void SharedMemoryPlugin::UpdateInRealtimeFC(bool inRealTime)
   DEBUG_MSG(DebugLevel::Synchronization, inRealTime ? "Entering Realtime" : "Exiting Realtime");
 
   mExtStateTracker.mExtended.mInRealtimeFC = inRealTime;
-  memcpy(mExtended.mpCurrWriteBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
+  memcpy(mExtended.mpBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
   mExtended.FlipBuffers();
 }
 
@@ -505,7 +505,7 @@ void SharedMemoryPlugin::TelemetryTraceVehicleAdded(TelemInfoV01 const& info)
 {
   if (SharedMemoryPlugin::msDebugOutputLevel == DebugLevel::Verbose) {
     // If retry is pending, previous data is in write buffer, otherwise it is in read buffer.
-    auto const prevBuff = mTelemetry.RetryPending() ? mTelemetry.mpCurrWriteBuff : mTelemetry.mpCurrReadBuff;
+    auto const prevBuff = mTelemetry.mpBuff;
     bool const samePos = info.mPos.x == prevBuff->mVehicles[mCurrTelemetryVehicleIndex].mPos.x
       && info.mPos.y == prevBuff->mVehicles[mCurrTelemetryVehicleIndex].mPos.y
       && info.mPos.z == prevBuff->mVehicles[mCurrTelemetryVehicleIndex].mPos.z;

@@ -33,15 +33,45 @@ public:
   bool Initialize()
   {
     assert(!mMapped);
-    mhMap = MapMemoryFile(MM_FILE_NAME, mpBuff);
+    mhMap = MapMemoryFile(MM_FILE_NAME, mpBuffVersionBlock, mpBuff);
     if (mhMap == nullptr) {
       DEBUG_MSG(DebugLevel::Errors, "Failed to map file");
       return false;
     }
 
+    // Minimal risk here that this will get accessed before mMapped == true, but who cares.
+    memset(mpBuffVersionBlock, 0, sizeof(rF2MappedBufferVersionBlock));
+    memset(mpBuff, 0, sizeof(BuffT));
+
+    assert(mpBuffVersionBlock != nullptr);
+    assert(mpBuff != nullptr);
     mMapped = true;
 
     return true;
+  }
+
+  void BeginUpdate()
+  {
+    if (!mMapped) {
+      assert(mMapped);
+      DEBUG_MSG(DebugLevel::Errors, "Accessing unmapped buffer.");
+      return;
+    }
+
+    // TODO: restore order on out of sync.
+    ::InterlockedIncrement(&mpBuffVersionBlock->mVersionUpdateBegin);
+  }
+
+  void EndUpdate()
+  {
+    if (!mMapped) {
+      assert(mMapped);
+      DEBUG_MSG(DebugLevel::Errors, "Accessing unmapped buffer.");
+      return;
+    }
+
+    ::InterlockedIncrement(&mpBuffVersionBlock->mVersionUpdateEnd);
+    // TODO: restore order on out of sync.
   }
 
   void ClearState(BuffT const* pInitialContents)
@@ -52,15 +82,14 @@ public:
       return;
     }
 
-    // TODO: Exchange or increment?
-    ::InterlockedExchange(&mpBuff->mVersionUpdateBegin, 0);
+    BeginUpdate();
 
     if (pInitialContents != nullptr)
       memcpy(mpBuff, pInitialContents, sizeof(BuffT));
     else
       memset(mpBuff, 0, sizeof(BuffT));
 
-    ::InterlockedExchange(&mpBuff->mVersionUpdateEnd, 0);
+    EndUpdate();
   }
 
   void ReleaseResources()
@@ -69,6 +98,7 @@ public:
 
     // Unmap views and close all handles.
     BOOL ret = TRUE;
+    if (mpVersionBlockBuff != nullptr) ret = ::UnmapViewOfFile(mpBuffVersionBlock);
     if (mpBuff != nullptr) ret = ::UnmapViewOfFile(mpBuff);
     if (!ret) {
       DEBUG_MSG(DebugLevel::Errors, "Failed to unmap buffer");
@@ -178,7 +208,7 @@ private:
   MappedBuffer(MappedBuffer const&) = delete;
   MappedBuffer& operator=(MappedBuffer const&) = delete;
 
-  HANDLE MapMemoryFile(char const* const fileName, BuffT*& pBuf) const
+  HANDLE MapMemoryFile(char const* const fileName, rF2MappedBufferVersionBlock*& pBufVersionBlock, BuffT*& pBuf) const
   {
     char mappingName[256] = {};
     strcpy_s(mappingName, fileName);
@@ -195,7 +225,7 @@ private:
       strcat(mappingName, pid);
 
     // Init handle and try to create, read if existing
-    auto hMap = ::CreateFileMappingA(INVALID_HANDLE_VALUE, nullptr, PAGE_READWRITE, 0, sizeof(BuffT), mappingName);
+    auto hMap = ::CreateFileMappingA(INVALID_HANDLE_VALUE, nullptr, PAGE_READWRITE, 0, sizeof(rF2MappedBufferVersionBlock) + sizeof(BuffT), mappingName);
     if (hMap == nullptr) {
       DEBUG_MSG2(DebugLevel::Errors, "Failed to create file mapping for file:", mappingName);
       SharedMemoryPlugin::TraceLastWin32Error();
@@ -205,7 +235,21 @@ private:
     if (::GetLastError() == ERROR_ALREADY_EXISTS)
       DEBUG_MSG2(DebugLevel::Warnings, "WARNING: File mapping already exists for file:", mappingName);
 
-    pBuf = static_cast<BuffT*>(::MapViewOfFile(hMap, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(BuffT)));
+    pBufVersionBlock = static_cast<BuffT*>(::MapViewOfFile(hMap, FILE_MAP_ALL_ACCESS, 0 /*dwFileOffsetHigh*/, 0 /*dwFileOffsetLow*/, sizeof(rF2MappedBufferVersionBlock)));
+    if (pBufVersionBlock == nullptr) {
+      SharedMemoryPlugin::TraceLastWin32Error();
+
+      // Failed to map memory buffer.
+      if (!::CloseHandle(hMap)) {
+        DEBUG_MSG(DebugLevel::Errors, "Failed to close mapped file handle.");
+        SharedMemoryPlugin::TraceLastWin32Error();
+      }
+
+      return nullptr;
+    }
+
+    // TODO: dealloc version block on failure.
+    pBuf = static_cast<BuffT*>(::MapViewOfFile(hMap, FILE_MAP_ALL_ACCESS, 0 /*dwFileOffsetHigh*/, sizeof(rF2MappedBufferVersionBlock) /*dwFileOffsetLow*/, sizeof(BuffT)));
     if (pBuf == nullptr) {
       SharedMemoryPlugin::TraceLastWin32Error();
 
@@ -222,6 +266,7 @@ private:
   }
 
   public:
+    rF2MappedBufferVersionBlock* mpBuffVersionBlock = nullptr;
     BuffT* mpBuff = nullptr;
 
   private:

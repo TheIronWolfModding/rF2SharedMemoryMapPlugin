@@ -746,13 +746,17 @@ static_assert(sizeof(rF2MultiSessionRules) == sizeof(MultiSessionRulesV01), "rF2
 // Mapped wrapper structures
 ///////////////////////////////////////////
 
+struct rF2MappedBufferVersionBlock
+{
+  int mVersionUpdateBegin;
+  int mVersionUpdateEnd;
+};
+
+
 struct rF2MappedBufferHeader
 {
   static int const MAX_MAPPED_VEHICLES = 128;
   static int const MAX_MAPPED_IDS = 512;
-
-  int mVersionUpdateBegin;
-  int mVersionUpdateEnd;
 };
 
 

@@ -103,7 +103,6 @@ private:
       mExtended.is64bit = PLUGIN_64BIT;
       mExtended.mHostedPluginVars.StockCarRules_DoubleFileType = -1L;
 
-      assert(!mExtended.mCurrentRead);
       assert(!mExtended.mMultimediaThreadStarted);
       assert(!mExtended.mSimulationThreadStarted);
     }
