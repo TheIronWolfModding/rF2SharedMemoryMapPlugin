@@ -36,15 +36,18 @@ public:
     mhMap = MapMemoryFile(MM_FILE_NAME, mpBuffVersionBlock, mpBuff);
     if (mhMap == nullptr) {
       DEBUG_MSG(DebugLevel::Errors, "Failed to map file");
+      ReleaseResources();
+
       return false;
     }
+
+    assert(mpBuffVersionBlock != nullptr);
+    assert(mpBuff != nullptr);
 
     // Minimal risk here that this will get accessed before mMapped == true, but who cares.
     memset(mpBuffVersionBlock, 0, sizeof(rF2MappedBufferVersionBlock));
     memset(mpBuff, 0, sizeof(BuffT));
 
-    assert(mpBuffVersionBlock != nullptr);
-    assert(mpBuff != nullptr);
     mMapped = true;
 
     return true;
@@ -99,6 +102,14 @@ public:
     // Unmap views and close all handles.
     BOOL ret = TRUE;
     if (mpVersionBlockBuff != nullptr) ret = ::UnmapViewOfFile(mpBuffVersionBlock);
+    if (!ret) {
+      DEBUG_MSG(DebugLevel::Errors, "Failed to unmap version block buffer");
+      SharedMemoryPlugin::TraceLastWin32Error();
+    }
+
+    mpBuffVersionBlock = nullptr; 
+
+    ret = TRUE;
     if (mpBuff != nullptr) ret = ::UnmapViewOfFile(mpBuff);
     if (!ret) {
       DEBUG_MSG(DebugLevel::Errors, "Failed to unmap buffer");
@@ -106,6 +117,14 @@ public:
     }
 
     mpBuff = nullptr;
+
+    // Note: different from V2, we didn't ever close this.
+    if (mhMap != nullptr && !::CloseHandle(mhMap)) {
+      DEBUG_MSG(DebugLevel::Errors, "Failed to close mapped file handle.");
+      SharedMemoryPlugin::TraceLastWin32Error();
+    }
+
+    mhMap = nullptr;
   }
   /*
   void FlipBuffersHelper()
@@ -235,30 +254,16 @@ private:
     if (::GetLastError() == ERROR_ALREADY_EXISTS)
       DEBUG_MSG2(DebugLevel::Warnings, "WARNING: File mapping already exists for file:", mappingName);
 
+    // Map the version block first.
     pBufVersionBlock = static_cast<BuffT*>(::MapViewOfFile(hMap, FILE_MAP_ALL_ACCESS, 0 /*dwFileOffsetHigh*/, 0 /*dwFileOffsetLow*/, sizeof(rF2MappedBufferVersionBlock)));
     if (pBufVersionBlock == nullptr) {
       SharedMemoryPlugin::TraceLastWin32Error();
-
-      // Failed to map memory buffer.
-      if (!::CloseHandle(hMap)) {
-        DEBUG_MSG(DebugLevel::Errors, "Failed to close mapped file handle.");
-        SharedMemoryPlugin::TraceLastWin32Error();
-      }
-
       return nullptr;
     }
 
-    // TODO: dealloc version block on failure.
     pBuf = static_cast<BuffT*>(::MapViewOfFile(hMap, FILE_MAP_ALL_ACCESS, 0 /*dwFileOffsetHigh*/, sizeof(rF2MappedBufferVersionBlock) /*dwFileOffsetLow*/, sizeof(BuffT)));
     if (pBuf == nullptr) {
       SharedMemoryPlugin::TraceLastWin32Error();
-
-      // Failed to map memory buffer.
-      if (!::CloseHandle(hMap)) {
-        DEBUG_MSG(DebugLevel::Errors, "Failed to close mapped file handle.");
-        SharedMemoryPlugin::TraceLastWin32Error();
-      }
-
       return nullptr;
     }
 

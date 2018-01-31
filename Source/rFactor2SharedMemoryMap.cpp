@@ -257,9 +257,9 @@ void SharedMemoryPlugin::Startup(long version)
     if (mPluginHost.GetStockCarRulesPlugin_IsHosted())
       mExtStateTracker.mExtended.mHostedPluginVars.StockCarRules_DoubleFileType = mPluginHost.GetStockCarRulesPlugin_DoubleFileType();
 
+    mExtended.BeginUpdate();
     memcpy(mExtended.mpBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
-
-    mExtended.FlipBuffers();
+    mExtended.EndUpdate();
   }
 }
 
@@ -386,10 +386,11 @@ void SharedMemoryPlugin::EndSession()
   mExtStateTracker.mExtended.mTicksSessionEnded = ::GetTickCount64();
 
   // Capture Session End state.
-  mExtStateTracker.CaptureSessionTransition(*mScoring.mpCurrReadBuff);
+  mExtStateTracker.CaptureSessionTransition(*mScoring.mpBuff);
 
-  memcpy(mExtended.mpCurrWriteBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
-  mExtended.FlipBuffers();
+  mExtended.BeginUpdate();
+  memcpy(mExtended.mpBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
+  mExtended.EndUpdate();
 }
 
 
@@ -401,8 +402,10 @@ void SharedMemoryPlugin::UpdateInRealtimeFC(bool inRealTime)
   DEBUG_MSG(DebugLevel::Synchronization, inRealTime ? "Entering Realtime" : "Exiting Realtime");
 
   mExtStateTracker.mExtended.mInRealtimeFC = inRealTime;
+
+  mExtended.BeginUpdate();
   memcpy(mExtended.mpBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
-  mExtended.FlipBuffers();
+  mExtended.EndUpdate();
 }
 
 
@@ -466,7 +469,7 @@ void SharedMemoryPlugin::TelemetryTraceSkipUpdate(TelemInfoV01 const& info, doub
     // We flip only on mElapsedTime change, so on skip we need to compare to the current write buffer.
     // Below assumes that we begin skip on the first vehicle, which is not guaranteed.  However, that's ok
     // since this code is diagnostic.
-    auto const prevBuff = mTelemetry.mpCurrWriteBuff;
+    auto const prevBuff = mTelemetry.mpBuff;
     if (info.mPos.x != prevBuff->mVehicles->mPos.x
       || info.mPos.y != prevBuff->mVehicles->mPos.y
       || info.mPos.z != prevBuff->mVehicles->mPos.z)
@@ -491,8 +494,8 @@ void SharedMemoryPlugin::TelemetryTraceBeginUpdate(double telUpdateET, double de
     auto const delta = ticksNow - mLastTelemetryUpdateMillis;
 
     char msg[512] = {};
-    sprintf(msg, "TELEMETRY - Begin Update: Buffer %s.  ET:%f  ET delta:%f  Time delta since last update:%f",
-      mTelemetry.mpCurrWriteBuff == mTelemetry.mpBuff1 ? "1" : "2", telUpdateET, deltaET, delta / MICROSECONDS_IN_SECOND);
+    sprintf(msg, "TELEMETRY - Begin Update:  ET:%f  ET delta:%f  Time delta since last update:%f",
+      telUpdateET, deltaET, delta / MICROSECONDS_IN_SECOND);
     
     DEBUG_MSG(DebugLevel::Timing, msg);
   }
@@ -532,7 +535,7 @@ void SharedMemoryPlugin::TelemetryTraceEndUpdate(int numVehiclesInChain) const
   }
 }
 
-
+/*
 void SharedMemoryPlugin::TelemetryFlipBuffers()
 {
   if (mLastTelemetryUpdateET > 0.0 && mLastTelemetryUpdateET <= mLastScoringUpdateET) {
@@ -563,17 +566,34 @@ void SharedMemoryPlugin::TelemetryFlipBuffers()
     mTelemetry.FlipBuffers();
   }
 }
+*/
 
+void SharedMemoryPlugin::TelemetryBeginNewFrame(TelemInfoV01 const& info, double deltaET)
+{
+  TelemetryTraceBeginUpdate(info.mElapsedTime, deltaET);
+
+  memset(mParticipantTelemetryUpdated, 0, sizeof(mParticipantTelemetryUpdated));
+
+  mTelemetryFrameCompleted = false;
+  mCurrTelemetryVehicleIndex = 0;
+
+  // Update telemetry frame Elapsed Time.
+  mLastTelemetryUpdateET = info.mElapsedTime;
+
+  mTelemetry.BeginUpdate();
+}
 
 void SharedMemoryPlugin::TelemetryCompleteFrame()
 {
-  mTelemetry.mpCurrWriteBuff->mNumVehicles = mCurrTelemetryVehicleIndex;
-  mTelemetry.mpCurrWriteBuff->mBytesUpdatedHint = static_cast<int>(offsetof(rF2Telemetry, mVehicles[mTelemetry.mpCurrWriteBuff->mNumVehicles]));
+  mTelemetry.mpBuff->mNumVehicles = mCurrTelemetryVehicleIndex;
+  mTelemetry.mpBuff->mBytesUpdatedHint = static_cast<int>(offsetof(rF2Telemetry, mVehicles[mTelemetry.mpBuff->mNumVehicles]));
 
-  TelemetryTraceEndUpdate(mTelemetry.mpCurrWriteBuff->mNumVehicles);
+  mTelemetry.EndUpdate();
+
+  TelemetryTraceEndUpdate(mTelemetry.mpBuff->mNumVehicles);
 
   // Try flipping the buffers.
-  TelemetryFlipBuffers();
+  //TelemetryFlipBuffers();
 
   mTelemetryFrameCompleted = true;
 }
@@ -620,21 +640,13 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
     // This is the new frame.  End the previous frame if it is still open:
     if (!mTelemetryFrameCompleted)
       TelemetryCompleteFrame();
-    else if (mTelemetry.RetryPending()) {  // Frame already complete, retry if flip is pending.
+    /*else if (mTelemetry.RetryPending()) {  // Frame already complete, retry if flip is pending.
       DEBUG_MSG(DebugLevel::Synchronization, "TELEMETRY - Retry pending buffer flip on new telemetry frame.");
       TelemetryFlipBuffers();
-    }
+    }*/
 
     // Begin the new frame.  Reset tracking variables.
-    TelemetryTraceBeginUpdate(info.mElapsedTime, deltaET);
-    
-    memset(mParticipantTelemetryUpdated, 0, sizeof(mParticipantTelemetryUpdated));
-    
-    mTelemetryFrameCompleted = false;
-    mCurrTelemetryVehicleIndex = 0;
-
-    // Update telemetry frame Elapsed Time.
-    mLastTelemetryUpdateET = info.mElapsedTime;
+    TelemetryBeginNewFrame(info, deltaET);
   }
 
   if (mTelemetryFrameCompleted)
@@ -662,7 +674,7 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
     TelemetryTraceVehicleAdded(info);
 
     // Write vehicle telemetry.
-    memcpy(&(mTelemetry.mpCurrWriteBuff->mVehicles[mCurrTelemetryVehicleIndex]), &info, sizeof(rF2VehicleTelemetry));
+    memcpy(&(mTelemetry.mpBuff->mVehicles[mCurrTelemetryVehicleIndex]), &info, sizeof(rF2VehicleTelemetry));
     ++mCurrTelemetryVehicleIndex;
   }
   else {

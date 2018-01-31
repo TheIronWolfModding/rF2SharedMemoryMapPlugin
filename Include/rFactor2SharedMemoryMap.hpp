@@ -26,7 +26,7 @@ Website: thecrewchief.org
 #endif
 
 // Each component can be in [0:99] range.
-#define PLUGIN_VERSION_MAJOR "2.4"
+#define PLUGIN_VERSION_MAJOR "3.0"
 #define PLUGIN_VERSION_MINOR "0.0"
 #define PLUGIN_NAME_AND_VERSION "rFactor 2 Shared Memory Map Plugin - v" PLUGIN_VERSION_MAJOR
 #define SHARED_MEMORY_VERSION PLUGIN_VERSION_MAJOR "." PLUGIN_VERSION_MINOR
@@ -252,6 +252,7 @@ private:
   void TelemetryTraceVehicleAdded(TelemInfoV01 const& infos);
   void TelemetryTraceEndUpdate(int numVehiclesInChain) const;
   void TelemetryFlipBuffers();
+  void TelemetryBeginNewFrame(TelemInfoV01 const& info, double deltaET);
   void TelemetryCompleteFrame();
 
   void ScoringTraceBeginUpdate();
