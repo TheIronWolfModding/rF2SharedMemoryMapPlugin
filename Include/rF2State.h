@@ -748,8 +748,8 @@ static_assert(sizeof(rF2MultiSessionRules) == sizeof(MultiSessionRulesV01), "rF2
 
 struct rF2MappedBufferVersionBlock
 {
-  int mVersionUpdateBegin;
-  int mVersionUpdateEnd;
+  unsigned long mVersionUpdateBegin;
+  unsigned long mVersionUpdateEnd;
 };
 
 

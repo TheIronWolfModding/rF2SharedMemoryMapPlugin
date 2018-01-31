@@ -494,8 +494,8 @@ void SharedMemoryPlugin::TelemetryTraceBeginUpdate(double telUpdateET, double de
     auto const delta = ticksNow - mLastTelemetryUpdateMillis;
 
     char msg[512] = {};
-    sprintf(msg, "TELEMETRY - Begin Update:  ET:%f  ET delta:%f  Time delta since last update:%f",
-      telUpdateET, deltaET, delta / MICROSECONDS_IN_SECOND);
+    sprintf(msg, "TELEMETRY - Begin Update:  ET:%f  ET delta:%f  Time delta since last update:%f  Version Begin:%d  End:%d",
+      telUpdateET, deltaET, delta / MICROSECONDS_IN_SECOND, mTelemetry.mpBuffVersionBlock->mVersionUpdateBegin, mTelemetry.mpBuffVersionBlock->mVersionUpdateEnd);
     
     DEBUG_MSG(DebugLevel::Timing, msg);
   }
@@ -529,7 +529,8 @@ void SharedMemoryPlugin::TelemetryTraceEndUpdate(int numVehiclesInChain) const
     auto const deltaSysTimeMicroseconds = mLastTelemetryVehicleAddedMillis - mLastTelemetryUpdateMillis;
 
     char msg[512] = {};
-    sprintf(msg, "TELEMETRY - End Update.  Telemetry chain update took %f:  Vehicles in chain: %d", deltaSysTimeMicroseconds / MICROSECONDS_IN_SECOND, numVehiclesInChain);
+    sprintf(msg, "TELEMETRY - End Update.  Telemetry chain update took %f:  Vehicles in chain: %d  Version Begin:%d  End:%d",
+      deltaSysTimeMicroseconds / MICROSECONDS_IN_SECOND, numVehiclesInChain, mTelemetry.mpBuffVersionBlock->mVersionUpdateBegin, mTelemetry.mpBuffVersionBlock->mVersionUpdateEnd);
 
     DEBUG_MSG(DebugLevel::Timing, msg);
   }
@@ -678,10 +679,12 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
     ++mCurrTelemetryVehicleIndex;
   }
   else {
-    // The chain is complete.  Try flipping early.
+    // The chain is complete.
     if (!mTelemetryFrameCompleted) {
+      // Trace the message marking beginning of ignore updates chain.
       TelemetryTraceSkipUpdate(info, deltaET);
 
+      // And close the current frame.
       TelemetryCompleteFrame();
     }
   }
@@ -709,10 +712,7 @@ void SharedMemoryPlugin::TraceBeginUpdate(BuffT const& buffer, double& lastUpdat
     auto const delta = ticksNow - lastUpdateMillis;
 
     char msg[512] = {};
-    if (buffer.mpCurrWriteBuff == buffer.mpBuff1)
-      sprintf(msg, "%s - Begin Update: Buffer 1.  Delta since last update:%f", msgPrefix, delta / MICROSECONDS_IN_SECOND);
-    else
-      sprintf(msg, "%s - Begin Update: Buffer 2.  Delta since last update:%f", msgPrefix, delta / MICROSECONDS_IN_SECOND);
+    sprintf(msg, "%s - Begin Update:  Delta since last update:%f", msgPrefix, delta / MICROSECONDS_IN_SECOND);
 
     DEBUG_MSG(DebugLevel::Timing, msg);
 
@@ -734,35 +734,38 @@ void SharedMemoryPlugin::UpdateScoring(ScoringInfoV01 const& info)
 
   ScoringTraceBeginUpdate();
 
-  if (mTelemetry.RetryPending()) {
+/*  if (mTelemetry.RetryPending()) {
     // If this happens often, we need to change something, because forced flip is coming very soon
     // after scoring update anyway.
     DEBUG_MSG(DebugLevel::Synchronization, "SCORING - Force telemetry flip due to retry pending.");
     mTelemetry.FlipBuffers();
-  }
+  }*/
 
   // Below apparently never happens, but let's keep it in case there's a regression in the game.
   // So far, this appears to only happen on session end, when telemetry is already zeroed out.
   if (mLastScoringUpdateET > mLastTelemetryUpdateET)
     DEBUG_MSG(DebugLevel::Warnings, "WARNING: Scoring update is ahead of telemetry.");
 
-  memcpy(&(mScoring.mpCurrWriteBuff->mScoringInfo), &info, sizeof(rF2ScoringInfo));
+  mScoring.BeginUpdate();
+  memcpy(&(mScoring.mpBuff->mScoringInfo), &info, sizeof(rF2ScoringInfo));
 
   if (info.mNumVehicles >= rF2MappedBufferHeader::MAX_MAPPED_VEHICLES)
     DEBUG_MSG(DebugLevel::Errors, "ERROR: Scoring exceeded maximum of allowed mapped vehicles.");
 
   auto const numScoringVehicles = min(info.mNumVehicles, rF2MappedBufferHeader::MAX_MAPPED_VEHICLES);
   for (int i = 0; i < numScoringVehicles; ++i)
-    memcpy(&(mScoring.mpCurrWriteBuff->mVehicles[i]), &(info.mVehicle[i]), sizeof(rF2VehicleScoring));
+    memcpy(&(mScoring.mpBuff->mVehicles[i]), &(info.mVehicle[i]), sizeof(rF2VehicleScoring));
 
-  mScoring.mpCurrWriteBuff->mBytesUpdatedHint = static_cast<int>(offsetof(rF2Scoring, mVehicles[numScoringVehicles]));
+  mScoring.mpBuff->mBytesUpdatedHint = static_cast<int>(offsetof(rF2Scoring, mVehicles[numScoringVehicles]));
 
-  mScoring.FlipBuffers();
+  mScoring.EndUpdate();
 
   // Update extended state.
   mExtStateTracker.ProcessScoringUpdate(info);
-  memcpy(mExtended.mpCurrWriteBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
-  mExtended.FlipBuffers();
+
+  mExtended.BeginUpdate();
+  memcpy(mExtended.mpBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
+  mExtended.EndUpdate();
 }
 
 
@@ -781,8 +784,10 @@ bool SharedMemoryPlugin::WantsToDisplayMessage(MessageInfoV01& msgInfo)
   if (updateRequested && msgInfo.mText[0] != '\0') {
     DEBUG_MSG2(DebugLevel::CriticalInfo, "New displayed messsage captured: ", msgInfo.mText);
     strcpy_s(mExtStateTracker.mExtended.mDisplayedMessageUpdateCapture, msgInfo.mText);
-    memcpy(mExtended.mpCurrWriteBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
-    mExtended.FlipBuffers();
+
+    mExtended.BeginUpdate();
+    memcpy(mExtended.mpBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
+    mExtended.EndUpdate();
   }
 
   return updateRequested;
@@ -794,8 +799,9 @@ void SharedMemoryPlugin::UpdateThreadState(long type, bool starting)
   (type == 0 ? mExtStateTracker.mExtended.mMultimediaThreadStarted : mExtStateTracker.mExtended.mSimulationThreadStarted)
     = starting;
 
-  memcpy(mExtended.mpCurrWriteBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
-  mExtended.FlipBuffers();
+  mExtended.BeginUpdate();
+  memcpy(mExtended.mpBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
+  mExtended.EndUpdate();
 }
 
 
@@ -833,14 +839,16 @@ bool SharedMemoryPlugin::AccessTrackRules(TrackRulesV01& info)
   TraceBeginUpdate(mRules, mLastRulesUpdateMillis, "RULES");
 
   CaptureSCRPluginMessages(info);
+
+  mRules.BeginUpdate();
   // Copy main struct.
-  memcpy(&(mRules.mpCurrWriteBuff->mTrackRules), &info, sizeof(rF2TrackRules));
+  memcpy(&(mRules.mpBuff->mTrackRules), &info, sizeof(rF2TrackRules));
 
   // Pass out last global SCR plugin message.
   auto const restoreSCRMessages = mPluginHost.GetStockCarRulesPlugin_IsHosted() && info.mYellowFlagState != 0;
   if (restoreSCRMessages
     && mLastTrackRulesFCYMessage[0] != '\0')
-    strcpy_s(mRules.mpCurrWriteBuff->mTrackRules.mMessage, mLastTrackRulesFCYMessage);
+    strcpy_s(mRules.mpBuff->mTrackRules.mMessage, mLastTrackRulesFCYMessage);
 
   // Copy actions.
   if (info.mNumActions >= rF2MappedBufferHeader::MAX_MAPPED_VEHICLES)
@@ -848,7 +856,7 @@ bool SharedMemoryPlugin::AccessTrackRules(TrackRulesV01& info)
 
   auto const numActions = min(info.mNumActions, rF2MappedBufferHeader::MAX_MAPPED_VEHICLES);
   for (int i = 0; i < numActions; ++i)
-    memcpy(&(mRules.mpCurrWriteBuff->mActions[i]), &(info.mAction[i]), sizeof(rF2TrackRulesAction));
+    memcpy(&(mRules.mpBuff->mActions[i]), &(info.mAction[i]), sizeof(rF2TrackRulesAction));
 
   // Copy participants.
   if (info.mNumParticipants >= rF2MappedBufferHeader::MAX_MAPPED_VEHICLES)
@@ -856,19 +864,19 @@ bool SharedMemoryPlugin::AccessTrackRules(TrackRulesV01& info)
 
   auto const numRulesVehicles = min(info.mNumParticipants, rF2MappedBufferHeader::MAX_MAPPED_VEHICLES);
   for (int i = 0; i < numRulesVehicles; ++i) {
-    memcpy(&(mRules.mpCurrWriteBuff->mParticipants[i]), &(info.mParticipant[i]), sizeof(rF2TrackRulesParticipant));
+    memcpy(&(mRules.mpBuff->mParticipants[i]), &(info.mParticipant[i]), sizeof(rF2TrackRulesParticipant));
 
     // Pass out last SCR plugin mMessage.
     if (restoreSCRMessages) {
       auto const id = max(info.mParticipant[i].mID, 0L) % rF2MappedBufferHeader::MAX_MAPPED_IDS;
       if (mLastRulesParticipantFCYMessages[id] != '\0')
-        strcpy_s(mRules.mpCurrWriteBuff->mParticipants[i].mMessage, mLastRulesParticipantFCYMessages[id]);
+        strcpy_s(mRules.mpBuff->mParticipants[i].mMessage, mLastRulesParticipantFCYMessages[id]);
     }
   }
 
-  mRules.mpCurrWriteBuff->mBytesUpdatedHint = static_cast<int>(offsetof(rF2Rules, mParticipants[numRulesVehicles]));
+  mRules.mpBuff->mBytesUpdatedHint = static_cast<int>(offsetof(rF2Rules, mParticipants[numRulesVehicles]));
 
-  mRules.FlipBuffers();
+  mRules.EndUpdate();
 
   return updateRequested;
 }
@@ -930,9 +938,10 @@ void SharedMemoryPlugin::SetPhysicsOptions(PhysicsOptionsV01& options)
   mPluginHost.SetPhysicsOptions(options);
 
   DEBUG_MSG(DebugLevel::Timing, "PHYSICS - Updated.");
-  memcpy(&(mExtStateTracker.mExtended.mPhysics), &options, sizeof(rF2PhysicsOptions));
-  memcpy(mExtended.mpCurrWriteBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
-  mExtended.FlipBuffers();
+
+  mExtended.BeginUpdate();
+  memcpy(mExtended.mpBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
+  mExtended.EndUpdate();
 }
 
 
@@ -945,8 +954,9 @@ bool SharedMemoryPlugin::AccessMultiSessionRules(MultiSessionRulesV01& info)
 
   TraceBeginUpdate(mMultiRules, mLastMultiRulesUpdateMillis, "MULTI RULES");
  
+  mMultiRules.BeginUpdate();
   // Copy main struct.
-  memcpy(&(mMultiRules.mpCurrWriteBuff->mMultiSessionRules), &info, sizeof(rF2MultiSessionRules));
+  memcpy(&(mMultiRules.mpBuff->mMultiSessionRules), &info, sizeof(rF2MultiSessionRules));
 
   // Copy participants.
   if (info.mNumParticipants >= rF2MappedBufferHeader::MAX_MAPPED_VEHICLES)
@@ -954,11 +964,11 @@ bool SharedMemoryPlugin::AccessMultiSessionRules(MultiSessionRulesV01& info)
 
   auto const numMultiRulesVehicles = min(info.mNumParticipants, rF2MappedBufferHeader::MAX_MAPPED_VEHICLES);
   for (int i = 0; i < numMultiRulesVehicles; ++i)
-    memcpy(&(mMultiRules.mpCurrWriteBuff->mParticipants[i]), &(info.mParticipant[i]), sizeof(rF2MultiSessionParticipant));
+    memcpy(&(mMultiRules.mpBuff->mParticipants[i]), &(info.mParticipant[i]), sizeof(rF2MultiSessionParticipant));
 
-  mMultiRules.mpCurrWriteBuff->mBytesUpdatedHint = static_cast<int>(offsetof(rF2MultiRules, mParticipants[numMultiRulesVehicles]));
+  mMultiRules.mpBuff->mBytesUpdatedHint = static_cast<int>(offsetof(rF2MultiRules, mParticipants[numMultiRulesVehicles]));
 
-  mMultiRules.FlipBuffers();
+  mMultiRules.EndUpdate();
 
   return updateRequested;
 }

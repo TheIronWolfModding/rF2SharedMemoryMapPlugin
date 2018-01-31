@@ -22,7 +22,7 @@ class MappedBuffer
 public:
 
   MappedBuffer(char const* mmFileName) 
-    : MM_FILE_NAME(mmFileName1)
+    : MM_FILE_NAME(mmFileName)
   {}
 
   ~MappedBuffer()
@@ -101,7 +101,7 @@ public:
 
     // Unmap views and close all handles.
     BOOL ret = TRUE;
-    if (mpVersionBlockBuff != nullptr) ret = ::UnmapViewOfFile(mpBuffVersionBlock);
+    if (mpBuffVersionBlock != nullptr) ret = ::UnmapViewOfFile(mpBuffVersionBlock);
     if (!ret) {
       DEBUG_MSG(DebugLevel::Errors, "Failed to unmap version block buffer");
       SharedMemoryPlugin::TraceLastWin32Error();
@@ -255,7 +255,7 @@ private:
       DEBUG_MSG2(DebugLevel::Warnings, "WARNING: File mapping already exists for file:", mappingName);
 
     // Map the version block first.
-    pBufVersionBlock = static_cast<BuffT*>(::MapViewOfFile(hMap, FILE_MAP_ALL_ACCESS, 0 /*dwFileOffsetHigh*/, 0 /*dwFileOffsetLow*/, sizeof(rF2MappedBufferVersionBlock)));
+    pBufVersionBlock = static_cast<rF2MappedBufferVersionBlock*>(::MapViewOfFile(hMap, FILE_MAP_ALL_ACCESS, 0 /*dwFileOffsetHigh*/, 0 /*dwFileOffsetLow*/, sizeof(rF2MappedBufferVersionBlock)));
     if (pBufVersionBlock == nullptr) {
       SharedMemoryPlugin::TraceLastWin32Error();
       return nullptr;
