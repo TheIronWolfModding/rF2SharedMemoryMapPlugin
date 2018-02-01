@@ -33,7 +33,7 @@ public:
   bool Initialize()
   {
     assert(!mMapped);
-    mhMap = MapMemoryFile(MM_FILE_NAME, mpBuffVersionBlock, mpBuff);
+    mhMap = MapMemoryFile(MM_FILE_NAME, mpMappedView, mpBuffVersionBlock, mpBuff);
     if (mhMap == nullptr) {
       DEBUG_MSG(DebugLevel::Errors, "Failed to map file");
       ReleaseResources();
@@ -41,12 +41,12 @@ public:
       return false;
     }
 
+    assert(mpMappedView != nullptr);
     assert(mpBuffVersionBlock != nullptr);
     assert(mpBuff != nullptr);
 
     // Minimal risk here that this will get accessed before mMapped == true, but who cares.
-    memset(mpBuffVersionBlock, 0, sizeof(rF2MappedBufferVersionBlock));
-    memset(mpBuff, 0, sizeof(BuffT));
+    memset(mpMappedView, 0, sizeof(rF2MappedBufferVersionBlock) + sizeof(BuffT));
 
     mMapped = true;
 
@@ -56,32 +56,50 @@ public:
   void BeginUpdate()
   {
     if (!mMapped) {
-      assert(mMapped);
       DEBUG_MSG(DebugLevel::Errors, "Accessing unmapped buffer.");
       return;
     }
 
-    // TODO: restore order on out of sync.
+    if (mpBuffVersionBlock->mVersionUpdateBegin != mpBuffVersionBlock->mVersionUpdateEnd) {
+      if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::Synchronization) {
+        char msg[512] = {};
+
+        sprintf(msg, "BeginUpdate: versions out of sync.  Version Begin:%d  End:%d",
+          mpBuffVersionBlock->mVersionUpdateBegin, mpBuffVersionBlock->mVersionUpdateEnd);
+
+        DEBUG_MSG(DebugLevel::Synchronization, msg);
+      }
+      ::InterlockedExchange(&mpBuffVersionBlock->mVersionUpdateEnd, mpBuffVersionBlock->mVersionUpdateBegin);
+    }
+
     ::InterlockedIncrement(&mpBuffVersionBlock->mVersionUpdateBegin);
   }
 
   void EndUpdate()
   {
     if (!mMapped) {
-      assert(mMapped);
       DEBUG_MSG(DebugLevel::Errors, "Accessing unmapped buffer.");
       return;
     }
 
     ::InterlockedIncrement(&mpBuffVersionBlock->mVersionUpdateEnd);
-    // TODO: restore order on out of sync.
+
+    if (mpBuffVersionBlock->mVersionUpdateBegin != mpBuffVersionBlock->mVersionUpdateEnd) {
+      if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::Synchronization) {
+        char msg[512] = {};
+
+        sprintf(msg, "EndUpdate: versions out of sync.  Version Begin:%d  End:%d",
+          mpBuffVersionBlock->mVersionUpdateBegin, mpBuffVersionBlock->mVersionUpdateEnd);
+
+        DEBUG_MSG(DebugLevel::Synchronization, msg);
+      }
+      ::InterlockedExchange(&mpBuffVersionBlock->mVersionUpdateBegin, mpBuffVersionBlock->mVersionUpdateEnd);
+    }
   }
 
   void ClearState(BuffT const* pInitialContents)
   {
     if (!mMapped) {
-      assert(mMapped);
-      DEBUG_MSG(DebugLevel::Errors, "Accessing unmapped buffer.");
       return;
     }
 
@@ -101,24 +119,17 @@ public:
 
     // Unmap views and close all handles.
     BOOL ret = TRUE;
-    if (mpBuffVersionBlock != nullptr) ret = ::UnmapViewOfFile(mpBuffVersionBlock);
+    if (mpMappedView != nullptr) ret = ::UnmapViewOfFile(mpMappedView);
     if (!ret) {
-      DEBUG_MSG(DebugLevel::Errors, "Failed to unmap version block buffer");
+      DEBUG_MSG(DebugLevel::Errors, "Failed to unmap mapped buffer view");
       SharedMemoryPlugin::TraceLastWin32Error();
     }
 
+    mpMappedView = nullptr;
+    mpBuff = nullptr;
     mpBuffVersionBlock = nullptr; 
 
-    ret = TRUE;
-    if (mpBuff != nullptr) ret = ::UnmapViewOfFile(mpBuff);
-    if (!ret) {
-      DEBUG_MSG(DebugLevel::Errors, "Failed to unmap buffer");
-      SharedMemoryPlugin::TraceLastWin32Error();
-    }
-
-    mpBuff = nullptr;
-
-    // Note: different from V2, we didn't ever close this.
+    // Note: different from V2, we didn't ever close this apparently.
     if (mhMap != nullptr && !::CloseHandle(mhMap)) {
       DEBUG_MSG(DebugLevel::Errors, "Failed to close mapped file handle.");
       SharedMemoryPlugin::TraceLastWin32Error();
@@ -227,7 +238,7 @@ private:
   MappedBuffer(MappedBuffer const&) = delete;
   MappedBuffer& operator=(MappedBuffer const&) = delete;
 
-  HANDLE MapMemoryFile(char const* const fileName, rF2MappedBufferVersionBlock*& pBufVersionBlock, BuffT*& pBuf) const
+  HANDLE MapMemoryFile(char const* const fileName, LPVOID& pMappedView, rF2MappedBufferVersionBlock*& pBufVersionBlock, BuffT*& pBuf) const
   {
     char mappingName[256] = {};
     strcpy_s(mappingName, fileName);
@@ -254,18 +265,16 @@ private:
     if (::GetLastError() == ERROR_ALREADY_EXISTS)
       DEBUG_MSG2(DebugLevel::Warnings, "WARNING: File mapping already exists for file:", mappingName);
 
-    // Map the version block first.
-    pBufVersionBlock = static_cast<rF2MappedBufferVersionBlock*>(::MapViewOfFile(hMap, FILE_MAP_ALL_ACCESS, 0 /*dwFileOffsetHigh*/, 0 /*dwFileOffsetLow*/, sizeof(rF2MappedBufferVersionBlock)));
-    if (pBufVersionBlock == nullptr) {
+    pMappedView = ::MapViewOfFile(hMap, FILE_MAP_ALL_ACCESS, 0 /*dwFileOffsetHigh*/, 0 /*dwFileOffsetLow*/, sizeof(rF2MappedBufferVersionBlock) + sizeof(BuffT));
+    if (pMappedView == nullptr) {
+      DEBUG_MSG(DebugLevel::Errors, "Failed to map buffer view.");
       SharedMemoryPlugin::TraceLastWin32Error();
       return nullptr;
     }
 
-    pBuf = static_cast<BuffT*>(::MapViewOfFile(hMap, FILE_MAP_ALL_ACCESS, 0 /*dwFileOffsetHigh*/, sizeof(rF2MappedBufferVersionBlock) /*dwFileOffsetLow*/, sizeof(BuffT)));
-    if (pBuf == nullptr) {
-      SharedMemoryPlugin::TraceLastWin32Error();
-      return nullptr;
-    }
+    // Map the version block first.
+    pBufVersionBlock = static_cast<rF2MappedBufferVersionBlock*>(mpMappedView);
+    pBuf = reinterpret_cast<BuffT*>(static_cast<char*>(pMappedView) + sizeof(pBufVersionBlock));
 
     return hMap;
   }
@@ -275,7 +284,10 @@ private:
     BuffT* mpBuff = nullptr;
 
   private:
-    char const* const MM_FILE_NAME;
+    LPVOID mpMappedView = nullptr;
+
+  private:
+    char const* const MM_FILE_NAME = nullptr;
     HANDLE mhMap = nullptr;
     bool mMapped = false;
 };

@@ -496,7 +496,7 @@ void SharedMemoryPlugin::TelemetryTraceBeginUpdate(double telUpdateET, double de
     char msg[512] = {};
     sprintf(msg, "TELEMETRY - Begin Update:  ET:%f  ET delta:%f  Time delta since last update:%f  Version Begin:%d  End:%d",
       telUpdateET, deltaET, delta / MICROSECONDS_IN_SECOND, mTelemetry.mpBuffVersionBlock->mVersionUpdateBegin, mTelemetry.mpBuffVersionBlock->mVersionUpdateEnd);
-    
+
     DEBUG_MSG(DebugLevel::Timing, msg);
   }
 
@@ -698,6 +698,7 @@ void SharedMemoryPlugin::ScoringTraceBeginUpdate()
 
     char msg[512] = {};
     sprintf(msg, "SCORING - Scoring ET:%f  Telemetry ET:%f", mLastScoringUpdateET, mLastTelemetryUpdateET);
+
     DEBUG_MSG(DebugLevel::Timing, msg);
   }
 }
@@ -712,7 +713,8 @@ void SharedMemoryPlugin::TraceBeginUpdate(BuffT const& buffer, double& lastUpdat
     auto const delta = ticksNow - lastUpdateMillis;
 
     char msg[512] = {};
-    sprintf(msg, "%s - Begin Update:  Delta since last update:%f", msgPrefix, delta / MICROSECONDS_IN_SECOND);
+    sprintf(msg, "%s - Begin Update:  Delta since last update:%f  Version Begin:%d  End:%d", msgPrefix, delta / MICROSECONDS_IN_SECOND,
+      buffer.mpBuffVersionBlock->mVersionUpdateBegin, buffer.mpBuffVersionBlock->mVersionUpdateEnd);
 
     DEBUG_MSG(DebugLevel::Timing, msg);
 
