@@ -23,22 +23,11 @@ namespace rF2SMMonitor
   // ULONGLONG     ->    Int64
   public class rFactor2Constants
   {
-    public const string MM_TELEMETRY_FILE_NAME1 = "$rFactor2SMMP_TelemetryBuffer1$";
-    public const string MM_TELEMETRY_FILE_NAME2 = "$rFactor2SMMP_TelemetryBuffer2$";
-    public const string MM_TELEMETRY_FILE_ACCESS_MUTEX = @"Global\$rFactor2SMMP_TelemeteryMutex";
-
-    public const string MM_SCORING_FILE_NAME1 = "$rFactor2SMMP_ScoringBuffer1$";
-    public const string MM_SCORING_FILE_NAME2 = "$rFactor2SMMP_ScoringBuffer2$";
-    public const string MM_SCORING_FILE_ACCESS_MUTEX = @"Global\$rFactor2SMMP_ScoringMutex";
-
-    public const string MM_RULES_FILE_NAME1 = "$rFactor2SMMP_RulesBuffer1$";
-    public const string MM_RULES_FILE_NAME2 = "$rFactor2SMMP_RulesBuffer2$";
-    public const string MM_RULES_FILE_ACCESS_MUTEX = @"Global\$rFactor2SMMP_RulesMutex";
-
-    public const string MM_EXTENDED_FILE_NAME1 = "$rFactor2SMMP_ExtendedBuffer1$";
-    public const string MM_EXTENDED_FILE_NAME2 = "$rFactor2SMMP_ExtendedBuffer2$";
-    public const string MM_EXTENDED_FILE_ACCESS_MUTEX = @"Global\$rFactor2SMMP_ExtendedMutex";
-
+    public const string MM_TELEMETRY_FILE_NAME = "$rFactor2SMMP_Telemetry$";
+    public const string MM_SCORING_FILE_NAME = "$rFactor2SMMP_Scoring$";
+    public const string MM_RULES_FILE_NAME = "$rFactor2SMMP_Rules$";
+    public const string MM_EXTENDED_FILE_NAME = "$rFactor2SMMP_Extended$";
+    
     public const int MAX_MAPPED_VEHICLES = 128;
     public const int MAX_MAPPED_IDS = 512;
     public const string RFACTOR2_PROCESS_NAME = "rFactor2";
@@ -708,16 +697,21 @@ namespace rF2SMMonitor
 
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
-    public struct rF2MappedBufferHeader
+    public struct rF2MappedBufferVersionBlock
     {
-      public byte mCurrentRead;                 // True indicates buffer is safe to read under mutex.
+      // If both version variables are equal, buffer is not being written to, or we're extremely unlucky and second check is necessary.
+      // If versions don't match, buffer is being written to, or is incomplete (game crash, or missed transition).
+      public uint mVersionUpdateBegin;          // Incremented right before buffer is written to.
+      public uint mVersionUpdateEnd;            // Incremented after buffer write is done.
     }
 
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
-    public struct rF2MappedBufferHeaderWithSize
+    public struct rF2MappedBufferVersionBlockWithSize
     {
-      public byte mCurrentRead;                 // True indicates buffer is safe to read under mutex.
+      public uint mVersionUpdateBegin;          // Incremented right before buffer is written to.
+      public uint mVersionUpdateEnd;            // Incremented after buffer write is done.
+
       public int mBytesUpdatedHint;             // How many bytes of the structure were written during the last update.
                                                 // 0 means unknown (whole buffer should be considered as updated).
     }
@@ -726,7 +720,9 @@ namespace rF2SMMonitor
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
     public struct rF2Telemetry
     {
-      public byte mCurrentRead;                 // True indicates buffer is safe to read under mutex.
+      public uint mVersionUpdateBegin;          // Incremented right before buffer is written to.
+      public uint mVersionUpdateEnd;            // Incremented after buffer write is done.
+
       public int mBytesUpdatedHint;             // How many bytes of the structure were written during the last update.
                                                 // 0 means unknown (whole buffer should be considered as updated).
 
@@ -739,7 +735,9 @@ namespace rF2SMMonitor
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
     public struct rF2Scoring
     {
-      public byte mCurrentRead;                 // True indicates buffer is safe to read under mutex.
+      public uint mVersionUpdateBegin;          // Incremented right before buffer is written to.
+      public uint mVersionUpdateEnd;            // Incremented after buffer write is done.
+
       public int mBytesUpdatedHint;             // How many bytes of the structure were written during the last update.
                                                 // 0 means unknown (whole buffer should be considered as updated).
 
@@ -753,7 +751,9 @@ namespace rF2SMMonitor
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
     public struct rF2Rules
     {
-      public byte mCurrentRead;                 // True indicates buffer is safe to read under mutex.
+      public uint mVersionUpdateBegin;          // Incremented right before buffer is written to.
+      public uint mVersionUpdateEnd;            // Incremented after buffer write is done.
+
       public int mBytesUpdatedHint;             // How many bytes of the structure were written during the last update.
                                                 // 0 means unknown (whole buffer should be considered as updated).
 
@@ -811,7 +811,8 @@ namespace rF2SMMonitor
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
     public struct rF2Extended
     {
-      public byte mCurrentRead;                          // True indicates buffer is safe to read under mutex.
+      public uint mVersionUpdateBegin;          // Incremented right before buffer is written to.
+      public uint mVersionUpdateEnd;            // Incremented after buffer write is done.
 
       [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = 8)]
       public byte[] mVersion;                            // API version
@@ -839,13 +840,6 @@ namespace rF2SMMonitor
       public byte[] mDisplayedMessageUpdateCapture;
 
       public rF2HostedPluginVars mHostedPluginVars;
-    }
-
-
-    [StructLayout(LayoutKind.Sequential, Pack = 4)]
-    public struct rF2BufferHeader
-    {
-      internal byte mCurrentRead;                        // True indicates buffer is safe to read under mutex.
     }
   }
 }

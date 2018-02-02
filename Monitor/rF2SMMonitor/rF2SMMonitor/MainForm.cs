@@ -32,15 +32,13 @@ namespace rF2SMMonitor
     System.Windows.Forms.Timer disconnectTimer = new System.Windows.Forms.Timer();
     bool connected = false;
 
-    private class MappedDoubleBuffer<MappedBufferT>
+    private class MappedBuffer<MappedBufferT>
     {
-      readonly int RF2_BUFFER_HEADER_SIZE_BYTES = Marshal.SizeOf(typeof(rF2BufferHeader));
-      readonly int RF2_BUFFER_HEADER_WITH_SIZE_SIZE_BYTES = Marshal.SizeOf(typeof(rF2MappedBufferHeaderWithSize));
+      readonly int RF2_BUFFER_VERSION_BLOCK_SIZE_BYTES = Marshal.SizeOf(typeof(rF2MappedBufferVersionBlock));
+      readonly int RF2_BUFFER_VERSION_BLOCK_WITH_SIZE_SIZE_BYTES = Marshal.SizeOf(typeof(rF2MappedBufferVersionBlockWithSize));
 
       readonly int BUFFER_SIZE_BYTES;
-      readonly string BUFFER1_NAME;
-      readonly string BUFFER2_NAME;
-      readonly string MUTEX_NAME;
+      readonly string BUFFER_NAME;
 
       // Holds the entire byte array that can be marshalled to a MappedBufferT.  Partial updates
       // only read changed part of buffer, ignoring trailing uninteresting bytes.  However,
@@ -48,23 +46,17 @@ namespace rF2SMMonitor
       // (outside of the mutex).
       byte[] fullSizeBuffer = null;
 
-      Mutex mutex = null;
-      MemoryMappedFile memoryMappedFile1 = null;
-      MemoryMappedFile memoryMappedFile2 = null;
+      MemoryMappedFile memoryMappedFile = null;
 
-      public MappedDoubleBuffer(string buff1Name, string buff2Name, string mutexName)
+      public MappedBuffer(string buffName)
       {
         this.BUFFER_SIZE_BYTES = Marshal.SizeOf(typeof(MappedBufferT));
-        this.BUFFER1_NAME = buff1Name;
-        this.BUFFER2_NAME = buff2Name;
-        this.MUTEX_NAME = mutexName;
+        this.BUFFER_NAME = buffName;
       }
 
       public void Connect()
       {
-        this.mutex = Mutex.OpenExisting(this.MUTEX_NAME);
-        this.memoryMappedFile1 = MemoryMappedFile.OpenExisting(this.BUFFER1_NAME);
-        this.memoryMappedFile2 = MemoryMappedFile.OpenExisting(this.BUFFER2_NAME);
+        this.memoryMappedFile = MemoryMappedFile.OpenExisting(this.BUFFER_NAME);
 
         // NOTE: Make sure that BUFFER_SIZE matches the structure size in the plugin (debug mode prints that).
         this.fullSizeBuffer = new byte[this.BUFFER_SIZE_BYTES];
@@ -72,24 +64,56 @@ namespace rF2SMMonitor
 
       public void Disconnect()
       {
-        if (this.memoryMappedFile1 != null)
-          this.memoryMappedFile1.Dispose();
+        if (this.memoryMappedFile != null)
+          this.memoryMappedFile.Dispose();
 
-        if (this.memoryMappedFile2 != null)
-          this.memoryMappedFile2.Dispose();
-
-        if (this.mutex != null)
-          this.mutex.Dispose();
-
-        this.memoryMappedFile1 = null;
-        this.memoryMappedFile2 = null;
+        this.memoryMappedFile = null;
         this.fullSizeBuffer = null;
-        this.mutex = null;
       }
 
+      // Read success statistics.
+      int numReadSuccess = 0;
+      int numReadRetries = 0;
+      int numReadFailures = 0;
       public void GetMappedData(ref MappedBufferT mappedData)
       {
-        //
+        byte[] sharedMemoryReadBuffer = null;
+        using (var sharedMemoryStreamView = this.memoryMappedFile.CreateViewStream())
+        {
+          var sharedMemoryStream = new BinaryReader(sharedMemoryStreamView);
+          for (var retry = 0; retry < 3; ++retry)  // todo max
+          {
+            sharedMemoryStream.BaseStream.Position = 0;
+            sharedMemoryReadBuffer = sharedMemoryStream.ReadBytes(this.BUFFER_SIZE_BYTES);
+
+            // Marshal rF2 State buffer
+            var handle = GCHandle.Alloc(sharedMemoryReadBuffer, GCHandleType.Pinned);
+            mappedData = (MappedBufferT)Marshal.PtrToStructure(handle.AddrOfPinnedObject(), typeof(MappedBufferT));
+            var versionHeader = (rF2MappedBufferVersionBlock)Marshal.PtrToStructure(handle.AddrOfPinnedObject(), typeof(rF2MappedBufferVersionBlock));
+            handle.Free();
+
+            // Verify if Begin/End versions match:
+            if (versionHeader.mVersionUpdateBegin != versionHeader.mVersionUpdateEnd)
+            {
+              // TODO: verify if this is stale "out of sync" situation, that is, we're stuck in it.  No point in retrying there.
+              ++numReadRetries;
+              //Thread.Sleep(3);
+              continue;
+            }
+            // TODO: do read nr.2 
+            else
+            {
+              ++numReadSuccess;
+              return;
+            }
+          }
+
+          // TODO: store versions.
+          ++numReadFailures;
+        }
+
+
+        /*//
         // IMPORTANT:  Clients that do not need consistency accross the whole buffer, like dashboards that visualize data, _do not_ need to use mutexes.
         //
 
@@ -102,7 +126,7 @@ namespace rF2SMMonitor
           {
             bool buf1Current = false;
             // Try buffer 1:
-            using (var sharedMemoryStreamView = this.memoryMappedFile1.CreateViewStream())
+            using (var sharedMemoryStreamView = this.memoryMappedFile.CreateViewStream())
             {
               var sharedMemoryStream = new BinaryReader(sharedMemoryStreamView);
               sharedMemoryReadBuffer = sharedMemoryStream.ReadBytes(this.RF2_BUFFER_HEADER_SIZE_BYTES);
@@ -141,11 +165,11 @@ namespace rF2SMMonitor
           mappedData = (MappedBufferT)Marshal.PtrToStructure(handle.AddrOfPinnedObject(), typeof(MappedBufferT));
 
           handle.Free();
-        }
+        }*/
       }
 
       public void GetMappedDataPartial(ref MappedBufferT mappedData)
-      {
+      {/*
         //
         // IMPORTANT:  Clients that do not need consistency accross the whole buffer, like dashboards that visualize data, _do not_ need to use mutexes.
         //
@@ -161,7 +185,7 @@ namespace rF2SMMonitor
           {
             bool buf1Current = false;
             // Try buffer 1:
-            using (var sharedMemoryStreamView = this.memoryMappedFile1.CreateViewStream())
+            using (var sharedMemoryStreamView = this.memoryMappedFile.CreateViewStream())
             {
               var sharedMemoryStream = new BinaryReader(sharedMemoryStreamView);
               sharedMemoryReadBuffer = sharedMemoryStream.ReadBytes(this.RF2_BUFFER_HEADER_WITH_SIZE_SIZE_BYTES);
@@ -210,21 +234,14 @@ namespace rF2SMMonitor
           mappedData = (MappedBufferT)Marshal.PtrToStructure(handle.AddrOfPinnedObject(), typeof(MappedBufferT));
 
           handle.Free();
-        }
+        }*/
       }
     }
 
-    MappedDoubleBuffer<rF2Telemetry> telemetryBuffer = new MappedDoubleBuffer<rF2Telemetry>(rFactor2Constants.MM_TELEMETRY_FILE_NAME1, 
-      rFactor2Constants.MM_TELEMETRY_FILE_NAME2, rFactor2Constants.MM_TELEMETRY_FILE_ACCESS_MUTEX);
-
-    MappedDoubleBuffer<rF2Scoring> scoringBuffer = new MappedDoubleBuffer<rF2Scoring>(rFactor2Constants.MM_SCORING_FILE_NAME1,
-      rFactor2Constants.MM_SCORING_FILE_NAME2, rFactor2Constants.MM_SCORING_FILE_ACCESS_MUTEX);
-
-    MappedDoubleBuffer<rF2Rules> rulesBuffer = new MappedDoubleBuffer<rF2Rules>(rFactor2Constants.MM_RULES_FILE_NAME1,
-      rFactor2Constants.MM_RULES_FILE_NAME2, rFactor2Constants.MM_RULES_FILE_ACCESS_MUTEX);
-
-    MappedDoubleBuffer<rF2Extended> extendedBuffer = new MappedDoubleBuffer<rF2Extended>(rFactor2Constants.MM_EXTENDED_FILE_NAME1,
-      rFactor2Constants.MM_EXTENDED_FILE_NAME2, rFactor2Constants.MM_EXTENDED_FILE_ACCESS_MUTEX);
+    MappedBuffer<rF2Telemetry> telemetryBuffer = new MappedBuffer<rF2Telemetry>(rFactor2Constants.MM_TELEMETRY_FILE_NAME);
+    MappedBuffer<rF2Scoring> scoringBuffer = new MappedBuffer<rF2Scoring>(rFactor2Constants.MM_SCORING_FILE_NAME);
+    MappedBuffer<rF2Rules> rulesBuffer = new MappedBuffer<rF2Rules>(rFactor2Constants.MM_RULES_FILE_NAME);
+    MappedBuffer<rF2Extended> extendedBuffer = new MappedBuffer<rF2Extended>(rFactor2Constants.MM_EXTENDED_FILE_NAME);
 
     // Marshalled views:
     rF2Telemetry telemetry;
@@ -504,9 +521,12 @@ namespace rF2SMMonitor
       try
       {
         extendedBuffer.GetMappedData(ref extended);
-        scoringBuffer.GetMappedDataPartial(ref scoring);
-        telemetryBuffer.GetMappedDataPartial(ref telemetry);
-        rulesBuffer.GetMappedDataPartial(ref rules);
+        //scoringBuffer.GetMappedDataPartial(ref scoring);
+        scoringBuffer.GetMappedData(ref scoring);
+        //telemetryBuffer.GetMappedDataPartial(ref telemetry);
+        telemetryBuffer.GetMappedData(ref telemetry);
+        //rulesBuffer.GetMappedDataPartial(ref rules);
+        rulesBuffer.GetMappedData(ref rules);
       }
       catch (Exception)
       {

@@ -214,35 +214,35 @@ void SharedMemoryPlugin::Startup(long version)
   DEBUG_MSG(DebugLevel::CriticalInfo, "Files mapped successfully");
   if (SharedMemoryPlugin::msDebugOutputLevel != DebugLevel::Off) {
     char sizeSz[20] = {};
-    auto size = static_cast<int>(sizeof(rF2Telemetry));
+    auto size = static_cast<int>(sizeof(rF2Telemetry) + sizeof(rF2MappedBufferVersionBlock));
     _itoa_s(size, sizeSz, 10);
     DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of telemetry buffer:", sizeSz, "bytes.");
 
     assert(sizeof(rF2Telemetry) == offsetof(rF2Telemetry, mVehicles[rF2MappedBufferHeader::MAX_MAPPED_VEHICLES]));
 
     sizeSz[0] = '\0';
-    size = static_cast<int>(sizeof(rF2Scoring));
+    size = static_cast<int>(sizeof(rF2Scoring) + sizeof(rF2MappedBufferVersionBlock));
     _itoa_s(size, sizeSz, 10);
     DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of scoring buffer:", sizeSz, "bytes.");
 
     assert(sizeof(rF2Scoring) == offsetof(rF2Scoring, mVehicles[rF2MappedBufferHeader::MAX_MAPPED_VEHICLES]));
 
     sizeSz[0] = '\0';
-    size = static_cast<int>(sizeof(rF2Rules));
+    size = static_cast<int>(sizeof(rF2Rules) + sizeof(rF2MappedBufferVersionBlock));
     _itoa_s(size, sizeSz, 10);
     DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of rules buffer:", sizeSz, "bytes.");
 
     assert(sizeof(rF2Rules) == offsetof(rF2Rules, mParticipants[rF2MappedBufferHeader::MAX_MAPPED_VEHICLES]));
 
     sizeSz[0] = '\0';
-    size = static_cast<int>(sizeof(rF2MultiRules));
+    size = static_cast<int>(sizeof(rF2MultiRules) + sizeof(rF2MappedBufferVersionBlock));
     _itoa_s(size, sizeSz, 10);
     DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of multi rules buffer:", sizeSz, "bytes.");
 
     assert(sizeof(rF2MultiRules) == offsetof(rF2MultiRules, mParticipants[rF2MappedBufferHeader::MAX_MAPPED_VEHICLES]));
 
     sizeSz[0] = '\0';
-    size = static_cast<int>(sizeof(rF2Extended));
+    size = static_cast<int>(sizeof(rF2Extended) + sizeof(rF2MappedBufferVersionBlock));
     _itoa_s(size, sizeSz, 10);
     DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of extended buffer:", sizeSz, "bytes.");
   }
@@ -266,6 +266,10 @@ void SharedMemoryPlugin::Startup(long version)
 void SharedMemoryPlugin::Shutdown()
 {
   WriteToAllExampleOutputFiles("a", "-SHUTDOWN-");
+
+  // TODO: Review
+  if (mIsMapped && !mTelemetryFrameCompleted)
+    TelemetryCompleteFrame();
 
   mPluginHost.Shutdown();
   mPluginHost.Cleanup();
@@ -307,7 +311,9 @@ void SharedMemoryPlugin::Shutdown()
 
 void SharedMemoryPlugin::ClearTimingsAndCounters()
 {
-  mTelemetryFrameCompleted = true;
+  // TODO: Review
+  if (!mTelemetryFrameCompleted)
+    TelemetryCompleteFrame();
 
   mLastTelemetryUpdateMillis = 0.0;
   mLastTelemetryVehicleAddedMillis = 0.0;
@@ -378,6 +384,10 @@ void SharedMemoryPlugin::EndSession()
   if (!mIsMapped)
     return;
 
+  // TODO: Review
+  if (!mTelemetryFrameCompleted)
+    TelemetryCompleteFrame();
+
   mPluginHost.EndSession();
 
   DEBUG_MSG(DebugLevel::Timing, "SESSION - Ended.");
@@ -427,6 +437,10 @@ void SharedMemoryPlugin::ExitRealtime()
 {
   if (!mIsMapped)
     return;
+
+  // TODO: Review
+  if (!mTelemetryFrameCompleted)
+    TelemetryCompleteFrame();
 
   WriteToAllExampleOutputFiles("a", "---EXITREALTIME---");
 
@@ -630,7 +644,7 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
     // ahead of other vehicles.  This creates torn frames, and is a problem especially in online due to player
     // vehicle not having predefined position in a chain.
     // Current solution is to detect when 2ms step happens, which means that we effectively limit refresh
-    // to 50FPS (seems to be what game's doing anyway).
+    // to 50FPS (seems to be what game's doing anyway).  Alternatively, we could test position info changes.
     
     // We need to pick min ET for the frame because one of the vehicles in a frame might be slightly ahead of the rest.
     mLastTelemetryUpdateET = min(mLastTelemetryUpdateET, info.mElapsedTime);
@@ -641,10 +655,6 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
     // This is the new frame.  End the previous frame if it is still open:
     if (!mTelemetryFrameCompleted)
       TelemetryCompleteFrame();
-    /*else if (mTelemetry.RetryPending()) {  // Frame already complete, retry if flip is pending.
-      DEBUG_MSG(DebugLevel::Synchronization, "TELEMETRY - Retry pending buffer flip on new telemetry frame.");
-      TelemetryFlipBuffers();
-    }*/
 
     // Begin the new frame.  Reset tracking variables.
     TelemetryBeginNewFrame(info, deltaET);
@@ -677,9 +687,13 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
     // Write vehicle telemetry.
     memcpy(&(mTelemetry.mpBuff->mVehicles[mCurrTelemetryVehicleIndex]), &info, sizeof(rF2VehicleTelemetry));
     ++mCurrTelemetryVehicleIndex;
+
+    // Do not hold this frame open for longer than necessary, as it increases collision window.
+    if (mScoring.mpBuff->mScoringInfo.mNumVehicles == mCurrTelemetryVehicleIndex)
+      TelemetryCompleteFrame();
   }
   else {
-    // The chain is complete.
+    // The chain is complete, most likely due to vehicle updated again.
     if (!mTelemetryFrameCompleted) {
       // Trace the message marking beginning of ignore updates chain.
       TelemetryTraceSkipUpdate(info, deltaET);
