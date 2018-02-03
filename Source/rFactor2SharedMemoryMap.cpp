@@ -99,7 +99,7 @@ Limitations/Assumptions:
   - Negative mID is not supported.
   - Distance between max(mID) and min(mID) in a session cannot exceed rF2MappedBufferHeader::MAX_MAPPED_IDS.
   - Max mapped vehicles: rF2MappedBufferHeader::MAX_MAPPED_VEHICLES.
-  - Plugin assumes that delta Elapsed Time in a telemetry update frame cannot exceed 2ms (which effectively limits telemetry refresh rate to 50FPS).
+  - Plugin assumes that delta Elapsed Time in a telemetry update frame cannot exceed 20ms (which effectively limits telemetry refresh rate to 50FPS).
 
 
 Sample consumption:
@@ -618,10 +618,10 @@ void SharedMemoryPlugin::TelemetryCompleteFrame()
 rF2 sends telemetry updates for each vehicle.  The problem is that we do not know when all vehicles received an update.
 Below I am trying to flip buffers per-frame, where "frame" means all vehicles received telemetry update.
 
-I am detecting frame by checking time distance between mElapsedTime.  It appears that rF2 sends vehicle telemetry every 2ms
-(every 1ms really, but most of the time contents are duplicated).  As a consquence, we do flip every 2ms (50FPS).
+I am detecting frame by checking time distance between mElapsedTime.  It appears that rF2 sends vehicle telemetry every 20ms
+(every 1ms really, but most of the time contents are duplicated).  As a consquence, we do flip every 20ms (50FPS).
 
-Note that sometimes mElapsedTime for player vehicle is slightly ahead of the rest of vehicles (but never more than 2ms, most often being 0.25ms).
+Note that sometimes mElapsedTime for player vehicle is slightly ahead of the rest of vehicles (but never more than 20ms, most often being 2.5ms).
 
 There's an alternative approach that can be taken: it appears that game sends vehicle telemetry ordered by mID (ascending order).
 So we could detect new frame by checking mIDs and cut when mIDPrev >= mIDCurrent.
@@ -637,13 +637,13 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
 
   bool isNewFrame = false;
   auto const deltaET = info.mElapsedTime - mLastTelemetryUpdateET;
-  if (abs(deltaET) >= 0.0199)  // Apparently, rF2 telemetry update step is 2ms.
+  if (abs(deltaET) >= 0.0199)  // Apparently, rF2 telemetry update step is 20ms.
     isNewFrame = true;
   else {
     // Sometimes, player vehicle telemetry is updated more frequently than other vehicles.  What that means is that ET of player is
     // ahead of other vehicles.  This creates torn frames, and is a problem especially in online due to player
     // vehicle not having predefined position in a chain.
-    // Current solution is to detect when 2ms step happens, which means that we effectively limit refresh
+    // Current solution is to detect when 20ms step happens, which means that we effectively limit refresh
     // to 50FPS (seems to be what game's doing anyway).  Alternatively, we could test position info changes.
     
     // We need to pick min ET for the frame because one of the vehicles in a frame might be slightly ahead of the rest.

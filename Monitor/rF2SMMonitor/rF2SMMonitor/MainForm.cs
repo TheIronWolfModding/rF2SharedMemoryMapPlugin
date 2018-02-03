@@ -74,7 +74,9 @@ namespace rF2SMMonitor
       // Read success statistics.
       int numReadSuccess = 0;
       int numReadRetries = 0;
+      int numReadRetriesOnCheck = 0;
       int numReadFailures = 0;
+      int numStuckFrames = 0;
       public void GetMappedData(ref MappedBufferT mappedData)
       {
         byte[] sharedMemoryReadBuffer = null;
@@ -111,7 +113,6 @@ namespace rF2SMMonitor
           // TODO: store versions.
           ++numReadFailures;
         }
-
 
         /*//
         // IMPORTANT:  Clients that do not need consistency accross the whole buffer, like dashboards that visualize data, _do not_ need to use mutexes.
@@ -167,6 +168,14 @@ namespace rF2SMMonitor
           handle.Free();
         }*/
       }
+
+      private string typeName = typeof(MappedBufferT).ToString();
+      public string GetStats()
+      {
+        var type = typeName.Substring(typeName.LastIndexOf('.'));
+        return string.Format("{0}: S:{1} R:{2} R2:{3} F:{4} ST{5}", type, this.numReadSuccess, this.numReadRetries, this.numReadRetriesOnCheck, this.numReadFailures, this.numStuckFrames);
+      }
+
 
       public void GetMappedDataPartial(ref MappedBufferT mappedData)
       {/*
@@ -753,8 +762,17 @@ namespace rF2SMMonitor
         // Col2 values
         g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Purple, currX + 120, currY);
 
+        gameStateText.Clear();
+        gameStateText.Append(
+          this.telemetryBuffer.GetStats() + '\n'
+          + this.scoringBuffer.GetStats() + '\n'
+          + this.rulesBuffer.GetStats() + '\n'
+          + this.extendedBuffer.GetStats());
+
+        g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Black, 1600, 570);
+
         if (this.logLightMode)
-          return;
+            return;
 
         // Branch of UI choice: origin center or car# center
         // Fix rotation on car of choice or no.
