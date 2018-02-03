@@ -268,7 +268,7 @@ void SharedMemoryPlugin::Shutdown()
   WriteToAllExampleOutputFiles("a", "-SHUTDOWN-");
 
   // TODO: Review
-  if (mIsMapped && !mTelemetryFrameCompleted)
+  if (mIsMapped)
     TelemetryCompleteFrame();
 
   mPluginHost.Shutdown();
@@ -312,8 +312,7 @@ void SharedMemoryPlugin::Shutdown()
 void SharedMemoryPlugin::ClearTimingsAndCounters()
 {
   // TODO: Review
-  if (!mTelemetryFrameCompleted)
-    TelemetryCompleteFrame();
+  TelemetryCompleteFrame();
 
   mLastTelemetryUpdateMillis = 0.0;
   mLastTelemetryVehicleAddedMillis = 0.0;
@@ -385,8 +384,7 @@ void SharedMemoryPlugin::EndSession()
     return;
 
   // TODO: Review
-  if (!mTelemetryFrameCompleted)
-    TelemetryCompleteFrame();
+  TelemetryCompleteFrame();
 
   mPluginHost.EndSession();
 
@@ -439,8 +437,7 @@ void SharedMemoryPlugin::ExitRealtime()
     return;
 
   // TODO: Review
-  if (!mTelemetryFrameCompleted)
-    TelemetryCompleteFrame();
+  TelemetryCompleteFrame();
 
   WriteToAllExampleOutputFiles("a", "---EXITREALTIME---");
 
@@ -473,9 +470,11 @@ double TicksNow() {
 }
 
 
-void SharedMemoryPlugin::TelemetryTraceSkipUpdate(TelemInfoV01 const& info, double deltaET) const
+void SharedMemoryPlugin::TelemetryTraceSkipUpdate(TelemInfoV01 const& info, double deltaET)
 {
-  if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::Timing) {
+  if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::Timing
+    && !mTelemetrySkipFrameReported) {
+    mTelemetrySkipFrameReported = true;
     char msg[512] = {};
     sprintf(msg, "TELEMETRY - Skipping update due to no changes in the input data.  Delta ET: %f  New ET: %f  Prev ET:%f  mID(new):%d", deltaET, info.mElapsedTime, mLastTelemetryUpdateET, info.mID);
     DEBUG_MSG(DebugLevel::Timing, msg);
@@ -521,7 +520,7 @@ void SharedMemoryPlugin::TelemetryTraceBeginUpdate(double telUpdateET, double de
 void SharedMemoryPlugin::TelemetryTraceVehicleAdded(TelemInfoV01 const& info) 
 {
   if (SharedMemoryPlugin::msDebugOutputLevel == DebugLevel::Verbose) {
-    // If retry is pending, previous data is in write buffer, otherwise it is in read buffer.
+    // If retry is pending, previous data is in a write buffer, otherwise it is in a read buffer.
     auto const prevBuff = mTelemetry.mpBuff;
     bool const samePos = info.mPos.x == prevBuff->mVehicles[mCurrTelemetryVehicleIndex].mPos.x
       && info.mPos.y == prevBuff->mVehicles[mCurrTelemetryVehicleIndex].mPos.y
@@ -591,6 +590,7 @@ void SharedMemoryPlugin::TelemetryBeginNewFrame(TelemInfoV01 const& info, double
 
   mTelemetryFrameCompleted = false;
   mCurrTelemetryVehicleIndex = 0;
+  mTelemetrySkipFrameReported = false;
 
   // Update telemetry frame Elapsed Time.
   mLastTelemetryUpdateET = info.mElapsedTime;
@@ -600,15 +600,15 @@ void SharedMemoryPlugin::TelemetryBeginNewFrame(TelemInfoV01 const& info, double
 
 void SharedMemoryPlugin::TelemetryCompleteFrame()
 {
+  if (mTelemetryFrameCompleted)
+    return;
+
   mTelemetry.mpBuff->mNumVehicles = mCurrTelemetryVehicleIndex;
   mTelemetry.mpBuff->mBytesUpdatedHint = static_cast<int>(offsetof(rF2Telemetry, mVehicles[mTelemetry.mpBuff->mNumVehicles]));
 
   mTelemetry.EndUpdate();
 
   TelemetryTraceEndUpdate(mTelemetry.mpBuff->mNumVehicles);
-
-  // Try flipping the buffers.
-  //TelemetryFlipBuffers();
 
   mTelemetryFrameCompleted = true;
 }
@@ -653,15 +653,16 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
   if (isNewFrame
     || mCurrTelemetryVehicleIndex >= rF2MappedBufferHeader::MAX_MAPPED_VEHICLES) {
     // This is the new frame.  End the previous frame if it is still open:
-    if (!mTelemetryFrameCompleted)
-      TelemetryCompleteFrame();
+    TelemetryCompleteFrame();
 
     // Begin the new frame.  Reset tracking variables.
     TelemetryBeginNewFrame(info, deltaET);
   }
 
-  if (mTelemetryFrameCompleted)
+  if (mTelemetryFrameCompleted) {
+    TelemetryTraceSkipUpdate(info, deltaET);
     return;  // Nothing to do.
+  }
 
   // See if we are in a cycle.
   auto const participantIndex = max(info.mID, 0L) % rF2MappedBufferHeader::MAX_MAPPED_IDS;
@@ -689,6 +690,7 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
     ++mCurrTelemetryVehicleIndex;
 
     // Do not hold this frame open for longer than necessary, as it increases collision window.
+    // This also reduces latency to the minimum.
     if (mScoring.mpBuff->mScoringInfo.mNumVehicles == mCurrTelemetryVehicleIndex)
       TelemetryCompleteFrame();
   }

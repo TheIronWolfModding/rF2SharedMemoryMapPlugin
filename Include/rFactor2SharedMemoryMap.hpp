@@ -247,11 +247,10 @@ private:
   void ClearState();
   void ClearTimingsAndCounters();
 
-  void TelemetryTraceSkipUpdate(TelemInfoV01 const& info, double deltaET) const;
+  void TelemetryTraceSkipUpdate(TelemInfoV01 const& info, double deltaET);
   void TelemetryTraceBeginUpdate(double telUpdateET, double deltaET);
   void TelemetryTraceVehicleAdded(TelemInfoV01 const& infos);
   void TelemetryTraceEndUpdate(int numVehiclesInChain) const;
-  void TelemetryFlipBuffers();
   void TelemetryBeginNewFrame(TelemInfoV01 const& info, double deltaET);
   void TelemetryCompleteFrame();
 
@@ -279,6 +278,7 @@ private:
   double mLastScoringUpdateET = -1.0;
   // Telemetry update tracking variables:
   bool mTelemetryFrameCompleted = true;
+  bool mTelemetrySkipFrameReported = false;
   int mCurrTelemetryVehicleIndex = 0;
   // Array used to track if mID telemetry is captured for this update.
   // Indexed by mID % rF2MappedBufferHeader::MAX_MAPPED_IDS, so will break down if max(mID) - min(mID) in a frame >= rF2MappedBufferHeader::MAX_MAPPED_IDS
