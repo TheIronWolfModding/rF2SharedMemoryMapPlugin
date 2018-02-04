@@ -34,6 +34,7 @@ namespace rF2SMMonitor
 
     private class MappedBuffer<MappedBufferT>
     {
+      const int NUM_MAX_RETRIEES = 5;
       readonly int RF2_BUFFER_VERSION_BLOCK_SIZE_BYTES = Marshal.SizeOf(typeof(rF2MappedBufferVersionBlock));
       readonly int RF2_BUFFER_VERSION_BLOCK_WITH_SIZE_SIZE_BYTES = Marshal.SizeOf(typeof(rF2MappedBufferVersionBlockWithSize));
 
@@ -72,18 +73,22 @@ namespace rF2SMMonitor
       }
 
       // Read success statistics.
-      int numReadSuccess = 0;
       int numReadRetries = 0;
       int numReadRetriesOnCheck = 0;
       int numReadFailures = 0;
       int numStuckFrames = 0;
+      uint stuckVersionBegin = 0;
+      uint stuckVersionEnd = 0;
+
       public void GetMappedData(ref MappedBufferT mappedData)
       {
-        byte[] sharedMemoryReadBuffer = null;
         using (var sharedMemoryStreamView = this.memoryMappedFile.CreateViewStream())
         {
-          var sharedMemoryStream = new BinaryReader(sharedMemoryStreamView);
-          for (var retry = 0; retry < 3; ++retry)  // todo max
+          this.GetMappedDataHelper(sharedMemoryStreamView, this.BUFFER_SIZE_BYTES, ref mappedData);
+        }
+      }
+          //var sharedMemoryStream = new BinaryReader(sharedMemoryStreamView);
+          /*for (var retry = 0; retry < NUM_MAX_RETRIEES; ++retry)  // TODO: max
           {
             sharedMemoryStream.BaseStream.Position = 0;
             sharedMemoryReadBuffer = sharedMemoryStream.ReadBytes(this.BUFFER_SIZE_BYTES);
@@ -97,22 +102,61 @@ namespace rF2SMMonitor
             // Verify if Begin/End versions match:
             if (versionHeader.mVersionUpdateBegin != versionHeader.mVersionUpdateEnd)
             {
-              // TODO: verify if this is stale "out of sync" situation, that is, we're stuck in it.  No point in retrying there.
+              failedVersionBegin = versionHeader.mVersionUpdateBegin;
+              failedVersionEnd = versionHeader.mVersionUpdateEnd;
+
+              if (failedVersionBegin == this.stuckVersionBegin
+                && failedVersionEnd == this.stuckVersionEnd)
+              {
+                // If this is stale "out of sync" situation, that is, we're stuck in, no point in retrying here.
+                // Could be bug in a game, plugin or a game crash.
+                ++this.numStuckFrames;
+                return;
+              }
+
               ++numReadRetries;
-              //Thread.Sleep(3);
               continue;
             }
-            // TODO: do read nr.2 
-            else
-            {
-              ++numReadSuccess;
-              return;
-            }
-          }
 
-          // TODO: store versions.
-          ++numReadFailures;
-        }
+            // Read the version header one more time.  This is for the case, that might not be even possible in reality,
+            // but it is possible in my head.  Since it is cheap, no harm reading again really, aside from retry that
+            // sometimes will be required if buffer is updated between checks.
+            //
+            // Anyway, the case is
+            // * Reader thread reads updateBegin version and continues to read buffer. 
+            // * Simultaneously, Writer thread begins overwriting the buffer.
+            // * If Reader thread reads updateEnd before Writer thread finishes, it will look 
+            //   like updateBegin == updateEnd.But we actually just read a partially overwritten buffer.
+            //
+            // Hence, this second check is needed here.Even if writer thread still hasn't finished writing,
+            // we still will be able to detect this case because now updateBegin version changed, so we
+            // know Writer is updating the buffer.
+
+            sharedMemoryStream.BaseStream.Position = 0;
+            sharedMemoryReadBuffer = sharedMemoryStream.ReadBytes(this.RF2_BUFFER_VERSION_BLOCK_SIZE_BYTES);
+
+            handle = GCHandle.Alloc(sharedMemoryReadBuffer, GCHandleType.Pinned);
+            var versionHeaderCheck2 = (rF2MappedBufferVersionBlock)Marshal.PtrToStructure(handle.AddrOfPinnedObject(), typeof(rF2MappedBufferVersionBlock));
+            handle.Free();
+
+            if (versionHeader.mVersionUpdateBegin != versionHeaderCheck2.mVersionUpdateBegin
+              || versionHeader.mVersionUpdateEnd != versionHeaderCheck2.mVersionUpdateEnd)
+            {
+              ++this.numReadRetriesOnCheck;
+              continue;
+            }
+
+            // Success.
+            this.stuckVersionBegin = this.stuckVersionEnd = 0;
+            return;*/
+          //}
+
+          // Failure.
+         // this.stuckVersionBegin = failedVersionBegin;
+          //this.stuckVersionEnd = failedVersionEnd;
+
+//          ++numReadFailures;
+        //}
 
         /*//
         // IMPORTANT:  Clients that do not need consistency accross the whole buffer, like dashboards that visualize data, _do not_ need to use mutexes.
@@ -167,15 +211,87 @@ namespace rF2SMMonitor
 
           handle.Free();
         }*/
+      //}
+
+      private void GetMappedDataHelper(MemoryMappedViewStream sharedMemoryStreamView, int bufferSizeBytes, ref MappedBufferT mappedData)
+      {
+        var sharedMemoryStream = new BinaryReader(sharedMemoryStreamView);
+        uint failedVersionBegin = 0;
+        uint failedVersionEnd = 0;
+        for (var retry = 0; retry < MappedBuffer<MappedBufferT>.NUM_MAX_RETRIEES; ++retry)
+        {
+          sharedMemoryStream.BaseStream.Position = 0;
+          var sharedMemoryReadBuffer = sharedMemoryStream.ReadBytes(bufferSizeBytes);
+
+          // Marshal rF2 State buffer
+          var handle = GCHandle.Alloc(sharedMemoryReadBuffer, GCHandleType.Pinned);
+          mappedData = (MappedBufferT)Marshal.PtrToStructure(handle.AddrOfPinnedObject(), typeof(MappedBufferT));
+          var versionHeader = (rF2MappedBufferVersionBlock)Marshal.PtrToStructure(handle.AddrOfPinnedObject(), typeof(rF2MappedBufferVersionBlock));
+          handle.Free();
+
+          // Verify if Begin/End versions match:
+          if (versionHeader.mVersionUpdateBegin != versionHeader.mVersionUpdateEnd)
+          {
+            failedVersionBegin = versionHeader.mVersionUpdateBegin;
+            failedVersionEnd = versionHeader.mVersionUpdateEnd;
+
+            if (failedVersionBegin == this.stuckVersionBegin
+              && failedVersionEnd == this.stuckVersionEnd)
+            {
+              // If this is stale "out of sync" situation, that is, we're stuck in, no point in retrying here.
+              // Could be bug in a game, plugin or a game crash.
+              ++this.numStuckFrames;
+              return;
+            }
+
+            ++numReadRetries;
+            continue;
+          }
+
+          // Read the version header one more time.  This is for the case, that might not be even possible in reality,
+          // but it is possible in my head.  Since it is cheap, no harm reading again really, aside from retry that
+          // sometimes will be required if buffer is updated between checks.
+          //
+          // Anyway, the case is
+          // * Reader thread reads updateBegin version and continues to read buffer. 
+          // * Simultaneously, Writer thread begins overwriting the buffer.
+          // * If Reader thread reads updateEnd before Writer thread finishes, it will look 
+          //   like updateBegin == updateEnd.But we actually just read a partially overwritten buffer.
+          //
+          // Hence, this second check is needed here.Even if writer thread still hasn't finished writing,
+          // we still will be able to detect this case because now updateBegin version changed, so we
+          // know Writer is updating the buffer.
+
+          sharedMemoryStream.BaseStream.Position = 0;
+          sharedMemoryReadBuffer = sharedMemoryStream.ReadBytes(this.RF2_BUFFER_VERSION_BLOCK_SIZE_BYTES);
+
+          handle = GCHandle.Alloc(sharedMemoryReadBuffer, GCHandleType.Pinned);
+          var versionHeaderCheck2 = (rF2MappedBufferVersionBlock)Marshal.PtrToStructure(handle.AddrOfPinnedObject(), typeof(rF2MappedBufferVersionBlock));
+          handle.Free();
+
+          if (versionHeader.mVersionUpdateBegin != versionHeaderCheck2.mVersionUpdateBegin
+            || versionHeader.mVersionUpdateEnd != versionHeaderCheck2.mVersionUpdateEnd)
+          {
+            ++this.numReadRetriesOnCheck;
+            continue;
+          }
+
+          // Success.
+          this.stuckVersionBegin = this.stuckVersionEnd = 0;
+          return;
+        }
+
+        // Failure.
+        this.stuckVersionBegin = failedVersionBegin;
+        this.stuckVersionEnd = failedVersionEnd;
+
+        ++this.numReadFailures;
       }
 
-      private string typeName = typeof(MappedBufferT).ToString();
       public string GetStats()
       {
-        var type = typeName.Substring(typeName.LastIndexOf('.'));
-        return string.Format("{0}: S:{1} R:{2} R2:{3} F:{4} ST{5}", type, this.numReadSuccess, this.numReadRetries, this.numReadRetriesOnCheck, this.numReadFailures, this.numStuckFrames);
+        return string.Format("R: {0}    R2: {1}    F: {2}    ST: {3}", this.numReadRetries, this.numReadRetriesOnCheck, this.numReadFailures, this.numStuckFrames);
       }
-
 
       public void GetMappedDataPartial(ref MappedBufferT mappedData)
       {/*
@@ -697,6 +813,25 @@ namespace rF2SMMonitor
         // Col1 values
         g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Purple, currX + 145, currY);
 
+        // Print buffer stats.
+        gameStateText.Clear();
+        gameStateText.Append(
+          "Telemetry:\n"
+          + "Scoring:\n"
+          + "Rules:\n"
+          + "Extended:");
+
+        g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Black, 1600, 570);
+
+        gameStateText.Clear();
+        gameStateText.Append(
+          this.telemetryBuffer.GetStats() + '\n'
+          + this.scoringBuffer.GetStats() + '\n'
+          + this.rulesBuffer.GetStats() + '\n'
+          + this.extendedBuffer.GetStats());
+
+        g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Black, 1700, 570);
+        
         if (this.scoring.mScoringInfo.mNumVehicles == 0
           || resolvedPlayerIdx == -1)  // We need telemetry for stats below.
           return;
@@ -761,15 +896,6 @@ namespace rF2SMMonitor
 
         // Col2 values
         g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Purple, currX + 120, currY);
-
-        gameStateText.Clear();
-        gameStateText.Append(
-          this.telemetryBuffer.GetStats() + '\n'
-          + this.scoringBuffer.GetStats() + '\n'
-          + this.rulesBuffer.GetStats() + '\n'
-          + this.extendedBuffer.GetStats());
-
-        g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Black, 1600, 570);
 
         if (this.logLightMode)
             return;
