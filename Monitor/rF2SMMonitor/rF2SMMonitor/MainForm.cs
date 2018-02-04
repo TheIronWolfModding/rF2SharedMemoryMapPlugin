@@ -34,7 +34,7 @@ namespace rF2SMMonitor
 
     private class MappedBuffer<MappedBufferT>
     {
-      const int NUM_MAX_RETRIEES = 5;
+      const int NUM_MAX_RETRIEES = 10;
       readonly int RF2_BUFFER_VERSION_BLOCK_SIZE_BYTES = Marshal.SizeOf(typeof(rF2MappedBufferVersionBlock));
       readonly int RF2_BUFFER_VERSION_BLOCK_WITH_SIZE_SIZE_BYTES = Marshal.SizeOf(typeof(rF2MappedBufferVersionBlockWithSize));
 
@@ -225,6 +225,7 @@ namespace rF2SMMonitor
 
           // Marshal rF2 State buffer
           var handle = GCHandle.Alloc(sharedMemoryReadBuffer, GCHandleType.Pinned);
+          // TODO: this could possibly be avoded till we succeded.
           mappedData = (MappedBufferT)Marshal.PtrToStructure(handle.AddrOfPinnedObject(), typeof(MappedBufferT));
           var versionHeader = (rF2MappedBufferVersionBlock)Marshal.PtrToStructure(handle.AddrOfPinnedObject(), typeof(rF2MappedBufferVersionBlock));
           handle.Free();
@@ -294,7 +295,97 @@ namespace rF2SMMonitor
       }
 
       public void GetMappedDataPartial(ref MappedBufferT mappedData)
-      {/*
+      {
+        using (var sharedMemoryStreamView = this.memoryMappedFile.CreateViewStream())
+        {
+          // Get the size of 
+          var sharedMemoryStream = new BinaryReader(sharedMemoryStreamView);
+          uint failedVersionBegin = 0;
+          uint failedVersionEnd = 0;
+          for (var retry = 0; retry < MappedBuffer<MappedBufferT>.NUM_MAX_RETRIEES; ++retry)
+          {
+            sharedMemoryStream.BaseStream.Position = 0;
+            var sharedMemoryReadBufferHeader = sharedMemoryStream.ReadBytes(this.RF2_BUFFER_VERSION_BLOCK_WITH_SIZE_SIZE_BYTES);
+
+            var handle = GCHandle.Alloc(sharedMemoryReadBufferHeader, GCHandleType.Pinned);
+            var versionHeaderWithSize = (rF2MappedBufferVersionBlockWithSize)Marshal.PtrToStructure(handle.AddrOfPinnedObject(), typeof(rF2MappedBufferVersionBlockWithSize)); ;
+            handle.Free();
+
+            sharedMemoryStream.BaseStream.Position = 0;
+            var sharedMemoryReadBuffer = sharedMemoryStream.ReadBytes(versionHeaderWithSize.mBytesUpdatedHint != 0 ? versionHeaderWithSize.mBytesUpdatedHint : this.BUFFER_SIZE_BYTES);
+
+            // Marshal rF2 State buffer
+            handle = GCHandle.Alloc(sharedMemoryReadBuffer, GCHandleType.Pinned);
+            var versionHeader = (rF2MappedBufferVersionBlock)Marshal.PtrToStructure(handle.AddrOfPinnedObject(), typeof(rF2MappedBufferVersionBlock));
+            handle.Free();
+
+            // Verify if Begin/End versions match:
+            if (versionHeader.mVersionUpdateBegin != versionHeader.mVersionUpdateEnd)
+            {
+              failedVersionBegin = versionHeader.mVersionUpdateBegin;
+              failedVersionEnd = versionHeader.mVersionUpdateEnd;
+
+              if (failedVersionBegin == this.stuckVersionBegin
+                && failedVersionEnd == this.stuckVersionEnd)
+              {
+                // If this is stale "out of sync" situation, that is, we're stuck in, no point in retrying here.
+                // Could be bug in a game, plugin or a game crash.
+                ++this.numStuckFrames;
+                return;
+              }
+
+              Thread.Sleep(1);
+              ++numReadRetries;
+              continue;
+            }
+
+            // Read the version header one more time.  This is for the case, that might not be even possible in reality,
+            // but it is possible in my head.  Since it is cheap, no harm reading again really, aside from retry that
+            // sometimes will be required if buffer is updated between checks.
+            //
+            // Anyway, the case is
+            // * Reader thread reads updateBegin version and continues to read buffer. 
+            // * Simultaneously, Writer thread begins overwriting the buffer.
+            // * If Reader thread reads updateEnd before Writer thread finishes, it will look 
+            //   like updateBegin == updateEnd.But we actually just read a partially overwritten buffer.
+            //
+            // Hence, this second check is needed here.Even if writer thread still hasn't finished writing,
+            // we still will be able to detect this case because now updateBegin version changed, so we
+            // know Writer is updating the buffer.
+
+            sharedMemoryStream.BaseStream.Position = 0;
+            var sharedMemoryReadBufferLastCheck = sharedMemoryStream.ReadBytes(this.RF2_BUFFER_VERSION_BLOCK_SIZE_BYTES);
+
+            handle = GCHandle.Alloc(sharedMemoryReadBufferLastCheck, GCHandleType.Pinned);
+            var versionHeaderCheck2 = (rF2MappedBufferVersionBlock)Marshal.PtrToStructure(handle.AddrOfPinnedObject(), typeof(rF2MappedBufferVersionBlock));
+            handle.Free();
+
+            if (versionHeader.mVersionUpdateBegin != versionHeaderCheck2.mVersionUpdateBegin
+              || versionHeader.mVersionUpdateEnd != versionHeaderCheck2.mVersionUpdateEnd)
+            {
+              ++this.numReadRetriesOnCheck;
+              continue;
+            }
+
+            // Marshal rF2 State buffer
+            Array.Copy(sharedMemoryReadBuffer, this.fullSizeBuffer, sharedMemoryReadBuffer.Length);
+            handle = GCHandle.Alloc(this.fullSizeBuffer, GCHandleType.Pinned);
+            mappedData = (MappedBufferT)Marshal.PtrToStructure(handle.AddrOfPinnedObject(), typeof(MappedBufferT));
+            handle.Free();
+
+            // Success.
+            this.stuckVersionBegin = this.stuckVersionEnd = 0;
+            return;
+          }
+
+          // Failure.
+          this.stuckVersionBegin = failedVersionBegin;
+          this.stuckVersionEnd = failedVersionEnd;
+
+          ++this.numReadFailures;
+        }
+
+        /*
         //
         // IMPORTANT:  Clients that do not need consistency accross the whole buffer, like dashboards that visualize data, _do not_ need to use mutexes.
         //
@@ -646,12 +737,12 @@ namespace rF2SMMonitor
       try
       {
         extendedBuffer.GetMappedData(ref extended);
-        //scoringBuffer.GetMappedDataPartial(ref scoring);
-        scoringBuffer.GetMappedData(ref scoring);
+        scoringBuffer.GetMappedDataPartial(ref scoring);
+        //scoringBuffer.GetMappedData(ref scoring);
         //telemetryBuffer.GetMappedDataPartial(ref telemetry);
         telemetryBuffer.GetMappedData(ref telemetry);
-        //rulesBuffer.GetMappedDataPartial(ref rules);
-        rulesBuffer.GetMappedData(ref rules);
+        rulesBuffer.GetMappedDataPartial(ref rules);
+        //rulesBuffer.GetMappedData(ref rules);
       }
       catch (Exception)
       {
