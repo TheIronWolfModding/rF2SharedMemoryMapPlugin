@@ -27,14 +27,15 @@ namespace rF2SMMonitor
     private const int CONNECTION_RETRY_INTERVAL_MS = 1000;
     private const int DISCONNECTED_CHECK_INTERVAL_MS = 15000;
     private const float DEGREES_IN_RADIAN = 57.2957795f;
-    private const int LIGHT_MODE_REFRESH_MS = 500;
+    //private const int LIGHT_MODE_REFRESH_MS = 500;
+    private const int LIGHT_MODE_REFRESH_MS = 50;
     System.Windows.Forms.Timer connectTimer = new System.Windows.Forms.Timer();
     System.Windows.Forms.Timer disconnectTimer = new System.Windows.Forms.Timer();
     bool connected = false;
 
     private class MappedBuffer<MappedBufferT>
     {
-      const int NUM_MAX_RETRIEES = 10;
+      const int NUM_MAX_RETRIEES = 30;
       readonly int RF2_BUFFER_VERSION_BLOCK_SIZE_BYTES = Marshal.SizeOf(typeof(rF2MappedBufferVersionBlock));
       readonly int RF2_BUFFER_VERSION_BLOCK_WITH_SIZE_SIZE_BYTES = Marshal.SizeOf(typeof(rF2MappedBufferVersionBlockWithSize));
 
@@ -79,7 +80,8 @@ namespace rF2SMMonitor
       int numStuckFrames = 0;
       uint stuckVersionBegin = 0;
       uint stuckVersionEnd = 0;
-
+      int maxRetries = 0;
+#if false
       public void GetMappedData(ref MappedBufferT mappedData)
       {
         using (var sharedMemoryStreamView = this.memoryMappedFile.CreateViewStream())
@@ -288,36 +290,46 @@ namespace rF2SMMonitor
 
         ++this.numReadFailures;
       }
+#endif
 
       public string GetStats()
       {
-        return string.Format("R: {0}    R2: {1}    F: {2}    ST: {3}", this.numReadRetries, this.numReadRetriesOnCheck, this.numReadFailures, this.numStuckFrames);
+        return string.Format("R: {0}    R2: {1}    F: {2}    ST: {3}    MR: {4}", this.numReadRetries, this.numReadRetriesOnCheck, this.numReadFailures, this.numStuckFrames, this.maxRetries);
       }
 
-      public void GetMappedDataPartial(ref MappedBufferT mappedData)
+      public void GetMappedData(ref MappedBufferT mappedData, bool partial)
       {
+        byte[] sharedMemoryReadBuffer = null;
         using (var sharedMemoryStreamView = this.memoryMappedFile.CreateViewStream())
         {
           // Get the size of 
           var sharedMemoryStream = new BinaryReader(sharedMemoryStreamView);
           uint failedVersionBegin = 0;
           uint failedVersionEnd = 0;
-          for (var retry = 0; retry < MappedBuffer<MappedBufferT>.NUM_MAX_RETRIEES; ++retry)
+          var retry = 0;
+          for (retry = 0; retry < MappedBuffer<MappedBufferT>.NUM_MAX_RETRIEES; ++retry)
           {
+            var bufferSizeBytes = this.BUFFER_SIZE_BYTES;
+            if (partial)
+            {
+              sharedMemoryStream.BaseStream.Position = 0;
+              var sharedMemoryReadBufferHeader = sharedMemoryStream.ReadBytes(this.RF2_BUFFER_VERSION_BLOCK_WITH_SIZE_SIZE_BYTES);
+
+              var handleBufferHeader = GCHandle.Alloc(sharedMemoryReadBufferHeader, GCHandleType.Pinned);
+              var versionHeaderWithSize = (rF2MappedBufferVersionBlockWithSize)Marshal.PtrToStructure(handleBufferHeader.AddrOfPinnedObject(), typeof(rF2MappedBufferVersionBlockWithSize)); ;
+              handleBufferHeader.Free();
+
+              bufferSizeBytes = versionHeaderWithSize.mBytesUpdatedHint != 0 ? versionHeaderWithSize.mBytesUpdatedHint : bufferSizeBytes;
+            }
+
+            // Read the mapped data.
             sharedMemoryStream.BaseStream.Position = 0;
-            var sharedMemoryReadBufferHeader = sharedMemoryStream.ReadBytes(this.RF2_BUFFER_VERSION_BLOCK_WITH_SIZE_SIZE_BYTES);
+            sharedMemoryReadBuffer = sharedMemoryStream.ReadBytes(bufferSizeBytes);
 
-            var handle = GCHandle.Alloc(sharedMemoryReadBufferHeader, GCHandleType.Pinned);
-            var versionHeaderWithSize = (rF2MappedBufferVersionBlockWithSize)Marshal.PtrToStructure(handle.AddrOfPinnedObject(), typeof(rF2MappedBufferVersionBlockWithSize)); ;
-            handle.Free();
-
-            sharedMemoryStream.BaseStream.Position = 0;
-            var sharedMemoryReadBuffer = sharedMemoryStream.ReadBytes(versionHeaderWithSize.mBytesUpdatedHint != 0 ? versionHeaderWithSize.mBytesUpdatedHint : this.BUFFER_SIZE_BYTES);
-
-            // Marshal rF2 State buffer
-            handle = GCHandle.Alloc(sharedMemoryReadBuffer, GCHandleType.Pinned);
-            var versionHeader = (rF2MappedBufferVersionBlock)Marshal.PtrToStructure(handle.AddrOfPinnedObject(), typeof(rF2MappedBufferVersionBlock));
-            handle.Free();
+            // Marshal version block.
+            var handleVersionBlock = GCHandle.Alloc(sharedMemoryReadBuffer, GCHandleType.Pinned);
+            var versionHeader = (rF2MappedBufferVersionBlock)Marshal.PtrToStructure(handleVersionBlock.AddrOfPinnedObject(), typeof(rF2MappedBufferVersionBlock));
+            handleVersionBlock.Free();
 
             // Verify if Begin/End versions match:
             if (versionHeader.mVersionUpdateBegin != versionHeader.mVersionUpdateEnd)
@@ -334,7 +346,8 @@ namespace rF2SMMonitor
                 return;
               }
 
-              Thread.Sleep(1);
+              // Thread.Sleep(0) will allow immidiate retry if there are no threads of same priority waiting to execute.  This way we achieve minimum latency.
+              Thread.Sleep(0);
               ++numReadRetries;
               continue;
             }
@@ -356,24 +369,36 @@ namespace rF2SMMonitor
             sharedMemoryStream.BaseStream.Position = 0;
             var sharedMemoryReadBufferLastCheck = sharedMemoryStream.ReadBytes(this.RF2_BUFFER_VERSION_BLOCK_SIZE_BYTES);
 
-            handle = GCHandle.Alloc(sharedMemoryReadBufferLastCheck, GCHandleType.Pinned);
-            var versionHeaderCheck2 = (rF2MappedBufferVersionBlock)Marshal.PtrToStructure(handle.AddrOfPinnedObject(), typeof(rF2MappedBufferVersionBlock));
-            handle.Free();
+            var handleVersionBlockLastCheck = GCHandle.Alloc(sharedMemoryReadBufferLastCheck, GCHandleType.Pinned);
+            var versionHeaderLastCheck = (rF2MappedBufferVersionBlock)Marshal.PtrToStructure(handleVersionBlockLastCheck.AddrOfPinnedObject(), typeof(rF2MappedBufferVersionBlock));
+            handleVersionBlockLastCheck.Free();
 
-            if (versionHeader.mVersionUpdateBegin != versionHeaderCheck2.mVersionUpdateBegin
-              || versionHeader.mVersionUpdateEnd != versionHeaderCheck2.mVersionUpdateEnd)
+            if (versionHeader.mVersionUpdateBegin != versionHeaderLastCheck.mVersionUpdateBegin
+              || versionHeader.mVersionUpdateEnd != versionHeaderLastCheck.mVersionUpdateEnd)
             {
               ++this.numReadRetriesOnCheck;
               continue;
             }
 
             // Marshal rF2 State buffer
-            Array.Copy(sharedMemoryReadBuffer, this.fullSizeBuffer, sharedMemoryReadBuffer.Length);
-            handle = GCHandle.Alloc(this.fullSizeBuffer, GCHandleType.Pinned);
-            mappedData = (MappedBufferT)Marshal.PtrToStructure(handle.AddrOfPinnedObject(), typeof(MappedBufferT));
-            handle.Free();
+            if (partial)
+            {
+              // For marshalling to succeed we need to copy partial buffer into full size buffer.  While it is a bit of a waste, it still gives us gain
+              // of shorter time window for version collisions while reading game data.
+              Array.Copy(sharedMemoryReadBuffer, this.fullSizeBuffer, sharedMemoryReadBuffer.Length);
+              var handlePartialBuffer = GCHandle.Alloc(this.fullSizeBuffer, GCHandleType.Pinned);
+              mappedData = (MappedBufferT)Marshal.PtrToStructure(handlePartialBuffer.AddrOfPinnedObject(), typeof(MappedBufferT));
+              handlePartialBuffer.Free();
+            }
+            else
+            {
+              var handleBuffer = GCHandle.Alloc(sharedMemoryReadBuffer, GCHandleType.Pinned);
+              mappedData = (MappedBufferT)Marshal.PtrToStructure(handleBuffer.AddrOfPinnedObject(), typeof(MappedBufferT));
+              handleBuffer.Free();
+            }
 
             // Success.
+            this.maxRetries = Math.Max(this.maxRetries, retry);
             this.stuckVersionBegin = this.stuckVersionEnd = 0;
             return;
           }
@@ -382,6 +407,26 @@ namespace rF2SMMonitor
           this.stuckVersionBegin = failedVersionBegin;
           this.stuckVersionEnd = failedVersionEnd;
 
+          // TODO: capture max retry count.
+          // TODO: helper function for below
+          // Even in case of a failure, map the torn frame.
+          if (partial)
+          {
+            // For marshalling to succeed we need to copy partial buffer into full size buffer.  While it is a bit of a waste, it still gives us gain
+            // of shorter time window for version collisions while reading game data.
+            Array.Copy(sharedMemoryReadBuffer, this.fullSizeBuffer, sharedMemoryReadBuffer.Length);
+            var handlePartialBuffer = GCHandle.Alloc(this.fullSizeBuffer, GCHandleType.Pinned);
+            mappedData = (MappedBufferT)Marshal.PtrToStructure(handlePartialBuffer.AddrOfPinnedObject(), typeof(MappedBufferT));
+            handlePartialBuffer.Free();
+          }
+          else
+          {
+            var handleBuffer = GCHandle.Alloc(sharedMemoryReadBuffer, GCHandleType.Pinned);
+            mappedData = (MappedBufferT)Marshal.PtrToStructure(handleBuffer.AddrOfPinnedObject(), typeof(MappedBufferT));
+            handleBuffer.Free();
+          }
+
+          this.maxRetries = Math.Max(this.maxRetries, retry);
           ++this.numReadFailures;
         }
 
@@ -736,12 +781,15 @@ namespace rF2SMMonitor
 
       try
       {
-        extendedBuffer.GetMappedData(ref extended);
-        scoringBuffer.GetMappedDataPartial(ref scoring);
+        extendedBuffer.GetMappedData(ref extended, false /*partial*/);
+        scoringBuffer.GetMappedData(ref scoring, true /*partial*/);
         //scoringBuffer.GetMappedData(ref scoring);
         //telemetryBuffer.GetMappedDataPartial(ref telemetry);
-        telemetryBuffer.GetMappedData(ref telemetry);
-        rulesBuffer.GetMappedDataPartial(ref rules);
+        telemetryBuffer.GetMappedData(ref telemetry, true /*partial*/);
+        //Debug.Assert(telemetry.mVersionUpdateBegin == telemetry.mVersionUpdateEnd);
+        //telemetryBuffer.GetMappedData(ref telemetry);
+        //rulesBuffer.GetMappedDataPartial(ref rules);
+        rulesBuffer.GetMappedData(ref rules, true /*partial*/);
         //rulesBuffer.GetMappedData(ref rules);
       }
       catch (Exception)
