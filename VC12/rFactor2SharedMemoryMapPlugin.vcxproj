@@ -178,7 +178,7 @@
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <ImportLibrary>$(Platform)\$(Configuration)\rFactor2SharedMemoryMapPlugin64.lib</ImportLibrary>
       <ProgramDatabaseFile>$(Platform)\$(Configuration)\rFactor2SharedMemoryMapPlugin64.pdb</ProgramDatabaseFile>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
     </Link>
     <Bscmake>
       <SuppressStartupBanner>true</SuppressStartupBanner>
