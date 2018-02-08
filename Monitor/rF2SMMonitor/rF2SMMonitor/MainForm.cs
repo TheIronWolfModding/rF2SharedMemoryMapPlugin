@@ -113,7 +113,6 @@ namespace rF2SMMonitor
       {
         using (var sharedMemoryStreamView = this.memoryMappedFile.CreateViewStream())
         {
-          var frameStuck = false;
           uint currVersionBegin = 0;
           uint currVersionEnd = 0;
 
@@ -123,6 +122,7 @@ namespace rF2SMMonitor
           for (retry = 0; retry < MappedBuffer<MappedBufferT>.NUM_MAX_RETRIEES; ++retry)
           {
             var bufferSizeBytes = this.BUFFER_SIZE_BYTES;
+            // Read current buffer versions.
             if (this.partial)
             {
               sharedMemoryStream.BaseStream.Position = 0;
@@ -132,53 +132,53 @@ namespace rF2SMMonitor
               var versionHeaderWithSize = (rF2MappedBufferVersionBlockWithSize)Marshal.PtrToStructure(handleBufferHeader.AddrOfPinnedObject(), typeof(rF2MappedBufferVersionBlockWithSize));
               handleBufferHeader.Free();
 
-              if (this.skipUnchanged
-                && this.lastSuccessVersionBegin == versionHeaderWithSize.mVersionUpdateBegin
-                && this.lastSuccessVersionEnd == versionHeaderWithSize.mVersionUpdateEnd)
-              {
-                ++this.numSkippedNoChange;
-                return;
-              }
-
-              // Partial buffer read version pre-check.  Verify if Begin/End versions match.  It is cheaper to do the pre-check and retry,
-              // as this avoids reading full buffer.  Also, for partial we need buffer size anyway.
-              if (versionHeaderWithSize.mVersionUpdateBegin != versionHeaderWithSize.mVersionUpdateEnd)
-              {
-                currVersionBegin = versionHeaderWithSize.mVersionUpdateBegin;
-                currVersionEnd = versionHeaderWithSize.mVersionUpdateEnd;
-
-                // For stuck frame we still need to read the whole buffer, so don't retry.
-                if (currVersionBegin != this.stuckVersionBegin
-                    && currVersionEnd != this.stuckVersionEnd)
-                {
-                  // There are multiple alternatives on what to do here:
-                  // * keep retrying - drawback is CPU being kept busy, but absolute minimum latency.
-                  // * Thread.Sleep(0) - drawback is CPU being kept busy, but almost minimum latency.  Compared to first option, gives other threads a chance to execute.
-                  // * Thread.Sleep(N) - relaxed approach, less CPU saturation but adds a bit of latency.
-                  // there are other options too.  Bearing in mind that minimum sleep on windows is ~16ms, which is around 66FPS, I doubt it matters much.
-                  Thread.Sleep(1);
-                  ++numReadRetriesPreCheck;
-                  continue;
-                }
-              }
+              currVersionBegin = versionHeaderWithSize.mVersionUpdateBegin;
+              currVersionEnd = versionHeaderWithSize.mVersionUpdateEnd;
 
               bufferSizeBytes = versionHeaderWithSize.mBytesUpdatedHint != 0 ? versionHeaderWithSize.mBytesUpdatedHint : bufferSizeBytes;
             }
-            else if (this.skipUnchanged)
+            else
             {
               sharedMemoryStream.BaseStream.Position = 0;
               var sharedMemoryReadBufferHeader = sharedMemoryStream.ReadBytes(this.RF2_BUFFER_VERSION_BLOCK_SIZE_BYTES);
 
-              var handleBufferHeaderUnchangedCheck = GCHandle.Alloc(sharedMemoryReadBufferHeader, GCHandleType.Pinned);
-              var versionHeaderUnchangedCheck = (rF2MappedBufferVersionBlock)Marshal.PtrToStructure(handleBufferHeaderUnchangedCheck.AddrOfPinnedObject(), typeof(rF2MappedBufferVersionBlock));
-              handleBufferHeaderUnchangedCheck.Free();
+              var handleBufferHeader = GCHandle.Alloc(sharedMemoryReadBufferHeader, GCHandleType.Pinned);
+              var versionHeaderPreCheck = (rF2MappedBufferVersionBlock)Marshal.PtrToStructure(handleBufferHeader.AddrOfPinnedObject(), typeof(rF2MappedBufferVersionBlock));
+              handleBufferHeader.Free();
 
-              if (this.lastSuccessVersionBegin == versionHeaderUnchangedCheck.mVersionUpdateBegin
-                && this.lastSuccessVersionEnd == versionHeaderUnchangedCheck.mVersionUpdateEnd)
-              {
-                ++this.numSkippedNoChange;
-                return;
-              }
+              currVersionBegin = versionHeaderPreCheck.mVersionUpdateBegin;
+              currVersionEnd = versionHeaderPreCheck.mVersionUpdateEnd;
+            }
+
+            // If this is stale "out of sync" situation, that is, we're stuck in, no point in retrying here.
+            // Could be a bug in a game, plugin or a game crash.
+            if (currVersionBegin == this.stuckVersionBegin
+              && currVersionEnd == this.stuckVersionEnd)
+            {
+              ++this.numStuckFrames;
+              return;  // Failed.
+            }
+
+            // If version is the same as previously successfully read, do nothing.
+            if (this.skipUnchanged
+              && currVersionBegin == this.lastSuccessVersionBegin
+              && currVersionEnd == this.lastSuccessVersionEnd)
+            {
+              ++this.numSkippedNoChange;
+              return;
+            }
+
+            // Buffer version pre-check.  Verify if Begin/End versions match.
+            if (currVersionBegin != currVersionEnd)
+            {
+              // There are multiple alternatives on what to do here:
+              // * keep retrying - drawback is CPU being kept busy, but absolute minimum latency.
+              // * Thread.Sleep(0) - drawback is CPU being kept busy, but almost minimum latency.  Compared to first option, gives other threads a chance to execute.
+              // * Thread.Sleep(N) - relaxed approach, less CPU saturation but adds a bit of latency.
+              // there are other options too.  Bearing in mind that minimum sleep on windows is ~16ms, which is around 66FPS, I doubt it matters much.
+              Thread.Sleep(1);
+              ++numReadRetriesPreCheck;
+              continue;
             }
 
             // Read the mapped data.
@@ -196,16 +196,6 @@ namespace rF2SMMonitor
             // Verify if Begin/End versions match:
             if (versionHeader.mVersionUpdateBegin != versionHeader.mVersionUpdateEnd)
             {
-              if (currVersionBegin == this.stuckVersionBegin
-                && currVersionEnd == this.stuckVersionEnd)
-              {
-                // If this is stale "out of sync" situation, that is, we're stuck in, no point in retrying here.
-                // Could be a bug in a game, plugin or a game crash.
-                ++this.numStuckFrames;
-                frameStuck = true;
-                break;  // Failed.
-              }
-
               // There are multiple alternatives on what to do here:
               // * keep retrying - drawback is CPU being kept busy, but absolute minimum latency.
               // * Thread.Sleep(0) - drawback is CPU being kept busy, but almost minimum latency.  Compared to first option, gives other threads a chance to execute.
@@ -262,12 +252,8 @@ namespace rF2SMMonitor
           this.stuckVersionBegin = currVersionBegin;
           this.stuckVersionEnd = currVersionEnd;
 
-          // Even in case of a failure, map the torn frame.
-          this.MarshalDataBuffer(this.partial, sharedMemoryReadBuffer, ref mappedData);
-
           this.maxRetries = Math.Max(this.maxRetries, retry);
-          if (!frameStuck)
-            ++this.numReadFailures;
+          ++this.numReadFailures;
         }
       }
 
