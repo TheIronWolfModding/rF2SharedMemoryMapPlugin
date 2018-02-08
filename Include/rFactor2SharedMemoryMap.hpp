@@ -40,7 +40,7 @@ Website: thecrewchief.org
 #define DEBUG_MSG3(lvl, msg, msg2, msg3) SharedMemoryPlugin::WriteDebugMsg(lvl, "%s(%d) : %s %s %s\n", __FUNCTION__, __LINE__, msg, msg2, msg3)
 
 #include "rF2State.h"
-#include "MappedDoubleBuffer.h"
+#include "MappedBuffer.h"
 #include "PluginHost.h"
 
 enum DebugLevel

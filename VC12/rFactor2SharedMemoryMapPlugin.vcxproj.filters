@@ -18,13 +18,13 @@
     <ClInclude Include="..\Include\rF2State.h">
       <Filter>includes</Filter>
     </ClInclude>
-    <ClInclude Include="..\Include\MappedDoubleBuffer.h">
-      <Filter>includes</Filter>
-    </ClInclude>
     <ClInclude Include="..\Include\PluginHost.h">
       <Filter>includes</Filter>
     </ClInclude>
     <ClInclude Include="..\Include\Utils.h">
+      <Filter>includes</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Include\MappedBuffer.h">
       <Filter>includes</Filter>
     </ClInclude>
   </ItemGroup>

@@ -267,7 +267,6 @@ void SharedMemoryPlugin::Shutdown()
 {
   WriteToAllExampleOutputFiles("a", "-SHUTDOWN-");
 
-  // TODO: Review
   if (mIsMapped)
     TelemetryCompleteFrame();
 
@@ -311,7 +310,6 @@ void SharedMemoryPlugin::Shutdown()
 
 void SharedMemoryPlugin::ClearTimingsAndCounters()
 {
-  // TODO: Review
   TelemetryCompleteFrame();
 
   mLastTelemetryUpdateMillis = 0.0;
@@ -383,7 +381,6 @@ void SharedMemoryPlugin::EndSession()
   if (!mIsMapped)
     return;
 
-  // TODO: Review
   TelemetryCompleteFrame();
 
   mPluginHost.EndSession();
@@ -436,7 +433,6 @@ void SharedMemoryPlugin::ExitRealtime()
   if (!mIsMapped)
     return;
 
-  // TODO: Review
   TelemetryCompleteFrame();
 
   WriteToAllExampleOutputFiles("a", "---EXITREALTIME---");

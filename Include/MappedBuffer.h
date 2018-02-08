@@ -129,7 +129,7 @@ public:
     mpBuff = nullptr;
     mpBuffVersionBlock = nullptr; 
 
-    // Note: different from V2, we didn't ever close this apparently.
+    // Note: we didn't ever close this apparently before V3, oops.
     if (mhMap != nullptr && !::CloseHandle(mhMap)) {
       DEBUG_MSG(DebugLevel::Errors, "Failed to close mapped file handle.");
       SharedMemoryPlugin::TraceLastWin32Error();
@@ -137,102 +137,6 @@ public:
 
     mhMap = nullptr;
   }
-  /*
-  void FlipBuffersHelper()
-  {
-    if (!mMapped) {
-      assert(mMapped);
-      DEBUG_MSG(DebugLevel::Errors, "Accessing unmapped buffer.");
-      return;
-    }
-
-    // Handle fucked up case:
-    if (mpBuff->mCurrentRead == mpBuff2->mCurrentRead) {
-      mpBuff->mCurrentRead = true;
-      mpBuff2->mCurrentRead = false;
-      DEBUG_MSG(DebugLevel::Errors, "ERROR: - Buffers out of sync.");
-    }
-
-    // Update read buffer.
-    assert(mpCurrReadBuff->mCurrentRead);
-    assert(!mpCurrWriteBuff->mCurrentRead);
-    mpCurrReadBuff = mpCurrWriteBuff;
-
-    // Pick previous read buffer.
-    mpCurrWriteBuff = mpBuff->mCurrentRead ? mpBuff : mpBuff2;
-
-    // Switch the read and write buffers.
-    mpBuff->mCurrentRead = !mpBuff->mCurrentRead;
-    mpBuff2->mCurrentRead = !mpBuff2->mCurrentRead;
-
-    assert(!mpCurrWriteBuff->mCurrentRead);
-    assert(mpCurrReadBuff->mCurrentRead);
-  }
-
-
-  void FlipBuffers()
-  {
-    if (!mMapped) {
-      assert(mMapped);
-      DEBUG_MSG(DebugLevel::Errors, "Accessing unmapped buffer.");
-      return;
-    }
-
-    // This update will wait.  Clear the retry variables.
-    mRetryPending = false;
-    mAsyncRetriesLeft = MAX_RETRIES;
-
-    auto const ret = ::WaitForSingleObject(mhMutex, SharedMemoryPlugin::msMillisMutexWait);
-
-    FlipBuffersHelper();
-
-    if (ret == WAIT_OBJECT_0) {
-      if (!::ReleaseMutex(mhMutex)) {
-        DEBUG_MSG(DebugLevel::Errors, "Failed to release mutex.");
-        SharedMemoryPlugin::TraceLastWin32Error();
-      }
-    }
-    else if (ret == WAIT_TIMEOUT)
-      DEBUG_MSG(DebugLevel::Warnings, "WARNING: - Timed out while waiting on mutex.");
-    else {
-      DEBUG_MSG(DebugLevel::Errors, "ERROR: - wait on mutex failed.");
-      SharedMemoryPlugin::TraceLastWin32Error();
-    }
-  }
-
-  void TryFlipBuffers()
-  {
-    if (!mMapped) {
-      assert(mMapped);
-      DEBUG_MSG(DebugLevel::Errors, "Accessing unmapped buffer.");
-      return;
-    }
-
-    // Do not wait on mutex if it is held.
-    auto const ret = ::WaitForSingleObject(mhMutex, 0);
-    if (ret == WAIT_TIMEOUT) {
-      mRetryPending = true;
-      --mAsyncRetriesLeft;
-      return;
-    }
-
-    // We have the lock.  Clear retry variables.
-    mRetryPending = false;
-    mAsyncRetriesLeft = MAX_RETRIES;
-
-    // Do the actual flip.
-    FlipBuffersHelper();
-
-    if (ret == WAIT_OBJECT_0) {
-      if (!::ReleaseMutex(mhMutex)) {
-        DEBUG_MSG(DebugLevel::Errors, "Failed to release mutex.");
-        SharedMemoryPlugin::TraceLastWin32Error();
-      }
-    }
-  }
-
-  int AsyncRetriesLeft() const { return mAsyncRetriesLeft; }
-  int RetryPending() const { return mRetryPending; }*/
 
 private:
   MappedBuffer(MappedBuffer const&) = delete;

@@ -178,6 +178,7 @@
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <ImportLibrary>$(Platform)\$(Configuration)\rFactor2SharedMemoryMapPlugin64.lib</ImportLibrary>
       <ProgramDatabaseFile>$(Platform)\$(Configuration)\rFactor2SharedMemoryMapPlugin64.pdb</ProgramDatabaseFile>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <Bscmake>
       <SuppressStartupBanner>true</SuppressStartupBanner>
@@ -287,7 +288,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Include\InternalsPlugin.hpp" />
-    <ClInclude Include="..\Include\MappedDoubleBuffer.h" />
+    <ClInclude Include="..\Include\MappedBuffer.h" />
     <ClInclude Include="..\Include\PluginHost.h" />
     <ClInclude Include="..\Include\rF2State.h" />
     <ClInclude Include="..\Include\rFactor2SharedMemoryMap.hpp" />
