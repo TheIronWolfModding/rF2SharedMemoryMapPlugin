@@ -676,7 +676,7 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
 
     // Update extended state for this vehicle.
     // Since I do not want to miss impact data, and it is not accumulated in any way
-    // I am aware of in rF2 internals, process on every telemetr update.
+    // I am aware of in rF2 internals, process on every telemetry update.  Actual flip will happen on Scoring update.
     mExtStateTracker.ProcessTelemetryUpdate(info);
 
     // Mark participant as updated
@@ -781,6 +781,7 @@ void SharedMemoryPlugin::UpdateScoring(ScoringInfoV01 const& info)
   // Update extended state.
   mExtStateTracker.ProcessScoringUpdate(info);
 
+  // FUTURE: Minor optimization would be track if mExtended has been updated in Telemetry/Scoring and flip only if that is the case.
   mExtended.BeginUpdate();
   memcpy(mExtended.mpBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
   mExtended.EndUpdate();

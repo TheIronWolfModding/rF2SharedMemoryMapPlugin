@@ -51,10 +51,14 @@ namespace rF2SMMonitor
 
       MemoryMappedFile memoryMappedFile = null;
 
-      public MappedBuffer(string buffName)
+      bool partial = false;
+      bool skipUnchanged = false;
+      public MappedBuffer(string buffName, bool partial, bool skipUnchanged)
       {
         this.BUFFER_SIZE_BYTES = Marshal.SizeOf(typeof(MappedBufferT));
         this.BUFFER_NAME = buffName;
+        this.partial = partial;
+        this.skipUnchanged = skipUnchanged;
       }
 
       public void Connect()
@@ -80,13 +84,16 @@ namespace rF2SMMonitor
       int numReadRetriesOnCheck = 0;
       int numReadFailures = 0;
       int numStuckFrames = 0;
+      int numSkippedNoChange = 0;
       uint stuckVersionBegin = 0;
       uint stuckVersionEnd = 0;
+      uint lastSuccessVersionBegin = 0;
+      uint lastSuccessVersionEnd = 0;
       int maxRetries = 0;
 
       public string GetStats()
       {
-        return string.Format("R1: {0}    R2: {1}    R3: {2}    F: {3}    ST: {4}    MR: {5}", this.numReadRetriesPreCheck, this.numReadRetries, this.numReadRetriesOnCheck, this.numReadFailures, this.numStuckFrames, this.maxRetries);
+        return string.Format("R1: {0}    R2: {1}    R3: {2}    F: {3}    ST: {4}    MR: {5}    SK:{6}", this.numReadRetriesPreCheck, this.numReadRetries, this.numReadRetriesOnCheck, this.numReadFailures, this.numStuckFrames, this.maxRetries, this.numSkippedNoChange);
       }
 
       public void GetMappedDataUnsynchronized(ref MappedBufferT mappedData)
@@ -102,13 +109,13 @@ namespace rF2SMMonitor
         }
       }
 
-      public void GetMappedData(ref MappedBufferT mappedData, bool partial)
+      public void GetMappedData(ref MappedBufferT mappedData)
       {
         using (var sharedMemoryStreamView = this.memoryMappedFile.CreateViewStream())
         {
           var frameStuck = false;
-          uint failedVersionBegin = 0;
-          uint failedVersionEnd = 0;
+          uint currVersionBegin = 0;
+          uint currVersionEnd = 0;
 
           var retry = 0;
           var sharedMemoryStream = new BinaryReader(sharedMemoryStreamView);
@@ -116,7 +123,7 @@ namespace rF2SMMonitor
           for (retry = 0; retry < MappedBuffer<MappedBufferT>.NUM_MAX_RETRIEES; ++retry)
           {
             var bufferSizeBytes = this.BUFFER_SIZE_BYTES;
-            if (partial)
+            if (this.partial)
             {
               sharedMemoryStream.BaseStream.Position = 0;
               var sharedMemoryReadBufferHeader = sharedMemoryStream.ReadBytes(this.RF2_BUFFER_VERSION_BLOCK_WITH_SIZE_SIZE_BYTES);
@@ -125,16 +132,24 @@ namespace rF2SMMonitor
               var versionHeaderWithSize = (rF2MappedBufferVersionBlockWithSize)Marshal.PtrToStructure(handleBufferHeader.AddrOfPinnedObject(), typeof(rF2MappedBufferVersionBlockWithSize));
               handleBufferHeader.Free();
 
+              if (this.skipUnchanged
+                && this.lastSuccessVersionBegin == versionHeaderWithSize.mVersionUpdateBegin
+                && this.lastSuccessVersionEnd == versionHeaderWithSize.mVersionUpdateEnd)
+              {
+                ++this.numSkippedNoChange;
+                return;
+              }
+
               // Partial buffer read version pre-check.  Verify if Begin/End versions match.  It is cheaper to do the pre-check and retry,
               // as this avoids reading full buffer.  Also, for partial we need buffer size anyway.
               if (versionHeaderWithSize.mVersionUpdateBegin != versionHeaderWithSize.mVersionUpdateEnd)
               {
-                failedVersionBegin = versionHeaderWithSize.mVersionUpdateBegin;
-                failedVersionEnd = versionHeaderWithSize.mVersionUpdateEnd;
+                currVersionBegin = versionHeaderWithSize.mVersionUpdateBegin;
+                currVersionEnd = versionHeaderWithSize.mVersionUpdateEnd;
 
                 // For stuck frame we still need to read the whole buffer, so don't retry.
-                if (failedVersionBegin != this.stuckVersionBegin
-                    && failedVersionEnd != this.stuckVersionEnd)
+                if (currVersionBegin != this.stuckVersionBegin
+                    && currVersionEnd != this.stuckVersionEnd)
                 {
                   // There are multiple alternatives on what to do here:
                   // * keep retrying - drawback is CPU being kept busy, but absolute minimum latency.
@@ -149,6 +164,22 @@ namespace rF2SMMonitor
 
               bufferSizeBytes = versionHeaderWithSize.mBytesUpdatedHint != 0 ? versionHeaderWithSize.mBytesUpdatedHint : bufferSizeBytes;
             }
+            else if (this.skipUnchanged)
+            {
+              sharedMemoryStream.BaseStream.Position = 0;
+              var sharedMemoryReadBufferHeader = sharedMemoryStream.ReadBytes(this.RF2_BUFFER_VERSION_BLOCK_SIZE_BYTES);
+
+              var handleBufferHeaderUnchangedCheck = GCHandle.Alloc(sharedMemoryReadBufferHeader, GCHandleType.Pinned);
+              var versionHeaderUnchangedCheck = (rF2MappedBufferVersionBlock)Marshal.PtrToStructure(handleBufferHeaderUnchangedCheck.AddrOfPinnedObject(), typeof(rF2MappedBufferVersionBlock));
+              handleBufferHeaderUnchangedCheck.Free();
+
+              if (this.lastSuccessVersionBegin == versionHeaderUnchangedCheck.mVersionUpdateBegin
+                && this.lastSuccessVersionEnd == versionHeaderUnchangedCheck.mVersionUpdateEnd)
+              {
+                ++this.numSkippedNoChange;
+                return;
+              }
+            }
 
             // Read the mapped data.
             sharedMemoryStream.BaseStream.Position = 0;
@@ -159,14 +190,14 @@ namespace rF2SMMonitor
             var versionHeader = (rF2MappedBufferVersionBlock)Marshal.PtrToStructure(handleVersionBlock.AddrOfPinnedObject(), typeof(rF2MappedBufferVersionBlock));
             handleVersionBlock.Free();
 
+            currVersionBegin = versionHeader.mVersionUpdateBegin;
+            currVersionEnd = versionHeader.mVersionUpdateEnd;
+
             // Verify if Begin/End versions match:
             if (versionHeader.mVersionUpdateBegin != versionHeader.mVersionUpdateEnd)
             {
-              failedVersionBegin = versionHeader.mVersionUpdateBegin;
-              failedVersionEnd = versionHeader.mVersionUpdateEnd;
-
-              if (failedVersionBegin == this.stuckVersionBegin
-                && failedVersionEnd == this.stuckVersionEnd)
+              if (currVersionBegin == this.stuckVersionBegin
+                && currVersionEnd == this.stuckVersionEnd)
               {
                 // If this is stale "out of sync" situation, that is, we're stuck in, no point in retrying here.
                 // Could be a bug in a game, plugin or a game crash.
@@ -214,20 +245,25 @@ namespace rF2SMMonitor
             }
 
             // Marshal rF2 State buffer
-            this.MarshalDataBuffer(partial, sharedMemoryReadBuffer, ref mappedData);
+            this.MarshalDataBuffer(this.partial, sharedMemoryReadBuffer, ref mappedData);
 
             // Success.
             this.maxRetries = Math.Max(this.maxRetries, retry);
             this.stuckVersionBegin = this.stuckVersionEnd = 0;
+
+            // Save succeessfully read version to avoid re-reading.
+            this.lastSuccessVersionBegin = currVersionBegin;
+            this.lastSuccessVersionEnd = currVersionEnd;
+
             return;
           }
 
           // Failure.  Save the frame version.
-          this.stuckVersionBegin = failedVersionBegin;
-          this.stuckVersionEnd = failedVersionEnd;
+          this.stuckVersionBegin = currVersionBegin;
+          this.stuckVersionEnd = currVersionEnd;
 
           // Even in case of a failure, map the torn frame.
-          this.MarshalDataBuffer(partial, sharedMemoryReadBuffer, ref mappedData);
+          this.MarshalDataBuffer(this.partial, sharedMemoryReadBuffer, ref mappedData);
 
           this.maxRetries = Math.Max(this.maxRetries, retry);
           if (!frameStuck)
@@ -255,10 +291,10 @@ namespace rF2SMMonitor
       }
     }
 
-    MappedBuffer<rF2Telemetry> telemetryBuffer = new MappedBuffer<rF2Telemetry>(rFactor2Constants.MM_TELEMETRY_FILE_NAME);
-    MappedBuffer<rF2Scoring> scoringBuffer = new MappedBuffer<rF2Scoring>(rFactor2Constants.MM_SCORING_FILE_NAME);
-    MappedBuffer<rF2Rules> rulesBuffer = new MappedBuffer<rF2Rules>(rFactor2Constants.MM_RULES_FILE_NAME);
-    MappedBuffer<rF2Extended> extendedBuffer = new MappedBuffer<rF2Extended>(rFactor2Constants.MM_EXTENDED_FILE_NAME);
+    MappedBuffer<rF2Telemetry> telemetryBuffer = new MappedBuffer<rF2Telemetry>(rFactor2Constants.MM_TELEMETRY_FILE_NAME, true /*partial*/, false /*skipUnchanged*/);
+    MappedBuffer<rF2Scoring> scoringBuffer = new MappedBuffer<rF2Scoring>(rFactor2Constants.MM_SCORING_FILE_NAME, true /*partial*/, true /*skipUnchanged*/);
+    MappedBuffer<rF2Rules> rulesBuffer = new MappedBuffer<rF2Rules>(rFactor2Constants.MM_RULES_FILE_NAME, true /*partial*/, true /*skipUnchanged*/);
+    MappedBuffer<rF2Extended> extendedBuffer = new MappedBuffer<rF2Extended>(rFactor2Constants.MM_EXTENDED_FILE_NAME, false /*partial*/, true /*skipUnchanged*/);
 
     // Marshalled views:
     rF2Telemetry telemetry;
@@ -385,8 +421,11 @@ namespace rF2SMMonitor
 
     private void MainForm_MouseClick(object sender, MouseEventArgs e)
     {
-      //if (e.Button == MouseButtons.Right)
-       // this.interpolationStats.Reset();
+      if (e.Button == MouseButtons.Right)
+      {
+        this.delayAccMicroseconds = 0;
+        this.numDelayUpdates = 0;
+      }
     }
 
     private void YOffsetTextBox_LostFocus(object sender, EventArgs e)
@@ -530,6 +569,9 @@ namespace rF2SMMonitor
       }
     }
 
+    long delayAccMicroseconds = 0;
+    long numDelayUpdates = 0;
+    float avgDelayMicroseconds = 0.0f;
     void MainUpdate()
     {
       if (!this.connected)
@@ -537,10 +579,25 @@ namespace rF2SMMonitor
 
       try
       {
-        extendedBuffer.GetMappedData(ref extended, false /*partial*/);
-        scoringBuffer.GetMappedData(ref scoring, true /*partial*/);
-        telemetryBuffer.GetMappedData(ref telemetry, true /*partial*/);
-        rulesBuffer.GetMappedData(ref rules, true /*partial*/);
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+
+        extendedBuffer.GetMappedData(ref extended);
+        scoringBuffer.GetMappedData(ref scoring);
+        telemetryBuffer.GetMappedData(ref telemetry);
+        rulesBuffer.GetMappedData(ref rules);
+
+        watch.Stop();
+        var microseconds = watch.ElapsedTicks * 1000000 / System.Diagnostics.Stopwatch.Frequency;
+        this.delayAccMicroseconds += microseconds;
+        ++this.numDelayUpdates;
+
+        if (this.numDelayUpdates == 0)
+        {
+          this.numDelayUpdates = 1;
+          this.delayAccMicroseconds = microseconds;
+        }
+
+        this.avgDelayMicroseconds = (float)this.delayAccMicroseconds / this.numDelayUpdates;
       }
       catch (Exception)
       {
@@ -708,18 +765,20 @@ namespace rF2SMMonitor
           "Telemetry:\n"
           + "Scoring:\n"
           + "Rules:\n"
-          + "Extended:");
+          + "Extended:\n"
+          + "Avg read:");
 
-        g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Black, 1600, 570);
+        g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Black, 1550, 570);
 
         gameStateText.Clear();
         gameStateText.Append(
           this.telemetryBuffer.GetStats() + '\n'
           + this.scoringBuffer.GetStats() + '\n'
           + this.rulesBuffer.GetStats() + '\n'
-          + this.extendedBuffer.GetStats());
+          + this.extendedBuffer.GetStats() + '\n' 
+          + this.avgDelayMicroseconds.ToString("0.000") + " microseconds");
 
-        g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Black, 1660, 570);
+        g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Black, 1610, 570);
         
         if (this.scoring.mScoringInfo.mNumVehicles == 0
           || resolvedPlayerIdx == -1)  // We need telemetry for stats below.
