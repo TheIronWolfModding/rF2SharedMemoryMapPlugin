@@ -15,9 +15,7 @@ Acknowledgements:
 Shared resources:
   This plugin uses double buffering and mutex to allow optional synchronized access to rF2 exposed internal state.
   Shared resources use the following naming convention:
-    - $rFactor2SMMP_<BUFFER_TYPE>Buffer1$
-    - $rFactor2SMMP_<BUFFER_TYPE>Buffer2$
-    - Global\$rFactor2SMMP_<BUFFER_TYPE>Mutex - mutex for optional weak synchronization (see Synchronization below)
+    - $rFactor2SMMP_<BUFFER_TYPE>$
 
   where <BUFFER_TYPE> is one of the following:
     * Telemetry - mapped view of rF2Telemetry structure
@@ -29,8 +27,8 @@ Shared resources:
   Those types are (with few exceptions) exact mirror of ISI structures, plugin constantly memcpy'es them from game to memory mapped files.
 
 
-State updates (buffer flips, see Double Buffering):
-  Telemetry - updated every 10ms, but in practice only every other update contains updated data, so real update rate is around 50FPS.
+Refresh rates:
+  Telemetry - updated every 10ms, but in practice only every other update contains updated data, so real update rate is around 50FPS (20ms).
   Scoring - every 200ms (5FPS)
   Rules - every 300ms (3FPS)
   MultiRules - updated only on state change.

@@ -1,18 +1,19 @@
 /*
-Definition of MappedDoubleBuffer<> class.
+Definition of MappedBuffer<> class.
 
 Author: The Iron Wolf (vleonavicius@hotmail.com)
 Website: thecrewchief.org
 
 Description:
-  MappedDoubleBuffer<> class abstracts two memory mapped buffers that are used for reading
-  and writing data in turns.  The idea is to allow clients to read one buffer
-  (identified by mCurrentRead == true) while the other buffer is used for writing of the new data,
-  when game reports it.  When buffers are flipped, mutex is acquired and mCurrentRead
-  values are inverted for each buffer.
+  MappedBuffer<> class abstracts memory mapped buffer and version block that can be used
+  to detect torn frames.  In mapped memory, BuffT is preceeded by rF2MappedBufferVersionBlock.
 
-  Flip operation also supports retry mode, where flip is cancelled if mutex is signaled
-  (to avoid blocking the thread).
+  rF2MappedBufferVersionBlock variables allow users who need to ensure consistent buffer view to check if
+  buffer is being written to.  mVersionUpdateBegin and mVersionUpdateEnd version block variables should 
+  be equal and differ only while buffer (mpBuff) contents are updated.
+
+  MappedBuffer<> client code has to call BeginUpdate before updating buffer (mpBuff) contents and
+  EndUpdate once they're done.
 */
 #pragma once
 
@@ -117,7 +118,7 @@ public:
   {
     mMapped = false;
 
-    // Unmap views and close all handles.
+    // Unmap view and close all handles.
     BOOL ret = TRUE;
     if (mpMappedView != nullptr) ret = ::UnmapViewOfFile(mpMappedView);
     if (!ret) {
@@ -179,6 +180,7 @@ private:
     // Map the version block first.
     pBufVersionBlock = static_cast<rF2MappedBufferVersionBlock*>(mpMappedView);
     pBuf = reinterpret_cast<BuffT*>(static_cast<char*>(pMappedView) + sizeof(pBufVersionBlock));
+    assert((reinterpret_cast<char*>(pBufVersionBlock) + sizeof(pBufVersionBlock)) == reinterpret_cast<char*>(pBuf));
 
     return hMap;
   }
