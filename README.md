@@ -2,7 +2,9 @@
 
 This plugin mirrors exposed rFactor 2 internal state into shared memory buffers.  Essentially, this is direct memcpy of rFactor 2 internals.
 
-Reading shared memory allows creating  external tools running outside of rFactor 2 and written in languages other than C++ (C# sample is included).  It also allows keeping CPU time impact in rFactor 2 process to the minimum.
+Reading shared memory allows creating external tools running outside of rFactor 2 and written in languages other than C++ (C# sample is included).  It also allows keeping CPU time impact in rFactor 2 plugin threads to the minimum.
+
+This plugin is carefully implemented with an intent of becoming a shared component for reading rF2 internals.  It can handle any number of clients without slowing down rF2 plugin thread.  A lot of work was done to ensure it is as efficient and reliable as possible.
 
 #### This work is based on:
   * rF2 Internals Plugin sample #7 by ISI/S397 found at: https://www.studio-397.com/modding-resources/
@@ -10,12 +12,12 @@ Reading shared memory allows creating  external tools running outside of rFactor
   * rF1 Shared Memory Map Plugin by Dan Allongo found at: https://github.com/dallongo/rFactorSharedMemoryMap
 
 ## Features
-Plugin uses double buffering and offers optional weak synchronization on global mutexes.  Plugin is also capable of hosting StockCarRules.dll plugin as a hack/workaround for accessing SCR set values.
+Plugin offers optional weak synchronization by using version variables on each of the buffers.  Plugin is also capable of hosting StockCarRules.dll plugin as a hack/workaround for accessing SCR set values.
 
 Plugin is built using VS 2015 Community Edition, targeting VC12 (VS 2013) runtime, since rF2 comes with VC12 redist.
 
 ## Refresh Rates:
-* Telemetry - 50FPS (provided there's no mutex contention).
+* Telemetry - 50FPS.
 * Scoring - 5FPS.
 * Rules - 3FPS.
 * Multi Rules - on callback from a game, usually once a session and in between sessions.
@@ -31,9 +33,17 @@ Plugin is built using VS 2015 Community Edition, targeting VC12 (VS 2013) runtim
 Plugin comes with rF2SMMonitor program that shows how to access exposed internals from C# program.  It is also useful for visualization of shared memory contents and general understanding of rFactor 2 internals.
 
 ## Memory Buffer Uses
-  * Recommended: Simply copy rF2StateHeader part of the buffer, and check mCurrentRead variable.  If it's true, use this buffer, otherwise use the other buffer.  See `Monitor\rF2SMMonitor\rF2SMMonitor\MainForm.cs MainUpdate` and `MappedDoubleBuffer.GetMappedData/MappedDoubleBuffer.GetMappedDataPartial` methods for example of use in C# (ignore mutex).
-  * Synchronized: use mutex to make sure buffer is not overwritten (this is best effort activity, not a guarantee.  See comnents in C++ code for exact details). Generally, _do not use this method if you are visualizing rF2 internals_ and not doing any analysis that requires buffer to be complete.  Example: Crew Chief will not be happy if there are two copies of the vehicles in the buffer, but it does not matter in most other cases.  This use requires full understanding of how plugin works, and could cause FPS drop if not done right.  See `Monitor\rF2SMMonitor\rF2SMMonitor\MainForm.cs MainUpdate` and `MappedDoubleBuffer.GetMappedData/MappedDoubleBuffer.GetMappedDataPartial` methods for example of use in C#
-  * Basic: If half refresh rate is enough, and you can tolerate partially overwritten buffer once in a while, simply read one buffer and don't bother with double buffering or mutex.
+  * Basic:   Most clients (HUDs, Dashes, visualizers) won't need synchronization.  See `rF2SMMonitor.MainForm.MappedBuffer<>.GetMappedDataUnsynchronized` for sample implementation.
+  * Advanced:  If you would like to make sure you're not 
+  reading a torn (partially overwritten) frame,  see `rF2SMMonitor.MainForm.MappedBuffer<>.GetMappedData` for sample implementation.
+
+## Distribution and reuse
+You are allowed to include this .dll with your distribution, as long as it is:
+* Free
+* Readme is included
+* You had my permission via email
+
+Please also be aware, that Crew Chief will always ship with the latest version of the .dll and will overwrite .dll to match its version.  I do not expect compatibility to break without game changing its model, aside from rF2Extended buffer, which contains stuff not directly exposed by the game.  Every time layout of memory changes, second digit in Plugin version is incremented.
 
 ## Support this project
 If you would like to support this project, you can donate [here.](http://thecrewchief.org/misc.php?do=donate)
@@ -95,7 +105,7 @@ If you would like to support this project, you can donate [here.](http://thecrew
   * rF2State::mCurrentET is no longer updated between Scoring Updates, and matches value last reported by the game.
 
   Monitor:
-  * Extended monitor to dislay more information
+  * Extended monitor to display more information
   * Implemented correct "Best Split" time calculation logic.
 
 2/26/2017 - v1.0.0.1

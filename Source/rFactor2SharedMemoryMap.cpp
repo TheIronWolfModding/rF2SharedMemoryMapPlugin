@@ -13,7 +13,7 @@ Acknowledgements:
 
 
 Shared resources:
-  This plugin uses double buffering and mutex to allow optional synchronized access to rF2 exposed internal state.
+
   Shared resources use the following naming convention:
     - $rFactor2SMMP_<BUFFER_TYPE>$
 
@@ -24,27 +24,27 @@ Shared resources:
     * MultiRules - mapped view of rF2MultiRules structure
     * Extended - mapped view of rF2Extended structure
 
-  Those types are (with few exceptions) exact mirror of ISI structures, plugin constantly memcpy'es them from game to memory mapped files.
+  Aside from Extended (see below), those types are (with few exceptions) exact mirror of ISI structures, plugin constantly memcpy'es them from game to memory mapped files.
 
+  Plugin offers optional weak synchronization by using version variables on each of the buffers.
 
 Refresh rates:
   Telemetry - updated every 10ms, but in practice only every other update contains updated data, so real update rate is around 50FPS (20ms).
   Scoring - every 200ms (5FPS)
   Rules - every 300ms (3FPS)
-  MultiRules - updated only on state change.
+  MultiRules - updated only on session change.
   Extended - every 200ms or on tracked function call.
 
   Plugin does not add artificial delays, except:
+    - game calls UpdateTelemetry in bursts every 10ms.  However, as of 02/18 data changes only every 20ms, so one of those bursts is dropped.
     - telemetry updates with same game time are skipped
-    - if telemetry mutex is signaled, telemetry buffer update is skipped
-
 
 Telemetry state:
-  rF2 calls UpdateTelemetry for each vehicle.  Plugin tries to guess when all vehicles received an update, and only after that flip is attempted (see Double Buffering).
+  rF2 calls UpdateTelemetry for each vehicle.  Plugin tries to guess when all vehicles received an update, and only after that buffer write is marked as complete.
 
 
 Extended state:
-  Exposed extended state consists of the two parts:
+  Exposed extended state consists of:
 
   * Non periodically updated game state:
       Physics settings updates and various callback based properties are tracked.
@@ -56,29 +56,23 @@ Extended state:
   * Captures parts of rF2Scoring contents when SessionEnd/SessionStart is invoked.  This helps callers to last update information
     from the previous session.  Note: In future, might get replaced with the full capture of rF2Scoring.
 
+  * Exposes info about hosted plugins (currently SCR plugin only).
+
   See SharedMemoryPlugin::ExtendedStateTracker struct for details.
 
 
-Double Buffering:
-  Plugin maps each exposed structure into two memory mapped files.  Buffers are written to alternatively.
-  rF2MappedBufferHeaders::mCurrentRead indicates last updated buffer.
-
-  Buffers are flipped after each update (see State Updates) except for telemetry state buffers.
-
-  Telemetry buffer flip is designed so that we try to avoid waiting on the mutex if it is signaled.  There are SharedMemoryPlugin::MAX_ASYNC_RETRIES
-  (three currently) attempts before wait will happen.  Retries only happen on telemetry frame completion, or new frame start.
-
-
 Synchronization:
-  Important: do not use synchronization if your application:
-    - queries for data at high rate (50ms or smaller gaps)
-    - does not need consistent view of the whole buffer.  Typically, Dashboards,  varios visualizers do not need such views,
-      because partially correct data will be overritten by next frame.  Abusing synchronization might cause game FPS drops.
+  Plugin does not offer hard guarantees for mapped buffer synchronization, because using synchronization primitives opens door for misuse and
+  eventually, way of harming game FPS as number of clients grows.
 
-  A lot of effort was done to ensure minimal impact on the rF2.  Therefore, using mutex does not guarantee that buffer
-  won't be overwritten. While mutex is exposed for synchronized access, plugin tries to minimize wait time by retrying
-  during telemetry updates (~90FPS) and only waiting for 1ms max during scoring updates (and on fourth telemetry flip retry), 
-  before forcefully flipping buffers.  Also, if 1ms elapses on synchronized flip, buffer will be overwritten anyway.
+  However, each of shared memory buffers begins with rF2MappedBufferVersionBlock structure.  If you would like to make sure you're not 
+  reading a torn (partially overwritten) frame, you can check rF2MappedBufferVersionBlock::mVersionUpdateBegin and rF2MappedBufferVersionBlock::mVersionUpdateEnd values.
+  If they are equal, buffer is either not torn, or, in an extreme case, currently being written into.
+
+  Most clients (HUDs, Dashes, visualizers) won't need synchronization.  There are many ways on detecting torn frames, Monitor app contains sample approach
+  used in the Crew Chief app.
+  * For basic reading from C#, see: rF2SMMonitor.MainForm.MappedBuffer<>.GetMappedDataUnsynchronized.
+  * To see one of the ways to avoid torn frames, see: rF2SMMonitor.MainForm.MappedBuffer<>.GetMappedData. 
 
 
 Hosted Stock Car Rules plugin:
