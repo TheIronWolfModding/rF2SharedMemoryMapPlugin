@@ -84,6 +84,7 @@ namespace rF2SMMonitor
       int numReadRetriesOnCheck = 0;
       int numReadFailures = 0;
       int numStuckFrames = 0;
+      int numReadsSucceeded = 0;
       int numSkippedNoChange = 0;
       uint stuckVersionBegin = 0;
       uint stuckVersionEnd = 0;
@@ -93,7 +94,19 @@ namespace rF2SMMonitor
 
       public string GetStats()
       {
-        return string.Format("R1: {0}    R2: {1}    R3: {2}    F: {3}    ST: {4}    MR: {5}    SK:{6}", this.numReadRetriesPreCheck, this.numReadRetries, this.numReadRetriesOnCheck, this.numReadFailures, this.numStuckFrames, this.maxRetries, this.numSkippedNoChange);
+        return string.Format("R1: {0}    R2: {1}    R3: {2}    F: {3}    ST: {4}    MR: {5}    SK:{6}    S:{7}", this.numReadRetriesPreCheck, this.numReadRetries, this.numReadRetriesOnCheck, this.numReadFailures, this.numStuckFrames, this.maxRetries, this.numSkippedNoChange, this.numReadsSucceeded);
+      }
+
+      public void ClearStats()
+      {
+        this.numReadRetriesPreCheck = 0;
+        this.numReadRetries = 0;
+        this.numReadRetriesOnCheck = 0;
+        this.numReadFailures = 0;
+        this.numStuckFrames = 0;
+        this.numReadsSucceeded = 0;
+        this.numSkippedNoChange = 0;
+        this.maxRetries = 0;
       }
 
       public void GetMappedDataUnsynchronized(ref MappedBufferT mappedData)
@@ -132,20 +145,19 @@ namespace rF2SMMonitor
           var versionHeaderWithSize = new rF2MappedBufferVersionBlockWithSize();
           var versionHeader = new rF2MappedBufferVersionBlock();
 
+          // While retrying, this method tries to avoid running CPU at 100%.
+          //
+          // There are multiple alternatives on what to do here:
+          // * keep retrying - drawback is CPU being kept busy, but absolute minimum latency.
+          // * Thread.Sleep(0) - drawback is CPU being kept busy, but almost minimum latency.  Compared to first option, gives other threads a chance to execute.
+          // * Thread.Sleep(N) - relaxed approach, less CPU saturation but adds a bit of latency.
+          // there are other options too.  Bearing in mind that minimum sleep on windows is ~16ms, which is around 66FPS, I doubt it matters much.
           for (retry = 0; retry < MappedBuffer<MappedBufferT>.NUM_MAX_RETRIEES; ++retry)
           {
             var bufferSizeBytes = this.BUFFER_SIZE_BYTES;
             // Read current buffer versions.
             if (this.partial)
             {
-              /*sharedMemoryStream.BaseStream.Position = 0;
-              var sharedMemoryReadBufferHeader = sharedMemoryStream.ReadBytes(this.RF2_BUFFER_VERSION_BLOCK_WITH_SIZE_SIZE_BYTES);
-
-              var handleBufferHeader = GCHandle.Alloc(sharedMemoryReadBufferHeader, GCHandleType.Pinned);
-              rF2MappedBufferVersionBlockWithSize versionHeaderWithSize = (rF2MappedBufferVersionBlockWithSize)Marshal.PtrToStructure(handleBufferHeader.AddrOfPinnedObject(), typeof(rF2MappedBufferVersionBlockWithSize));
-              handleBufferHeader.Free();*/
-
-             
               this.GetHeaderBlock<rF2MappedBufferVersionBlockWithSize>(sharedMemoryStream, this.RF2_BUFFER_VERSION_BLOCK_WITH_SIZE_SIZE_BYTES, ref versionHeaderWithSize);
               currVersionBegin = versionHeaderWithSize.mVersionUpdateBegin;
               currVersionEnd = versionHeaderWithSize.mVersionUpdateEnd;
@@ -154,13 +166,6 @@ namespace rF2SMMonitor
             }
             else
             {
-              /*haredMemoryStream.BaseStream.Position = 0;
-              var sharedMemoryReadBufferHeader = sharedMemoryStream.ReadBytes(this.RF2_BUFFER_VERSION_BLOCK_SIZE_BYTES);
-
-              var handleBufferHeader = GCHandle.Alloc(sharedMemoryReadBufferHeader, GCHandleType.Pinned);
-              var versionHeaderPreCheck = (rF2MappedBufferVersionBlock)Marshal.PtrToStructure(handleBufferHeader.AddrOfPinnedObject(), typeof(rF2MappedBufferVersionBlock));
-              handleBufferHeader.Free();*/
-
               this.GetHeaderBlock<rF2MappedBufferVersionBlock>(sharedMemoryStream, this.RF2_BUFFER_VERSION_BLOCK_SIZE_BYTES, ref versionHeader);
               currVersionBegin = versionHeader.mVersionUpdateBegin;
               currVersionEnd = versionHeader.mVersionUpdateEnd;
@@ -187,12 +192,7 @@ namespace rF2SMMonitor
             // Buffer version pre-check.  Verify if Begin/End versions match.
             if (currVersionBegin != currVersionEnd)
             {
-              // There are multiple alternatives on what to do here:
-              // * keep retrying - drawback is CPU being kept busy, but absolute minimum latency.
-              // * Thread.Sleep(0) - drawback is CPU being kept busy, but almost minimum latency.  Compared to first option, gives other threads a chance to execute.
-              // * Thread.Sleep(N) - relaxed approach, less CPU saturation but adds a bit of latency.
-              // there are other options too.  Bearing in mind that minimum sleep on windows is ~16ms, which is around 66FPS, I doubt it matters much.
-              Thread.Sleep(1);
+             Thread.Sleep(1);
               ++numReadRetriesPreCheck;
               continue;
             }
@@ -212,11 +212,6 @@ namespace rF2SMMonitor
             // Verify if Begin/End versions match:
             if (versionHeader.mVersionUpdateBegin != versionHeader.mVersionUpdateEnd)
             {
-              // There are multiple alternatives on what to do here:
-              // * keep retrying - drawback is CPU being kept busy, but absolute minimum latency.
-              // * Thread.Sleep(0) - drawback is CPU being kept busy, but almost minimum latency.  Compared to first option, gives other threads a chance to execute.
-              // * Thread.Sleep(N) - relaxed approach, less CPU saturation but adds a bit of latency.
-              // there are other options too.  Bearing in mind that minimum sleep on windows is ~16ms, which is around 66FPS, I doubt it matters much.
               Thread.Sleep(1);
               ++numReadRetries;
               continue;
@@ -236,18 +231,12 @@ namespace rF2SMMonitor
             // we still will be able to detect this case because now updateBegin version changed, so we
             // know Writer is updating the buffer.
 
-            /*sharedMemoryStream.BaseStream.Position = 0;
-            var sharedMemoryReadBufferLastCheck = sharedMemoryStream.ReadBytes(this.RF2_BUFFER_VERSION_BLOCK_SIZE_BYTES);
-
-            var handleVersionBlockLastCheck = GCHandle.Alloc(sharedMemoryReadBufferLastCheck, GCHandleType.Pinned);
-            var versionHeaderLastCheck = (rF2MappedBufferVersionBlock)Marshal.PtrToStructure(handleVersionBlockLastCheck.AddrOfPinnedObject(), typeof(rF2MappedBufferVersionBlock));
-            handleVersionBlockLastCheck.Free();*/
-
             this.GetHeaderBlock<rF2MappedBufferVersionBlock>(sharedMemoryStream, this.RF2_BUFFER_VERSION_BLOCK_SIZE_BYTES, ref versionHeader);
 
             if (currVersionBegin != versionHeader.mVersionUpdateBegin
               || currVersionEnd != versionHeader.mVersionUpdateEnd)
             {
+              Thread.Sleep(1);
               ++this.numReadRetriesOnCheck;
               continue;
             }
@@ -257,6 +246,7 @@ namespace rF2SMMonitor
 
             // Success.
             this.maxRetries = Math.Max(this.maxRetries, retry);
+            ++this.numReadsSucceeded;
             this.stuckVersionBegin = this.stuckVersionEnd = 0;
 
             // Save succeessfully read version to avoid re-reading.
@@ -295,7 +285,7 @@ namespace rF2SMMonitor
       }
     }
 
-    MappedBuffer<rF2Telemetry> telemetryBuffer = new MappedBuffer<rF2Telemetry>(rFactor2Constants.MM_TELEMETRY_FILE_NAME, true /*partial*/, false /*skipUnchanged*/);
+    MappedBuffer<rF2Telemetry> telemetryBuffer = new MappedBuffer<rF2Telemetry>(rFactor2Constants.MM_TELEMETRY_FILE_NAME, true /*partial*/, true /*skipUnchanged*/);
     MappedBuffer<rF2Scoring> scoringBuffer = new MappedBuffer<rF2Scoring>(rFactor2Constants.MM_SCORING_FILE_NAME, true /*partial*/, true /*skipUnchanged*/);
     MappedBuffer<rF2Rules> rulesBuffer = new MappedBuffer<rF2Rules>(rFactor2Constants.MM_RULES_FILE_NAME, true /*partial*/, true /*skipUnchanged*/);
     MappedBuffer<rF2Extended> extendedBuffer = new MappedBuffer<rF2Extended>(rFactor2Constants.MM_EXTENDED_FILE_NAME, false /*partial*/, true /*skipUnchanged*/);
@@ -429,6 +419,11 @@ namespace rF2SMMonitor
       {
         this.delayAccMicroseconds = 0;
         this.numDelayUpdates = 0;
+
+        this.telemetryBuffer.ClearStats();
+        this.scoringBuffer.ClearStats();
+        this.extendedBuffer.ClearStats();
+        this.rulesBuffer.ClearStats();
       }
     }
 
@@ -772,7 +767,7 @@ namespace rF2SMMonitor
           + "Extended:\n"
           + "Avg read:");
 
-        g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Black, 1550, 570);
+        g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Black, 1500, 570);
 
         gameStateText.Clear();
         gameStateText.Append(
@@ -782,7 +777,7 @@ namespace rF2SMMonitor
           + this.extendedBuffer.GetStats() + '\n' 
           + this.avgDelayMicroseconds.ToString("0.000") + " microseconds");
 
-        g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Black, 1610, 570);
+        g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Black, 1560, 570);
         
         if (this.scoring.mScoringInfo.mNumVehicles == 0
           || resolvedPlayerIdx == -1)  // We need telemetry for stats below.
