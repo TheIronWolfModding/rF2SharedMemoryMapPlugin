@@ -33,9 +33,9 @@ Plugin is built using VS 2015 Community Edition, targeting VC12 (VS 2013) runtim
 Plugin comes with rF2SMMonitor program that shows how to access exposed internals from C# program.  It is also useful for visualization of shared memory contents and general understanding of rFactor 2 internals.
 
 ## Memory Buffer Uses
-  * Basic:   Most clients (HUDs, Dashes, visualizers) won't need synchronization.  See `rF2SMMonitor.MainForm.MappedBuffer<>.GetMappedDataUnsynchronized` for sample implementation.
+  * Basic:   Most clients (HUDs, Dashes, visualizers) won't need synchronization, see `rF2SMMonitor.MainForm.MappedBuffer<>.GetMappedDataUnsynchronized` for sample implementation.
   * Advanced:  If you would like to make sure you're not 
-  reading a torn (partially overwritten) frame,  see `rF2SMMonitor.MainForm.MappedBuffer<>.GetMappedData` for sample implementation.
+  reading a torn (partially overwritten) frame, see `rF2SMMonitor.MainForm.MappedBuffer<>.GetMappedData` for sample implementation.
 
 ## Distribution and reuse
 You are allowed to include this .dll with your distribution, as long as it is:

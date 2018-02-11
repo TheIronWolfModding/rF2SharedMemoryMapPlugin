@@ -109,6 +109,16 @@ namespace rF2SMMonitor
         }
       }
 
+      private void GetHeaderBlock<HeaderBlockT>(BinaryReader sharedMemoryStream, int headerBlockBytes, ref HeaderBlockT headerBlock)
+      {
+        sharedMemoryStream.BaseStream.Position = 0;
+        var sharedMemoryReadBufferHeader = sharedMemoryStream.ReadBytes(headerBlockBytes);
+
+        var handleBufferHeader = GCHandle.Alloc(sharedMemoryReadBufferHeader, GCHandleType.Pinned);
+        headerBlock = (HeaderBlockT)Marshal.PtrToStructure(handleBufferHeader.AddrOfPinnedObject(), typeof(HeaderBlockT));
+        handleBufferHeader.Free();
+      }
+
       public void GetMappedData(ref MappedBufferT mappedData)
       {
         using (var sharedMemoryStreamView = this.memoryMappedFile.CreateViewStream())
@@ -119,19 +129,24 @@ namespace rF2SMMonitor
           var retry = 0;
           var sharedMemoryStream = new BinaryReader(sharedMemoryStreamView);
           byte[] sharedMemoryReadBuffer = null;
+          var versionHeaderWithSize = new rF2MappedBufferVersionBlockWithSize();
+          var versionHeader = new rF2MappedBufferVersionBlock();
+
           for (retry = 0; retry < MappedBuffer<MappedBufferT>.NUM_MAX_RETRIEES; ++retry)
           {
             var bufferSizeBytes = this.BUFFER_SIZE_BYTES;
             // Read current buffer versions.
             if (this.partial)
             {
-              sharedMemoryStream.BaseStream.Position = 0;
+              /*sharedMemoryStream.BaseStream.Position = 0;
               var sharedMemoryReadBufferHeader = sharedMemoryStream.ReadBytes(this.RF2_BUFFER_VERSION_BLOCK_WITH_SIZE_SIZE_BYTES);
 
               var handleBufferHeader = GCHandle.Alloc(sharedMemoryReadBufferHeader, GCHandleType.Pinned);
-              var versionHeaderWithSize = (rF2MappedBufferVersionBlockWithSize)Marshal.PtrToStructure(handleBufferHeader.AddrOfPinnedObject(), typeof(rF2MappedBufferVersionBlockWithSize));
-              handleBufferHeader.Free();
+              rF2MappedBufferVersionBlockWithSize versionHeaderWithSize = (rF2MappedBufferVersionBlockWithSize)Marshal.PtrToStructure(handleBufferHeader.AddrOfPinnedObject(), typeof(rF2MappedBufferVersionBlockWithSize));
+              handleBufferHeader.Free();*/
 
+             
+              this.GetHeaderBlock<rF2MappedBufferVersionBlockWithSize>(sharedMemoryStream, this.RF2_BUFFER_VERSION_BLOCK_WITH_SIZE_SIZE_BYTES, ref versionHeaderWithSize);
               currVersionBegin = versionHeaderWithSize.mVersionUpdateBegin;
               currVersionEnd = versionHeaderWithSize.mVersionUpdateEnd;
 
@@ -139,15 +154,16 @@ namespace rF2SMMonitor
             }
             else
             {
-              sharedMemoryStream.BaseStream.Position = 0;
+              /*haredMemoryStream.BaseStream.Position = 0;
               var sharedMemoryReadBufferHeader = sharedMemoryStream.ReadBytes(this.RF2_BUFFER_VERSION_BLOCK_SIZE_BYTES);
 
               var handleBufferHeader = GCHandle.Alloc(sharedMemoryReadBufferHeader, GCHandleType.Pinned);
               var versionHeaderPreCheck = (rF2MappedBufferVersionBlock)Marshal.PtrToStructure(handleBufferHeader.AddrOfPinnedObject(), typeof(rF2MappedBufferVersionBlock));
-              handleBufferHeader.Free();
+              handleBufferHeader.Free();*/
 
-              currVersionBegin = versionHeaderPreCheck.mVersionUpdateBegin;
-              currVersionEnd = versionHeaderPreCheck.mVersionUpdateEnd;
+              this.GetHeaderBlock<rF2MappedBufferVersionBlock>(sharedMemoryStream, this.RF2_BUFFER_VERSION_BLOCK_SIZE_BYTES, ref versionHeader);
+              currVersionBegin = versionHeader.mVersionUpdateBegin;
+              currVersionEnd = versionHeader.mVersionUpdateEnd;
             }
 
             // If this is stale "out of sync" situation, that is, we're stuck in, no point in retrying here.
@@ -187,7 +203,7 @@ namespace rF2SMMonitor
 
             // Marshal version block.
             var handleVersionBlock = GCHandle.Alloc(sharedMemoryReadBuffer, GCHandleType.Pinned);
-            var versionHeader = (rF2MappedBufferVersionBlock)Marshal.PtrToStructure(handleVersionBlock.AddrOfPinnedObject(), typeof(rF2MappedBufferVersionBlock));
+            versionHeader = (rF2MappedBufferVersionBlock)Marshal.PtrToStructure(handleVersionBlock.AddrOfPinnedObject(), typeof(rF2MappedBufferVersionBlock));
             handleVersionBlock.Free();
 
             currVersionBegin = versionHeader.mVersionUpdateBegin;
@@ -220,15 +236,17 @@ namespace rF2SMMonitor
             // we still will be able to detect this case because now updateBegin version changed, so we
             // know Writer is updating the buffer.
 
-            sharedMemoryStream.BaseStream.Position = 0;
+            /*sharedMemoryStream.BaseStream.Position = 0;
             var sharedMemoryReadBufferLastCheck = sharedMemoryStream.ReadBytes(this.RF2_BUFFER_VERSION_BLOCK_SIZE_BYTES);
 
             var handleVersionBlockLastCheck = GCHandle.Alloc(sharedMemoryReadBufferLastCheck, GCHandleType.Pinned);
             var versionHeaderLastCheck = (rF2MappedBufferVersionBlock)Marshal.PtrToStructure(handleVersionBlockLastCheck.AddrOfPinnedObject(), typeof(rF2MappedBufferVersionBlock));
-            handleVersionBlockLastCheck.Free();
+            handleVersionBlockLastCheck.Free();*/
 
-            if (versionHeader.mVersionUpdateBegin != versionHeaderLastCheck.mVersionUpdateBegin
-              || versionHeader.mVersionUpdateEnd != versionHeaderLastCheck.mVersionUpdateEnd)
+            this.GetHeaderBlock<rF2MappedBufferVersionBlock>(sharedMemoryStream, this.RF2_BUFFER_VERSION_BLOCK_SIZE_BYTES, ref versionHeader);
+
+            if (currVersionBegin != versionHeader.mVersionUpdateBegin
+              || currVersionEnd != versionHeader.mVersionUpdateEnd)
             {
               ++this.numReadRetriesOnCheck;
               continue;
