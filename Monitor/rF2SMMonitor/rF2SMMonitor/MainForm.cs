@@ -27,9 +27,8 @@ namespace rF2SMMonitor
     private const int CONNECTION_RETRY_INTERVAL_MS = 1000;
     private const int DISCONNECTED_CHECK_INTERVAL_MS = 15000;
     private const float DEGREES_IN_RADIAN = 57.2957795f;
-    //private const int LIGHT_MODE_REFRESH_MS = 500;
-    // TODO: remove this.
-    private const int LIGHT_MODE_REFRESH_MS = 50;
+    private const int LIGHT_MODE_REFRESH_MS = 500;
+
     System.Windows.Forms.Timer connectTimer = new System.Windows.Forms.Timer();
     System.Windows.Forms.Timer disconnectTimer = new System.Windows.Forms.Timer();
     bool connected = false;
@@ -76,6 +75,8 @@ namespace rF2SMMonitor
 
         this.memoryMappedFile = null;
         this.fullSizeBuffer = null;
+
+	this.ClearStats();
       }
 
       // Read success statistics.
@@ -134,6 +135,25 @@ namespace rF2SMMonitor
 
       public void GetMappedData(ref MappedBufferT mappedData)
       {
+        // This method tries to ensure we read consistent buffer view in three steps.
+        // 1. Pre-Check:
+        //       - read version header and retry reading this buffer if begin/end versions don't match.  This reduces a chance of 
+        //         reading torn frame during full buffer read.  This saves CPU time.
+        //       - return if version matches last failed read version (stuck frame).
+        //       - return if version matches previously successfully read buffer.  This saves CPU time by avoiding the full read of most likely identical data.
+        //
+        // 2. Main Read: reads the main buffer + version block.  If versions don't match, retry.
+        //
+        // 3. Post-Check: read version header again and retry reading this buffer if begin/end versions don't match.  This covers corner case
+        //                where buffer is being written to during the Main Read.
+        //
+        // While retrying, this method tries to avoid running CPU at 100%.
+        //
+        // There are multiple alternatives on what to do here:
+        // * keep retrying - drawback is CPU being kept busy, but absolute minimum latency.
+        // * Thread.Sleep(0)/Yield - drawback is CPU being kept busy, but almost minimum latency.  Compared to first option, gives other threads a chance to execute.
+        // * Thread.Sleep(N) - relaxed approach, less CPU saturation but adds a bit of latency.
+        // there are other options too.  Bearing in mind that minimum sleep on windows is ~16ms, which is around 66FPS, I doubt delay added matters much for Crew Chief at least.
         using (var sharedMemoryStreamView = this.memoryMappedFile.CreateViewStream())
         {
           uint currVersionBegin = 0;
@@ -145,13 +165,6 @@ namespace rF2SMMonitor
           var versionHeaderWithSize = new rF2MappedBufferVersionBlockWithSize();
           var versionHeader = new rF2MappedBufferVersionBlock();
 
-          // While retrying, this method tries to avoid running CPU at 100%.
-          //
-          // There are multiple alternatives on what to do here:
-          // * keep retrying - drawback is CPU being kept busy, but absolute minimum latency.
-          // * Thread.Sleep(0) - drawback is CPU being kept busy, but almost minimum latency.  Compared to first option, gives other threads a chance to execute.
-          // * Thread.Sleep(N) - relaxed approach, less CPU saturation but adds a bit of latency.
-          // there are other options too.  Bearing in mind that minimum sleep on windows is ~16ms, which is around 66FPS, I doubt it matters much.
           for (retry = 0; retry < MappedBuffer<MappedBufferT>.NUM_MAX_RETRIEES; ++retry)
           {
             var bufferSizeBytes = this.BUFFER_SIZE_BYTES;

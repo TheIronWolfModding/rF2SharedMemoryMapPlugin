@@ -467,9 +467,10 @@ void SharedMemoryPlugin::TelemetryTraceSkipUpdate(TelemInfoV01 const& info, doub
     sprintf(msg, "TELEMETRY - Skipping update due to no changes in the input data.  Delta ET: %f  New ET: %f  Prev ET:%f  mID(new):%d", deltaET, info.mElapsedTime, mLastTelemetryUpdateET, info.mID);
     DEBUG_MSG(DebugLevel::Timing, msg);
 
-    // We flip only on mElapsedTime change, so on skip we need to compare to the current write buffer.
+    // We complete frame every 20ms, so on skip we need to compare to the current write buffer.
     // Below assumes that we begin skip on the first vehicle, which is not guaranteed.  However, that's ok
     // since this code is diagnostic.
+    // The goal here is to detect situation where rF2 changes and begins to send telemetry more frequently.
     auto const prevBuff = mTelemetry.mpBuff;
     if (info.mPos.x != prevBuff->mVehicles->mPos.x
       || info.mPos.y != prevBuff->mVehicles->mPos.y
@@ -508,7 +509,6 @@ void SharedMemoryPlugin::TelemetryTraceBeginUpdate(double telUpdateET, double de
 void SharedMemoryPlugin::TelemetryTraceVehicleAdded(TelemInfoV01 const& info) 
 {
   if (SharedMemoryPlugin::msDebugOutputLevel == DebugLevel::Verbose) {
-    // If retry is pending, previous data is in a write buffer, otherwise it is in a read buffer.
     auto const prevBuff = mTelemetry.mpBuff;
     bool const samePos = info.mPos.x == prevBuff->mVehicles[mCurrTelemetryVehicleIndex].mPos.x
       && info.mPos.y == prevBuff->mVehicles[mCurrTelemetryVehicleIndex].mPos.y
@@ -537,38 +537,6 @@ void SharedMemoryPlugin::TelemetryTraceEndUpdate(int numVehiclesInChain) const
   }
 }
 
-/*
-void SharedMemoryPlugin::TelemetryFlipBuffers()
-{
-  if (mLastTelemetryUpdateET > 0.0 && mLastTelemetryUpdateET <= mLastScoringUpdateET) {
-    // At the ET when both Scoring and Telemetry are updated, Scoring updates are coming in between telemetry updates with same ET.
-    // We want scoring and telemetry to be close and not let telemetry update drag behind.
-    DEBUG_MSG(DebugLevel::Timing, "TELEMETRY - Force flip due to: mLastTelemetryUpdateET <= mLastScoringUpdateET.");
-    mTelemetry.FlipBuffers();
-  }
-  else if (mTelemetry.AsyncRetriesLeft() > 0) {
-    auto const retryPending = mTelemetry.RetryPending();
-    // Otherwise, try buffer flip.
-    mTelemetry.TryFlipBuffers();
-
-    // Print msg about buffer flip failure or success.
-    if (mTelemetry.RetryPending())
-      DEBUG_INT2(DebugLevel::Synchronization, "TELEMETRY - Buffer flip failed, retries remaining:", mTelemetry.AsyncRetriesLeft());
-    else {
-      if (retryPending)
-        DEBUG_MSG(DebugLevel::Synchronization, "TELEMETRY - Buffer flip succeeded on retry.");
-      else
-        DEBUG_MSG(DebugLevel::Timing, "TELEMETRY - Buffer flip succeeded.");
-    }
-  }
-  else {
-    // Force flip if no more retries are left
-    assert(mTelemetry.AsyncRetriesLeft() == 0);
-    DEBUG_MSG(DebugLevel::Synchronization, "TELEMETRY - Force flip due to retry limit exceeded.");
-    mTelemetry.FlipBuffers();
-  }
-}
-*/
 
 void SharedMemoryPlugin::TelemetryBeginNewFrame(TelemInfoV01 const& info, double deltaET)
 {
@@ -604,12 +572,17 @@ void SharedMemoryPlugin::TelemetryCompleteFrame()
 
 /*
 rF2 sends telemetry updates for each vehicle.  The problem is that we do not know when all vehicles received an update.
-Below I am trying to flip buffers per-frame, where "frame" means all vehicles received telemetry update.
+Below I am trying to complete buffer update per-frame, where "frame" means all vehicles received telemetry update.
 
-I am detecting frame by checking time distance between mElapsedTime.  It appears that rF2 sends vehicle telemetry every 20ms
-(every 1ms really, but most of the time contents are duplicated).  As a consquence, we do flip every 20ms (50FPS).
+I am detecting new frame by checking time distance between mElapsedTime.  It appears that rF2 sends vehicle telemetry every 20ms
+(every 10ms really, but most of the time contents are duplicated).  As a consquence, we do flip every 20ms (50FPS).
 
-Note that sometimes mElapsedTime for player vehicle is slightly ahead of the rest of vehicles (but never more than 20ms, most often being 2.5ms).
+Frame end is detected by either:
+- checking if number of vehicles in telemetry frame matching number of vehicles reported via scoring
+- we detect cycle (same mID updated twice)
+
+Note that sometimes mElapsedTime for player vehicle is slightly ahead of the rest of vehicles (but never more than 20ms, most often being 2.5ms off).
+This mostly happens during first few seconds of going green.
 
 There's an alternative approach that can be taken: it appears that game sends vehicle telemetry ordered by mID (ascending order).
 So we could detect new frame by checking mIDs and cut when mIDPrev >= mIDCurrent.
@@ -664,7 +637,7 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
 
     // Update extended state for this vehicle.
     // Since I do not want to miss impact data, and it is not accumulated in any way
-    // I am aware of in rF2 internals, process on every telemetry update.  Actual flip will happen on Scoring update.
+    // I am aware of in rF2 internals, process on every telemetry update.  Actual buffer update will happen on Scoring update.
     mExtStateTracker.ProcessTelemetryUpdate(info);
 
     // Mark participant as updated
@@ -740,19 +713,13 @@ void SharedMemoryPlugin::UpdateScoring(ScoringInfoV01 const& info)
 
   ScoringTraceBeginUpdate();
 
-/*  if (mTelemetry.RetryPending()) {
-    // If this happens often, we need to change something, because forced flip is coming very soon
-    // after scoring update anyway.
-    DEBUG_MSG(DebugLevel::Synchronization, "SCORING - Force telemetry flip due to retry pending.");
-    mTelemetry.FlipBuffers();
-  }*/
-
   // Below apparently never happens, but let's keep it in case there's a regression in the game.
   // So far, this appears to only happen on session end, when telemetry is already zeroed out.
   if (mLastScoringUpdateET > mLastTelemetryUpdateET)
     DEBUG_MSG(DebugLevel::Warnings, "WARNING: Scoring update is ahead of telemetry.");
 
   mScoring.BeginUpdate();
+
   memcpy(&(mScoring.mpBuff->mScoringInfo), &info, sizeof(rF2ScoringInfo));
 
   if (info.mNumVehicles >= rF2MappedBufferHeader::MAX_MAPPED_VEHICLES)
