@@ -50,6 +50,10 @@ If you would like to support this project, you can donate [here.](http://thecrew
 
 # Release history
 
+02/16/2018 - v3.0.0.0
+
+  Rework Plugin to replace mutexes with buffer version tracking mechanism.  Update Monitor to match new way of reading data.
+
 01/24/2018 - v2.4.0.0
 
   Plugin:
