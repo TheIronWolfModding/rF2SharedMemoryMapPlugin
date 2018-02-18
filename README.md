@@ -45,6 +45,10 @@ You are allowed to include this .dll with your distribution, as long as it is:
 
 Please also be aware, that Crew Chief will always ship with the latest version of the .dll and will overwrite .dll to match its version.  I do not expect compatibility to break without game changing its model, aside from rF2Extended buffer, which contains stuff not directly exposed by the game.  Every time layout of memory changes, second digit in Plugin version is incremented.
 
+## Current known clients
+* Crew Chief: https://github.com/mrbelowski/CrewChiefV4 
+* SimHub: https://github.com/zegreatclan/AssettoCorsaTools/wiki
+
 ## Support this project
 If you would like to support this project, you can donate [here.](http://thecrewchief.org/misc.php?do=donate)
 
