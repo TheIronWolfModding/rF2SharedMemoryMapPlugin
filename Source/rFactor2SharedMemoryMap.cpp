@@ -913,6 +913,8 @@ void SharedMemoryPlugin::SetPhysicsOptions(PhysicsOptionsV01& options)
 
   DEBUG_MSG(DebugLevel::Timing, "PHYSICS - Updated.");
 
+  memcpy(&(mExtStateTracker.mExtended.mPhysics), &options, sizeof(rF2PhysicsOptions));
+
   mExtended.BeginUpdate();
   memcpy(mExtended.mpBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
   mExtended.EndUpdate();
