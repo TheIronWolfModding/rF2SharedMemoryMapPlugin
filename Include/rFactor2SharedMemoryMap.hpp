@@ -27,7 +27,7 @@ Website: thecrewchief.org
 
 // Each component can be in [0:99] range.
 #define PLUGIN_VERSION_MAJOR "3.0"
-#define PLUGIN_VERSION_MINOR "0.1"
+#define PLUGIN_VERSION_MINOR "1.0"
 #define PLUGIN_NAME_AND_VERSION "rFactor 2 Shared Memory Map Plugin - v" PLUGIN_VERSION_MAJOR
 #define SHARED_MEMORY_VERSION PLUGIN_VERSION_MAJOR "." PLUGIN_VERSION_MINOR
 
@@ -74,6 +74,7 @@ public:
 
   static DebugLevel msDebugOutputLevel;
   static bool msDebugISIInternals;
+  static bool msDedicatedServerMapGlobally;
 
   // Ouptut files:
   static FILE* msDebugFile;

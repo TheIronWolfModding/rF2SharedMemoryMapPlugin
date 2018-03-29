@@ -16,6 +16,8 @@ Description:
   EndUpdate once they're done.
 */
 #pragma once
+#include <sddl.h>
+#include "Utils.h"
 
 template <typename BuffT>
 class MappedBuffer
@@ -31,10 +33,10 @@ public:
     ReleaseResources();
   }
 
-  bool Initialize()
+  bool Initialize(bool mapGlobally)
   {
     assert(!mMapped);
-    mhMap = MapMemoryFile(MM_FILE_NAME, mpMappedView, mpBuffVersionBlock, mpBuff);
+    mhMap = MapMemoryFile(MM_FILE_NAME, mapGlobally, mpMappedView, mpBuffVersionBlock, mpBuff);
     if (mhMap == nullptr) {
       DEBUG_MSG(DebugLevel::Errors, "Failed to map file");
       ReleaseResources();
@@ -144,31 +146,90 @@ private:
   MappedBuffer(MappedBuffer const&) = delete;
   MappedBuffer& operator=(MappedBuffer const&) = delete;
 
-  HANDLE MapMemoryFile(char const* const fileName, LPVOID& pMappedView, rF2MappedBufferVersionBlock*& pBufVersionBlock, BuffT*& pBuf) const
+  HANDLE MapMemoryFile(char const* const fileName, bool dedicatedServerMapGlobally, LPVOID& pMappedView, rF2MappedBufferVersionBlock*& pBufVersionBlock, BuffT*& pBuf) const
   {
-    char mappingName[256] = {};
-    strcpy_s(mappingName, fileName);
-
     char moduleName[1024] = {};
     ::GetModuleFileNameA(nullptr, moduleName, sizeof(moduleName));
 
-    char pid[8] = {};
-    sprintf(pid, "%d", ::GetCurrentProcessId());
+    char mappingName[MAX_PATH] = {};
+    auto isDedicatedServer = true;
+    if (strstr(moduleName, "Dedicated.exe") == nullptr)
+      strcpy_s(mappingName, fileName);  // Regular client use.
+    else {
+      // Dedicated server use.  Append processId for dedicated server to allow multiple instances.
+      char pid[8] = {};
+      sprintf(pid, "%d", ::GetCurrentProcessId());
 
-    // Append processId for dedicated server to allow multiple instances
-    // TODO: Verify for rF2.
-    if (strstr(moduleName, "Dedicated.exe") != nullptr)
-      strcat(mappingName, pid);
+      if (dedicatedServerMapGlobally)
+        sprintf(mappingName, "Global\\%s%s", fileName, pid);
+      else
+        sprintf(mappingName, "%s%s", fileName, pid);
 
-    // Init handle and try to create, read if existing
-    auto hMap = ::CreateFileMappingA(
-      INVALID_HANDLE_VALUE,
-      nullptr  /*lpFileMappingAttributes*/,
-      PAGE_READWRITE,
-      0  /*dwMaximumSizeLow*/,
-      sizeof(rF2MappedBufferVersionBlock) + sizeof(BuffT),
-      mappingName);
+      isDedicatedServer = true;
+    }
 
+    HANDLE hMap = INVALID_HANDLE_VALUE;
+    if (!isDedicatedServer  // Regular client use.
+      || (isDedicatedServer && !dedicatedServerMapGlobally)) {  // Dedicated, but no global mapping requested.
+      // Init handle and try to create, read if existing.
+      hMap = ::CreateFileMappingA(
+        INVALID_HANDLE_VALUE,
+        nullptr  /*lpFileMappingAttributes*/,
+        PAGE_READWRITE,
+        0  /*dwMaximumSizeLow*/,
+        sizeof(rF2MappedBufferVersionBlock) + sizeof(BuffT),
+        mappingName);
+    }
+    else {
+      assert(isDedicatedServer);
+      assert(dedicatedServerMapGlobally);
+
+      SECURITY_ATTRIBUTES security = {};
+      security.nLength = sizeof(security);
+
+      /*SECURITY_ATTRIBUTES security = {};
+      SECURITY_DESCRIPTOR secDesc = {};
+
+      if (::InitializeSecurityDescriptor(&secDesc, SECURITY_DESCRIPTOR_REVISION)
+        && ::SetSecurityDescriptorDacl(&secDesc, TRUE, static_cast<PACL>(0), FALSE))
+      {
+        security.nLength = sizeof(security);
+        security.lpSecurityDescriptor = &secDesc;
+        security.bInheritHandle = TRUE;
+      }
+      else {
+          DEBUG_MSG2(DebugLevel::Errors, "Failed to create security descriptor for mapping:", mappingName);
+          SharedMemoryPlugin::TraceLastWin32Error();
+          ::LocalFree(security.lpSecurityDescriptor);
+          return nullptr;
+      }*/
+
+      auto ret = ConvertStringSecurityDescriptorToSecurityDescriptor(
+        "D:P(A;OICI;GA;;;SY)(A;OICI;GA;;;BA)(A;OICI;GA;;;WD)",
+        SDDL_REVISION_1,
+        &security.lpSecurityDescriptor,
+        nullptr);
+
+      auto onExit = MakeScopeGuard([&]() {
+        ::LocalFree(security.lpSecurityDescriptor);
+      });
+
+      if (!ret) {
+        DEBUG_MSG2(DebugLevel::Errors, "Failed to create security descriptor for mapping:", mappingName);
+        SharedMemoryPlugin::TraceLastWin32Error();
+        return nullptr;
+      }
+
+      // Init handle and try to create, read if existing
+      hMap = ::CreateFileMappingA(
+        INVALID_HANDLE_VALUE,
+        &security,
+        PAGE_READWRITE,
+        0  /*dwMaximumSizeLow*/,
+        sizeof(rF2MappedBufferVersionBlock) + sizeof(BuffT),
+        mappingName);
+    }
+    
     if (hMap == nullptr) {
       DEBUG_MSG2(DebugLevel::Errors, "Failed to create file mapping for file:", mappingName);
       SharedMemoryPlugin::TraceLastWin32Error();

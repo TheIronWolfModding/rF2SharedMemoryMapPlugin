@@ -16,6 +16,10 @@ Shared resources:
 
   Shared resources use the following naming convention:
     - $rFactor2SMMP_<BUFFER_TYPE>$
+      or
+    - $rFactor2SMMP_<BUFFER_TYPE>$PID where PID is dedicated server process PID.
+      or
+    - Global\\$rFactor2SMMP_<BUFFER_TYPE>$PID if running in dedicated server and DedicatedServerMapGlobally option is set to 1.
 
   where <BUFFER_TYPE> is one of the following:
     * Telemetry - mapped view of rF2Telemetry structure
@@ -82,6 +86,11 @@ Hosted Stock Car Rules plugin:
   are always empty (game clears them out in between plugin calls).
   See PluginHost.h/.cpp for more.
 
+Dedicated server use:
+  If ran in dedicated server process, each shared memory buffer name has server PID appended.  If DedicatedServerMapGlobally
+  preference is set to 1, plugin will attempt creating shared memory buffers in the Global section.  Note that "Create Global Objects"
+  permission is needed on user account running dedicated server.
+
 
 Configuration:
   Standard rF2 plugin configuration is used.  See: SharedMemoryPlugin::AccessCustomVariable.
@@ -110,6 +119,7 @@ static double const MICROSECONDS_IN_SECOND = MILLISECONDS_IN_SECOND * MICROSECON
 DebugLevel SharedMemoryPlugin::msDebugOutputLevel = DebugLevel::Off;
 bool SharedMemoryPlugin::msDebugISIInternals = false;
 bool SharedMemoryPlugin::msStockCarRulesPluginRequested = false;
+bool SharedMemoryPlugin::msDedicatedServerMapGlobally = false;
 
 FILE* SharedMemoryPlugin::msDebugFile;
 FILE* SharedMemoryPlugin::msIsiTelemetryFile;
@@ -166,32 +176,33 @@ void SharedMemoryPlugin::Startup(long version)
   DEBUG_INT2(DebugLevel::CriticalInfo, "EnableStockCarRulesPlugin:", SharedMemoryPlugin::msStockCarRulesPluginRequested);
   DEBUG_INT2(DebugLevel::CriticalInfo, "DebugOutputLevel:", SharedMemoryPlugin::msDebugOutputLevel);
   DEBUG_INT2(DebugLevel::CriticalInfo, "DebugISIInternals:", SharedMemoryPlugin::msDebugISIInternals);
+  DEBUG_INT2(DebugLevel::CriticalInfo, "DedicatedServerMapGlobally:", SharedMemoryPlugin::msDedicatedServerMapGlobally);
 
   char temp[80] = {};
   sprintf(temp, "-STARTUP- (version %.3f)", (float)version / 1000.0f);
   WriteToAllExampleOutputFiles("w", temp);
 
-  if (!mTelemetry.Initialize()) {
+  if (!mTelemetry.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
     DEBUG_MSG(DebugLevel::Errors, "Failed to initialize telemetry mapping");
     return;
   }
 
-  if (!mScoring.Initialize()) {
+  if (!mScoring.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
     DEBUG_MSG(DebugLevel::Errors, "Failed to initialize scoring mapping");
     return;
   }
 
-  if (!mRules.Initialize()) {
+  if (!mRules.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
     DEBUG_MSG(DebugLevel::Errors, "Failed to initialize rules mapping");
     return;
   }
 
-  if (!mMultiRules.Initialize()) {
+  if (!mMultiRules.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
     DEBUG_MSG(DebugLevel::Errors, "Failed to initialize multi rules mapping");
     return;
   }
 
-  if (!mExtended.Initialize()) {
+  if (!mExtended.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
     DEBUG_MSG(DebugLevel::Errors, "Failed to initialize extended mapping");
     return;
   }
@@ -979,6 +990,12 @@ bool SharedMemoryPlugin::GetCustomVariable(long i, CustomVariableV01& var)
     var.mCurrentSetting = 0;
     return true;
   }
+  else if (i == 4) {
+    strcpy_s(var.mCaption, "DedicatedServerMapGlobally");
+    var.mNumSettings = 2;
+    var.mCurrentSetting = 0;
+    return true;
+  }
 
   return false;
 }
@@ -1002,6 +1019,8 @@ void SharedMemoryPlugin::AccessCustomVariable(CustomVariableV01& var)
   }
   else if (_stricmp(var.mCaption, "DebugISIInternals") == 0)
     SharedMemoryPlugin::msDebugISIInternals = var.mCurrentSetting != 0;
+  else if (_stricmp(var.mCaption, "DedicatedServerMapGlobally") == 0)
+    SharedMemoryPlugin::msDedicatedServerMapGlobally = var.mCurrentSetting != 0;
 }
 
 
@@ -1029,7 +1048,12 @@ void SharedMemoryPlugin::GetCustomVariableSetting(CustomVariableV01& var, long i
     else
       strcpy_s(setting.mName, "True");
   }
-
+  else if (_stricmp(var.mCaption, "DedicatedServerMapGlobally") == 0) {
+    if (i == 0)
+      strcpy_s(setting.mName, "False");
+    else
+      strcpy_s(setting.mName, "True");
+  }
 }
 
 

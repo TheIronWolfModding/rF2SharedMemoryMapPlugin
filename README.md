@@ -37,6 +37,9 @@ Plugin comes with rF2SMMonitor program that shows how to access exposed internal
   * Advanced:  If you would like to make sure you're not 
   reading a torn (partially overwritten) frame, see `rF2SMMonitor.MainForm.MappedBuffer<>.GetMappedData` for sample implementation.
 
+## Dedicated server use
+If ran in dedicated server process, each shared memory buffer name has server PID appended.  If DedicatedServerMapGlobally preference is set to 1, plugin will attempt creating shared memory buffers in the Global section.  Note that "Create Global Objects" permission is needed on user account running dedicated server.
+
 ## Distribution and reuse
 You are allowed to include this .dll with your distribution, as long as it is:
 * Free
@@ -48,11 +51,17 @@ Please also be aware, that Crew Chief will always ship with the latest version o
 ## Current known clients
 * Crew Chief: https://github.com/mrbelowski/CrewChiefV4 
 * SimHub: https://github.com/zegreatclan/AssettoCorsaTools/wiki
+* rFactor 2 Log Analyzer: https://forum.studio-397.com/index.php?threads/rfactor2-log-analyzer-ver-2-with-offline-and-league-championship-manager.48117/
 
 ## Support this project
 If you would like to support this project, you can donate [here.](http://thecrewchief.org/misc.php?do=donate)
 
 # Release history
+
+03/29/2018 - v3.0.1.0
+
+  Plugin:
+  * Add DedicatedServerMapGlobally preference to allow mapping dedicated server shared memory buffers to global section, so that users running under other accounts can access them.  Note that "Create Global Objects" permission is needed on user account running dedicated server.
 
 02/21/2018 - v3.0.0.1
 
