@@ -130,6 +130,7 @@ char const* const SharedMemoryPlugin::MM_TELEMETRY_FILE_NAME = "$rFactor2SMMP_Te
 char const* const SharedMemoryPlugin::MM_SCORING_FILE_NAME = "$rFactor2SMMP_Scoring$";
 char const* const SharedMemoryPlugin::MM_RULES_FILE_NAME = "$rFactor2SMMP_Rules$";
 char const* const SharedMemoryPlugin::MM_MULTI_RULES_FILE_NAME = "$rFactor2SMMP_MultiRules$";
+char const* const SharedMemoryPlugin::MM_FORCE_FEEDBACK_FILE_NAME = "$rFactor2SMMP_ForceFeedback$";
 char const* const SharedMemoryPlugin::MM_EXTENDED_FILE_NAME = "$rFactor2SMMP_Extended$";
 
 char const* const SharedMemoryPlugin::INTERNALS_TELEMETRY_FILENAME = R"(UserData\Log\RF2SMMP_InternalsTelemetryOutput.txt)";
@@ -162,6 +163,7 @@ SharedMemoryPlugin::SharedMemoryPlugin()
     , mScoring(SharedMemoryPlugin::MM_SCORING_FILE_NAME)
     , mRules(SharedMemoryPlugin::MM_RULES_FILE_NAME)
     , mMultiRules(SharedMemoryPlugin::MM_MULTI_RULES_FILE_NAME)
+    , mForceFeedback(SharedMemoryPlugin::MM_FORCE_FEEDBACK_FILE_NAME)
     , mExtended(SharedMemoryPlugin::MM_EXTENDED_FILE_NAME)
 {
   memset(mParticipantTelemetryUpdated, 0, sizeof(mParticipantTelemetryUpdated));
@@ -199,6 +201,11 @@ void SharedMemoryPlugin::Startup(long version)
 
   if (!mMultiRules.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
     DEBUG_MSG(DebugLevel::Errors, "Failed to initialize multi rules mapping");
+    return;
+  }
+
+  if (!mForceFeedback.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
+    DEBUG_MSG(DebugLevel::Errors, "Failed to initialize force feedback mapping");
     return;
   }
 
@@ -307,6 +314,9 @@ void SharedMemoryPlugin::Shutdown()
   mMultiRules.ClearState(nullptr /*pInitialContents*/);
   mMultiRules.ReleaseResources();
 
+  mForceFeedback.ClearState(nullptr /*pInitialContents*/);
+  mForceFeedback.ReleaseResources();
+
   mExtended.ClearState(nullptr /*pInitialContents*/);
   mExtended.ReleaseResources();
 }
@@ -342,6 +352,7 @@ void SharedMemoryPlugin::ClearState()
   mTelemetry.ClearState(nullptr /*pInitialContents*/);
   mScoring.ClearState(nullptr /*pInitialContents*/);
   mRules.ClearState(nullptr /*pInitialContents*/);
+  mForceFeedback.ClearState(nullptr /*pInitialContents*/);
   // Do not clear mMultiRules as they're updated in between sessions.
 
   // Certain members of the extended state persist between restarts/sessions.
@@ -751,6 +762,21 @@ void SharedMemoryPlugin::UpdateScoring(ScoringInfoV01 const& info)
   mExtended.BeginUpdate();
   memcpy(mExtended.mpBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
   mExtended.EndUpdate();
+}
+
+// Invoked at ~400FPS.
+bool SharedMemoryPlugin::ForceFeedback(double& forceValue)
+{
+  if (!mIsMapped /* && writeFFB */)
+    return false;
+
+  DEBUG_MSG(DebugLevel::Timing, "ForceFeedback - Invoked.");
+  DEBUG_FLOAT2(DebugLevel::Timing, "FFB:", forceValue);
+
+  // If I understand correctly, this is atomic operation.  Since this is A single value buffer, no need to do anything else.
+  mForceFeedback.mpBuff->mForceValue = forceValue;
+
+  return false;
 }
 
 

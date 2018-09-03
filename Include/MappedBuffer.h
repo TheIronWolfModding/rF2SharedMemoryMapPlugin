@@ -187,23 +187,6 @@ private:
       SECURITY_ATTRIBUTES security = {};
       security.nLength = sizeof(security);
 
-      /*SECURITY_ATTRIBUTES security = {};
-      SECURITY_DESCRIPTOR secDesc = {};
-
-      if (::InitializeSecurityDescriptor(&secDesc, SECURITY_DESCRIPTOR_REVISION)
-        && ::SetSecurityDescriptorDacl(&secDesc, TRUE, static_cast<PACL>(0), FALSE))
-      {
-        security.nLength = sizeof(security);
-        security.lpSecurityDescriptor = &secDesc;
-        security.bInheritHandle = TRUE;
-      }
-      else {
-          DEBUG_MSG2(DebugLevel::Errors, "Failed to create security descriptor for mapping:", mappingName);
-          SharedMemoryPlugin::TraceLastWin32Error();
-          ::LocalFree(security.lpSecurityDescriptor);
-          return nullptr;
-      }*/
-
       auto ret = ConvertStringSecurityDescriptorToSecurityDescriptor(
         "D:P(A;OICI;GA;;;SY)(A;OICI;GA;;;BA)(A;OICI;GA;;;WD)",
         SDDL_REVISION_1,

@@ -63,6 +63,7 @@ public:
   static char const* const MM_SCORING_FILE_NAME;
   static char const* const MM_RULES_FILE_NAME;
   static char const* const MM_MULTI_RULES_FILE_NAME;
+  static char const* const MM_FORCE_FEEDBACK_FILE_NAME;
   static char const* const MM_EXTENDED_FILE_NAME;
 
   static char const* const INTERNALS_TELEMETRY_FILENAME;
@@ -208,6 +209,8 @@ public:
   bool WantsScoringUpdates() override { return true; }
   void UpdateScoring(ScoringInfoV01 const& info) override; // update plugin with scoring info (approximately five times per second)
 
+  bool ForceFeedback(double& forceValue) override; // alternate force feedback computation - return true if editing the value
+
   // MESSAGE BOX INPUT
   bool WantsToDisplayMessage(MessageInfoV01& msgInfo) override; // set message and return true
 
@@ -292,6 +295,7 @@ private:
   MappedBuffer<rF2Scoring> mScoring;
   MappedBuffer<rF2Rules> mRules;
   MappedBuffer<rF2MultiRules> mMultiRules;
+  MappedBuffer<rF2ForceFeedback> mForceFeedback;
   MappedBuffer<rF2Extended> mExtended;
 
   // Buffers mapped successfully or not.

@@ -798,6 +798,12 @@ struct rF2MultiRules : public rF2MappedBufferHeaderWithSize
 };
 
 
+struct rF2ForceFeedback : public rF2MappedBufferHeader
+{
+  double mForceValue;
+};
+
+
 struct rF2TrackedDamage
 {
   double mMaxImpactMagnitude;                 // Max impact magnitude.  Tracked on every telemetry update, and reset on visit to pits or Session restart.
