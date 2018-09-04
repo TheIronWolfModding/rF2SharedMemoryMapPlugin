@@ -26,6 +26,7 @@ Shared resources:
     * Scoring - mapped view of rF2Scoring structure
     * Rules - mapped view of rF2Rules structure
     * MultiRules - mapped view of rF2MultiRules structure
+    * ForceFeedback - mapped view of rF2ForceFeedback structure
     * Extended - mapped view of rF2Extended structure
 
   Aside from Extended (see below), those types are (with few exceptions) exact mirror of ISI structures, plugin constantly memcpy'es them from game to memory mapped files.
@@ -34,9 +35,10 @@ Shared resources:
 
 Refresh rates:
   Telemetry - updated every 10ms, but in practice only every other update contains updated data, so real update rate is around 50FPS (20ms).
-  Scoring - every 200ms (5FPS)
-  Rules - every 300ms (3FPS)
+  Scoring - every 200ms (5FPS).
+  Rules - every 300ms (3FPS).
   MultiRules - updated only on session change.
+  ForceFeedback - approximately every 2.5ms (400FPS).
   Extended - every 200ms or on tracked function call.
 
   Plugin does not add artificial delays, except:
@@ -72,6 +74,8 @@ Synchronization:
   However, each of shared memory buffers begins with rF2MappedBufferVersionBlock structure.  If you would like to make sure you're not 
   reading a torn (partially overwritten) frame, you can check rF2MappedBufferVersionBlock::mVersionUpdateBegin and rF2MappedBufferVersionBlock::mVersionUpdateEnd values.
   If they are equal, buffer is either not torn, or, in an extreme case, currently being written into.
+  Note: $rFactor2SMMP_ForceFeedback$ buffer consists of a single double variable.  Since write into double is atomic, version block is not used (I assume compiler aligned
+  double member correctly for x64, and I am too lazy atm to check).
 
   Most clients (HUDs, Dashes, visualizers) won't need synchronization.  There are many ways on detecting torn frames, Monitor app contains sample approach
   used in the Crew Chief app.
@@ -767,13 +771,13 @@ void SharedMemoryPlugin::UpdateScoring(ScoringInfoV01 const& info)
 // Invoked at ~400FPS.
 bool SharedMemoryPlugin::ForceFeedback(double& forceValue)
 {
-  if (!mIsMapped /* && writeFFB */)
+  if (!mIsMapped)
     return false;
 
   DEBUG_MSG(DebugLevel::Timing, "ForceFeedback - Invoked.");
   DEBUG_FLOAT2(DebugLevel::Timing, "FFB:", forceValue);
 
-  // If I understand correctly, this is atomic operation.  Since this is A single value buffer, no need to do anything else.
+  // If I understand correctly, this is atomic operation.  Since this is a single value buffer, no need to do anything else.
   mForceFeedback.mpBuff->mForceValue = forceValue;
 
   return false;

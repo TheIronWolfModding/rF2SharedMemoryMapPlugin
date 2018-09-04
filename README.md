@@ -12,7 +12,7 @@ This plugin is carefully implemented with an intent of becoming a shared compone
   * rF1 Shared Memory Map Plugin by Dan Allongo found at: https://github.com/dallongo/rFactorSharedMemoryMap
 
 ## Features
-Plugin offers optional weak synchronization by using version variables on each of the buffers.  Plugin is also capable of hosting StockCarRules.dll plugin as a hack/workaround for accessing SCR set values.
+Plugin offers optional weak synchronization by using version variables on each of the buffers.  Plugin is also capable of hosting StockCarRules.dll plugin as a hack/workaround for accessing SCR plugin set values.
 
 Plugin is built using VS 2015 Community Edition, targeting VC12 (VS 2013) runtime, since rF2 comes with VC12 redist.
 
@@ -21,6 +21,7 @@ Plugin is built using VS 2015 Community Edition, targeting VC12 (VS 2013) runtim
 * Scoring - 5FPS.
 * Rules - 3FPS.
 * Multi Rules - on callback from a game, usually once a session and in between sessions.
+* ForceFeedback - 400FPS.
 * Extended - 5FPS and on tracked callback by the game.
 
 ## Limitations/Assumptions:
@@ -46,17 +47,26 @@ You are allowed to include this .dll with your distribution, as long as it is:
 * Readme is included
 * You had my permission via email
 
-Please also be aware, that Crew Chief will always ship with the latest version of the .dll and will overwrite .dll to match its version.  I do not expect compatibility to break without game changing its model, aside from rF2Extended buffer, which contains stuff not directly exposed by the game.  Every time layout of memory changes, second digit in Plugin version is incremented.
+Please also be aware, that Crew Chief will always ship with the latest version of the .dll and will overwrite .dll to match its version.  I do not expect compatibility to break without game changing its model, aside from rF2Extended buffer, which contains stuff not directly exposed by the game.  Every time layout of memory changes, either of the first two digits in the Plugin version is incremented, which means clients might need an update.  Monitor app is kept in sync with plugin.
 
 ## Current known clients
 * Crew Chief: https://github.com/mrbelowski/CrewChiefV4 
 * SimHub: https://github.com/zegreatclan/AssettoCorsaTools/wiki
 * rFactor 2 Log Analyzer: https://forum.studio-397.com/index.php?threads/rfactor2-log-analyzer-ver-2-with-offline-and-league-championship-manager.48117/
+* Sim Racing Studio tools: https://www.simracingstudio.com/download
 
 ## Support this project
 If you would like to support this project, you can donate [here.](http://thecrewchief.org/misc.php?do=donate)
 
 # Release history
+
+09/04/2018 - v3.1.0.0
+
+  Plugin:
+  * Add $rFactor2SMMP_ForceFeedback$ buffer to map rF2ForceFeedback structure.  Note that since it is a single value buffer, and it is updated at 400FPS, no synchornization is applied nor needed while reading it.
+
+  Monitor:
+  * Updated to expose FFB info.
 
 03/29/2018 - v3.0.1.0
 

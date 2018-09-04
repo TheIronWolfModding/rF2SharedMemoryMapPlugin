@@ -301,12 +301,14 @@ namespace rF2SMMonitor
     MappedBuffer<rF2Telemetry> telemetryBuffer = new MappedBuffer<rF2Telemetry>(rFactor2Constants.MM_TELEMETRY_FILE_NAME, true /*partial*/, true /*skipUnchanged*/);
     MappedBuffer<rF2Scoring> scoringBuffer = new MappedBuffer<rF2Scoring>(rFactor2Constants.MM_SCORING_FILE_NAME, true /*partial*/, true /*skipUnchanged*/);
     MappedBuffer<rF2Rules> rulesBuffer = new MappedBuffer<rF2Rules>(rFactor2Constants.MM_RULES_FILE_NAME, true /*partial*/, true /*skipUnchanged*/);
+    MappedBuffer<rF2ForceFeedback> forceFeedbackBuffer = new MappedBuffer<rF2ForceFeedback>(rFactor2Constants.MM_FORCE_FEEDBACK_FILE_NAME, false /*partial*/, true /*skipUnchanged*/);
     MappedBuffer<rF2Extended> extendedBuffer = new MappedBuffer<rF2Extended>(rFactor2Constants.MM_EXTENDED_FILE_NAME, false /*partial*/, true /*skipUnchanged*/);
 
     // Marshalled views:
     rF2Telemetry telemetry;
     rF2Scoring scoring;
     rF2Rules rules;
+    rF2ForceFeedback forceFeedback;
     rF2Extended extended;
 
     // Track rF2 transitions.
@@ -437,6 +439,8 @@ namespace rF2SMMonitor
         this.scoringBuffer.ClearStats();
         this.extendedBuffer.ClearStats();
         this.rulesBuffer.ClearStats();
+
+        // No stats for FFB buffer (single value buffer).
       }
     }
 
@@ -597,6 +601,7 @@ namespace rF2SMMonitor
         scoringBuffer.GetMappedData(ref scoring);
         telemetryBuffer.GetMappedData(ref telemetry);
         rulesBuffer.GetMappedData(ref rules);
+        forceFeedbackBuffer.GetMappedDataUnsynchronized(ref forceFeedback);
 
         watch.Stop();
         var microseconds = watch.ElapsedTicks * 1000000 / System.Diagnostics.Stopwatch.Frequency;
@@ -685,7 +690,7 @@ namespace rF2SMMonitor
         float yStep = SystemFonts.DefaultFont.Height;
         var gameStateText = new StringBuilder();
         gameStateText.Append(
-          $"Plugin Version:    Expected: 3.0.1.0 64bit   Actual: {MainForm.GetStringFromBytes(this.extended.mVersion)} {(this.extended.is64bit == 1 ? "64bit" : "32bit")}    {(this.extended.mHostedPluginVars.StockCarRules_IsHosted == 1 ? "SCR Plugin Hosted" : "")}    FPS: {this.fps}");
+          $"Plugin Version:    Expected: 3.1.0.0 64bit   Actual: {MainForm.GetStringFromBytes(this.extended.mVersion)} {(this.extended.is64bit == 1 ? "64bit" : "32bit")}    {(this.extended.mHostedPluginVars.StockCarRules_IsHosted == 1 ? "SCR Plugin Hosted" : "")}    FPS: {this.fps}    FFB Value: {this.forceFeedback.mForceValue:N3}");
 
         // Draw header
         g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, brush, currX, currY);
@@ -1038,6 +1043,7 @@ namespace rF2SMMonitor
           this.telemetryBuffer.Connect();
           this.scoringBuffer.Connect();
           this.rulesBuffer.Connect();
+          this.forceFeedbackBuffer.Connect();
           this.extendedBuffer.Connect();
 
           this.connected = true;
@@ -1075,6 +1081,7 @@ namespace rF2SMMonitor
       this.scoringBuffer.Disconnect();
       this.rulesBuffer.Disconnect();
       this.telemetryBuffer.Disconnect();
+      this.forceFeedbackBuffer.Disconnect();
 
       this.connected = false;
 

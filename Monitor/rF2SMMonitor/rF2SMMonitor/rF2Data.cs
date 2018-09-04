@@ -26,6 +26,7 @@ namespace rF2SMMonitor
     public const string MM_TELEMETRY_FILE_NAME = "$rFactor2SMMP_Telemetry$";
     public const string MM_SCORING_FILE_NAME = "$rFactor2SMMP_Scoring$";
     public const string MM_RULES_FILE_NAME = "$rFactor2SMMP_Rules$";
+    public const string MM_FORCE_FEEDBACK_FILE_NAME = "$rFactor2SMMP_ForceFeedback$";
     public const string MM_EXTENDED_FILE_NAME = "$rFactor2SMMP_Extended$";
     
     public const int MAX_MAPPED_VEHICLES = 128;
@@ -764,6 +765,16 @@ namespace rF2SMMonitor
 
       [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = rFactor2Constants.MAX_MAPPED_VEHICLES)]
       public rF2TrackRulesParticipant[] mParticipants;
+    }
+
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
+    public struct rF2ForceFeedback
+    {
+      public uint mVersionUpdateBegin;          // Incremented right before buffer is written to.
+      public uint mVersionUpdateEnd;            // Incremented after buffer write is done.
+
+      public double mForceValue;
     }
 
 
