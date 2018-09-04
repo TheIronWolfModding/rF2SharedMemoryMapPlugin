@@ -231,29 +231,30 @@ void SharedMemoryPlugin::Startup(long version)
     auto size = static_cast<int>(sizeof(rF2Telemetry) + sizeof(rF2MappedBufferVersionBlock));
     _itoa_s(size, sizeSz, 10);
     DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of telemetry buffer:", sizeSz, "bytes.");
-
     assert(sizeof(rF2Telemetry) == offsetof(rF2Telemetry, mVehicles[rF2MappedBufferHeader::MAX_MAPPED_VEHICLES]));
 
     sizeSz[0] = '\0';
     size = static_cast<int>(sizeof(rF2Scoring) + sizeof(rF2MappedBufferVersionBlock));
     _itoa_s(size, sizeSz, 10);
     DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of scoring buffer:", sizeSz, "bytes.");
-
     assert(sizeof(rF2Scoring) == offsetof(rF2Scoring, mVehicles[rF2MappedBufferHeader::MAX_MAPPED_VEHICLES]));
 
     sizeSz[0] = '\0';
     size = static_cast<int>(sizeof(rF2Rules) + sizeof(rF2MappedBufferVersionBlock));
     _itoa_s(size, sizeSz, 10);
     DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of rules buffer:", sizeSz, "bytes.");
-
     assert(sizeof(rF2Rules) == offsetof(rF2Rules, mParticipants[rF2MappedBufferHeader::MAX_MAPPED_VEHICLES]));
 
     sizeSz[0] = '\0';
     size = static_cast<int>(sizeof(rF2MultiRules) + sizeof(rF2MappedBufferVersionBlock));
     _itoa_s(size, sizeSz, 10);
     DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of multi rules buffer:", sizeSz, "bytes.");
-
     assert(sizeof(rF2MultiRules) == offsetof(rF2MultiRules, mParticipants[rF2MappedBufferHeader::MAX_MAPPED_VEHICLES]));
+
+    sizeSz[0] = '\0';
+    size = static_cast<int>(sizeof(rF2ForceFeedback) + sizeof(rF2MappedBufferVersionBlock));
+    _itoa_s(size, sizeSz, 10);
+    DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of force feedback buffer:", sizeSz, "bytes.");
 
     sizeSz[0] = '\0';
     size = static_cast<int>(sizeof(rF2Extended) + sizeof(rF2MappedBufferVersionBlock));
