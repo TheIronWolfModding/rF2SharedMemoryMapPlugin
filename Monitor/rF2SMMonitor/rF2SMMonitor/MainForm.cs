@@ -29,6 +29,8 @@ namespace rF2SMMonitor
     private const float DEGREES_IN_RADIAN = 57.2957795f;
     private const int LIGHT_MODE_REFRESH_MS = 500;
 
+    public static bool useStockCarRulesPlugin = false;
+
     System.Windows.Forms.Timer connectTimer = new System.Windows.Forms.Timer();
     System.Windows.Forms.Timer disconnectTimer = new System.Windows.Forms.Timer();
     bool connected = false;
@@ -327,7 +329,9 @@ namespace rF2SMMonitor
     bool logTiming = true;
     bool logRules = true;
     bool logLightMode = false;
-    public static bool useStockCarRulesPlugin = false;
+    
+    // Capture of the max FFB force.
+    double maxFFBValue = 0.0;
 
     [StructLayout(LayoutKind.Sequential)]
     public struct NativeMessage
@@ -441,6 +445,8 @@ namespace rF2SMMonitor
         this.rulesBuffer.ClearStats();
 
         // No stats for FFB buffer (single value buffer).
+
+        this.maxFFBValue = 0.0;
       }
     }
 
@@ -689,8 +695,12 @@ namespace rF2SMMonitor
         var currY = 3.0f;
         float yStep = SystemFonts.DefaultFont.Height;
         var gameStateText = new StringBuilder();
+
+        // Capture FFB stats:
+        this.maxFFBValue = Math.Max(Math.Abs(this.forceFeedback.mForceValue), this.maxFFBValue);
+
         gameStateText.Append(
-          $"Plugin Version:    Expected: 3.1.0.0 64bit   Actual: {MainForm.GetStringFromBytes(this.extended.mVersion)} {(this.extended.is64bit == 1 ? "64bit" : "32bit")}    {(this.extended.mHostedPluginVars.StockCarRules_IsHosted == 1 ? "SCR Plugin Hosted" : "")}    FPS: {this.fps}    FFB Value: {this.forceFeedback.mForceValue:N3}");
+          $"Plugin Version:    Expected: 3.1.0.0 64bit   Actual: {MainForm.GetStringFromBytes(this.extended.mVersion)} {(this.extended.is64bit == 1 ? "64bit" : "32bit")}{(this.extended.mHostedPluginVars.StockCarRules_IsHosted == 1 ? "    SCR Plugin Hosted" : "")}    FPS: {this.fps}    FFB Curr: {this.forceFeedback.mForceValue:N3}  Max: {this.maxFFBValue:N3}");
 
         // Draw header
         g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, brush, currX, currY);
