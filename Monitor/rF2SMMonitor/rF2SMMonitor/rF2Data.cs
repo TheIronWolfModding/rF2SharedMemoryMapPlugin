@@ -774,7 +774,7 @@ namespace rF2SMMonitor
       public uint mVersionUpdateBegin;          // Incremented right before buffer is written to.
       public uint mVersionUpdateEnd;            // Incremented after buffer write is done.
 
-      public double mForceValue;
+      public double mForceValue;                // Current FFB value reported via InternalsPlugin::ForceFeedback.
     }
 
 

@@ -800,7 +800,7 @@ struct rF2MultiRules : public rF2MappedBufferHeaderWithSize
 
 struct rF2ForceFeedback : public rF2MappedBufferHeader
 {
-  double mForceValue;
+  double mForceValue;  // Current FFB value reported via InternalsPlugin::ForceFeedback.
 };
 
 

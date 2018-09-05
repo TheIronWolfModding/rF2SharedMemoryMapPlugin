@@ -776,7 +776,6 @@ bool SharedMemoryPlugin::ForceFeedback(double& forceValue)
     return false;
 
   DEBUG_MSG(DebugLevel::Timing, "ForceFeedback - Invoked.");
-  DEBUG_FLOAT2(DebugLevel::Timing, "FFB:", forceValue);
 
   // If I understand correctly, this is atomic operation.  Since this is a single value buffer, no need to do anything else.
   mForceFeedback.mpBuff->mForceValue = forceValue;
