@@ -63,7 +63,7 @@ If you would like to support this project, you can donate [here.](http://thecrew
 09/04/2018 - v3.1.0.0
 
   Plugin:
-  * Add $rFactor2SMMP_ForceFeedback$ buffer to map rF2ForceFeedback structure.  Note that since it is a single value buffer, and it is updated at 400FPS, no synchornization is applied nor needed while reading it.
+  * Exposed FFB information.  Add $rFactor2SMMP_ForceFeedback$ buffer to map rF2ForceFeedback structure.  Note that since it is a single value buffer, and it is updated at 400FPS, no synchronization is applied nor needed while reading it.
 
   Monitor:
   * Updated to expose FFB info.
