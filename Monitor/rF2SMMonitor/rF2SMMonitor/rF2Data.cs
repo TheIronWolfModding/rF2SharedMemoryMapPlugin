@@ -19,7 +19,9 @@ namespace rF2SMMonitor
   // signed char   ->    sbyte
   // bool          ->    byte
   // long          ->    int
+  // unsigned long ->    uint
   // short         ->    short
+  // unsigned short ->   ushort
   // ULONGLONG     ->    Int64
   public class rFactor2Constants
   {
@@ -46,6 +48,7 @@ namespace rF2SMMonitor
     // 6 Full course yellow / safety car
     // 7 Session stopped
     // 8 Session over
+    // 9 Paused (tag.2015.09.14 - this is new, and indicates that this is a heartbeat call to the plugin)
     public enum rF2GamePhase
     {
       Garage = 0,
@@ -56,7 +59,8 @@ namespace rF2SMMonitor
       GreenFlag = 5,
       FullCourseYellow = 6,
       SessionStopped = 7,
-      SessionOver = 8
+      SessionOver = 8,
+      PausedOrHeartbeat = 9
     }
 
     // Yellow flag states (applies to full-course only)
@@ -210,6 +214,7 @@ namespace rF2SMMonitor
       public byte mSurfaceType;             // 0=dry, 1=wet, 2=grass, 3=dirt, 4=gravel, 5=rumblestrip, 6=special
       public byte mFlat;                    // whether tire is flat
       public byte mDetached;                // whether wheel is detached
+      public byte mStaticUndeflectedRadius; // tire radius in centimeters
 
       public double mVerticalTireDeflection;// how much is tire deflected from its (speed-sensitive) radius
       public double mWheelYLocation;        // wheel's y location relative to vehicle y location
@@ -363,6 +368,7 @@ namespace rF2SMMonitor
       // 6 Full course yellow / safety car
       // 7 Session stopped
       // 8 Session over
+      // 9 Paused (tag.2015.09.14 - this is new, and indicates that this is a heartbeat call to the plugin)
       public byte mGamePhase;
 
       // Yellow flag states (applies to full-course only)
@@ -392,12 +398,24 @@ namespace rF2SMMonitor
       public double mRaining;                 // raining severity 0.0-1.0
       public double mAmbientTemp;             // temperature (Celsius)
       public double mTrackTemp;               // temperature (Celsius)
-      public rF2Vec3 mWind;                // wind speed
+      public rF2Vec3 mWind;                   // wind speed
       public double mMinPathWetness;          // minimum wetness on main path 0.0-1.0
       public double mMaxPathWetness;          // maximum wetness on main path 0.0-1.0
 
+      // multiplayer
+      public byte mGameMode;                  // 1 = server, 2 = client, 3 = server and client
+      public byte mIsPasswordProtected;       // is the server password protected
+      public ushort mServerPort;              // the port of the server (if on a server)
+      public uint mServerPublicIP;            // the public IP address of the server (if on a server)
+      public int mMaxPlayers;                 // maximum number of vehicles that can be in the session
+      [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = 32)]
+      public byte[] mServerName;            // name of the server
+      public float mStartET;                  // start time (seconds since midnight) of the event
+
+      public double mAvgPathWetness;          // average wetness on main path 0.0-1.0
+
       // Future use
-      [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = 256)]
+      [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = 200)]
       public byte[] mExpansion;
 
       // MM_NOT_USED
@@ -484,9 +502,14 @@ namespace rF2SMMonitor
       [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = 16)]
       public byte[] mUpgradePack;  // Coded upgrades
 
+      public float mPitLapDist;             // location of pit in terms of lap distance
+
+      public float mBestLapSector1;         // sector 1 time from best lap (not necessarily the best sector 1 time)
+      public float mBestLapSector2;         // sector 2 time from best lap (not necessarily the best sector 2 time)
+
       // Future use
       // tag.2012.04.06 - SEE ABOVE!
-      [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = 60)]
+      [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = 48)]
       public byte[] mExpansion;  // for future use
     }
 
@@ -589,25 +612,26 @@ namespace rF2SMMonitor
     public struct rF2TrackRulesParticipant
     {
       // input only
-      public int mID;                             // slot ID
+      public int mID;                              // slot ID
       public short mFrozenOrder;                   // 0-based place when caution came out (not valid for formation laps)
       public short mPlace;                         // 1-based place (typically used for the initialization of the formation lap track order)
       public float mYellowSeverity;                // a rating of how much this vehicle is contributing to a yellow flag (the sum of all vehicles is compared to TrackRulesV01::mSafetyCarThreshold)
       public double mCurrentRelativeDistance;      // equal to ( ( ScoringInfoV01::mLapDist * this->mRelativeLaps ) + VehicleScoringInfoV01::mLapDist )
 
       // input/output
-      public int mRelativeLaps;                   // current formation/caution laps relative to safety car (should generally be zero except when safety car crosses s/f line); this can be decremented to implement 'wave around' or 'beneficiary rule' (a.k.a. 'lucky dog' or 'free pass')
+      public int mRelativeLaps;                    // current formation/caution laps relative to safety car (should generally be zero except when safety car crosses s/f line); this can be decremented to implement 'wave around' or 'beneficiary rule' (a.k.a. 'lucky dog' or 'free pass')
       public rF2TrackRulesColumn mColumnAssignment;// which column (line/lane) that participant is supposed to be in
-      public int mPositionAssignment;             // 0-based position within column (line/lane) that participant is supposed to be located at (-1 is invalid)
-      public byte mAllowedToPit;                   // whether the rules allow this particular vehicle to enter pits right now
+      public int mPositionAssignment;              // 0-based position within column (line/lane) that participant is supposed to be located at (-1 is invalid)
+      public byte mPitsOpen;                       // whether the rules allow this particular vehicle to enter pits right now (input is 2=false or 3=true; if you want to edit it, set to 0=false or 1=true)
+      public byte mUpToSpeed;                      // while in the frozen order, this flag indicates whether the vehicle can be followed (this should be false for somebody who has temporarily spun and hasn't gotten back up to speed yet)
 
-      [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = 3)]
-      public byte[] mUnused;                    //
+      [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = 2)]
+      public byte[] mUnused;                       //
 
       public double mGoalRelativeDistance;         // calculated based on where the leader is, and adjusted by the desired column spacing and the column/position assignments
 
       [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = 96)]
-      public byte[] mMessage;                  // a message for this participant to explain what is going on (untranslated; it will get run through translator on client machines)
+      public byte[] mMessage;                     // a message for this participant to explain what is going on (untranslated; it will get run through translator on client machines)
 
       // future expansion
       [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = 192)]
@@ -651,7 +675,7 @@ namespace rF2SMMonitor
       public int mNumParticipants;                // number of participants (vehicles)
 
       public byte mYellowFlagDetected;             // whether yellow flag was requested or sum of participant mYellowSeverity's exceeds mSafetyCarThreshold
-      public byte mYellowFlagLapsWasOverridden;    // whether mYellowFlagLaps (below) is an admin request
+      public byte mYellowFlagLapsWasOverridden;    // whether mYellowFlagLaps (below) is an admin request (0=no 1=yes 2=clear yellow)
 
       public byte mSafetyCarExists;                // whether safety car even exists
       public byte mSafetyCarActive;                // whether safety car is active

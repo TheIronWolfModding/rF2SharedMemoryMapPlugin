@@ -200,6 +200,7 @@ struct rF2Wheel
   unsigned char mSurfaceType;    // 0=dry, 1=wet, 2=grass, 3=dirt, 4=gravel, 5=rumblestrip, 6=special
   bool mFlat;                    // whether tire is flat
   bool mDetached;                // whether wheel is detached
+  unsigned char mStaticUndeflectedRadius; // tire radius in centimeters
 
   double mVerticalTireDeflection;// how much is tire deflected from its (speed-sensitive) radius
   double mWheelYLocation;        // wheel's y location relative to vehicle y location
@@ -337,16 +338,17 @@ struct rF2ScoringInfo
 
   long mNumVehicles;             // current number of vehicles
 
-                                 // Game phases:
-                                 // 0 Before session has begun
-                                 // 1 Reconnaissance laps (race only)
-                                 // 2 Grid walk-through (race only)
-                                 // 3 Formation lap (race only)
-                                 // 4 Starting-light countdown has begun (race only)
-                                 // 5 Green flag
-                                 // 6 Full course yellow / safety car
-                                 // 7 Session stopped
-                                 // 8 Session over
+  // Game phases:
+  // 0 Before session has begun
+  // 1 Reconnaissance laps (race only)
+  // 2 Grid walk-through (race only)
+  // 3 Formation lap (race only)
+  // 4 Starting-light countdown has begun (race only)
+  // 5 Green flag
+  // 6 Full course yellow / safety car
+  // 7 Session stopped
+  // 8 Session over
+  // 9 Paused (tag.2015.09.14 - this is new, and indicates that this is a heartbeat call to the plugin)
   unsigned char mGamePhase;
 
   // Yellow flag states (applies to full-course only)
@@ -377,8 +379,19 @@ struct rF2ScoringInfo
   double mMinPathWetness;          // minimum wetness on main path 0.0-1.0
   double mMaxPathWetness;          // maximum wetness on main path 0.0-1.0
 
-                                   // Future use
-  unsigned char mExpansion[256];
+  // multiplayer
+  unsigned char mGameMode;         // 1 = server, 2 = client, 3 = server and client
+  bool mIsPasswordProtected;       // is the server password protected
+  unsigned short mServerPort;      // the port of the server (if on a server)
+  unsigned long mServerPublicIP;   // the public IP address of the server (if on a server)
+  long mMaxPlayers;                // maximum number of vehicles that can be in the session
+  char mServerName[32];            // name of the server
+  float mStartET;                  // start time (seconds since midnight) of the event
+
+  double mAvgPathWetness;          // average wetness on main path 0.0-1.0
+
+  // Future use
+  unsigned char mExpansion[200];
 
   // MM_NOT_USED
   // keeping this at the end of the structure to make it easier to replace in future versions
@@ -464,9 +477,14 @@ struct rF2VehicleScoring
 
   unsigned char mUpgradePack[16];  // Coded upgrades
 
-                                   // Future use
-                                   // tag.2012.04.06 - SEE ABOVE!
-  unsigned char mExpansion[60];  // for future use
+  float mPitLapDist;             // location of pit in terms of lap distance
+
+  float mBestLapSector1;         // sector 1 time from best lap (not necessarily the best sector 1 time)
+  float mBestLapSector2;         // sector 2 time from best lap (not necessarily the best sector 2 time)
+
+  // Future use
+  // tag.2012.04.06 - SEE ABOVE!
+  unsigned char mExpansion[48];  // for future use
 };
 static_assert(sizeof(rF2VehicleScoring) == sizeof(VehicleScoringInfoV01), "rF2VehicleScoring and VehicleScoringInfoV01 structures are out of sync");
 
@@ -583,8 +601,9 @@ struct rF2TrackRulesParticipant
   long mRelativeLaps;                   // current formation/caution laps relative to safety car (should generally be zero except when safety car crosses s/f line); this can be decremented to implement 'wave around' or 'beneficiary rule' (a.k.a. 'lucky dog' or 'free pass')
   rF2TrackRulesColumn mColumnAssignment;// which column (line/lane) that participant is supposed to be in
   long mPositionAssignment;             // 0-based position within column (line/lane) that participant is supposed to be located at (-1 is invalid)
-  bool mAllowedToPit;                   // whether the rules allow this particular vehicle to enter pits right now
-  bool mUnused[ 3 ];                    //
+  unsigned char mPitsOpen;              // whether the rules allow this particular vehicle to enter pits right now (input is 2=false or 3=true; if you want to edit it, set to 0=false or 1=true)
+  bool mUpToSpeed;                      // while in the frozen order, this flag indicates whether the vehicle can be followed (this should be false for somebody who has temporarily spun and hasn't gotten back up to speed yet)
+  bool mUnused[2];                      //
   double mGoalRelativeDistance;         // calculated based on where the leader is, and adjusted by the desired column spacing and the column/position assignments
   char mMessage[ 96 ];                  // a message for this participant to explain what is going on (untranslated; it will get run through translator on client machines)
 
@@ -633,7 +652,7 @@ struct rF2TrackRules
   long mNumParticipants;                // number of participants (vehicles)
 
   bool mYellowFlagDetected;             // whether yellow flag was requested or sum of participant mYellowSeverity's exceeds mSafetyCarThreshold
-  bool mYellowFlagLapsWasOverridden;    // whether mYellowFlagLaps (below) is an admin request
+  unsigned char mYellowFlagLapsWasOverridden; // whether mYellowFlagLaps (below) is an admin request (0=no 1=yes 2=clear yellow)
 
   bool mSafetyCarExists;                // whether safety car even exists
   bool mSafetyCarActive;                // whether safety car is active

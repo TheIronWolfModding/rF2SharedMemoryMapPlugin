@@ -1265,7 +1265,7 @@ namespace rF2SMMonitor
       public int mRelativeLaps = -1;                            // current formation/caution laps relative to safety car (should generally be zero except when safety car crosses s/f line); this can be decremented to implement 'wave around' or 'beneficiary rule' (a.k.a. 'lucky dog' or 'free pass')
       public rF2TrackRulesColumn mColumnAssignment = (rF2TrackRulesColumn)Enum.ToObject(typeof(rF2TrackRulesColumn), -255);        // which column (line/lane) that participant is supposed to be in
       public int mPositionAssignment = -1;                      // 0-based position within column (line/lane) that participant is supposed to be located at (-1 is invalid)
-      public byte mAllowedToPit = 255;                           // whether the rules allow this particular vehicle to enter pits right now
+      public byte mPitsOpen = 255;                           // whether the rules allow this particular vehicle to enter pits right now
 
       public double mGoalRelativeDistance = -1.0;                 // calculated based on where the leader is, and adjusted by the desired column spacing and the column/position assignments
 
@@ -1419,7 +1419,7 @@ namespace rF2SMMonitor
       rs.mRelativeLaps = playerRules.mRelativeLaps;
       rs.mColumnAssignment = playerRules.mColumnAssignment;
       rs.mPositionAssignment = playerRules.mPositionAssignment;
-      rs.mAllowedToPit = playerRules.mAllowedToPit;
+      rs.mPitsOpen = playerRules.mPitsOpen;
       rs.mGoalRelativeDistance = playerRules.mGoalRelativeDistance;
       rs.mMessage_Participant = TransitionTracker.GetStringFromBytes(playerRules.mMessage);
 
@@ -1457,7 +1457,7 @@ namespace rF2SMMonitor
         || rs.mRelativeLaps != this.prevRules.mRelativeLaps
         || rs.mColumnAssignment != this.prevRules.mColumnAssignment
         || rs.mPositionAssignment != this.prevRules.mPositionAssignment
-        || rs.mAllowedToPit != this.prevRules.mAllowedToPit
+        || rs.mPitsOpen != this.prevRules.mPitsOpen
         || rs.mGoalRelativeDistance != this.prevRules.mGoalRelativeDistance
         || rs.mMessage_Participant != this.prevRules.mMessage_Participant)
       {
@@ -1494,7 +1494,7 @@ namespace rF2SMMonitor
           + (rs.mRelativeLaps != this.prevRules.mRelativeLaps ? "***\n" : "\n")
           + (rs.mColumnAssignment != this.prevRules.mColumnAssignment ? "***\n" : "\n")
           + (rs.mPositionAssignment != this.prevRules.mPositionAssignment ? "***\n" : "\n")
-          + (rs.mAllowedToPit != this.prevRules.mAllowedToPit ? "***\n" : "\n")
+          + (rs.mPitsOpen != this.prevRules.mPitsOpen ? "***\n" : "\n")
           + (rs.mGoalRelativeDistance != this.prevRules.mGoalRelativeDistance ? "***\n" : "\n")
           + (rs.mMessage_Participant != this.prevRules.mMessage_Participant ? "***\n" : "\n"));
 
@@ -1571,7 +1571,7 @@ namespace rF2SMMonitor
           + $"{rs.mRelativeLaps}\n"
           + $"{rs.mColumnAssignment}\n"
           + $"{rs.mPositionAssignment}\n"
-          + $"{rs.mAllowedToPit}\n"
+          + $"{rs.mPitsOpen}\n"
           + (rs.mGoalRelativeDistance > 20000 ? $"too large" : $"{rs.mGoalRelativeDistance:N3})") + "\n"
           + $"{rs.mMessage_Participant}\n");
 
