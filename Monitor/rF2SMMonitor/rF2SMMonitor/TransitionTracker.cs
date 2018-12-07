@@ -1534,7 +1534,7 @@ namespace rF2SMMonitor
           + "mRelativeLaps:\n"
           + "mColumnAssignment:\n"
           + "mPositionAssignment:\n"
-          + "mAllowedToPit:\n"
+          + "mPitsOpen:\n"
           + "mGoalRelativeDistance:\n"
           + "mMessage_Participant:\n");
 
