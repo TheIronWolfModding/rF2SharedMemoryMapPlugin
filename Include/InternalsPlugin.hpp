@@ -143,6 +143,7 @@ struct TelemWheelV01
   unsigned char mSurfaceType;    // 0=dry, 1=wet, 2=grass, 3=dirt, 4=gravel, 5=rumblestrip, 6=special
   bool mFlat;                    // whether tire is flat
   bool mDetached;                // whether wheel is detached
+  unsigned char mStaticUndeflectedRadius; // tire radius in centimeters
 
   double mVerticalTireDeflection;// how much is tire deflected from its (speed-sensitive) radius
   double mWheelYLocation;        // wheel's y location relative to vehicle y location
@@ -400,10 +401,14 @@ struct VehicleScoringInfoV01
   bool mInGarageStall;           // appears to be within the correct garage stall
 
   unsigned char mUpgradePack[16];  // Coded upgrades
+  float mPitLapDist;             // location of pit in terms of lap distance
+
+  float mBestLapSector1;         // sector 1 time from best lap (not necessarily the best sector 1 time)
+  float mBestLapSector2;         // sector 2 time from best lap (not necessarily the best sector 2 time)
 
   // Future use
   // tag.2012.04.06 - SEE ABOVE!
-  unsigned char mExpansion[60];  // for future use
+  unsigned char mExpansion[48];  // for future use
 };
 
 
@@ -429,6 +434,7 @@ struct ScoringInfoV01
   // 6 Full course yellow / safety car
   // 7 Session stopped
   // 8 Session over
+  // 9 Paused (tag.2015.09.14 - this is new, and indicates that this is a heartbeat call to the plugin)
   unsigned char mGamePhase;   
 
   // Yellow flag states (applies to full-course only)
@@ -459,8 +465,20 @@ struct ScoringInfoV01
   double mMinPathWetness;          // minimum wetness on main path 0.0-1.0
   double mMaxPathWetness;          // maximum wetness on main path 0.0-1.0
 
+  // multiplayer
+  unsigned char mGameMode; // 1 = server, 2 = client, 3 = server and client
+  bool mIsPasswordProtected; // is the server password protected
+  unsigned short mServerPort; // the port of the server (if on a server)
+  unsigned long mServerPublicIP; // the public IP address of the server (if on a server)
+  long mMaxPlayers; // maximum number of vehicles that can be in the session
+  char mServerName[32]; // name of the server
+  float mStartET; // start time (seconds since midnight) of the event
+
+  //
+  double mAvgPathWetness;          // average wetness on main path 0.0-1.0
+
   // Future use
-  unsigned char mExpansion[256];
+  unsigned char mExpansion[200];
 
   // keeping this at the end of the structure to make it easier to replace in future versions
   VehicleScoringInfoV01 *mVehicle; // array of vehicle scoring info's
@@ -711,8 +729,9 @@ struct TrackRulesParticipantV01
   long mRelativeLaps;                   // current formation/caution laps relative to safety car (should generally be zero except when safety car crosses s/f line); this can be decremented to implement 'wave around' or 'beneficiary rule' (a.k.a. 'lucky dog' or 'free pass')
   TrackRulesColumnV01 mColumnAssignment;// which column (line/lane) that participant is supposed to be in
   long mPositionAssignment;             // 0-based position within column (line/lane) that participant is supposed to be located at (-1 is invalid)
-  bool mAllowedToPit;                   // whether the rules allow this particular vehicle to enter pits right now
-  bool mUnused[ 3 ];                    //
+  unsigned char mPitsOpen;              // whether the rules allow this particular vehicle to enter pits right now (input is 2=false or 3=true; if you want to edit it, set to 0=false or 1=true)
+  bool mUpToSpeed;                      // while in the frozen order, this flag indicates whether the vehicle can be followed (this should be false for somebody who has temporarily spun and hasn't gotten back up to speed yet)
+  bool mUnused[ 2 ];                    //
   double mGoalRelativeDistance;         // calculated based on where the leader is, and adjusted by the desired column spacing and the column/position assignments
   char mMessage[ 96 ];                  // a message for this participant to explain what is going on (untranslated; it will get run through translator on client machines)
 
@@ -742,7 +761,7 @@ struct TrackRulesV01
   long mNumParticipants;                // number of participants (vehicles)
 
   bool mYellowFlagDetected;             // whether yellow flag was requested or sum of participant mYellowSeverity's exceeds mSafetyCarThreshold
-  bool mYellowFlagLapsWasOverridden;    // whether mYellowFlagLaps (below) is an admin request
+  unsigned char mYellowFlagLapsWasOverridden;     // whether mYellowFlagLaps (below) is an admin request (0=no 1=yes 2=clear yellow)
 
   bool mSafetyCarExists;                // whether safety car even exists
   bool mSafetyCarActive;                // whether safety car is active
