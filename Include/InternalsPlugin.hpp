@@ -435,7 +435,7 @@ struct ScoringInfoV01
   // 7 Session stopped
   // 8 Session over
   // 9 Paused (tag.2015.09.14 - this is new, and indicates that this is a heartbeat call to the plugin)
-  unsigned char mGamePhase;
+  unsigned char mGamePhase;   
 
   // Yellow flag states (applies to full-course only)
   // -1 Invalid
@@ -855,9 +855,9 @@ class InternalsPlugin : public PluginObject
 
   // GAME INPUT
   virtual bool HasHardwareInputs() { return( false ); }        // whether plugin has hardware plugins
-  virtual void UpdateHardware( const double fDT ) { mET += fDT; } // update the hardware with the time between frames
-  virtual void EnableHardware() { mEnabled = true; }           // message from game to enable hardware
-  virtual void DisableHardware() { mEnabled = false; }         // message from game to disable hardware
+  virtual void UpdateHardware( const double fDT ) {}           // update the hardware with the time between frames
+  virtual void EnableHardware() {}                             // message from game to enable hardware
+  virtual void DisableHardware() {}                            // message from game to disable hardware
 
   // See if the plugin wants to take over a hardware control.  If the plugin takes over the
   // control, this method returns true and sets the value of the double pointed to by the
@@ -868,11 +868,6 @@ class InternalsPlugin : public PluginObject
 
   // ERROR FEEDBACK
   virtual void Error( const char * const msg ) {} // Called with explanation message if there was some sort of error in a plugin callback
-
-  float mET;  // needed for the CheckHWControl demo
-
-private:
-  bool mEnabled; // needed for the CheckHWControl demo
 };
 
 
@@ -985,9 +980,6 @@ class InternalsPluginV07 : public InternalsPluginV06  // V07 contains everything
   // PIT MENU INFO (currently, the only way to edit the pit menu is to use this in conjunction with CheckHWControl())
   virtual bool WantsPitMenuAccess()                                   { return( false ); } // change to true in order to view pit menu info
   virtual bool AccessPitMenu( PitMenuV01 &info )                      { return( false ); } // currently, the return code should always be false (because we may allow more direct editing in the future)
-
-  // HW Control- action a control within the game
-  virtual bool CheckHWControl(const char* const controlName, double& fRetVal) { return(false); }
 };
 
 
