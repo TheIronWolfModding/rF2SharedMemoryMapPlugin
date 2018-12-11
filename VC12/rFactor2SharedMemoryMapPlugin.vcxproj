@@ -376,7 +376,7 @@
       <Optimization>MaxSpeed</Optimization>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <AdditionalIncludeDirectories>..\include</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;INTERNALSPLUGIN_EXPORTS;_CRT_SECURE_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;INTERNALSPLUGIN_EXPORTS;_CRT_SECURE_NO_DEPRECATE;VERSION_AVX2;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <PrecompiledHeaderOutputFile>$(Platform)\$(Configuration)\rFactor2SharedMemoryMap.pch</PrecompiledHeaderOutputFile>
@@ -391,6 +391,8 @@
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <WholeProgramOptimization>true</WholeProgramOptimization>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
+      <ExceptionHandling>false</ExceptionHandling>
+      <SDLCheck>false</SDLCheck>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -412,8 +414,11 @@
       <OutputFile>.\Release/rFactor2SharedMemoryMapPlugin64.bsc</OutputFile>
     </Bscmake>
     <PostBuildEvent>
-      <Command>copy $(Platform)\$(Configuration)\rFactor2SharedMemoryMapPlugin64.dll "c:\Games\Steam\steamapps\common\rFactor 2\Bin64\Plugins\."</Command>
+      <Command>copy $(Platform)\$(Configuration)\rFactor2SharedMemoryMapPlugin64.dll "c:\Games\Steam\steamapps\common\rFactor 2\Bin64\Plugins\." &amp; copy /y ..\pgo\rFactor2SharedMemoryMapPlugin64.pgd ..\pgo\rFactor2SharedMemoryMapPlugin64_saved.pgd &amp; del ..\pgo\rFactor2SharedMemoryMapPlugin64.pgd</Command>
     </PostBuildEvent>
+    <PreLinkEvent>
+      <Command>copy /y ..\pgo\rFactor2SharedMemoryMapPlugin64_saved.pgd ..\pgo\rFactor2SharedMemoryMapPlugin64.pgd</Command>
+    </PreLinkEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release_PGOGEN|x64'">
     <Midl>

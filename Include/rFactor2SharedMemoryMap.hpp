@@ -29,7 +29,13 @@ Website: thecrewchief.org
 // Note: each time major version changes, that means layout has changed, and clients might need an update.
 #define PLUGIN_VERSION_MAJOR "3.2"
 #define PLUGIN_VERSION_MINOR "0.0"
+
+#ifdef VERSION_AVX2
+#define PLUGIN_NAME_AND_VERSION "rFactor 2 Shared Memory Map Plugin - v" PLUGIN_VERSION_MAJOR " AVX2+PGO"
+#else
 #define PLUGIN_NAME_AND_VERSION "rFactor 2 Shared Memory Map Plugin - v" PLUGIN_VERSION_MAJOR
+#endif
+
 #define SHARED_MEMORY_VERSION PLUGIN_VERSION_MAJOR "." PLUGIN_VERSION_MINOR
 
 // This is hell on earth, but I do not want to add additional dependencies needed for STL right now.

@@ -177,7 +177,11 @@ SharedMemoryPlugin::SharedMemoryPlugin()
 void SharedMemoryPlugin::Startup(long version)
 {
   // Print out configuration.
+#ifdef VERSION_AVX2
+  DEBUG_MSG2(DebugLevel::CriticalInfo, "Starting rFactor 2 Shared Memory Map Plugin 64bit Version:", SHARED_MEMORY_VERSION " AVX2+PGO");
+#else
   DEBUG_MSG2(DebugLevel::CriticalInfo, "Starting rFactor 2 Shared Memory Map Plugin 64bit Version:", SHARED_MEMORY_VERSION);
+#endif
   DEBUG_MSG(DebugLevel::CriticalInfo, "Configuration:");
   DEBUG_INT2(DebugLevel::CriticalInfo, "EnableStockCarRulesPlugin:", SharedMemoryPlugin::msStockCarRulesPluginRequested);
   DEBUG_INT2(DebugLevel::CriticalInfo, "DebugOutputLevel:", SharedMemoryPlugin::msDebugOutputLevel);
