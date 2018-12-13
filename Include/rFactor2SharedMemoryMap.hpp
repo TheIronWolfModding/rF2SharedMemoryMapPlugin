@@ -31,7 +31,11 @@ Website: thecrewchief.org
 #define PLUGIN_VERSION_MINOR "0.0"
 
 #ifdef VERSION_AVX2
+#ifdef VERSION_MT
+#define PLUGIN_NAME_AND_VERSION "rFactor 2 Shared Memory Map Plugin - v" PLUGIN_VERSION_MAJOR " AVX2+PGO+MT"
+#else
 #define PLUGIN_NAME_AND_VERSION "rFactor 2 Shared Memory Map Plugin - v" PLUGIN_VERSION_MAJOR " AVX2+PGO"
+#endif
 #else
 #define PLUGIN_NAME_AND_VERSION "rFactor 2 Shared Memory Map Plugin - v" PLUGIN_VERSION_MAJOR
 #endif

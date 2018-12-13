@@ -1008,7 +1008,7 @@
       <Optimization>MaxSpeed</Optimization>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <AdditionalIncludeDirectories>..\include</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;INTERNALSPLUGIN_EXPORTS;_CRT_SECURE_NO_DEPRECATE;VERSION_AVX2;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;INTERNALSPLUGIN_EXPORTS;_CRT_SECURE_NO_DEPRECATE;VERSION_AVX2;VERSION_MT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <PrecompiledHeaderOutputFile>$(Platform)\$(Configuration)\rFactor2SharedMemoryMap.pch</PrecompiledHeaderOutputFile>
@@ -1160,7 +1160,7 @@
       <OutputFile>.\Release/rFactor2SharedMemoryMapPlugin64.bsc</OutputFile>
     </Bscmake>
     <PostBuildEvent>
-      <Command>copy $(Platform)\$(Configuration)\rFactor2SharedMemoryMapPlugin64.dll "c:\Games\Steam\steamapps\common\rFactor 2\Bin64\Plugins\." &amp; copy /y x64\Release_PGOGEN\rFactor2SharedMemoryMapPlugin64.pgd ..\pgo\rFactor2SharedMemoryMapPlugin64_saved_mt.pgd</Command>
+      <Command>copy $(Platform)\$(Configuration)\rFactor2SharedMemoryMapPlugin64.dll "c:\Games\Steam\steamapps\common\rFactor 2\Bin64\Plugins\." &amp; copy /y x64\Release_PGOGEN_MT\rFactor2SharedMemoryMapPlugin64.pgd ..\pgo\rFactor2SharedMemoryMapPlugin64_saved_mt.pgd</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
