@@ -178,7 +178,11 @@ void SharedMemoryPlugin::Startup(long version)
 {
   // Print out configuration.
 #ifdef VERSION_AVX2
+#ifdef VERSION_MT
+  DEBUG_MSG2(DebugLevel::CriticalInfo, "Starting rFactor 2 Shared Memory Map Plugin 64bit Version:", SHARED_MEMORY_VERSION " AVX2+PGO+MT");
+#else
   DEBUG_MSG2(DebugLevel::CriticalInfo, "Starting rFactor 2 Shared Memory Map Plugin 64bit Version:", SHARED_MEMORY_VERSION " AVX2+PGO");
+#endif
 #else
   DEBUG_MSG2(DebugLevel::CriticalInfo, "Starting rFactor 2 Shared Memory Map Plugin 64bit Version:", SHARED_MEMORY_VERSION);
 #endif
