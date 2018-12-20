@@ -61,12 +61,12 @@ If you would like to support this project, you can donate [here.](http://thecrew
 
 # Release history
 
-12/15/2018 - v3.2.0.0
+**12/15/2018 - v3.2.0.0**
 
   Plugin/Monitor:
   * Update exposed field headers and C# marhsaling code to include fields found in Rules/Knockout Qualifying plugins.  See [this](https://github.com/TheIronWolfModding/rF2SharedMemoryMapPlugin/commit/eb5de36e7cf0ccce4335d93bc4c34471841ddecf?w=1) commit to see what has changed.
 
-09/04/2018 - v3.1.0.0
+**09/04/2018 - v3.1.0.0**
 
   Plugin:
   * Exposed FFB information.  Add $rFactor2SMMP_ForceFeedback$ buffer to map rF2ForceFeedback structure.  Note that since it is a single value buffer, and it is updated at 400FPS, no synchronization is applied nor needed while reading it.
@@ -74,20 +74,20 @@ If you would like to support this project, you can donate [here.](http://thecrew
   Monitor:
   * Updated to expose FFB info.
 
-03/29/2018 - v3.0.1.0
+**03/29/2018 - v3.0.1.0**
 
   Plugin:
   * Add DedicatedServerMapGlobally preference to allow mapping dedicated server shared memory buffers to global section, so that users running under other accounts can access them.  Note that "Create Global Objects" permission is needed on user account running dedicated server.
 
-02/21/2018 - v3.0.0.1
+**02/21/2018 - v3.0.0.1**
 
   Hotfix for physics options not being captured.
 
-02/16/2018 - v3.0.0.0
+**02/16/2018 - v3.0.0.0**
 
   Rework Plugin to replace mutexes with buffer version tracking mechanism.  Update Monitor to match new way of reading data.
 
-01/24/2018 - v2.4.0.0
+**01/24/2018 - v2.4.0.0**
 
   Plugin:
   * Expose Stock Car Rules plugin DoubleFileType setting.
@@ -98,7 +98,7 @@ If you would like to support this project, you can donate [here.](http://thecrew
   * Correctly calculate distance to the SC.
   * Add Frozen Order sub-phases for Rolling start without SC, while assigned pole/pole row.
 
-01/02/2018 - v2.3.1.2
+**01/02/2018 - v2.3.1.2**
 
   Plugin:
   * Allow hosting of StockCarRules.dll plugin.  Capture mMessage members filled out by SCR plugin and pass them out via SM.
@@ -107,7 +107,7 @@ If you would like to support this project, you can donate [here.](http://thecrew
   Monitor:
   * Minor fixes and changes to support SCR plugin hosting feature.
 
-10/04/2017 - v2.2.1.0
+**10/04/2017 - v2.2.1.0**
 
   Plugin:
   * Expose rF2MultiRules buffer
@@ -119,7 +119,7 @@ If you would like to support this project, you can donate [here.](http://thecrew
   Monitor:
   * Add Frozen Order rules detection.
 
-9/01/2017 - v2.1.1.1
+**9/01/2017 - v2.1.1.1**
 
   Plugin:
   * Fix crash in physics update that happens when buffer can't be mapped.
@@ -131,11 +131,11 @@ If you would like to support this project, you can donate [here.](http://thecrew
   * Add rF2Rules tracking.
   * Force invariant culture on the app.
 
-7/22/2017 - v2.0.0.0
+**7/22/2017 - v2.0.0.0**
 
   Complete redesign/rework to better reflect rFactor 2 internals read model.  Interpolation is removed, plugin is now essentially double buffered memcpy of rF2 internals.
 
-3/22/2017 - v1.1.0.1
+**3/22/2017 - v1.1.0.1**
 
   Plugin:
   * Replaced rF2State::mInRealTime with mInRealTimeFC and mInRealTimeSU values, to distiguish between InRealtime state reported via ScoringUpdate, and via Enter/ExitRealtime calls.
@@ -145,7 +145,7 @@ If you would like to support this project, you can donate [here.](http://thecrew
   * Extended monitor to display more information
   * Implemented correct "Best Split" time calculation logic.
 
-2/26/2017 - v1.0.0.1
+**2/26/2017 - v1.0.0.1**
 
   Fixed synchronization of:
   * rF2State::mElapsedTime
@@ -154,9 +154,9 @@ If you would like to support this project, you can donate [here.](http://thecrew
 
   This eliminates the gap those values had between telemetry and scoring updates.
 
-01/31/2017 - v1.0.0.0
+**01/31/2017 - v1.0.0.0**
   * Plugin: Added damage and invulnerability tracking
   * Monitor: Added phase and damage tracking and logging
 
 
-1/18/2017 v0.5.0.0 - Initial release
+**1/18/2017 v0.5.0.0 - Initial release**
