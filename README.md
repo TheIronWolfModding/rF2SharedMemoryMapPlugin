@@ -54,11 +54,17 @@ Please also be aware, that Crew Chief will always ship with the latest version o
 * SimHub: https://github.com/zegreatclan/AssettoCorsaTools/wiki
 * rFactor 2 Log Analyzer: https://forum.studio-397.com/index.php?threads/rfactor2-log-analyzer-ver-2-with-offline-and-league-championship-manager.48117/
 * Sim Racing Studio tools: https://www.simracingstudio.com/download
+* Second Monitor: https://github.com/Winzarten/SecondMonitor
 
 ## Support this project
 If you would like to support this project, you can donate [here.](http://thecrewchief.org/misc.php?do=donate)
 
 # Release history
+
+12/15/2018 - v3.2.0.0
+
+  Plugin/Monitor:
+  * Update exposed field headers and C# marhsaling code to include fields found in Rules/Knockout Qualifying plugins.  See [this](https://github.com/TheIronWolfModding/rF2SharedMemoryMapPlugin/commit/eb5de36e7cf0ccce4335d93bc4c34471841ddecf?w=1) commit to see what has changed.
 
 09/04/2018 - v3.1.0.0
 
