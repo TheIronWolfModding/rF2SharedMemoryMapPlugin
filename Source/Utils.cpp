@@ -1,3 +1,4 @@
+#include <windows.h>
 #include "Utils.h"
 
 #include <psapi.h>
@@ -15,7 +16,7 @@ uintptr_t* FindPatternForPointerInMemory(HMODULE module, unsigned const char* pa
   MODULEINFO info = {};
   ::GetModuleInformation(GetCurrentProcess(), module, &info, sizeof(MODULEINFO));
   auto address = FindPattern(reinterpret_cast<uintptr_t>(module), info.SizeOfImage, pattern, mask);
-  if (address == -1uLL)
+  if (address == 0uLL)
     return nullptr;
 
   address += bytedIntoPatternToFindOffset;
@@ -38,5 +39,5 @@ uintptr_t FindPattern(uintptr_t start, size_t length, unsigned const char* patte
       pos = 0;
   }
 
-  return -1uLL;
+  return 0uLL;
 }
