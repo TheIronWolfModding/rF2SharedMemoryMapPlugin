@@ -886,6 +886,17 @@ struct rF2Extended : public rF2MappedBufferHeader
   char mDisplayedMessageUpdateCapture[sizeof(decltype(MessageInfoV01::mText))];
 
   rF2HostedPluginVars mHostedPluginVars;
+
+  // Direct Memory access stuff
+  bool mDirectMemoryAccessEnabled;
+
+  static int const MAX_STATUS_MSG_LEN = 256;
+
+  ULONGLONG mTicksStatusMessage;             // Ticks when status message was updated;
+  char mStatusMessage[rF2Extended::MAX_STATUS_MSG_LEN];
+
+  ULONGLONG mTicksLastHistoryMessage;        // Ticks when last message history message was updated;
+  char mLastHistoryMessage[rF2Extended::MAX_STATUS_MSG_LEN];
 };
 
 #pragma pack(pop)

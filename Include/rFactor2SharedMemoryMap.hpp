@@ -53,17 +53,19 @@ Website: thecrewchief.org
 #include "rF2State.h"
 #include "MappedBuffer.h"
 #include "PluginHost.h"
+#include "DirectMemoryReader.h"
 
 enum DebugLevel
 {
   Off = 0,
   Errors = 1,
   CriticalInfo = 2,      // Errors + Critical Info
-  Warnings = 3,          // Errors + Critical Info + Warnings
-  Synchronization = 4,   // Errors + Critical Info + Warnings + Sync messages
-  Perf = 5,              // Errors + Critical Info + Warnings + Sync messages + Perf
-  Timing = 6,            // Errors + Critical Info + Warnings + Sync messages + Perf + Timing deltas
-  Verbose = 7            // All
+  DevInfo = 3,         // Errors + Critical Info + Dev Info
+  Warnings = 4,          // Errors + Critical Info + Dev Info + Warnings
+  Synchronization = 5,   // Errors + Critical Info + Dev Info + Warnings + Sync messages
+  Perf = 6,              // Errors + Critical Info + Dev Info + Warnings + Sync messages + Perf
+  Timing = 7,            // Errors + Critical Info + Dev Info + Warnings + Sync messages + Perf + Timing deltas
+  Verbose = 8            // All
 };
 
 // This is used for the app to use the plugin for its intended purpose
@@ -326,6 +328,13 @@ private:
 
   // Last non-empty FCY TrackRulesParticipantV01 message.
   char mLastRulesParticipantFCYMessages[rF2MappedBufferHeader::MAX_MAPPED_IDS][sizeof(decltype(rF2TrackRulesParticipant::mMessage))];
+
+  //////////////////////////////////////////
+  // Direct Memory Access hackery
+  //////////////////////////////////////////
+  static bool msDirectMemoryAccessRequested;
+
+  DirectMemoryReader mDMR;
 };
 
 

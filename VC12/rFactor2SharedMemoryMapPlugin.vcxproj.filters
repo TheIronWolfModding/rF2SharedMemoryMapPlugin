@@ -4,6 +4,7 @@
     <ClCompile Include="..\Source\rFactor2SharedMemoryMap.cpp" />
     <ClCompile Include="ISIInternalsDump.cpp" />
     <ClCompile Include="..\Source\PluginHost.cpp" />
+    <ClCompile Include="..\source\DirectMemoryReader.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Include\InternalsPlugin.hpp">
@@ -25,6 +26,9 @@
       <Filter>includes</Filter>
     </ClInclude>
     <ClInclude Include="..\Include\MappedBuffer.h">
+      <Filter>includes</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Include\DirectMemoryReader.h">
       <Filter>includes</Filter>
     </ClInclude>
   </ItemGroup>

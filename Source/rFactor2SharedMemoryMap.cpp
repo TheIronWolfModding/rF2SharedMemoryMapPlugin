@@ -124,6 +124,7 @@ DebugLevel SharedMemoryPlugin::msDebugOutputLevel = DebugLevel::Off;
 bool SharedMemoryPlugin::msDebugISIInternals = false;
 bool SharedMemoryPlugin::msStockCarRulesPluginRequested = false;
 bool SharedMemoryPlugin::msDedicatedServerMapGlobally = false;
+bool SharedMemoryPlugin::msDirectMemoryAccessRequested = false;
 
 FILE* SharedMemoryPlugin::msDebugFile;
 FILE* SharedMemoryPlugin::msIsiTelemetryFile;
@@ -191,6 +192,7 @@ void SharedMemoryPlugin::Startup(long version)
   DEBUG_INT2(DebugLevel::CriticalInfo, "DebugOutputLevel:", SharedMemoryPlugin::msDebugOutputLevel);
   DEBUG_INT2(DebugLevel::CriticalInfo, "DebugISIInternals:", SharedMemoryPlugin::msDebugISIInternals);
   DEBUG_INT2(DebugLevel::CriticalInfo, "DedicatedServerMapGlobally:", SharedMemoryPlugin::msDedicatedServerMapGlobally);
+  DEBUG_INT2(DebugLevel::CriticalInfo, "EnableDirectMemoryAccess:", SharedMemoryPlugin::msDirectMemoryAccessRequested);
 
   char temp[80] = {};
   sprintf(temp, "-STARTUP- (version %.3f)", (float)version / 1000.0f);
@@ -283,6 +285,16 @@ void SharedMemoryPlugin::Startup(long version)
     mExtended.BeginUpdate();
     memcpy(mExtended.mpBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
     mExtended.EndUpdate();
+  }
+
+  if (SharedMemoryPlugin::msDirectMemoryAccessRequested) {
+    mExtStateTracker.mExtended.mDirectMemoryAccessEnabled = true;
+
+    mExtended.BeginUpdate();
+    memcpy(mExtended.mpBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
+    mExtended.EndUpdate();
+
+    mDMR.Initialize();
   }
 }
 
@@ -768,6 +780,10 @@ void SharedMemoryPlugin::UpdateScoring(ScoringInfoV01 const& info)
 
   mScoring.EndUpdate();
 
+  // TODO: write into extended.
+  if (SharedMemoryPlugin::msDirectMemoryAccessRequested)
+    mDMR.Read(mExtStateTracker.mExtended);
+
   // Update extended state.
   mExtStateTracker.ProcessScoringUpdate(info);
 
@@ -1034,6 +1050,12 @@ bool SharedMemoryPlugin::GetCustomVariable(long i, CustomVariableV01& var)
     var.mCurrentSetting = 0;
     return true;
   }
+  else if (i == 5) {
+    strcpy_s(var.mCaption, "EnableDirectMemoryAccess");
+    var.mNumSettings = 2;
+    var.mCurrentSetting = 0;
+    return true;
+  }
 
   return false;
 }
@@ -1059,6 +1081,8 @@ void SharedMemoryPlugin::AccessCustomVariable(CustomVariableV01& var)
     SharedMemoryPlugin::msDebugISIInternals = var.mCurrentSetting != 0;
   else if (_stricmp(var.mCaption, "DedicatedServerMapGlobally") == 0)
     SharedMemoryPlugin::msDedicatedServerMapGlobally = var.mCurrentSetting != 0;
+  else if (_stricmp(var.mCaption, "EnableDirectMemoryAccess") == 0)
+    SharedMemoryPlugin::msDirectMemoryAccessRequested = var.mCurrentSetting != 0;
 }
 
 
@@ -1087,6 +1111,12 @@ void SharedMemoryPlugin::GetCustomVariableSetting(CustomVariableV01& var, long i
       strcpy_s(setting.mName, "True");
   }
   else if (_stricmp(var.mCaption, "DedicatedServerMapGlobally") == 0) {
+    if (i == 0)
+      strcpy_s(setting.mName, "False");
+    else
+      strcpy_s(setting.mName, "True");
+  }
+  else if (_stricmp(var.mCaption, "EnableDirectMemoryAccess") == 0) {
     if (i == 0)
       strcpy_s(setting.mName, "False");
     else
@@ -1143,7 +1173,7 @@ void SharedMemoryPlugin::WriteDebugMsg(DebugLevel lvl, const char* const format,
   SYSTEMTIME st = {};
   ::GetLocalTime(&st);
 
-  fprintf(SharedMemoryPlugin::msDebugFile, "%.2d:%.2d:%.2d.%.3d TID:0x%04x  ", st.wHour, st.wMinute, st.wSecond , st.wMilliseconds, GetCurrentThreadId());
+  fprintf(SharedMemoryPlugin::msDebugFile, "%.2d:%.2d:%.2d.%.3d TID:0x%04x  ", st.wHour, st.wMinute, st.wSecond , st.wMilliseconds, ::GetCurrentThreadId());
   if (SharedMemoryPlugin::msDebugFile != nullptr) {
     va_start(argList, format);
     vfprintf(SharedMemoryPlugin::msDebugFile, format, argList);
