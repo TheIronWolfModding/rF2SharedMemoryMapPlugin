@@ -33,6 +33,7 @@ namespace rF2SMMonitor
     
     public const int MAX_MAPPED_VEHICLES = 128;
     public const int MAX_MAPPED_IDS = 512;
+    public const int MAX_STATUS_MSG_LEN = 128;
     public const string RFACTOR2_PROCESS_NAME = "rFactor2";
 
     public const byte RowX = 0;
@@ -875,6 +876,17 @@ namespace rF2SMMonitor
       public byte[] mDisplayedMessageUpdateCapture;
 
       public rF2HostedPluginVars mHostedPluginVars;
+
+      // Direct Memory access stuff
+      public byte mDirectMemoryAccessEnabled;
+
+      public Int64 mTicksStatusMessageUpdated;             // Ticks when status message was updated;
+      [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = rFactor2Constants.MAX_STATUS_MSG_LEN)]
+      public byte[] mStatusMessage;
+
+      public Int64 mTicksLastHistoryMessageUpdated;        // Ticks when last message history message was updated;
+      [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = rFactor2Constants.MAX_STATUS_MSG_LEN)]
+      public byte[] mLastHistoryMessage;
     }
   }
 }

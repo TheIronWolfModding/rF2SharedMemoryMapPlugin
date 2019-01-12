@@ -776,6 +776,7 @@ struct rF2MappedBufferHeader
 {
   static int const MAX_MAPPED_VEHICLES = 128;
   static int const MAX_MAPPED_IDS = 512;
+  static int const MAX_STATUS_MSG_LEN = 128;
 };
 
 
@@ -890,13 +891,11 @@ struct rF2Extended : public rF2MappedBufferHeader
   // Direct Memory access stuff
   bool mDirectMemoryAccessEnabled;
 
-  static int const MAX_STATUS_MSG_LEN = 256;
+  ULONGLONG mTicksStatusMessageUpdated;             // Ticks when status message was updated;
+  char mStatusMessage[rF2MappedBufferHeader::MAX_STATUS_MSG_LEN];
 
-  ULONGLONG mTicksStatusMessage;             // Ticks when status message was updated;
-  char mStatusMessage[rF2Extended::MAX_STATUS_MSG_LEN];
-
-  ULONGLONG mTicksLastHistoryMessage;        // Ticks when last message history message was updated;
-  char mLastHistoryMessage[rF2Extended::MAX_STATUS_MSG_LEN];
+  ULONGLONG mTicksLastHistoryMessageUpdated;        // Ticks when last message history message was updated;
+  char mLastHistoryMessage[rF2MappedBufferHeader::MAX_STATUS_MSG_LEN];
 };
 
 #pragma pack(pop)

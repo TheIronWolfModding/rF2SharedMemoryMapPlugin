@@ -18,6 +18,6 @@ private:
   char* mpStatusMessage = nullptr;
   char** mppMessageCenterMessages = nullptr;
 
-  char mPrevStatusMessage[rF2Extended::MAX_STATUS_MSG_LEN];
-  char mPrevLastHistoryMessage[rF2Extended::MAX_STATUS_MSG_LEN];
+  char mPrevStatusMessage[rF2MappedBufferHeader::MAX_STATUS_MSG_LEN];
+  char mPrevLastHistoryMessage[rF2MappedBufferHeader::MAX_STATUS_MSG_LEN];
 };

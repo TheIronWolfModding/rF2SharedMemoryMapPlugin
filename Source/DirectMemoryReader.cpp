@@ -32,7 +32,7 @@ bool DirectMemoryReader::Initialize()
   auto const endTicks = TicksNow();
 
   if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::DevInfo) {
-    // Normal scan ~19ms, failed scan ~35ms.
+    // Normal scan ~9ms, failed scan ~35ms (debug).
     DEBUG_FLOAT2(DebugLevel::DevInfo, "Scan time seconds: ", (endTicks - startTicks) / MICROSECONDS_IN_SECOND);
 
     auto const addr1 = reinterpret_cast<char*>(reinterpret_cast<uintptr_t>(::GetModuleHandle(nullptr)) + 0x14BA0C0);
@@ -60,7 +60,7 @@ bool DirectMemoryReader::Read(rF2Extended& extended)
     DEBUG_MSG2(DebugLevel::DevInfo, "Status message updated: ", extended.mStatusMessage);
 
     strcpy_s(mPrevStatusMessage, extended.mStatusMessage);
-    extended.mTicksStatusMessage = ::GetTickCount64();
+    extended.mTicksStatusMessageUpdated = ::GetTickCount64();
   }
 
   if (*mppMessageCenterMessages == nullptr) {
@@ -76,7 +76,7 @@ bool DirectMemoryReader::Read(rF2Extended& extended)
         DEBUG_MSG2(DebugLevel::DevInfo, "Last history message updated: ", extended.mLastHistoryMessage);
 
         strcpy_s(mPrevLastHistoryMessage, extended.mLastHistoryMessage);
-        extended.mTicksLastHistoryMessage = ::GetTickCount64();
+        extended.mTicksLastHistoryMessageUpdated = ::GetTickCount64();
       }
 
       break;
