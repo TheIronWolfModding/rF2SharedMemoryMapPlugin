@@ -42,6 +42,7 @@ bool DirectMemoryReader::Initialize()
   return true;
 }
 
+
 void DirectMemoryReader::Read(rF2Extended& extended)
 {
   strcpy_s(extended.mStatusMessage, mpStatusMessage);

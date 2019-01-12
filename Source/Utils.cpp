@@ -1,15 +1,6 @@
 #include <windows.h>
 #include "Utils.h"
-
 #include <psapi.h>
-
-uintptr_t FindPattern(HMODULE module, unsigned const char* pattern, char const* mask)
-{
-  MODULEINFO info = {};
-  ::GetModuleInformation(::GetCurrentProcess(), module, &info, sizeof(MODULEINFO));
-
-  return FindPattern(reinterpret_cast<uintptr_t>(module), info.SizeOfImage, pattern, mask);
-}
 
 uintptr_t* FindPatternForPointerInMemory(HMODULE module, unsigned const char* pattern, char const* mask, int bytedIntoPatternToFindOffset)
 {
@@ -23,6 +14,7 @@ uintptr_t* FindPatternForPointerInMemory(HMODULE module, unsigned const char* pa
   auto const offsetFromRIP = LODWORD(*reinterpret_cast<uintptr_t*>(addressAbsoluteRIP) + 4uLL);
   return reinterpret_cast<uintptr_t*>(addressAbsoluteRIP + offsetFromRIP);
 }
+
 
 uintptr_t FindPattern(uintptr_t start, size_t length, unsigned const char* pattern, char const* mask)
 {

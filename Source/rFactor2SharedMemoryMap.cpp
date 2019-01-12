@@ -475,6 +475,7 @@ void SharedMemoryPlugin::ExitRealtime()
   UpdateInRealtimeFC(false /*inRealtime*/);
 }
 
+
 // Using GTC64 produces 7x larger average interpolation delta (roughly from 5cm to 35cm).
 // The max offset stays close, so it might not matter much.
 // So, let's keep QPC and see if it causes problems (FPS cost)?
@@ -509,7 +510,7 @@ void SharedMemoryPlugin::TelemetryTraceSkipUpdate(TelemInfoV01 const& info, doub
     DEBUG_MSG(DebugLevel::Timing, msg);
 
     // We complete frame every 20ms, so on skip we need to compare to the current write buffer.
-    // Below assumes that we begin skip on the first vehicle, which is not guaranteed.  However, that's ok
+    // Below a  ssumes that we begin skip on the first vehicle, which is not guaranteed.  However, that's ok
     // since this code is diagnostic.
     // The goal here is to detect situation where rF2 changes and begins to send telemetry more frequently.
     auto const prevBuff = mTelemetry.mpBuff;
