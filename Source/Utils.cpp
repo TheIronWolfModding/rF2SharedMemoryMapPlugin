@@ -14,29 +14,30 @@ uintptr_t FindPattern(HMODULE module, unsigned const char* pattern, char const* 
 uintptr_t* FindPatternForPointerInMemory(HMODULE module, unsigned const char* pattern, char const* mask, int bytedIntoPatternToFindOffset)
 {
   MODULEINFO info = {};
-  ::GetModuleInformation(GetCurrentProcess(), module, &info, sizeof(MODULEINFO));
-  auto address = FindPattern(reinterpret_cast<uintptr_t>(module), info.SizeOfImage, pattern, mask);
-  if (address == 0uLL)
+  ::GetModuleInformation(::GetCurrentProcess(), module, &info, sizeof(MODULEINFO));
+  auto addressAbsoluteRIP = FindPattern(reinterpret_cast<uintptr_t>(module), info.SizeOfImage, pattern, mask);
+  if (addressAbsoluteRIP == 0uLL)
     return nullptr;
 
-  address += bytedIntoPatternToFindOffset;
-  return reinterpret_cast<uintptr_t*>(address + LODWORD(*(uintptr_t*) address + 4));
+  addressAbsoluteRIP += bytedIntoPatternToFindOffset;
+  auto const offsetFromRIP = LODWORD(*reinterpret_cast<uintptr_t*>(addressAbsoluteRIP) + 4uLL);
+  return reinterpret_cast<uintptr_t*>(addressAbsoluteRIP + offsetFromRIP);
 }
 
 uintptr_t FindPattern(uintptr_t start, size_t length, unsigned const char* pattern, char const* mask)
 {
-  size_t pos = 0u;
-  auto maskLength = strlen(mask) - 1;
+  size_t maskPos = 0u;
+  auto const maskLength = strlen(mask) - 1;
 
   auto startAdress = start;
-  for (auto it = startAdress; it < startAdress + length; ++it) {
-    if (*reinterpret_cast<unsigned char*>(it) == pattern[pos] || mask[pos] == '?') {
-      if (mask[pos + 1] == '\0')
-        return it - maskLength;
+  for (auto currAddress = startAdress; currAddress < startAdress + length; ++currAddress) {
+    if (*reinterpret_cast<unsigned char*>(currAddress) == pattern[maskPos] || mask[maskPos] == '?') {
+      if (mask[maskPos + 1u] == '\0')
+         return currAddress - maskLength;
 
-      pos++;
+      ++maskPos;
     } else
-      pos = 0;
+      maskPos = 0;
   }
 
   return 0uLL;

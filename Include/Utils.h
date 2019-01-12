@@ -39,14 +39,6 @@ ScopeGuard<Lambda> MakeScopeGuard(Lambda const& l)
   return ScopeGuard<Lambda>(l);
 };
 
-
-
-/*
-Website: thecrewchief.org
-*/
-
-//#include <cstdint>
-//#include <windows.h>
 #define LOWORD(_dw)     ((WORD)(((DWORD_PTR)(_dw)) & 0xffff))
 #define HIWORD(_dw)     ((WORD)((((DWORD_PTR)(_dw)) >> 16) & 0xffff))
 #define LODWORD(_qw)    ((DWORD)(_qw))

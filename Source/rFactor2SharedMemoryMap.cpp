@@ -114,12 +114,6 @@ Sample consumption:
 #include <stdlib.h>
 #include <cstddef>                              // offsetof
 
-double TicksNow();
-
-static double const MILLISECONDS_IN_SECOND = 1000.0;
-static double const MICROSECONDS_IN_MILLISECOND = 1000.0;
-static double const MICROSECONDS_IN_SECOND = MILLISECONDS_IN_SECOND * MICROSECONDS_IN_MILLISECOND;
-
 DebugLevel SharedMemoryPlugin::msDebugOutputLevel = DebugLevel::Off;
 bool SharedMemoryPlugin::msDebugISIInternals = false;
 bool SharedMemoryPlugin::msStockCarRulesPluginRequested = false;

@@ -47,6 +47,7 @@ Website: thecrewchief.org
 #define DEBUG_MSG(lvl, msg) SharedMemoryPlugin::WriteDebugMsg(lvl, "%s(%d) : %s\n", __FUNCTION__, __LINE__, msg)
 #define DEBUG_MSG2(lvl, msg, msg2) SharedMemoryPlugin::WriteDebugMsg(lvl, "%s(%d) : %s %s\n", __FUNCTION__, __LINE__, msg, msg2)
 #define DEBUG_INT2(lvl, msg, intValue) SharedMemoryPlugin::WriteDebugMsg(lvl, "%s(%d) : %s %d\n", __FUNCTION__, __LINE__, msg, intValue)
+#define DEBUG_ADDR2(lvl, msg, addrValue) SharedMemoryPlugin::WriteDebugMsg(lvl, "%s(%d) : %s 0x%p\n", __FUNCTION__, __LINE__, msg, addrValue)
 #define DEBUG_FLOAT2(lvl, msg, floatValue) SharedMemoryPlugin::WriteDebugMsg(lvl, "%s(%d) : %s %f\n", __FUNCTION__, __LINE__, msg, floatValue)
 #define DEBUG_MSG3(lvl, msg, msg2, msg3) SharedMemoryPlugin::WriteDebugMsg(lvl, "%s(%d) : %s %s %s\n", __FUNCTION__, __LINE__, msg, msg2, msg3)
 
@@ -67,6 +68,12 @@ enum DebugLevel
   Timing = 7,            // Errors + Critical Info + Dev Info + Warnings + Sync messages + Perf + Timing deltas
   Verbose = 8            // All
 };
+
+double TicksNow();
+
+static double const MILLISECONDS_IN_SECOND = 1000.0;
+static double const MICROSECONDS_IN_MILLISECOND = 1000.0;
+static double const MICROSECONDS_IN_SECOND = MILLISECONDS_IN_SECOND * MICROSECONDS_IN_MILLISECOND;
 
 // This is used for the app to use the plugin for its intended purpose
 class SharedMemoryPlugin : public InternalsPluginV07  // REMINDER: exported function GetPluginVersion() should return 1 if you are deriving from this InternalsPluginV01, 2 for InternalsPluginV02, etc.
