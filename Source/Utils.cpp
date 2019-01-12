@@ -1,8 +1,8 @@
 #include <windows.h>
-#include "Utils.h"
 #include <psapi.h>
+#include "Utils.h"
 
-uintptr_t* FindPatternForPointerInMemory(HMODULE module, unsigned const char* pattern, char const* mask, int bytedIntoPatternToFindOffset)
+uintptr_t* FindPatternForPointerInMemory(HMODULE module, unsigned char const* pattern, unsigned char const* mask, int bytedIntoPatternToFindOffset)
 {
   MODULEINFO info = {};
   ::GetModuleInformation(::GetCurrentProcess(), module, &info, sizeof(MODULEINFO));
@@ -16,10 +16,10 @@ uintptr_t* FindPatternForPointerInMemory(HMODULE module, unsigned const char* pa
 }
 
 
-uintptr_t FindPattern(uintptr_t start, size_t length, unsigned const char* pattern, char const* mask)
+uintptr_t FindPattern(uintptr_t start, size_t length, unsigned char const* pattern, unsigned char const* mask)
 {
   size_t maskPos = 0u;
-  auto const maskLength = strlen(mask) - 1;
+  auto const maskLength = strlen(reinterpret_cast<char const*>(mask)) - 1;
 
   auto startAdress = start;
   for (auto currAddress = startAdress; currAddress < startAdress + length; ++currAddress) {

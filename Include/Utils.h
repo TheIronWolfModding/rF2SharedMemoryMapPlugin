@@ -52,7 +52,7 @@ ScopeGuard<Lambda> MakeScopeGuard(Lambda const& l)
 /// <param name="pattern">The pattern (Example: "\x12\xAB\x34")</param>
 /// <param name="mask">The mask (Example: "x?x")</param>
 /// <returns>The address of the found pattern or -1 if the pattern was not found.</returns>
-uintptr_t FindPattern(uintptr_t start, size_t length, unsigned const char* pattern, char const* mask);
+uintptr_t FindPattern(uintptr_t start, size_t length, unsigned char const* pattern, unsigned char const* mask);
 
 /// <summary>
 /// Searches for the first pattern in the module.
@@ -62,4 +62,4 @@ uintptr_t FindPattern(uintptr_t start, size_t length, unsigned const char* patte
 /// <param name="mask">The mask (Example: "x?x")</param>
 /// <param name="bytedIntoPatternToFindOffset">nr bytes into found address to add to get the pointer offset (Example: -?+?)</param>
 /// <returns>The address of the found pattern or -1 if the pattern was not found.</returns>
-uintptr_t* FindPatternForPointerInMemory(HMODULE module, unsigned const char* pattern, char const* mask, int bytedIntoPatternToFindPointer);
+uintptr_t* FindPatternForPointerInMemory(HMODULE module, unsigned char const* pattern, unsigned char const* mask, int bytedIntoPatternToFindPointer);
