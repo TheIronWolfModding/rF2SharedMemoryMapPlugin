@@ -15,10 +15,20 @@ bool DirectMemoryReader::Initialize()
      reinterpret_cast<unsigned char*>("\x74\x23\x48\x8D\x15\x5D\x31\xF5\x00\x48\x2B\xD3"),
      reinterpret_cast<unsigned char*>("xxxxx????xxx"), 5));
 
+  if (mpStatusMessage == nullptr) {
+    DEBUG_MSG(DebugLevel::Errors, "ERROR: Failed to resolve status message.");
+    return false;
+  }
+
   // TODO: store ** and derefence it all the time, will be safer.
   auto const rootPtr = FindPatternForPointerInMemory(module,
     reinterpret_cast<unsigned char*>("\x48\x8B\x05\xAA\xD1\xFF\x00\xC6\x80\xB8\x25\x00\x00\x01"),
     reinterpret_cast<unsigned char*>("xxx????xxxxxxx"), 3);
+
+  if (rootPtr == nullptr) {
+    DEBUG_MSG(DebugLevel::Errors, "ERROR: Failed to resolve message array.");
+    return false;
+  }
 
   auto const endTicks = TicksNow();
 
@@ -47,7 +57,7 @@ bool DirectMemoryReader::Initialize()
 }
 
 
-void DirectMemoryReader::Read(rF2Extended& extended)
+bool DirectMemoryReader::Read(rF2Extended& extended)
 {
   strcpy_s(extended.mStatusMessage, mpStatusMessage);
   if (strcmp(mPrevStatusMessage, extended.mStatusMessage) != 0) {
@@ -56,4 +66,6 @@ void DirectMemoryReader::Read(rF2Extended& extended)
     strcpy_s(mPrevStatusMessage, extended.mStatusMessage);
     extended.mTicksStatusMessage = ::GetTickCount64();
   }
+
+  return true;
 }

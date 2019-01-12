@@ -12,10 +12,9 @@ public:
   DirectMemoryReader() {}
 
   bool Initialize();
-  void Read(rF2Extended& extended);
+  bool Read(rF2Extended& extended);
 
 private:
-  //uintptr_t 
   char* mpStatusMessage = nullptr;
   char* mpMessageCenterMessages = nullptr;
 

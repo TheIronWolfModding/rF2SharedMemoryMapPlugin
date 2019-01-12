@@ -288,7 +288,10 @@ void SharedMemoryPlugin::Startup(long version)
     memcpy(mExtended.mpBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
     mExtended.EndUpdate();
 
-    mDMR.Initialize();
+    if (!mDMR.Initialize()) {
+      DEBUG_MSG(DebugLevel::Errors, "ERROR: Failed to initialize DMA, disabling DMA.");
+      SharedMemoryPlugin::msDirectMemoryAccessRequested = false;
+    }
   }
 }
 
@@ -775,9 +778,12 @@ void SharedMemoryPlugin::UpdateScoring(ScoringInfoV01 const& info)
 
   mScoring.EndUpdate();
 
-  // TODO: write into extended.
-  if (SharedMemoryPlugin::msDirectMemoryAccessRequested)
-    mDMR.Read(mExtStateTracker.mExtended);
+  if (SharedMemoryPlugin::msDirectMemoryAccessRequested) {
+    if (!mDMR.Read(mExtStateTracker.mExtended)) {
+      DEBUG_MSG(DebugLevel::Errors, "ERROR: DMA read failed, disabling.");
+      SharedMemoryPlugin::msDirectMemoryAccessRequested = false;
+    }
+  }
 
   // Update extended state.
   mExtStateTracker.ProcessScoringUpdate(info);
