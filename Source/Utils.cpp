@@ -2,7 +2,7 @@
 #include <psapi.h>
 #include "Utils.h"
 
-uintptr_t* FindPatternForPointerInMemory(HMODULE module, unsigned char const* pattern, unsigned char const* mask, int bytedIntoPatternToFindOffset)
+uintptr_t* FindPatternForPointerInMemory(HMODULE module, unsigned char const* pattern, char const* mask, size_t bytedIntoPatternToFindOffset)
 {
   MODULEINFO info = {};
   ::GetModuleInformation(::GetCurrentProcess(), module, &info, sizeof(MODULEINFO));
@@ -16,7 +16,7 @@ uintptr_t* FindPatternForPointerInMemory(HMODULE module, unsigned char const* pa
 }
 
 
-uintptr_t FindPattern(uintptr_t start, size_t length, unsigned char const* pattern, unsigned char const* mask)
+uintptr_t FindPattern(uintptr_t start, size_t length, unsigned char const* pattern, char const* mask)
 {
   size_t maskPos = 0u;
   auto const maskLength = strlen(reinterpret_cast<char const*>(mask)) - 1;

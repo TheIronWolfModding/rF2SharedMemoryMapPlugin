@@ -16,7 +16,7 @@ public:
 
 private:
   char* mpStatusMessage = nullptr;
-  char* mpMessageCenterMessages = nullptr;
+  char** mppMessageCenterMessages = nullptr;
 
   char mPrevStatusMessage[rF2Extended::MAX_STATUS_MSG_LEN];
   char mPrevLastHistoryMessage[rF2Extended::MAX_STATUS_MSG_LEN];
