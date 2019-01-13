@@ -68,14 +68,14 @@ bool DirectMemoryReader::Read(rF2Extended& extended)
     return true;  // Retry next time or fail?
   }
 
-  char msgBuff[rF2MappedBufferHeader::MAX_STATUS_MSG_LEN] = {};
+  char msgBuff[rF2MappedBufferHeader::MAX_STATUS_MSG_LEN];
 
+  // TODO: add ptr asserts.
   auto seenSplit = false;
   auto pCurr = *mppMessageCenterMessages + 0xC0 * 0x2F + 0x68;
   for (int i = 0; i < 0x30; ++i) {
     if (*pCurr != '\0') {
       if (*pCurr == ' ') {  // some messages are split, they begin with space though.
-        DEBUG_MSG2(DebugLevel::DevInfo, "Found split line msg: ", pCurr);
         pCurr -= 0xC0;
         seenSplit = true;
         continue;
@@ -87,10 +87,7 @@ bool DirectMemoryReader::Read(rF2Extended& extended)
         auto j = i + 1;
         auto pAhead = pCurr + 0xC0;
         while (j < 0x30 && *pAhead == ' ' && *pCurr != '\0') {
-          // TODO: remove this logging, excess
-          DEBUG_MSG2(DebugLevel::DevInfo, "Curr msg: ", msgBuff);
           strcat_s(msgBuff, pAhead);
-          DEBUG_MSG2(DebugLevel::DevInfo, "Concatenated: ", msgBuff);
 
           ++j;
           pAhead += 0xC0;
