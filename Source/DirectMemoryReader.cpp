@@ -68,12 +68,45 @@ bool DirectMemoryReader::Read(rF2Extended& extended)
     return true;  // Retry next time or fail?
   }
 
+  char msgBuff[rF2MappedBufferHeader::MAX_STATUS_MSG_LEN] = {};
+
+  auto seenSplit = false;
   auto pCurr = *mppMessageCenterMessages + 0xC0 * 0x2F + 0x68;
   for (int i = 0; i < 0x30; ++i) {
     if (*pCurr != '\0') {
-      strcpy_s(extended.mLastHistoryMessage, pCurr);
+      if (*pCurr == ' ') {  // some messages are split, they begin with space though.
+        DEBUG_MSG2(DebugLevel::DevInfo, "Found split line msg: ", pCurr);
+        pCurr -= 0xC0;
+        seenSplit = true;
+        continue;
+      }
+
+      if (seenSplit) {
+        strcpy_s(msgBuff, pCurr);
+
+        auto j = i + 1;
+        auto pAhead = pCurr + 0xC0;
+        while (j < 0x30 && *pAhead == ' ' && *pCurr != '\0') {
+          // TODO: remove this logging, excess
+          DEBUG_MSG2(DebugLevel::DevInfo, "Curr msg: ", msgBuff);
+          strcat_s(msgBuff, pAhead);
+          DEBUG_MSG2(DebugLevel::DevInfo, "Concatenated: ", msgBuff);
+
+          ++j;
+          pAhead += 0xC0;
+        }
+      }
+
+      if (!seenSplit)
+        strcpy_s(extended.mLastHistoryMessage, pCurr);
+      else
+        strcpy_s(extended.mLastHistoryMessage, msgBuff);
+
       if (strcmp(mPrevLastHistoryMessage, extended.mLastHistoryMessage) != 0) {
-        DEBUG_MSG2(DebugLevel::DevInfo, "Last history message updated: ", extended.mLastHistoryMessage);
+        if (!seenSplit)
+          DEBUG_MSG2(DebugLevel::DevInfo, "Last history message updated: ", extended.mLastHistoryMessage);
+        else
+          DEBUG_MSG2(DebugLevel::DevInfo, "Last history message updated (concatenated): ", extended.mLastHistoryMessage);
 
         strcpy_s(mPrevLastHistoryMessage, extended.mLastHistoryMessage);
         extended.mTicksLastHistoryMessageUpdated = ::GetTickCount64();
