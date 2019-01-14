@@ -55,6 +55,11 @@ bool DirectMemoryReader::Initialize()
 
 bool DirectMemoryReader::Read(rF2Extended& extended)
 {
+  if (mpStatusMessage == nullptr || mppMessageCenterMessages == nullptr) {
+    assert(false && "DMR not available, should not call.");
+    return false;
+  }
+
   strcpy_s(extended.mStatusMessage, mpStatusMessage);
   if (strcmp(mPrevStatusMessage, extended.mStatusMessage) != 0) {
     DEBUG_MSG2(DebugLevel::DevInfo, "Status message updated: ", extended.mStatusMessage);
@@ -63,20 +68,21 @@ bool DirectMemoryReader::Read(rF2Extended& extended)
     extended.mTicksStatusMessageUpdated = ::GetTickCount64();
   }
 
-  if (*mppMessageCenterMessages == nullptr) {
+  auto const pBegin = *mppMessageCenterMessages;
+  if (pBegin == nullptr) {
     DEBUG_MSG2(DebugLevel::DevInfo, "No message array pointer assigned.", extended.mStatusMessage);
-    return true;  // Retry next time or fail?
+    return true;  // Retry next time or fail?  Have counter for N failures?
   }
 
   char msgBuff[rF2MappedBufferHeader::MAX_STATUS_MSG_LEN];
 
   auto seenSplit = false;
-  auto pCurr = *mppMessageCenterMessages + 0xC0 * 0x2F + 0x68;
-  auto const pPastEnd = *mppMessageCenterMessages + 0xC0 * 0x30;
+  auto pCurr = pBegin + 0xC0 * 0x2F + 0x68;
+  auto const pPastEnd = pBegin + 0xC0 * 0x30;
   for (int i = 0;
-    i < 0x30 && pCurr > *mppMessageCenterMessages;
+    i < 0x30 && pCurr >= pBegin;
     ++i) {
-    assert(pCurr >= *mppMessageCenterMessages && pCurr < pPastEnd);
+    assert(pCurr >= pBegin && pCurr < pPastEnd);
 
     if (*pCurr != '\0') {
       if (*pCurr == ' ') {  // some messages are split, they begin with space though.
@@ -90,13 +96,13 @@ bool DirectMemoryReader::Read(rF2Extended& extended)
 
         auto j = i - 1;
         auto pAhead = pCurr + 0xC0;
-        assert(pAhead >= *mppMessageCenterMessages && pAhead < pPastEnd);
+        assert(pAhead >= pBegin && pAhead < pPastEnd);
 
         while (j >= 0
           && *pAhead == ' '
           && *pCurr != '\0'
           && pAhead < pPastEnd) {
-          assert(pAhead >= *mppMessageCenterMessages && pAhead < pPastEnd);
+          assert(pAhead >= pBegin && pAhead < pPastEnd);
           assert(j >= 0 && j < 0x30);
 
           strcat_s(msgBuff, pAhead);
