@@ -70,10 +70,14 @@ bool DirectMemoryReader::Read(rF2Extended& extended)
 
   char msgBuff[rF2MappedBufferHeader::MAX_STATUS_MSG_LEN];
 
-  // TODO: add ptr asserts.
   auto seenSplit = false;
   auto pCurr = *mppMessageCenterMessages + 0xC0 * 0x2F + 0x68;
-  for (int i = 0; i < 0x30; ++i) {
+  auto const pPastEnd = *mppMessageCenterMessages + 0xC0 * 0x30;
+  for (int i = 0;
+    i < 0x30 && pCurr > *mppMessageCenterMessages;
+    ++i) {
+    assert(pCurr >= *mppMessageCenterMessages && pCurr < pPastEnd);
+
     if (*pCurr != '\0') {
       if (*pCurr == ' ') {  // some messages are split, they begin with space though.
         pCurr -= 0xC0;
@@ -84,12 +88,20 @@ bool DirectMemoryReader::Read(rF2Extended& extended)
       if (seenSplit) {
         strcpy_s(msgBuff, pCurr);
 
-        auto j = i + 1;
+        auto j = i - 1;
         auto pAhead = pCurr + 0xC0;
-        while (j < 0x30 && *pAhead == ' ' && *pCurr != '\0') {
+        assert(pAhead >= *mppMessageCenterMessages && pAhead < pPastEnd);
+
+        while (j >= 0
+          && *pAhead == ' '
+          && *pCurr != '\0'
+          && pAhead < pPastEnd) {
+          assert(pAhead >= *mppMessageCenterMessages && pAhead < pPastEnd);
+          assert(j >= 0 && j < 0x30);
+
           strcat_s(msgBuff, pAhead);
 
-          ++j;
+          --j;
           pAhead += 0xC0;
         }
       }
