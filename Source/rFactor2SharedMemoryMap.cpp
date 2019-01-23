@@ -405,6 +405,13 @@ void SharedMemoryPlugin::StartSession()
   // Current read buffer for Scoring info contains last Scoring Update.
   mExtStateTracker.CaptureSessionTransition(*mScoring.mpBuff);
 
+  if (SharedMemoryPlugin::msDirectMemoryAccessRequested) {
+    if (!mDMR.ReadOnNewSession(mExtStateTracker.mExtended)) {
+      DEBUG_MSG(DebugLevel::Errors, "ERROR: DMA read failed, disabling.");
+      SharedMemoryPlugin::msDirectMemoryAccessRequested = false;
+    }
+  }
+
   // Clear state will do the flip for extended state.
   ClearState();
 }

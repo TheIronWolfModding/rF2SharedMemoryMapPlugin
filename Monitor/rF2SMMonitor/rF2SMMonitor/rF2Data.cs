@@ -887,6 +887,8 @@ namespace rF2SMMonitor
       public Int64 mTicksLastHistoryMessageUpdated;        // Ticks when last message history message was updated;
       [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = rFactor2Constants.MAX_STATUS_MSG_LEN)]
       public byte[] mLastHistoryMessage;
+
+      public float mCurrentPitSpeedLimit;                // speed limit m/s.
     }
   }
 }

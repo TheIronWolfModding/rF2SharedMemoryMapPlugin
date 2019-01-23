@@ -29,6 +29,15 @@ bool DirectMemoryReader::Initialize()
     return false;
   }
 
+  mpCurrPitSpeedLimit = reinterpret_cast<float*>(FindPatternForPointerInMemory(module,
+    reinterpret_cast<unsigned char*>("\x57\x48\x83\xEC\x20\xF3\x0F\x10\x2D\x35\x9C\xEF\x00\x48\x8B\xF1"),
+    "xxxxxxxxx????xxx", 9u));
+
+  if (mpCurrPitSpeedLimit == nullptr) {
+    DEBUG_MSG(DebugLevel::Errors, "ERROR: Failed to resolve speed limit pointer.");
+    return false;
+  }
+
   auto const endTicks = TicksNow();
 
   if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::DevInfo) {
@@ -37,6 +46,7 @@ bool DirectMemoryReader::Initialize()
 
     auto const addr1 = reinterpret_cast<char*>(reinterpret_cast<uintptr_t>(::GetModuleHandle(nullptr)) + 0x14BA0C0);
     auto const addr2 = *reinterpret_cast<char**>(reinterpret_cast<uintptr_t>(::GetModuleHandle(nullptr)) + 0x14B8738);
+    auto const addr3 = reinterpret_cast<float*>(reinterpret_cast<uintptr_t>(::GetModuleHandle(nullptr)) + 0x149A46C);
 
     DEBUG_ADDR2(DebugLevel::DevInfo, "A1", mpStatusMessage);
     DEBUG_ADDR2(DebugLevel::DevInfo, "A11", addr1);
@@ -47,6 +57,11 @@ bool DirectMemoryReader::Initialize()
     DEBUG_ADDR2(DebugLevel::DevInfo, "A21", addr2);
     DEBUG_ADDR2(DebugLevel::DevInfo, "O2", reinterpret_cast<uintptr_t>(mppMessageCenterMessages) - reinterpret_cast<uintptr_t>(module));
     DEBUG_ADDR2(DebugLevel::DevInfo, "O21", 0x14B8738uLL);
+
+    DEBUG_ADDR2(DebugLevel::DevInfo, "A3", mpCurrPitSpeedLimit);
+    DEBUG_ADDR2(DebugLevel::DevInfo, "A31", addr3);
+    DEBUG_ADDR2(DebugLevel::DevInfo, "O3", reinterpret_cast<uintptr_t>(mpCurrPitSpeedLimit) - reinterpret_cast<uintptr_t>(module));
+    DEBUG_ADDR2(DebugLevel::DevInfo, "O31", 0x149A46CuLL);
   }
 
   return true;
@@ -55,7 +70,7 @@ bool DirectMemoryReader::Initialize()
 
 bool DirectMemoryReader::Read(rF2Extended& extended)
 {
-  if (mpStatusMessage == nullptr || mppMessageCenterMessages == nullptr) {
+  if (mpStatusMessage == nullptr || mppMessageCenterMessages == nullptr || mpCurrPitSpeedLimit == nullptr) {
     assert(false && "DMR not available, should not call.");
     return false;
   }
@@ -135,3 +150,17 @@ bool DirectMemoryReader::Read(rF2Extended& extended)
 
   return true;
 }
+
+bool DirectMemoryReader::ReadOnNewSession(rF2Extended& extended) const
+{
+  if (mpStatusMessage == nullptr || mppMessageCenterMessages == nullptr || mpCurrPitSpeedLimit == nullptr) {
+    assert(false && "DMR not available, should not call.");
+    return false;
+  }
+
+  extended.mCurrentPitSpeedLimit = *mpCurrPitSpeedLimit;
+  DEBUG_FLOAT2(DebugLevel::DevInfo, "Current pit speed limit: ", extended.mCurrentPitSpeedLimit);
+
+  return true;
+}
+
