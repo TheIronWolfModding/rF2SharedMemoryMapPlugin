@@ -284,15 +284,19 @@ void SharedMemoryPlugin::Startup(long version)
   }
 
   if (SharedMemoryPlugin::msDirectMemoryAccessRequested) {
-    mExtStateTracker.mExtended.mDirectMemoryAccessEnabled = true;
-
-    mExtended.BeginUpdate();
-    memcpy(mExtended.mpBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
-    mExtended.EndUpdate();
-
     if (!mDMR.Initialize()) {
       DEBUG_MSG(DebugLevel::Errors, "ERROR: Failed to initialize DMA, disabling DMA.");
+
+      // Disable DMA on failure.
       SharedMemoryPlugin::msDirectMemoryAccessRequested = false;
+      mExtStateTracker.mExtended.mDirectMemoryAccessEnabled = false;  // No flip necessary as this defaults to false anyway.
+    }
+    else {
+      mExtStateTracker.mExtended.mDirectMemoryAccessEnabled = true;
+
+      mExtended.BeginUpdate();
+      memcpy(mExtended.mpBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
+      mExtended.EndUpdate();
     }
   }
 }
@@ -410,7 +414,10 @@ void SharedMemoryPlugin::StartSession()
   if (SharedMemoryPlugin::msDirectMemoryAccessRequested) {
     if (!mDMR.ReadOnNewSession(mExtStateTracker.mExtended)) {
       DEBUG_MSG(DebugLevel::Errors, "ERROR: DMA read failed, disabling.");
+
+      // Disable DMA on failure.
       SharedMemoryPlugin::msDirectMemoryAccessRequested = false;
+      mExtStateTracker.mExtended.mDirectMemoryAccessEnabled = false;
     }
   }
 
@@ -790,7 +797,10 @@ void SharedMemoryPlugin::UpdateScoring(ScoringInfoV01 const& info)
   if (SharedMemoryPlugin::msDirectMemoryAccessRequested) {
     if (!mDMR.Read(mExtStateTracker.mExtended)) {
       DEBUG_MSG(DebugLevel::Errors, "ERROR: DMA read failed, disabling.");
+
+      // Disable DMA on failure.
       SharedMemoryPlugin::msDirectMemoryAccessRequested = false;
+      mExtStateTracker.mExtended.mDirectMemoryAccessEnabled = false;
     }
   }
 

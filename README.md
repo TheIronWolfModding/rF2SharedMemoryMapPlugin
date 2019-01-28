@@ -61,7 +61,7 @@ If you would like to support this project, you can donate [here.](http://thecrew
 
 # Release history
 
-**01/28/2019 - v3.3.0.5**
+**01/28/2019 - v3.3.0.6**
 
   Plugin/Monitor:
   * Expose Message Center messages, global status message and pit lane speed values via rF2Extended buffer.  This functionality if off by default and is enabled via "EnableDirectMemoryAccess" plugin variable.
