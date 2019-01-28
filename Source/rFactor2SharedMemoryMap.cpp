@@ -66,6 +66,8 @@ Extended state:
 
   See SharedMemoryPlugin::ExtendedStateTracker struct for details.
 
+  Also, Extended state exposes values obtaned via Direct Memory access.  This functionality is enabled via DirectMemoryAccess plugin variable.  See DirectMemoryReader class for more details.
+
 
 Synchronization:
   Plugin does not offer hard guarantees for mapped buffer synchronization, because using synchronization primitives opens door for misuse and
