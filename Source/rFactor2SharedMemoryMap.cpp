@@ -802,6 +802,8 @@ void SharedMemoryPlugin::UpdateScoring(ScoringInfoV01 const& info)
       SharedMemoryPlugin::msDirectMemoryAccessRequested = false;
       mExtStateTracker.mExtended.mDirectMemoryAccessEnabled = false;
     }
+
+    mDMR.ReadOnFCY(mExtStateTracker.mExtended);
   }
 
   // Update extended state.

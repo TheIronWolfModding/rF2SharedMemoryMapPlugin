@@ -38,6 +38,15 @@ bool DirectMemoryReader::Initialize()
     return false;
   }
 
+  mpSCRInstructionMessage = reinterpret_cast<char*>(FindPatternForPointerInMemory(module,
+    reinterpret_cast<unsigned char*>("\x48\x83\xEC\x28\xE8\xB7\xC1\xF7\xFF\xE8\xB2\x2D\x15\x00\x48\x8D\x0D\x73\xA2\x07\x01\xE8\xA6\x8B\x08\x00\x88\x05\x8C\xA2\x07\x01"),
+    "xxxxx????x????xxx????x????xx????", 17u)) + 0x150;
+
+  if (mpSCRInstructionMessage == nullptr) {
+    DEBUG_MSG(DebugLevel::Errors, "ERROR: Failed to resolve LSI message pointer.");
+    return false;
+  }
+
   auto const endTicks = TicksNow();
 
   if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::DevInfo) {
@@ -70,7 +79,7 @@ bool DirectMemoryReader::Initialize()
 
 bool DirectMemoryReader::Read(rF2Extended& extended)
 {
-  if (mpStatusMessage == nullptr || mppMessageCenterMessages == nullptr || mpCurrPitSpeedLimit == nullptr) {
+  if (mpStatusMessage == nullptr || mppMessageCenterMessages == nullptr || mpCurrPitSpeedLimit == nullptr || mpSCRInstructionMessage == nullptr) {
     assert(false && "DMR not available, should not call.");
     return false;
   }
@@ -153,7 +162,7 @@ bool DirectMemoryReader::Read(rF2Extended& extended)
 
 bool DirectMemoryReader::ReadOnNewSession(rF2Extended& extended) const
 {
-  if (mpStatusMessage == nullptr || mppMessageCenterMessages == nullptr || mpCurrPitSpeedLimit == nullptr) {
+  if (mpStatusMessage == nullptr || mppMessageCenterMessages == nullptr || mpCurrPitSpeedLimit == nullptr || mpSCRInstructionMessage == nullptr) {
     assert(false && "DMR not available, should not call.");
     return false;
   }
@@ -162,5 +171,23 @@ bool DirectMemoryReader::ReadOnNewSession(rF2Extended& extended) const
   DEBUG_FLOAT2(DebugLevel::DevInfo, "Current pit speed limit: ", extended.mCurrentPitSpeedLimit);
 
   return true;
+}
+
+bool DirectMemoryReader::ReadOnFCY(rF2Extended& extended)
+{
+  if (mpStatusMessage == nullptr || mppMessageCenterMessages == nullptr || mpCurrPitSpeedLimit == nullptr || mpSCRInstructionMessage == nullptr) {
+    assert(false && "DMR not available, should not call.");
+    return false;
+  }
+
+  strcpy_s(extended.mSCRInstructionMessage, mpSCRInstructionMessage);
+  if (strcmp(mPrevSCRInstructionMessage, extended.mSCRInstructionMessage) != 0) {
+    DEBUG_MSG2(DebugLevel::DevInfo, "SCR Instruction message updated: ", extended.mSCRInstructionMessage);
+
+    strcpy_s(mPrevSCRInstructionMessage, extended.mSCRInstructionMessage);
+    extended.mTicksSCRInstructionMessageUpdated = ::GetTickCount64();
+  }
+
+  return false;
 }
 
