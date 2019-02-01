@@ -38,13 +38,18 @@ bool DirectMemoryReader::Initialize()
     return false;
   }
 
-  mpSCRInstructionMessage = reinterpret_cast<char*>(FindPatternForPointerInMemory(module,
-    reinterpret_cast<unsigned char*>("\x48\x83\xEC\x28\xE8\xB7\xC1\xF7\xFF\xE8\xB2\x2D\x15\x00\x48\x8D\x0D\x73\xA2\x07\x01\xE8\xA6\x8B\x08\x00\x88\x05\x8C\xA2\x07\x01"),
-    "xxxxx????x????xxx????x????xx????", 17u)) + 0x150;
+  ReadSCRPluginConfig();
 
-  if (mpSCRInstructionMessage == nullptr) {
-    DEBUG_MSG(DebugLevel::Errors, "ERROR: Failed to resolve LSI message pointer.");
-    return false;
+  if (mSCRPluginEnabled) {
+    DEBUG_MSG(DebugLevel::DevInfo, "Initializing SCR Instruction message.");
+    mpSCRInstructionMessage = reinterpret_cast<char*>(FindPatternForPointerInMemory(module,
+      reinterpret_cast<unsigned char*>("\x48\x83\xEC\x28\xE8\xB7\xC1\xF7\xFF\xE8\xB2\x2D\x15\x00\x48\x8D\x0D\x73\xA2\x07\x01\xE8\xA6\x8B\x08\x00\x88\x05\x8C\xA2\x07\x01"),
+      "xxxxx????x????xxx????x????xx????", 17u)) + 0x150;
+
+    if (mpSCRInstructionMessage == nullptr) {
+      DEBUG_MSG(DebugLevel::Errors, "ERROR: Failed to resolve LSI message pointer.");
+      return false;
+    }
   }
 
   auto const endTicks = TicksNow();
@@ -79,7 +84,7 @@ bool DirectMemoryReader::Initialize()
 
 bool DirectMemoryReader::Read(rF2Extended& extended)
 {
-  if (mpStatusMessage == nullptr || mppMessageCenterMessages == nullptr || mpCurrPitSpeedLimit == nullptr || mpSCRInstructionMessage == nullptr) {
+  if (mpStatusMessage == nullptr || mppMessageCenterMessages == nullptr || mpCurrPitSpeedLimit == nullptr) {
     assert(false && "DMR not available, should not call.");
     return false;
   }
@@ -162,7 +167,7 @@ bool DirectMemoryReader::Read(rF2Extended& extended)
 
 bool DirectMemoryReader::ReadOnNewSession(rF2Extended& extended) const
 {
-  if (mpStatusMessage == nullptr || mppMessageCenterMessages == nullptr || mpCurrPitSpeedLimit == nullptr || mpSCRInstructionMessage == nullptr) {
+  if (mpStatusMessage == nullptr || mppMessageCenterMessages == nullptr || mpCurrPitSpeedLimit == nullptr) {
     assert(false && "DMR not available, should not call.");
     return false;
   }
@@ -175,6 +180,11 @@ bool DirectMemoryReader::ReadOnNewSession(rF2Extended& extended) const
 
 bool DirectMemoryReader::ReadOnFCY(rF2Extended& extended)
 {
+  if (!mSCRPluginEnabled) {
+    assert(false && "SCR Plugin not enabled, should not call.");
+    return false;
+  }
+
   if (mpStatusMessage == nullptr || mppMessageCenterMessages == nullptr || mpCurrPitSpeedLimit == nullptr || mpSCRInstructionMessage == nullptr) {
     assert(false && "DMR not available, should not call.");
     return false;
@@ -188,11 +198,11 @@ bool DirectMemoryReader::ReadOnFCY(rF2Extended& extended)
     extended.mTicksSCRInstructionMessageUpdated = ::GetTickCount64();
   }
 
-  return false;
+  return true;
 }
 
 
-bool DirectMemoryReader::ReadSCRPluginConfig()
+void DirectMemoryReader::ReadSCRPluginConfig()
 {
   char wd[MAX_PATH] = {};
   ::GetCurrentDirectory(MAX_PATH, wd);
@@ -202,30 +212,14 @@ bool DirectMemoryReader::ReadSCRPluginConfig()
   auto configFileContents = GetFileContents(configFilePath);
   if (configFileContents == nullptr) {
     DEBUG_MSG(DebugLevel::Errors, "Failed to load CustomPluginVariables.JSON file");
-    return false;
+    return;
   }
 
   auto onExit = MakeScopeGuard([&]() {
     delete[] configFileContents;
   });
 
-  char* pluginConfig = nullptr;
-  if (!IsPluginEnabled(configFileContents, "StockCarRules.dll", &pluginConfig) || pluginConfig == nullptr) {
-    DEBUG_MSG(DebugLevel::Errors, "Error: StockCarRules.dll plugin is not enabled in CustomPluginVariables.JSON");
-    return;
-  }
-
-  DEBUG_MSG(DebugLevel::CriticalInfo, "Forwarding StockCarRules.dll plugin configuration:");
-  if (!ForwardPluginConfig(pluginConfig, *mStockCarRulesPlugin)) {
-    DEBUG_MSG(DebugLevel::Errors, "Failed to forward StockCarRules.dll plugin configuration.");
-    return;
-  }
-
-  auto const pluginName = pfnGetPluginName();
-  DEBUG_MSG2(DebugLevel::CriticalInfo, "Successfully loaded StockCarRules.dll plugin.  Name:", pluginName);
-
-  mInitialized = true;
-  onFailure.Dismiss();
+  ReadSCRPluginConfigValues(configFileContents);
 }
 
 
@@ -273,11 +267,10 @@ char* DirectMemoryReader::GetFileContents(char const* const filePath)
   return fileContents;
 }
 
-bool DirectMemoryReader::IsPluginEnabled(char* const configFileContents, char const* const pluginDllName, char** pluginConfig)
+void DirectMemoryReader::ReadSCRPluginConfigValues(char* const configFileContents)
 {
   // See if plugin is enabled:
-  *pluginConfig = strstr(configFileContents, pluginDllName);
-  auto curLine = *pluginConfig;
+  auto curLine = strstr(configFileContents, "StockCarRules.dll");
   while (curLine != nullptr) {
     // Cut off next line from the current text.
     auto const nextLine = strstr(curLine, "\r\n");
@@ -293,19 +286,33 @@ bool DirectMemoryReader::IsPluginEnabled(char* const configFileContents, char co
     auto const closingBrace = strchr(curLine, '}');
     if (closingBrace != nullptr) {
       // End of {} for a plugin.
-      return false;
+      return;
     }
 
-    // Check if plugin is enabled.
-    auto const enabled = strstr(curLine, " \" Enabled\":1");
-    if (enabled != nullptr)
-      return true;
+    if (!mSCRPluginEnabled) {
+      // Check if plugin is enabled.
+      auto const enabled = strstr(curLine, " \" Enabled\":1");
+      if (enabled != nullptr)
+        mSCRPluginEnabled = true;
+    }
+
+    if (mSCRPluginDoubleFileType == -1L) {
+      auto const dft = strstr(curLine, " \"DoubleFileType\":");
+      if (dft != nullptr) {
+        char value[2] = {};
+        value[0] = *(dft + sizeof("\"DoubleFileType\":"));
+        mSCRPluginDoubleFileType = atol(value);
+      }
+    }
+
+    if (mSCRPluginEnabled && mSCRPluginDoubleFileType != -1L)
+      return;
 
     curLine = nextLine != nullptr ? (nextLine + 2 /*skip \r\n*/) : nullptr;
   }
 
-  return false;
+  // If we're here, consider SCR plugin as not enabled.
+  mSCRPluginEnabled = false;
+
+  return;
 }
-
-
-

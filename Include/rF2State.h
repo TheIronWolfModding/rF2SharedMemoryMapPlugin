@@ -901,6 +901,10 @@ struct rF2Extended : public rF2MappedBufferHeader
 
   ULONGLONG mTicksSCRInstructionMessageUpdated;     // Ticks when last SCR FCY message was updated;
   char mSCRInstructionMessage[rF2MappedBufferHeader::MAX_STATUS_MSG_LEN];
+
+  // TODO: comment
+  bool mSCRPluginEnabled;
+  long mSCRPluginDoubleFileType;
 };
 
 #pragma pack(pop)

@@ -16,9 +16,14 @@ public:
   bool ReadOnNewSession(rF2Extended& extended) const; 
   bool ReadOnFCY(rF2Extended& extended);
 
+  bool IsSCRPluginEnabled() const { return mSCRPluginEnabled; }
+  long GetSCRPluginDoubleFileType() const { return mSCRPluginDoubleFileType; }
+
 private:
   void ReadSCRPluginConfig();
-  char* GetFileContents(char const * const filePath);
+  // TODO: Move to Utils
+  char* GetFileContents(char const* const filePath);
+  void ReadSCRPluginConfigValues(char* const pluginConfig);
 
 private:
   char* mpStatusMessage = nullptr;
@@ -29,4 +34,7 @@ private:
   char mPrevStatusMessage[rF2MappedBufferHeader::MAX_STATUS_MSG_LEN];
   char mPrevLastHistoryMessage[rF2MappedBufferHeader::MAX_STATUS_MSG_LEN];
   char mPrevSCRInstructionMessage[rF2MappedBufferHeader::MAX_STATUS_MSG_LEN];
+
+  bool mSCRPluginEnabled = false;
+  long mSCRPluginDoubleFileType = -1L;
 };

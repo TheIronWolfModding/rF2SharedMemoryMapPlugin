@@ -293,6 +293,8 @@ void SharedMemoryPlugin::Startup(long version)
     }
     else {
       mExtStateTracker.mExtended.mDirectMemoryAccessEnabled = true;
+      mExtStateTracker.mExtended.mSCRPluginEnabled = mDMR.IsSCRPluginEnabled();
+      mExtStateTracker.mExtended.mSCRPluginDoubleFileType = mDMR.GetSCRPluginDoubleFileType();
 
       mExtended.BeginUpdate();
       memcpy(mExtended.mpBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
