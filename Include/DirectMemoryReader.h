@@ -17,6 +17,10 @@ public:
   bool ReadOnFCY(rF2Extended& extended);
 
 private:
+  void ReadSCRPluginConfig();
+  char* GetFileContents(char const * const filePath);
+
+private:
   char* mpStatusMessage = nullptr;
   char** mppMessageCenterMessages = nullptr;
   float* mpCurrPitSpeedLimit = nullptr;

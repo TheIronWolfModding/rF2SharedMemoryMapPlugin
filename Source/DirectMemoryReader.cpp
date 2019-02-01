@@ -191,3 +191,121 @@ bool DirectMemoryReader::ReadOnFCY(rF2Extended& extended)
   return false;
 }
 
+
+bool DirectMemoryReader::ReadSCRPluginConfig()
+{
+  char wd[MAX_PATH] = {};
+  ::GetCurrentDirectory(MAX_PATH, wd);
+
+  auto const configFilePath = lstrcatA(wd, R"(\UserData\player\CustomPluginVariables.JSON)");
+
+  auto configFileContents = GetFileContents(configFilePath);
+  if (configFileContents == nullptr) {
+    DEBUG_MSG(DebugLevel::Errors, "Failed to load CustomPluginVariables.JSON file");
+    return false;
+  }
+
+  auto onExit = MakeScopeGuard([&]() {
+    delete[] configFileContents;
+  });
+
+  char* pluginConfig = nullptr;
+  if (!IsPluginEnabled(configFileContents, "StockCarRules.dll", &pluginConfig) || pluginConfig == nullptr) {
+    DEBUG_MSG(DebugLevel::Errors, "Error: StockCarRules.dll plugin is not enabled in CustomPluginVariables.JSON");
+    return;
+  }
+
+  DEBUG_MSG(DebugLevel::CriticalInfo, "Forwarding StockCarRules.dll plugin configuration:");
+  if (!ForwardPluginConfig(pluginConfig, *mStockCarRulesPlugin)) {
+    DEBUG_MSG(DebugLevel::Errors, "Failed to forward StockCarRules.dll plugin configuration.");
+    return;
+  }
+
+  auto const pluginName = pfnGetPluginName();
+  DEBUG_MSG2(DebugLevel::CriticalInfo, "Successfully loaded StockCarRules.dll plugin.  Name:", pluginName);
+
+  mInitialized = true;
+  onFailure.Dismiss();
+}
+
+
+char* DirectMemoryReader::GetFileContents(char const* const filePath)
+{
+  FILE* fileHandle = nullptr;
+
+  auto onExit = MakeScopeGuard(
+    [&]() {
+    if (fileHandle != nullptr) {
+      auto ret = fclose(fileHandle);
+      if (ret != 0) {
+        DEBUG_INT2(DebugLevel::Errors, "fclose() failed with:", ret);
+      }
+    }
+  });
+
+  char* fileContents = nullptr;
+  auto ret = fopen_s(&fileHandle, filePath, "rb");
+  if (ret != 0) {
+    DEBUG_INT2(DebugLevel::Errors, "fopen_s() failed with:", ret);
+    return nullptr;
+  }
+
+  ret = fseek(fileHandle, 0, SEEK_END);
+  if (ret != 0) {
+    DEBUG_INT2(DebugLevel::Errors, "fseek() failed with:", ret);
+    return nullptr;
+  }
+
+  auto const fileBytes = static_cast<size_t>(ftell(fileHandle));
+  rewind(fileHandle);
+
+  fileContents = new char[fileBytes + 1];
+  auto elemsRead = fread(fileContents, fileBytes, 1 /*items*/, fileHandle);
+  if (elemsRead != 1 /*items*/) {
+    delete[] fileContents;
+    fileContents = nullptr;
+    DEBUG_MSG(DebugLevel::Errors, "fread() failed.");
+    return nullptr;
+  }
+
+  fileContents[fileBytes] = 0;
+
+  return fileContents;
+}
+
+bool DirectMemoryReader::IsPluginEnabled(char* const configFileContents, char const* const pluginDllName, char** pluginConfig)
+{
+  // See if plugin is enabled:
+  *pluginConfig = strstr(configFileContents, pluginDllName);
+  auto curLine = *pluginConfig;
+  while (curLine != nullptr) {
+    // Cut off next line from the current text.
+    auto const nextLine = strstr(curLine, "\r\n");
+    if (nextLine != nullptr)
+      *nextLine = '\0';
+
+    auto onExitOrNewIteration = MakeScopeGuard([&]() {
+      // Restore the original line.
+      if (nextLine != nullptr)
+        *nextLine = '\r';
+    });
+
+    auto const closingBrace = strchr(curLine, '}');
+    if (closingBrace != nullptr) {
+      // End of {} for a plugin.
+      return false;
+    }
+
+    // Check if plugin is enabled.
+    auto const enabled = strstr(curLine, " \" Enabled\":1");
+    if (enabled != nullptr)
+      return true;
+
+    curLine = nextLine != nullptr ? (nextLine + 2 /*skip \r\n*/) : nullptr;
+  }
+
+  return false;
+}
+
+
+

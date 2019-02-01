@@ -897,9 +897,9 @@ struct rF2Extended : public rF2MappedBufferHeader
   ULONGLONG mTicksLastHistoryMessageUpdated;        // Ticks when last message history message was updated;
   char mLastHistoryMessage[rF2MappedBufferHeader::MAX_STATUS_MSG_LEN];
 
-  float mCurrentPitSpeedLimit;                // speed limit m/s.
+  float mCurrentPitSpeedLimit;                      // speed limit m/s.
 
-  ULONGLONG mTicksSCRInstructionMessageUpdated;        // Ticks when last message history message was updated;
+  ULONGLONG mTicksSCRInstructionMessageUpdated;     // Ticks when last SCR FCY message was updated;
   char mSCRInstructionMessage[rF2MappedBufferHeader::MAX_STATUS_MSG_LEN];
 };
 

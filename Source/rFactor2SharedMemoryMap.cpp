@@ -795,15 +795,14 @@ void SharedMemoryPlugin::UpdateScoring(ScoringInfoV01 const& info)
   mScoring.EndUpdate();
 
   if (SharedMemoryPlugin::msDirectMemoryAccessRequested) {
-    if (!mDMR.Read(mExtStateTracker.mExtended)) {
+    if (!mDMR.Read(mExtStateTracker.mExtended)
+      || (info.mYellowFlagState != 0 && !mDMR.ReadOnFCY(mExtStateTracker.mExtended))) { 
       DEBUG_MSG(DebugLevel::Errors, "ERROR: DMA read failed, disabling.");
 
       // Disable DMA on failure.
       SharedMemoryPlugin::msDirectMemoryAccessRequested = false;
       mExtStateTracker.mExtended.mDirectMemoryAccessEnabled = false;
     }
-
-    mDMR.ReadOnFCY(mExtStateTracker.mExtended);
   }
 
   // Update extended state.
