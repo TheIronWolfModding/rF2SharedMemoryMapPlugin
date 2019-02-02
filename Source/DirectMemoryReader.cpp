@@ -11,7 +11,7 @@ bool DirectMemoryReader::Initialize()
   auto const startTicks = TicksNow();
   
   auto const module = ::GetModuleHandle(nullptr);
-  mpStatusMessage = reinterpret_cast<char*>(FindPatternForPointerInMemory(module,
+  mpStatusMessage = reinterpret_cast<char*>(Utils::FindPatternForPointerInMemory(module,
      reinterpret_cast<unsigned char*>("\x74\x23\x48\x8D\x15\x5D\x31\xF5\x00\x48\x2B\xD3"),
      "xxxxx????xxx", 5u));
 
@@ -20,7 +20,7 @@ bool DirectMemoryReader::Initialize()
     return false;
   }
 
-  mppMessageCenterMessages = reinterpret_cast<char**>(FindPatternForPointerInMemory(module,
+  mppMessageCenterMessages = reinterpret_cast<char**>(Utils::FindPatternForPointerInMemory(module,
     reinterpret_cast<unsigned char*>("\x48\x8B\x05\xAA\xD1\xFF\x00\xC6\x80\xB8\x25\x00\x00\x01"),
     "xxx????xxxxxxx", 3u));
 
@@ -29,7 +29,7 @@ bool DirectMemoryReader::Initialize()
     return false;
   }
 
-  mpCurrPitSpeedLimit = reinterpret_cast<float*>(FindPatternForPointerInMemory(module,
+  mpCurrPitSpeedLimit = reinterpret_cast<float*>(Utils::FindPatternForPointerInMemory(module,
     reinterpret_cast<unsigned char*>("\x57\x48\x83\xEC\x20\xF3\x0F\x10\x2D\x35\x9C\xEF\x00\x48\x8B\xF1"),
     "xxxxxxxxx????xxx", 9u));
 
@@ -42,9 +42,9 @@ bool DirectMemoryReader::Initialize()
 
   if (mSCRPluginEnabled) {
     DEBUG_MSG(DebugLevel::DevInfo, "Initializing SCR Instruction message.");
-    mpSCRInstructionMessage = reinterpret_cast<char*>(FindPatternForPointerInMemory(module,
+    mpSCRInstructionMessage = reinterpret_cast<char*>(Utils::FindPatternForPointerInMemory(module,
       reinterpret_cast<unsigned char*>("\x48\x83\xEC\x28\xE8\xB7\xC1\xF7\xFF\xE8\xB2\x2D\x15\x00\x48\x8D\x0D\x73\xA2\x07\x01\xE8\xA6\x8B\x08\x00\x88\x05\x8C\xA2\x07\x01"),
-      "xxxxx????x????xxx????x????xx????", 17u)) + 0x150;
+      "xxxxx????x????xxx????x????xx????", 17u));
 
     if (mpSCRInstructionMessage == nullptr) {
       DEBUG_MSG(DebugLevel::Errors, "ERROR: Failed to resolve LSI message pointer.");
@@ -52,30 +52,40 @@ bool DirectMemoryReader::Initialize()
     }
   }
 
+  mpSCRInstructionMessage += 0x150uLL;
+
   auto const endTicks = TicksNow();
 
   if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::DevInfo) {
-    // Normal scan ~9ms, failed scan ~35ms (debug).
+    // REMEASURE Normal scan ~9ms, failed scan ~35ms (debug).
     DEBUG_FLOAT2(DebugLevel::DevInfo, "Scan time seconds: ", (endTicks - startTicks) / MICROSECONDS_IN_SECOND);
 
-    auto const addr1 = reinterpret_cast<char*>(reinterpret_cast<uintptr_t>(::GetModuleHandle(nullptr)) + 0x14BA0C0);
-    auto const addr2 = *reinterpret_cast<char**>(reinterpret_cast<uintptr_t>(::GetModuleHandle(nullptr)) + 0x14B8738);
-    auto const addr3 = reinterpret_cast<float*>(reinterpret_cast<uintptr_t>(::GetModuleHandle(nullptr)) + 0x149A46C);
+    auto const addr1 = reinterpret_cast<char*>(reinterpret_cast<uintptr_t>(::GetModuleHandle(nullptr)) + 0x14C6110uLL);
+    auto const addr2 = *reinterpret_cast<char**>(reinterpret_cast<uintptr_t>(::GetModuleHandle(nullptr)) + 0x14C4780uLL);
+    auto const addr3 = reinterpret_cast<float*>(reinterpret_cast<uintptr_t>(::GetModuleHandle(nullptr)) + 0x14A64ACuLL);
+    auto const addr4 = reinterpret_cast<char*>(reinterpret_cast<uintptr_t>(::GetModuleHandle(nullptr)) + 0x14C4958uLL);
 
     DEBUG_ADDR2(DebugLevel::DevInfo, "A1", mpStatusMessage);
     DEBUG_ADDR2(DebugLevel::DevInfo, "A11", addr1);
     DEBUG_ADDR2(DebugLevel::DevInfo, "O1", reinterpret_cast<uintptr_t>(mpStatusMessage) - reinterpret_cast<uintptr_t>(module));
-    DEBUG_ADDR2(DebugLevel::DevInfo, "O11", 0x14BA0C0uLL);
+    DEBUG_ADDR2(DebugLevel::DevInfo, "O11", 0x14C6110uLL);
 
     DEBUG_ADDR2(DebugLevel::DevInfo, "A2", *mppMessageCenterMessages);
     DEBUG_ADDR2(DebugLevel::DevInfo, "A21", addr2);
     DEBUG_ADDR2(DebugLevel::DevInfo, "O2", reinterpret_cast<uintptr_t>(mppMessageCenterMessages) - reinterpret_cast<uintptr_t>(module));
-    DEBUG_ADDR2(DebugLevel::DevInfo, "O21", 0x14B8738uLL);
+    DEBUG_ADDR2(DebugLevel::DevInfo, "O21", 0x14C4780uLL);
 
     DEBUG_ADDR2(DebugLevel::DevInfo, "A3", mpCurrPitSpeedLimit);
     DEBUG_ADDR2(DebugLevel::DevInfo, "A31", addr3);
     DEBUG_ADDR2(DebugLevel::DevInfo, "O3", reinterpret_cast<uintptr_t>(mpCurrPitSpeedLimit) - reinterpret_cast<uintptr_t>(module));
-    DEBUG_ADDR2(DebugLevel::DevInfo, "O31", 0x149A46CuLL);
+    DEBUG_ADDR2(DebugLevel::DevInfo, "O31", 0x14A64ACuLL);
+
+    if (mSCRPluginEnabled) {
+      DEBUG_ADDR2(DebugLevel::DevInfo, "A4", mpSCRInstructionMessage);
+      DEBUG_ADDR2(DebugLevel::DevInfo, "A41", addr4);
+      DEBUG_ADDR2(DebugLevel::DevInfo, "O4", reinterpret_cast<uintptr_t>(mpSCRInstructionMessage) - reinterpret_cast<uintptr_t>(module));
+      DEBUG_ADDR2(DebugLevel::DevInfo, "O41", 0x14C4958uLL);
+    }
   }
 
   return true;
@@ -209,63 +219,19 @@ void DirectMemoryReader::ReadSCRPluginConfig()
 
   auto const configFilePath = lstrcatA(wd, R"(\UserData\player\CustomPluginVariables.JSON)");
 
-  auto configFileContents = GetFileContents(configFilePath);
+  auto configFileContents = Utils::GetFileContents(configFilePath);
   if (configFileContents == nullptr) {
     DEBUG_MSG(DebugLevel::Errors, "Failed to load CustomPluginVariables.JSON file");
     return;
   }
 
-  auto onExit = MakeScopeGuard([&]() {
+  auto onExit = Utils::MakeScopeGuard([&]() {
     delete[] configFileContents;
   });
 
   ReadSCRPluginConfigValues(configFileContents);
 }
 
-
-char* DirectMemoryReader::GetFileContents(char const* const filePath)
-{
-  FILE* fileHandle = nullptr;
-
-  auto onExit = MakeScopeGuard(
-    [&]() {
-    if (fileHandle != nullptr) {
-      auto ret = fclose(fileHandle);
-      if (ret != 0) {
-        DEBUG_INT2(DebugLevel::Errors, "fclose() failed with:", ret);
-      }
-    }
-  });
-
-  char* fileContents = nullptr;
-  auto ret = fopen_s(&fileHandle, filePath, "rb");
-  if (ret != 0) {
-    DEBUG_INT2(DebugLevel::Errors, "fopen_s() failed with:", ret);
-    return nullptr;
-  }
-
-  ret = fseek(fileHandle, 0, SEEK_END);
-  if (ret != 0) {
-    DEBUG_INT2(DebugLevel::Errors, "fseek() failed with:", ret);
-    return nullptr;
-  }
-
-  auto const fileBytes = static_cast<size_t>(ftell(fileHandle));
-  rewind(fileHandle);
-
-  fileContents = new char[fileBytes + 1];
-  auto elemsRead = fread(fileContents, fileBytes, 1 /*items*/, fileHandle);
-  if (elemsRead != 1 /*items*/) {
-    delete[] fileContents;
-    fileContents = nullptr;
-    DEBUG_MSG(DebugLevel::Errors, "fread() failed.");
-    return nullptr;
-  }
-
-  fileContents[fileBytes] = 0;
-
-  return fileContents;
-}
 
 void DirectMemoryReader::ReadSCRPluginConfigValues(char* const configFileContents)
 {
@@ -277,7 +243,7 @@ void DirectMemoryReader::ReadSCRPluginConfigValues(char* const configFileContent
     if (nextLine != nullptr)
       *nextLine = '\0';
 
-    auto onExitOrNewIteration = MakeScopeGuard([&]() {
+    auto onExitOrNewIteration = Utils::MakeScopeGuard([&]() {
       // Restore the original line.
       if (nextLine != nullptr)
         *nextLine = '\r';

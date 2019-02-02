@@ -5,7 +5,6 @@ Website: thecrewchief.org
 
 #pragma once
 
-
 class DirectMemoryReader
 {
 public:
@@ -21,8 +20,6 @@ public:
 
 private:
   void ReadSCRPluginConfig();
-  // TODO: Move to Utils
-  char* GetFileContents(char const* const filePath);
   void ReadSCRPluginConfigValues(char* const pluginConfig);
 
 private:

@@ -62,8 +62,6 @@ Extended state:
   * Captures parts of rF2Scoring contents when SessionEnd/SessionStart is invoked.  This helps callers to last update information
     from the previous session.  Note: In future, might get replaced with the full capture of rF2Scoring.
 
-  * Exposes info about hosted plugins (currently SCR plugin only).
-
   See SharedMemoryPlugin::ExtendedStateTracker struct for details.
 
   Also, Extended state exposes values obtaned via Direct Memory access.  This functionality is enabled via "EnableDirectMemoryAccess" plugin variable.  See DirectMemoryReader class for more details.
@@ -84,13 +82,6 @@ Synchronization:
   * For basic reading from C#, see: rF2SMMonitor.MainForm.MappedBuffer<>.GetMappedDataUnsynchronized.
   * To see one of the ways to avoid torn frames, see: rF2SMMonitor.MainForm.MappedBuffer<>.GetMappedData. 
 
-
-Hosted Stock Car Rules plugin:
-  This plugin is capable of hosting StockCarRules.dll plugin, mode enabled via EnableStockCarRules plugin variable.
-  The goal here is to break plugin isolation and capture mMessage members filled out by SCR plugin, and exposing
-  those values via SM (rF2Rules).  Otherwise, TrackRulesV01::mMessage and TrackRulesParticipantV01::mMessage strings
-  are always empty (game clears them out in between plugin calls).
-  See PluginHost.h/.cpp for more.
 
 Dedicated server use:
   If ran in dedicated server process, each shared memory buffer name has server PID appended.  If DedicatedServerMapGlobally
@@ -118,7 +109,6 @@ Sample consumption:
 
 DebugLevel SharedMemoryPlugin::msDebugOutputLevel = DebugLevel::Off;
 bool SharedMemoryPlugin::msDebugISIInternals = false;
-bool SharedMemoryPlugin::msStockCarRulesPluginRequested = false;
 bool SharedMemoryPlugin::msDedicatedServerMapGlobally = false;
 bool SharedMemoryPlugin::msDirectMemoryAccessRequested = false;
 
@@ -184,7 +174,6 @@ void SharedMemoryPlugin::Startup(long version)
   DEBUG_MSG2(DebugLevel::CriticalInfo, "Starting rFactor 2 Shared Memory Map Plugin 64bit Version:", SHARED_MEMORY_VERSION);
 #endif
   DEBUG_MSG(DebugLevel::CriticalInfo, "Configuration:");
-  DEBUG_INT2(DebugLevel::CriticalInfo, "EnableStockCarRulesPlugin:", SharedMemoryPlugin::msStockCarRulesPluginRequested);
   DEBUG_INT2(DebugLevel::CriticalInfo, "DebugOutputLevel:", SharedMemoryPlugin::msDebugOutputLevel);
   DEBUG_INT2(DebugLevel::CriticalInfo, "DebugISIInternals:", SharedMemoryPlugin::msDebugISIInternals);
   DEBUG_INT2(DebugLevel::CriticalInfo, "DedicatedServerMapGlobally:", SharedMemoryPlugin::msDedicatedServerMapGlobally);
@@ -268,21 +257,6 @@ void SharedMemoryPlugin::Startup(long version)
     DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of extended buffer:", sizeSz, "bytes.");
   }
 
-  // Initialize hosted plugins.
-  mPluginHost.Initialize(SharedMemoryPlugin::msStockCarRulesPluginRequested);
-  mPluginHost.Startup(version);
-
-  if (SharedMemoryPlugin::msStockCarRulesPluginRequested) {
-    mExtStateTracker.mExtended.mHostedPluginVars.StockCarRules_IsHosted = mPluginHost.GetStockCarRulesPlugin_IsHosted();
-
-    if (mPluginHost.GetStockCarRulesPlugin_IsHosted())
-      mExtStateTracker.mExtended.mHostedPluginVars.StockCarRules_DoubleFileType = mPluginHost.GetStockCarRulesPlugin_DoubleFileType();
-
-    mExtended.BeginUpdate();
-    memcpy(mExtended.mpBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
-    mExtended.EndUpdate();
-  }
-
   if (SharedMemoryPlugin::msDirectMemoryAccessRequested) {
     if (!mDMR.Initialize()) {
       DEBUG_MSG(DebugLevel::Errors, "ERROR: Failed to initialize DMA, disabling DMA.");
@@ -309,9 +283,6 @@ void SharedMemoryPlugin::Shutdown()
 
   if (mIsMapped)
     TelemetryCompleteFrame();
-
-  mPluginHost.Shutdown();
-  mPluginHost.Cleanup();
 
   DEBUG_MSG(DebugLevel::CriticalInfo, "Shutting down");
 
@@ -367,10 +338,6 @@ void SharedMemoryPlugin::ClearTimingsAndCounters()
   mCurrTelemetryVehicleIndex = 0;
 
   memset(mParticipantTelemetryUpdated, 0, sizeof(mParticipantTelemetryUpdated));
-
-  memset(mLastTrackRulesFCYMessage, 0, sizeof(mLastTrackRulesFCYMessage));
-  memset(mLastRulesParticipantFCYMessages, 0, sizeof(mLastRulesParticipantFCYMessages));
-  mLastRulesUpdateWasFCY = false;
 }
 
 
@@ -399,8 +366,6 @@ void SharedMemoryPlugin::StartSession()
 
   if (!mIsMapped)
     return;
-
-  mPluginHost.StartSession();
 
   DEBUG_MSG(DebugLevel::Timing, "SESSION - Started.");
 
@@ -436,8 +401,6 @@ void SharedMemoryPlugin::EndSession()
     return;
 
   TelemetryCompleteFrame();
-
-  mPluginHost.EndSession();
 
   DEBUG_MSG(DebugLevel::Timing, "SESSION - Ended.");
 
@@ -476,8 +439,6 @@ void SharedMemoryPlugin::EnterRealtime()
   // start up timer every time we enter realtime
   WriteToAllExampleOutputFiles("a", "---ENTERREALTIME---");
 
-  mPluginHost.EnterRealtime();
-
   UpdateInRealtimeFC(true /*inRealtime*/);
 }
 
@@ -490,8 +451,6 @@ void SharedMemoryPlugin::ExitRealtime()
   TelemetryCompleteFrame();
 
   WriteToAllExampleOutputFiles("a", "---EXITREALTIME---");
-
-  mPluginHost.ExitRealtime();
 
   UpdateInRealtimeFC(false /*inRealtime*/);
 }
@@ -657,8 +616,6 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
   if (!mIsMapped)
     return;
 
-  mPluginHost.UpdateTelemetry(info);
-
   bool isNewFrame = false;
   auto const deltaET = info.mElapsedTime - mLastTelemetryUpdateET;
   if (abs(deltaET) >= 0.0199)  // Apparently, rF2 telemetry update step is 20ms.
@@ -770,8 +727,6 @@ void SharedMemoryPlugin::UpdateScoring(ScoringInfoV01 const& info)
   if (!mIsMapped)
     return;
 
-  mPluginHost.UpdateScoring(info);
-
   mLastScoringUpdateET = info.mCurrentET;
 
   ScoringTraceBeginUpdate();
@@ -831,31 +786,6 @@ bool SharedMemoryPlugin::ForceFeedback(double& forceValue)
 }
 
 
-// Invoked periodically.
-bool SharedMemoryPlugin::WantsToDisplayMessage(MessageInfoV01& msgInfo)
-{
-  if (!mIsMapped)
-    return false;
-
-  DEBUG_MSG(DebugLevel::Timing, "WantsToDisplayMessage - Invoked.");
-
-  // Looks like this is write only API, can't read current text in MC.  Pass through to host.
-  auto const updateRequested = mPluginHost.WantsToDisplayMessage(msgInfo);
-
-  // But caputre the message if it was updated.
-  if (updateRequested && msgInfo.mText[0] != '\0') {
-    DEBUG_MSG2(DebugLevel::CriticalInfo, "New displayed messsage captured: ", msgInfo.mText);
-    strcpy_s(mExtStateTracker.mExtended.mDisplayedMessageUpdateCapture, msgInfo.mText);
-
-    mExtended.BeginUpdate();
-    memcpy(mExtended.mpBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
-    mExtended.EndUpdate();
-  }
-
-  return updateRequested;
-}
-
-
 void SharedMemoryPlugin::UpdateThreadState(long type, bool starting)
 {
   (type == 0 ? mExtStateTracker.mExtended.mMultimediaThreadStarted : mExtStateTracker.mExtended.mSimulationThreadStarted)
@@ -872,8 +802,6 @@ void SharedMemoryPlugin::ThreadStarted(long type)
   if (!mIsMapped)
     return;
 
-  mPluginHost.ThreadStarted(type);
-
   DEBUG_MSG(DebugLevel::Synchronization, type == 0 ? "Multimedia thread started" : "Simulation thread started");
   UpdateThreadState(type, true /*starting*/);
 }
@@ -882,8 +810,6 @@ void SharedMemoryPlugin::ThreadStopping(long type)
 {
   if (!mIsMapped)
     return;
-
-  mPluginHost.ThreadStopping(type);
 
   DEBUG_MSG(DebugLevel::Synchronization, type == 0 ? "Multimedia thread stopped" : "Simulation thread stopped");
   UpdateThreadState(type, false /*starting*/);
@@ -896,21 +822,12 @@ bool SharedMemoryPlugin::AccessTrackRules(TrackRulesV01& info)
   if (!mIsMapped)
     return false;
 
-  auto const updateRequested = mPluginHost.AccessTrackRules(info);
-
   TraceBeginUpdate(mRules, mLastRulesUpdateMillis, "RULES");
 
-  CaptureSCRPluginMessages(info);
-
   mRules.BeginUpdate();
+  
   // Copy main struct.
   memcpy(&(mRules.mpBuff->mTrackRules), &info, sizeof(rF2TrackRules));
-
-  // Pass out last global SCR plugin message.
-  auto const restoreSCRMessages = mPluginHost.GetStockCarRulesPlugin_IsHosted() && info.mYellowFlagState != 0;
-  if (restoreSCRMessages
-    && mLastTrackRulesFCYMessage[0] != '\0')
-    strcpy_s(mRules.mpBuff->mTrackRules.mMessage, mLastTrackRulesFCYMessage);
 
   // Copy actions.
   if (info.mNumActions >= rF2MappedBufferHeader::MAX_MAPPED_VEHICLES)
@@ -927,68 +844,13 @@ bool SharedMemoryPlugin::AccessTrackRules(TrackRulesV01& info)
   auto const numRulesVehicles = min(info.mNumParticipants, rF2MappedBufferHeader::MAX_MAPPED_VEHICLES);
   for (int i = 0; i < numRulesVehicles; ++i) {
     memcpy(&(mRules.mpBuff->mParticipants[i]), &(info.mParticipant[i]), sizeof(rF2TrackRulesParticipant));
-
-    // Pass out last SCR plugin mMessage.
-    if (restoreSCRMessages) {
-      auto const id = max(info.mParticipant[i].mID, 0L) % rF2MappedBufferHeader::MAX_MAPPED_IDS;
-      if (mLastRulesParticipantFCYMessages[id] != '\0')
-        strcpy_s(mRules.mpBuff->mParticipants[i].mMessage, mLastRulesParticipantFCYMessages[id]);
-    }
   }
 
   mRules.mpBuff->mBytesUpdatedHint = static_cast<int>(offsetof(rF2Rules, mParticipants[numRulesVehicles]));
 
   mRules.EndUpdate();
 
-  return updateRequested;
-}
-
-
-void SharedMemoryPlugin::CaptureSCRPluginMessages(TrackRulesV01& info)
-{
-  auto const isFCY = info.mYellowFlagState != 0;
-
-  // If SCR plugin is enabled, cache the last non-empty messages during FCY.
-  if (mPluginHost.GetStockCarRulesPlugin_IsHosted()) {
-    if (isFCY) {
-      // Cache non-empty mMessage fields.
-      if (info.mMessage[0] != '\0') {
-        DEBUG_MSG2(DebugLevel::CriticalInfo, "Non empty TR message: ", info.mMessage);
-        strcpy_s(mLastTrackRulesFCYMessage, info.mMessage);
-      }
-
-      for (int i = 0; i < info.mNumParticipants; ++i) {
-        if (info.mParticipant[i].mMessage[0] != '\0') {
-          DEBUG_MSG2(DebugLevel::CriticalInfo, "Non empty TR Participant message: ", info.mParticipant[i].mMessage);
-          DEBUG_INT2(DebugLevel::CriticalInfo, "Participant mID: ", info.mParticipant[i].mID);
-
-          auto const id = max(info.mParticipant[i].mID, 0L) % rF2MappedBufferHeader::MAX_MAPPED_IDS;
-          strcpy_s(mLastRulesParticipantFCYMessages[id], info.mParticipant[i].mMessage);
-        }
-      }
-
-      mLastRulesUpdateWasFCY = true;
-    }
-    else if (mLastRulesUpdateWasFCY) {
-      // Clear the cached values.
-      memset(mLastTrackRulesFCYMessage, 0, sizeof(mLastTrackRulesFCYMessage));
-      memset(mLastRulesParticipantFCYMessages, 0, sizeof(mLastRulesParticipantFCYMessages));
-
-      mLastRulesUpdateWasFCY = false;
-    }
-  }
-}
-
-
-// Invoked periodically.
-bool SharedMemoryPlugin::AccessPitMenu(PitMenuV01& info)
-{
-  if (!mIsMapped)
-    return false;
-
-  DEBUG_MSG(DebugLevel::Timing, "AccessPitMenu - Invoked.");
-
-  return mPluginHost.AccessPitMenu(info);
+  return false;
 }
 
 
@@ -996,8 +858,6 @@ void SharedMemoryPlugin::SetPhysicsOptions(PhysicsOptionsV01& options)
 {
   if (!mIsMapped)
     return;
-
-  mPluginHost.SetPhysicsOptions(options);
 
   DEBUG_MSG(DebugLevel::Timing, "PHYSICS - Updated.");
 
@@ -1013,8 +873,6 @@ bool SharedMemoryPlugin::AccessMultiSessionRules(MultiSessionRulesV01& info)
 {
   if (!mIsMapped)
     return false;
-
-  auto const updateRequested = mPluginHost.AccessMultiSessionRules(info);
 
   TraceBeginUpdate(mMultiRules, mLastMultiRulesUpdateMillis, "MULTI RULES");
  
@@ -1034,7 +892,7 @@ bool SharedMemoryPlugin::AccessMultiSessionRules(MultiSessionRulesV01& info)
 
   mMultiRules.EndUpdate();
 
-  return updateRequested;
+  return false;
 }
 
 
@@ -1090,8 +948,6 @@ void SharedMemoryPlugin::AccessCustomVariable(CustomVariableV01& var)
 
   if (_stricmp(var.mCaption, " Enabled") == 0)
     ; // Do nothing; this variable is just for rF2 to know whether to keep the plugin loaded.
-  else if (_stricmp(var.mCaption, "EnableStockCarRulesPlugin") == 0)
-    SharedMemoryPlugin::msStockCarRulesPluginRequested = var.mCurrentSetting != 0;
   else if (_stricmp(var.mCaption, "DebugOutputLevel") == 0) {
     auto sanitized = min(max(var.mCurrentSetting, 0L), DebugLevel::Verbose);
     SharedMemoryPlugin::msDebugOutputLevel = static_cast<DebugLevel>(sanitized);
@@ -1119,12 +975,6 @@ void SharedMemoryPlugin::GetCustomVariableSetting(CustomVariableV01& var, long i
     else
       strcpy_s(setting.mName, "True");
   }
-  else if (_stricmp(var.mCaption, "EnableStockCarRulesPlugin") == 0) {
-    if (i == 0)
-      strcpy_s(setting.mName, "False");
-    else
-      strcpy_s(setting.mName, "True");
-  }
   else if (_stricmp(var.mCaption, "DebugOutputLevel") == 0)
     sprintf_s(setting.mName, "%d%%", i);
   else if (_stricmp(var.mCaption, "DebugISIInternals") == 0) {
@@ -1146,18 +996,6 @@ void SharedMemoryPlugin::GetCustomVariableSetting(CustomVariableV01& var, long i
       strcpy_s(setting.mName, "True");
   }
 }
-
-
-void SharedMemoryPlugin::SetEnvironment(EnvironmentInfoV01 const& info)
-{
-  if (!mIsMapped)
-    return;
-
-  DEBUG_MSG(DebugLevel::Timing, "SetEnvironment - Invoked.");
-
-  mPluginHost.SetEnvironment(info);
-}
-
 
 ////////////////////////////////////////////
 // Debug output helpers.

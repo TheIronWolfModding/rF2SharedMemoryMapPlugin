@@ -853,13 +853,6 @@ struct rF2SessionTransitionCapture
 };
 
 
-struct rF2HostedPluginVars
-{
-  bool StockCarRules_IsHosted;         // Is StockCarRules.dll successfully loaded into SM plugin?
-  long StockCarRules_DoubleFileType;   // DoubleFileType plugin variable value.
-};
-
-
 struct rF2Extended : public rF2MappedBufferHeader
 {
   char mVersion[8];                            // API version
@@ -886,8 +879,6 @@ struct rF2Extended : public rF2MappedBufferHeader
   // Captured non-empty MessageInfoV01::mText message.
   char mDisplayedMessageUpdateCapture[sizeof(decltype(MessageInfoV01::mText))];
 
-  rF2HostedPluginVars mHostedPluginVars;
-
   // Direct Memory access stuff
   bool mDirectMemoryAccessEnabled;
 
@@ -899,12 +890,11 @@ struct rF2Extended : public rF2MappedBufferHeader
 
   float mCurrentPitSpeedLimit;                      // speed limit m/s.
 
-  ULONGLONG mTicksSCRInstructionMessageUpdated;     // Ticks when last SCR FCY message was updated;
+  ULONGLONG mTicksSCRInstructionMessageUpdated;     // Ticks when last SCR FCY message was updated, only updated if mSCRPluginEnabled is true.
   char mSCRInstructionMessage[rF2MappedBufferHeader::MAX_STATUS_MSG_LEN];
 
-  // TODO: comment
-  bool mSCRPluginEnabled;
-  long mSCRPluginDoubleFileType;
+  bool mSCRPluginEnabled;                           // Is Stock Car Rules plugin enabled?
+  long mSCRPluginDoubleFileType;                    // Stock Car Rules plugin DoubleFileType value, only meaningful if mSCRPluginEnabled is true.
 };
 
 #pragma pack(pop)

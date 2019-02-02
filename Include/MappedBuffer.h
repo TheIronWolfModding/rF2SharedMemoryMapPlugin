@@ -193,7 +193,7 @@ private:
         &security.lpSecurityDescriptor,
         nullptr);
 
-      auto onExit = MakeScopeGuard([&]() {
+      auto onExit = Utils::MakeScopeGuard([&]() {
         ::LocalFree(security.lpSecurityDescriptor);
       });
 

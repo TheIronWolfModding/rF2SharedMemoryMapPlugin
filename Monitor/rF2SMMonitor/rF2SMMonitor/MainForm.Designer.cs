@@ -35,18 +35,15 @@ namespace rF2SMMonitor
       this.xOffsetTextBox = new System.Windows.Forms.TextBox();
       this.xOffsetLabel = new System.Windows.Forms.Label();
       this.groupBoxLogging = new System.Windows.Forms.GroupBox();
-      this.groupBoxMisc = new System.Windows.Forms.GroupBox();
       this.checkBoxLogRules = new System.Windows.Forms.CheckBox();
       this.checkBoxLogTiming = new System.Windows.Forms.CheckBox();
       this.checkBoxLogDamage = new System.Windows.Forms.CheckBox();
       this.checkBoxLogPhaseAndState = new System.Windows.Forms.CheckBox();
       this.checkBoxLightMode = new System.Windows.Forms.CheckBox();
-      this.checkBoxStockCarRules = new System.Windows.Forms.CheckBox();
       ((System.ComponentModel.ISupportInitialize)(this.view)).BeginInit();
       this.groupBoxFocus.SuspendLayout();
       this.globalGroupBox.SuspendLayout();
       this.groupBoxLogging.SuspendLayout();
-      this.groupBoxMisc.SuspendLayout();
       this.SuspendLayout();
       // 
       // view
@@ -183,16 +180,6 @@ namespace rF2SMMonitor
       this.groupBoxLogging.TabStop = false;
       this.groupBoxLogging.Text = "File Logging";
       // 
-      // groupBoxMisc
-      // 
-      this.groupBoxMisc.Controls.Add(this.checkBoxStockCarRules);
-      this.groupBoxMisc.Location = new System.Drawing.Point(970, -1);
-      this.groupBoxMisc.Name = "groupBoxMisc";
-      this.groupBoxMisc.Size = new System.Drawing.Size(300, 54);
-      this.groupBoxMisc.TabIndex = 13;
-      this.groupBoxMisc.TabStop = false;
-      this.groupBoxMisc.Text = "Miscellaneous";
-      // 
       // checkBoxLogRules
       // 
       this.checkBoxLogRules.AutoSize = true;
@@ -243,16 +230,6 @@ namespace rF2SMMonitor
       this.checkBoxLightMode.Text = "Light mode";
       this.checkBoxLightMode.UseVisualStyleBackColor = true;
       // 
-      // checkBoxStockCarRules
-      // 
-      this.checkBoxStockCarRules.AutoSize = true;
-      this.checkBoxStockCarRules.Location = new System.Drawing.Point(7, 14);
-      this.checkBoxStockCarRules.Name = "checkBoxStockCarRules";
-      this.checkBoxStockCarRules.Size = new System.Drawing.Size(57, 17);
-      this.checkBoxStockCarRules.TabIndex = 12;
-      this.checkBoxStockCarRules.Text = "Use StockCarRules.dll";
-      this.checkBoxStockCarRules.UseVisualStyleBackColor = true;
-      // 
       // MainForm
       // 
       this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -262,7 +239,6 @@ namespace rF2SMMonitor
       this.Controls.Add(this.groupBoxLogging);
       this.Controls.Add(this.globalGroupBox);
       this.Controls.Add(this.groupBoxFocus);
-      this.Controls.Add(this.groupBoxMisc);
       this.Controls.Add(this.view);
       this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.Fixed3D;
       this.MaximizeBox = false;
@@ -275,8 +251,6 @@ namespace rF2SMMonitor
       this.globalGroupBox.PerformLayout();
       this.groupBoxLogging.ResumeLayout(false);
       this.groupBoxLogging.PerformLayout();
-      this.groupBoxMisc.ResumeLayout(false);
-      this.groupBoxMisc.PerformLayout();
       this.ResumeLayout(false);
       this.PerformLayout();
 
@@ -304,8 +278,6 @@ namespace rF2SMMonitor
     private System.Windows.Forms.CheckBox checkBoxLogDamage;
     private System.Windows.Forms.CheckBox checkBoxLogTiming;
     private System.Windows.Forms.CheckBox checkBoxLogRules;
-    private System.Windows.Forms.GroupBox groupBoxMisc;
-    private System.Windows.Forms.CheckBox checkBoxStockCarRules;
   }
 }
 

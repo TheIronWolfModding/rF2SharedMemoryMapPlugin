@@ -371,7 +371,6 @@ namespace rF2SMMonitor
       this.checkBoxLogTiming.CheckedChanged += CheckBoxLogTiming_CheckedChanged;
       this.checkBoxLogRules.CheckedChanged += CheckBoxLogRules_CheckedChanged;
       this.checkBoxLightMode.CheckedChanged += CheckBoxLightMode_CheckedChanged;
-      this.checkBoxStockCarRules.CheckedChanged += CheckBoxStockCarRules_CheckedChanged;
       this.MouseWheel += MainForm_MouseWheel;
 
       this.LoadConfig();
@@ -405,13 +404,6 @@ namespace rF2SMMonitor
       this.groupBoxFocus.Enabled = !this.logLightMode;
 
       this.config.Write("logLightMode", this.logLightMode ? "1" : "0");
-    }
-
-    private void CheckBoxStockCarRules_CheckedChanged(object sender, EventArgs e)
-    {
-      MainForm.useStockCarRulesPlugin = this.checkBoxStockCarRules.Checked;
-
-      this.config.Write("useStockCarRules", MainForm.useStockCarRulesPlugin ? "1" : "0");
     }
 
     private void CheckBoxLogDamage_CheckedChanged(object sender, EventArgs e)
@@ -700,7 +692,7 @@ namespace rF2SMMonitor
         this.maxFFBValue = Math.Max(Math.Abs(this.forceFeedback.mForceValue), this.maxFFBValue);
 
         gameStateText.Append(
-          $"Plugin Version:    Expected: 3.3.0.6 64bit   Actual: {MainForm.GetStringFromBytes(this.extended.mVersion)} {(this.extended.is64bit == 1 ? "64bit" : "32bit")}{(this.extended.mHostedPluginVars.StockCarRules_IsHosted == 1 ? "    SCR Plugin Hosted" : "")}{(this.extended.mDirectMemoryAccessEnabled == 1 ? "    DMA enabled" : "")}    FPS: {this.fps}    FFB Curr: {this.forceFeedback.mForceValue:N3}  Max: {this.maxFFBValue:N3}");
+          $"Plugin Version:    Expected: 3.4.0.2 64bit   Actual: {MainForm.GetStringFromBytes(this.extended.mVersion)} {(this.extended.is64bit == 1 ? "64bit" : "32bit")}{(this.extended.mSCRPluginEnabled == 1 ? "    SCR Plugin enabled" : "")}{(this.extended.mDirectMemoryAccessEnabled == 1 ? "    DMA enabled" : "")}    FPS: {this.fps}    FFB Curr: {this.forceFeedback.mForceValue:N3}  Max: {this.maxFFBValue:N3}");
 
         // Draw header
         g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, brush, currX, currY);
@@ -814,7 +806,8 @@ namespace rF2SMMonitor
           gameStateText.Append(
             "Status:\n"
             + "Last MC msg:\n"
-            + "Pit Speed Limit:\n");
+            + "Pit Speed Limit:\n"
+            + "Last SCR Instr.:\n");
 
           g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Purple, 1500, 640);
 
@@ -822,14 +815,18 @@ namespace rF2SMMonitor
           gameStateText.Append(
             MainForm.GetStringFromBytes(this.extended.mStatusMessage) + '\n'
             + MainForm.GetStringFromBytes(this.extended.mLastHistoryMessage) + '\n'
-            + (int)(this.extended.mCurrentPitSpeedLimit * 3.6f + 0.5f) + "kph\n");
+            + (int)(this.extended.mCurrentPitSpeedLimit * 3.6f + 0.5f) + "kph\n"
+            + MainForm.GetStringFromBytes(this.extended.mSCRInstructionMessage) + '\n');
 
           g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Purple, 1580, 640);
 
           gameStateText.Clear();
           gameStateText.Append(
             "updated: " + this.extended.mTicksStatusMessageUpdated + '\n'
-            + "updated: " + this.extended.mTicksLastHistoryMessageUpdated + '\n');
+            + "updated: " + this.extended.mTicksLastHistoryMessageUpdated + '\n'
+            + '\n'
+            + "updated: " + this.extended.mTicksSCRInstructionMessageUpdated + '\n');
+
 
           g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Purple, 1800, 640);
         }
@@ -1130,7 +1127,6 @@ namespace rF2SMMonitor
       this.globalGroupBox.Enabled = enable;
       this.groupBoxFocus.Enabled = enable;
       this.groupBoxLogging.Enabled = enable;
-      this.groupBoxMisc.Enabled = enable;
 
       this.focusVehLabel.Enabled = false;
       this.focusVehTextBox.Enabled = false;
@@ -1231,12 +1227,6 @@ namespace rF2SMMonitor
 
       intResult = 0;
       MainForm.useStockCarRulesPlugin = false;
-      this.checkBoxStockCarRules.Enabled = false;
-      // Disable this option for now, it might come in handy down the line.
-      //if (int.TryParse(this.config.Read("useStockCarRules"), out intResult) && intResult == 1)
-      // MainForm.useStockCarRulesPlugin = true;
-
-      //this.checkBoxStockCarRules.Checked = MainForm.useStockCarRulesPlugin;
     }
   }
 }

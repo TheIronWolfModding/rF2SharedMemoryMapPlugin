@@ -28,7 +28,7 @@ Website: thecrewchief.org
 // Each component can be in [0:99] range.
 // Note: each time major version changes, that means layout has changed, and clients might need an update.
 #define PLUGIN_VERSION_MAJOR "3.4"
-#define PLUGIN_VERSION_MINOR "0.1"
+#define PLUGIN_VERSION_MINOR "0.2"
 
 #ifdef VERSION_AVX2
 #ifdef VERSION_MT
@@ -53,7 +53,6 @@ Website: thecrewchief.org
 
 #include "rF2State.h"
 #include "MappedBuffer.h"
-#include "PluginHost.h"
 #include "DirectMemoryReader.h"
 
 enum DebugLevel
@@ -123,7 +122,7 @@ private:
 
       strcpy_s(mExtended.mVersion, SHARED_MEMORY_VERSION);
       mExtended.is64bit = PLUGIN_64BIT;
-      mExtended.mHostedPluginVars.StockCarRules_DoubleFileType = -1L;
+      mExtended.mSCRPluginDoubleFileType = -1L;
 
       assert(!mExtended.mMultimediaThreadStarted);
       assert(!mExtended.mSimulationThreadStarted);
@@ -231,19 +230,12 @@ public:
 
   bool ForceFeedback(double& forceValue) override; // alternate force feedback computation - return true if editing the value
 
-  // MESSAGE BOX INPUT
-  bool WantsToDisplayMessage(MessageInfoV01& msgInfo) override; // set message and return true
-
   // ADDITIONAL GAMEFLOW NOTIFICATIONS
   void ThreadStarted(long type) override; // called just after a primary thread is started (type is 0=multimedia or 1=simulation)
   void ThreadStopping(long type) override;  // called just before a primary thread is stopped (type is 0=multimedia or 1=simulation)
 
   bool WantsTrackRulesAccess() override { return true; } // change to true in order to read or write track order (during formation or caution laps)
   bool AccessTrackRules(TrackRulesV01& info) override; // current track order passed in; return true if you want to change it (note: this will be called immediately after UpdateScoring() when appropriate)
-
-  // PIT MENU INFO (currently, the only way to edit the pit menu is to use this in conjunction with CheckHWControl())
-  bool WantsPitMenuAccess() { return true; } // change to true in order to view pit menu info
-  bool AccessPitMenu(PitMenuV01& info) override; // currently, the return code should always be false (because we may allow more direct editing in the future)
 
   void SetPhysicsOptions(PhysicsOptionsV01& options) override;
 
@@ -259,8 +251,6 @@ public:
   bool GetCustomVariable(long i, CustomVariableV01& var) override; // At startup, this will be called with increasing index (starting at zero) until false is returned. Feel free to add/remove/rearrange the variables when updating your plugin; the index does not have to be consistent from run to run.
   void AccessCustomVariable(CustomVariableV01& var) override;      // This will be called at startup, shutdown, and any time that the variable is changed (within the UI).
   void GetCustomVariableSetting(CustomVariableV01& var, long i, CustomSettingV01& setting) override; // This gets the name of each possible setting for a given variable.
-
-  void SetEnvironment(const EnvironmentInfoV01 &info) override; // may be called whenever the environment changes
 
 private:
   SharedMemoryPlugin(SharedMemoryPlugin const& rhs) = delete;
@@ -282,8 +272,6 @@ private:
 
   template <typename BuffT>
   void TraceBeginUpdate(BuffT const& buffer, double& lastUpdateMillis, char const msgPrefix[]) const;
-
-  void CaptureSCRPluginMessages(TrackRulesV01& info);
 
 private:
   // Only used for debugging in Timing level
@@ -320,21 +308,6 @@ private:
 
   // Buffers mapped successfully or not.
   bool mIsMapped = false;
-
-  //////////////////////////////////////////
-  // Stock Cars Rules hackery
-  //////////////////////////////////////////
-  static bool msStockCarRulesPluginRequested;
-  PluginHost mPluginHost;
-
-  // Last rules update was FCY?
-  bool mLastRulesUpdateWasFCY = false;
-
-  // Last non-empty FCY TrackRulesV01 message.
-  char mLastTrackRulesFCYMessage[sizeof(decltype(rF2TrackRules::mMessage))];
-
-  // Last non-empty FCY TrackRulesParticipantV01 message.
-  char mLastRulesParticipantFCYMessages[rF2MappedBufferHeader::MAX_MAPPED_IDS][sizeof(decltype(rF2TrackRulesParticipant::mMessage))];
 
   //////////////////////////////////////////
   // Direct Memory Access hackery

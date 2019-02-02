@@ -9,6 +9,9 @@ Website: thecrewchief.org
 
 #pragma once
 
+namespace Utils
+{
+
 // Lazy man's ScopeGuard.
 template <typename Lambda>
 class ScopeGuard
@@ -63,3 +66,6 @@ uintptr_t FindPattern(uintptr_t start, size_t length, unsigned char const* patte
 /// <param name="bytedIntoPatternToFindOffset">nr bytes into found address to add to get the pointer offset (Example: -?+?)</param>
 /// <returns>The address of the found pattern or -1 if the pattern was not found.</returns>
 uintptr_t* FindPatternForPointerInMemory(HMODULE module, unsigned char const* pattern, char const* mask, size_t bytedIntoPatternToFindPointer);
+
+char* GetFileContents(char const* const filePath);
+}

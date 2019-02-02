@@ -1139,8 +1139,8 @@ namespace rF2SMMonitor
         g.DrawString(sbPlayer.ToString(), SystemFonts.DefaultFont, Brushes.Magenta, 3.0f, timingsYStart);
         g.DrawString(sbPlayerDeltas.ToString(), SystemFonts.DefaultFont, Brushes.Black, 3.0f, timingsYStart + 70.0f);
         g.DrawString(sbFastest.ToString(), SystemFonts.DefaultFont, Brushes.OrangeRed, 3.0f, timingsYStart + 200.0f);
-        g.DrawString(sbOpponentNames.ToString(), SystemFonts.DefaultFont, Brushes.Green, 600.0f, 3.0f);
-        g.DrawString(sbOpponentStats.ToString(), SystemFonts.DefaultFont, Brushes.Purple, 930.0f, 3.0f);
+        g.DrawString(sbOpponentNames.ToString(), SystemFonts.DefaultFont, Brushes.Green, 600.0f, 20.0f);
+        g.DrawString(sbOpponentStats.ToString(), SystemFonts.DefaultFont, Brushes.Purple, 930.0f, 20.0f);
       }
     }
 
@@ -1633,7 +1633,7 @@ namespace rF2SMMonitor
         + $"Assigned Grid Position: {fod.AssignedGridPosition}\n"
         + $"Driver To Follow: {driverToFollow}\n"
         + $"Safety Car Speed: {(fod.SafetyCarSpeed == -1.0f ? "Not Present" : string.Format("{0:N3}km/h", fod.SafetyCarSpeed * 3.6f))}\n"
-        + $"SCR DoubleFileType: {extended.mHostedPluginVars.StockCarRules_DoubleFileType}\n"
+        + $"SCR DoubleFileType: {extended.mSCRPluginDoubleFileType}\n"
         + $"Distance To Safety Car: {distToSC:N3}\n"
         );
 
@@ -1711,8 +1711,8 @@ namespace rF2SMMonitor
         var gridOrder = false;
 
         var scrLastLapDoubleFile = fod.Phase == FrozenOrderPhase.FullCourseYellow
-          && extended.mHostedPluginVars.StockCarRules_IsHosted == 1
-          && (extended.mHostedPluginVars.StockCarRules_DoubleFileType == 1 || extended.mHostedPluginVars.StockCarRules_DoubleFileType == 2)
+          && extended.mSCRPluginEnabled == 1
+          && (extended.mSCRPluginDoubleFileType == 1 || extended.mSCRPluginDoubleFileType == 2)
           && scoring.mScoringInfo.mYellowFlagState == (sbyte)rF2YellowFlagState.LastLap;
 
         if (fod.Phase == FrozenOrderPhase.FullCourseYellow  // Core FCY does not use grid order. 

@@ -3,7 +3,6 @@
   <ItemGroup>
     <ClCompile Include="..\Source\rFactor2SharedMemoryMap.cpp" />
     <ClCompile Include="ISIInternalsDump.cpp" />
-    <ClCompile Include="..\Source\PluginHost.cpp" />
     <ClCompile Include="..\source\DirectMemoryReader.cpp" />
     <ClCompile Include="..\source\Utils.cpp" />
   </ItemGroup>
@@ -18,9 +17,6 @@
       <Filter>includes</Filter>
     </ClInclude>
     <ClInclude Include="..\Include\rF2State.h">
-      <Filter>includes</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Include\PluginHost.h">
       <Filter>includes</Filter>
     </ClInclude>
     <ClInclude Include="..\Include\Utils.h">

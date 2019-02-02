@@ -836,14 +836,6 @@ namespace rF2SMMonitor
     }
 
 
-    [StructLayout(LayoutKind.Sequential, Pack = 4)]
-    public struct rF2HostedPluginVars
-    {
-      public byte StockCarRules_IsHosted;        // Is StockCarRules.dll successfully loaded into SM plugin?
-      public int StockCarRules_DoubleFileType;   // DoubleFileType plugin variable value.
-    }
-
-
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
     public struct rF2Extended
     {
@@ -875,8 +867,6 @@ namespace rF2SMMonitor
       [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = 128)]
       public byte[] mDisplayedMessageUpdateCapture;
 
-      public rF2HostedPluginVars mHostedPluginVars;
-
       // Direct Memory access stuff
       public byte mDirectMemoryAccessEnabled;
 
@@ -889,6 +879,13 @@ namespace rF2SMMonitor
       public byte[] mLastHistoryMessage;
 
       public float mCurrentPitSpeedLimit;                // speed limit m/s.
+
+      public Int64 mTicksSCRInstructionMessageUpdated;     // Ticks when last SCR FCY message was updated, only updated if mSCRPluginEnabled is true.
+      [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = rFactor2Constants.MAX_STATUS_MSG_LEN)]
+      public byte[] mSCRInstructionMessage;
+
+      public byte mSCRPluginEnabled;                           // Is Stock Car Rules plugin enabled?
+      public int mSCRPluginDoubleFileType;                    // Stock Car Rules plugin DoubleFileType value, only meaningful if mSCRPluginEnabled is true.
     }
   }
 }
