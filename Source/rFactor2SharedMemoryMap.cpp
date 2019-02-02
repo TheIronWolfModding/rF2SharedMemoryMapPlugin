@@ -908,30 +908,24 @@ bool SharedMemoryPlugin::GetCustomVariable(long i, CustomVariableV01& var)
     return true;
   }
   else if (i == 1) {
-    strcpy_s(var.mCaption, "EnableStockCarRulesPlugin");
-    var.mNumSettings = 2;
-    var.mCurrentSetting = 0;
-    return true;
-  }
-  else if (i == 2) {
     strcpy_s(var.mCaption, "DebugOutputLevel");
     var.mNumSettings = 8;
     var.mCurrentSetting = 0;
     return true;
   }
-  else if (i == 3) {
+  else if (i == 2) {
     strcpy_s(var.mCaption, "DebugISIInternals");
     var.mNumSettings = 2;
     var.mCurrentSetting = 0;
     return true;
   }
-  else if (i == 4) {
+  else if (i == 3) {
     strcpy_s(var.mCaption, "DedicatedServerMapGlobally");
     var.mNumSettings = 2;
     var.mCurrentSetting = 0;
     return true;
   }
-  else if (i == 5) {
+  else if (i == 4) {
     strcpy_s(var.mCaption, "EnableDirectMemoryAccess");
     var.mNumSettings = 2;
     var.mCurrentSetting = 0;

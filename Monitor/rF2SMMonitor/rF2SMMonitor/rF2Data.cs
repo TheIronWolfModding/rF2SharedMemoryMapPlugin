@@ -879,9 +879,9 @@ namespace rF2SMMonitor
       [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = rFactor2Constants.MAX_STATUS_MSG_LEN)]
       public byte[] mLastHistoryMessage;
 
-      public float mCurrentPitSpeedLimit;                // speed limit m/s.
+      public float mCurrentPitSpeedLimit;                  // speed limit m/s.
 
-      public Int64 mTicksSCRInstructionMessageUpdated;     // Ticks when last Rules FCY message was updated, only updated if mSCRPluginEnabled is true.
+      public Int64 mTicksRulesInstructionMessageUpdated;     // Ticks when last Rules FCY message was updated, only updated if mSCRPluginEnabled is true.
       [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = rFactor2Constants.MAX_RULES_INSTRUCTION_MSG_LEN)]
       public byte[] mRulesInstructionMessage;
 

@@ -825,7 +825,7 @@ namespace rF2SMMonitor
             "updated: " + this.extended.mTicksStatusMessageUpdated + '\n'
             + "updated: " + this.extended.mTicksLastHistoryMessageUpdated + '\n'
             + '\n'
-            + "updated: " + this.extended.mTicksSCRInstructionMessageUpdated + '\n');
+            + "updated: " + this.extended.mTicksRulesInstructionMessageUpdated + '\n');
 
 
           g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Purple, 1800, 640);
