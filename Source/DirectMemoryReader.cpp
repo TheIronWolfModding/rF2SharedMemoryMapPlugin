@@ -41,18 +41,18 @@ bool DirectMemoryReader::Initialize()
   ReadSCRPluginConfig();
 
   if (mSCRPluginEnabled) {
-    DEBUG_MSG(DebugLevel::DevInfo, "Initializing SCR Instruction message.");
-    mpSCRInstructionMessage = reinterpret_cast<char*>(Utils::FindPatternForPointerInMemory(module,
+    DEBUG_MSG(DebugLevel::DevInfo, "Initializing Rules Instruction message.");
+    mpRulesInstructionMessage = reinterpret_cast<char*>(Utils::FindPatternForPointerInMemory(module,
       reinterpret_cast<unsigned char*>("\x48\x83\xEC\x28\xE8\xB7\xC1\xF7\xFF\xE8\xB2\x2D\x15\x00\x48\x8D\x0D\x73\xA2\x07\x01\xE8\xA6\x8B\x08\x00\x88\x05\x8C\xA2\x07\x01"),
       "xxxxx????x????xxx????x????xx????", 17u));
 
-    if (mpSCRInstructionMessage == nullptr) {
+    if (mpRulesInstructionMessage == nullptr) {
       DEBUG_MSG(DebugLevel::Errors, "ERROR: Failed to resolve LSI message pointer.");
       return false;
     }
   }
 
-  mpSCRInstructionMessage += 0x1D0uLL;
+  mpRulesInstructionMessage += 0x1D0uLL;
 
   auto const endTicks = TicksNow();
 
@@ -63,7 +63,7 @@ bool DirectMemoryReader::Initialize()
     auto const addr1 = reinterpret_cast<char*>(reinterpret_cast<uintptr_t>(::GetModuleHandle(nullptr)) + 0x14C6110uLL);
     auto const addr2 = *reinterpret_cast<char**>(reinterpret_cast<uintptr_t>(::GetModuleHandle(nullptr)) + 0x14C4780uLL);
     auto const addr3 = reinterpret_cast<float*>(reinterpret_cast<uintptr_t>(::GetModuleHandle(nullptr)) + 0x14A64ACuLL);
-    auto const addr4 = reinterpret_cast<char*>(reinterpret_cast<uintptr_t>(::GetModuleHandle(nullptr)) + 0x14C4958uLL);
+    auto const addr4 = reinterpret_cast<char*>(reinterpret_cast<uintptr_t>(::GetModuleHandle(nullptr)) + 0x14C49D8uLL);
 
     DEBUG_ADDR2(DebugLevel::DevInfo, "A1", mpStatusMessage);
     DEBUG_ADDR2(DebugLevel::DevInfo, "A11", addr1);
@@ -81,10 +81,10 @@ bool DirectMemoryReader::Initialize()
     DEBUG_ADDR2(DebugLevel::DevInfo, "O31", 0x14A64ACuLL);
 
     if (mSCRPluginEnabled) {
-      DEBUG_ADDR2(DebugLevel::DevInfo, "A4", mpSCRInstructionMessage);
+      DEBUG_ADDR2(DebugLevel::DevInfo, "A4", mpRulesInstructionMessage);
       DEBUG_ADDR2(DebugLevel::DevInfo, "A41", addr4);
-      DEBUG_ADDR2(DebugLevel::DevInfo, "O4", reinterpret_cast<uintptr_t>(mpSCRInstructionMessage) - reinterpret_cast<uintptr_t>(module));
-      DEBUG_ADDR2(DebugLevel::DevInfo, "O41", 0x14C4958uLL);
+      DEBUG_ADDR2(DebugLevel::DevInfo, "O4", reinterpret_cast<uintptr_t>(mpRulesInstructionMessage) - reinterpret_cast<uintptr_t>(module));
+      DEBUG_ADDR2(DebugLevel::DevInfo, "O41", 0x14C49D8uLL);
     }
   }
 
@@ -195,18 +195,20 @@ bool DirectMemoryReader::ReadOnFCY(rF2Extended& extended)
     return false;
   }
 
-  if (mpStatusMessage == nullptr || mppMessageCenterMessages == nullptr || mpCurrPitSpeedLimit == nullptr || mpSCRInstructionMessage == nullptr) {
+  if (mpStatusMessage == nullptr || mppMessageCenterMessages == nullptr || mpCurrPitSpeedLimit == nullptr || mpRulesInstructionMessage == nullptr) {
     assert(false && "DMR not available, should not call.");
     return false;
   }
 
-  // TODO: check if new message is blank before updating, the are blinking and blank message is useless.
-  strcpy_s(extended.mSCRInstructionMessage, mpSCRInstructionMessage);
-  if (strcmp(mPrevSCRInstructionMessage, extended.mSCRInstructionMessage) != 0) {
-    DEBUG_MSG2(DebugLevel::DevInfo, "SCR Instruction message updated: ", extended.mSCRInstructionMessage);
+  if (mpRulesInstructionMessage[0] == '\0')
+    return true;
 
-    strcpy_s(mPrevSCRInstructionMessage, extended.mSCRInstructionMessage);
-    extended.mTicksSCRInstructionMessageUpdated = ::GetTickCount64();
+  strcpy_s(extended.mRulesInstructionMessage, mpRulesInstructionMessage);
+  if (strcmp(mPrevRulesInstructionMessage, extended.mRulesInstructionMessage) != 0) {
+    DEBUG_MSG2(DebugLevel::DevInfo, "Rules Instruction message updated: ", extended.mRulesInstructionMessage);
+
+    strcpy_s(mPrevRulesInstructionMessage, extended.mRulesInstructionMessage);
+    extended.mTicksRulesInstructionMessageUpdated = ::GetTickCount64();
   }
 
   return true;

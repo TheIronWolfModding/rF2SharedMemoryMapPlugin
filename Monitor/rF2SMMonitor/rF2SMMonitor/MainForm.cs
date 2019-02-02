@@ -816,7 +816,7 @@ namespace rF2SMMonitor
             MainForm.GetStringFromBytes(this.extended.mStatusMessage) + '\n'
             + MainForm.GetStringFromBytes(this.extended.mLastHistoryMessage) + '\n'
             + (int)(this.extended.mCurrentPitSpeedLimit * 3.6f + 0.5f) + "kph\n"
-            + MainForm.GetStringFromBytes(this.extended.mSCRInstructionMessage) + '\n');
+            + MainForm.GetStringFromBytes(this.extended.mRulesInstructionMessage) + '\n');
 
           g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Purple, 1580, 640);
 

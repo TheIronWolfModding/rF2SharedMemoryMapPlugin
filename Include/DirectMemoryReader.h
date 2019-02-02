@@ -26,11 +26,11 @@ private:
   char* mpStatusMessage = nullptr;
   char** mppMessageCenterMessages = nullptr;
   float* mpCurrPitSpeedLimit = nullptr;
-  char* mpSCRInstructionMessage = nullptr;
+  char* mpRulesInstructionMessage = nullptr;
 
   char mPrevStatusMessage[rF2MappedBufferHeader::MAX_STATUS_MSG_LEN];
   char mPrevLastHistoryMessage[rF2MappedBufferHeader::MAX_STATUS_MSG_LEN];
-  char mPrevSCRInstructionMessage[rF2MappedBufferHeader::MAX_STATUS_MSG_LEN];
+  char mPrevRulesInstructionMessage[rF2MappedBufferHeader::MAX_RULES_INSTRUCTION_MSG_LEN];
 
   bool mSCRPluginEnabled = false;
   long mSCRPluginDoubleFileType = -1L;

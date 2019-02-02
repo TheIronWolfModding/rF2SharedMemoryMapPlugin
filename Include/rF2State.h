@@ -777,6 +777,7 @@ struct rF2MappedBufferHeader
   static int const MAX_MAPPED_VEHICLES = 128;
   static int const MAX_MAPPED_IDS = 512;
   static int const MAX_STATUS_MSG_LEN = 128;
+  static int const MAX_RULES_INSTRUCTION_MSG_LEN = 96;
 };
 
 
@@ -890,8 +891,8 @@ struct rF2Extended : public rF2MappedBufferHeader
 
   float mCurrentPitSpeedLimit;                      // speed limit m/s.
 
-  ULONGLONG mTicksSCRInstructionMessageUpdated;     // Ticks when last SCR FCY message was updated, only updated if mSCRPluginEnabled is true.
-  char mSCRInstructionMessage[rF2MappedBufferHeader::MAX_STATUS_MSG_LEN];
+  ULONGLONG mTicksRulesInstructionMessageUpdated;     // Ticks when last SCR FCY message was updated, only updated if mSCRPluginEnabled is true.
+  char mRulesInstructionMessage[rF2MappedBufferHeader::MAX_RULES_INSTRUCTION_MSG_LEN];
 
   bool mSCRPluginEnabled;                           // Is Stock Car Rules plugin enabled?
   long mSCRPluginDoubleFileType;                    // Stock Car Rules plugin DoubleFileType value, only meaningful if mSCRPluginEnabled is true.
