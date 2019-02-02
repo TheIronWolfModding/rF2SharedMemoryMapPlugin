@@ -52,12 +52,12 @@ bool DirectMemoryReader::Initialize()
     }
   }
 
-  mpSCRInstructionMessage += 0x150uLL;
+  mpSCRInstructionMessage += 0x1D0uLL;
 
   auto const endTicks = TicksNow();
 
   if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::DevInfo) {
-    // REMEASURE Normal scan ~9ms, failed scan ~35ms (debug).
+    // TODO: REMEASURE Normal scan ~9ms, failed scan ~35ms (debug).
     DEBUG_FLOAT2(DebugLevel::DevInfo, "Scan time seconds: ", (endTicks - startTicks) / MICROSECONDS_IN_SECOND);
 
     auto const addr1 = reinterpret_cast<char*>(reinterpret_cast<uintptr_t>(::GetModuleHandle(nullptr)) + 0x14C6110uLL);
@@ -200,6 +200,7 @@ bool DirectMemoryReader::ReadOnFCY(rF2Extended& extended)
     return false;
   }
 
+  // TODO: check if new message is blank before updating, the are blinking and blank message is useless.
   strcpy_s(extended.mSCRInstructionMessage, mpSCRInstructionMessage);
   if (strcmp(mPrevSCRInstructionMessage, extended.mSCRInstructionMessage) != 0) {
     DEBUG_MSG2(DebugLevel::DevInfo, "SCR Instruction message updated: ", extended.mSCRInstructionMessage);
