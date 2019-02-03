@@ -753,7 +753,7 @@ void SharedMemoryPlugin::UpdateScoring(ScoringInfoV01 const& info)
 
   if (SharedMemoryPlugin::msDirectMemoryAccessRequested) {
     if (!mDMR.Read(mExtStateTracker.mExtended)
-      || (info.mYellowFlagState != 0 && !mDMR.ReadOnFCY(mExtStateTracker.mExtended))) { 
+      || (mDMR.IsSCRPluginEnabled() && info.mYellowFlagState != 0 && !mDMR.ReadOnFCY(mExtStateTracker.mExtended))) { 
       DEBUG_MSG(DebugLevel::Errors, "ERROR: DMA read failed, disabling.");
 
       // Disable DMA on failure.
