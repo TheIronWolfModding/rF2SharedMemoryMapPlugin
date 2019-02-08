@@ -57,7 +57,7 @@ bool DirectMemoryReader::Initialize()
   auto const endTicks = TicksNow();
 
   if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::DevInfo) {
-    // TODO: REMEASURE Normal scan ~9ms, failed scan ~35ms (debug).
+    // Successful scan: ~20ms
     DEBUG_FLOAT2(DebugLevel::DevInfo, "Scan time seconds: ", (endTicks - startTicks) / MICROSECONDS_IN_SECOND);
 
     auto const addr1 = reinterpret_cast<char*>(reinterpret_cast<uintptr_t>(::GetModuleHandle(nullptr)) + 0x14C6110uLL);
@@ -282,6 +282,7 @@ void DirectMemoryReader::ReadSCRPluginConfigValues(char* const configFileContent
 
   // If we're here, consider SCR plugin as not enabled.
   mSCRPluginEnabled = false;
+  mSCRPluginDoubleFileType = -1L;
 
   return;
 }

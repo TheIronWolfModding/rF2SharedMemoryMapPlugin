@@ -12,7 +12,7 @@ This plugin is carefully implemented with an intent of becoming a shared compone
   * rF1 Shared Memory Map Plugin by Dan Allongo found at: https://github.com/dallongo/rFactorSharedMemoryMap
 
 ## Features
-Plugin offers optional weak synchronization by using version variables on each of the buffers.  Plugin is also capable of hosting StockCarRules.dll plugin as a hack/workaround for accessing SCR plugin set values.
+Plugin offers optional weak synchronization by using version variables on each of the buffers.
 
 Plugin is built using VS 2015 Community Edition, targeting VC12 (VS 2013) runtime, since rF2 comes with VC12 redist.
 
@@ -60,6 +60,12 @@ Please also be aware, that Crew Chief will always ship with the latest version o
 If you would like to support this project, you can donate [here.](http://thecrewchief.org/misc.php?do=donate)
 
 # Release history
+
+**02/08/2019 - v3.4.0.6**
+
+  Plugin/Monitor:
+  * Expose Stock Car Rules plugin FCY instruction message in DMA mode.
+  * Deprecate SCR plugin hosting (breaking change).
 
 **01/28/2019 - v3.3.0.6**
 
