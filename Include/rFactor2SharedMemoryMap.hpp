@@ -27,8 +27,8 @@ Website: thecrewchief.org
 
 // Each component can be in [0:99] range.
 // Note: each time major version changes, that means layout has changed, and clients might need an update.
-#define PLUGIN_VERSION_MAJOR "3.4"
-#define PLUGIN_VERSION_MINOR "0.6"
+#define PLUGIN_VERSION_MAJOR "3.5"
+#define PLUGIN_VERSION_MINOR "0.0"
 
 #ifdef VERSION_AVX2
 #ifdef VERSION_MT

@@ -60,31 +60,31 @@ bool DirectMemoryReader::Initialize()
     // Successful scan: ~20ms
     DEBUG_FLOAT2(DebugLevel::DevInfo, "Scan time seconds: ", (endTicks - startTicks) / MICROSECONDS_IN_SECOND);
 
-    auto const addr1 = reinterpret_cast<char*>(reinterpret_cast<uintptr_t>(::GetModuleHandle(nullptr)) + 0x14C6110uLL);
-    auto const addr2 = *reinterpret_cast<char**>(reinterpret_cast<uintptr_t>(::GetModuleHandle(nullptr)) + 0x14C4780uLL);
-    auto const addr3 = reinterpret_cast<float*>(reinterpret_cast<uintptr_t>(::GetModuleHandle(nullptr)) + 0x14A64ACuLL);
-    auto const addr4 = reinterpret_cast<char*>(reinterpret_cast<uintptr_t>(::GetModuleHandle(nullptr)) + 0x14C49D8uLL);
+    auto const addr1 = reinterpret_cast<char*>(reinterpret_cast<uintptr_t>(::GetModuleHandle(nullptr)) + 0x14C7410uLL);
+    auto const addr2 = *reinterpret_cast<char**>(reinterpret_cast<uintptr_t>(::GetModuleHandle(nullptr)) + 0x14C5A88uLL);
+    auto const addr3 = reinterpret_cast<float*>(reinterpret_cast<uintptr_t>(::GetModuleHandle(nullptr)) + 0x14A75ACuLL);
+    auto const addr4 = reinterpret_cast<char*>(reinterpret_cast<uintptr_t>(::GetModuleHandle(nullptr)) + 0x14C5CD8uLL);
 
     DEBUG_ADDR2(DebugLevel::DevInfo, "A1", mpStatusMessage);
     DEBUG_ADDR2(DebugLevel::DevInfo, "A11", addr1);
     DEBUG_ADDR2(DebugLevel::DevInfo, "O1", reinterpret_cast<uintptr_t>(mpStatusMessage) - reinterpret_cast<uintptr_t>(module));
-    DEBUG_ADDR2(DebugLevel::DevInfo, "O11", 0x14C6110uLL);
+    DEBUG_ADDR2(DebugLevel::DevInfo, "O11", 0x14C7410uLL);
 
     DEBUG_ADDR2(DebugLevel::DevInfo, "A2", *mppMessageCenterMessages);
     DEBUG_ADDR2(DebugLevel::DevInfo, "A21", addr2);
     DEBUG_ADDR2(DebugLevel::DevInfo, "O2", reinterpret_cast<uintptr_t>(mppMessageCenterMessages) - reinterpret_cast<uintptr_t>(module));
-    DEBUG_ADDR2(DebugLevel::DevInfo, "O21", 0x14C4780uLL);
+    DEBUG_ADDR2(DebugLevel::DevInfo, "O21", 0x14C5A88uLL);
 
     DEBUG_ADDR2(DebugLevel::DevInfo, "A3", mpCurrPitSpeedLimit);
     DEBUG_ADDR2(DebugLevel::DevInfo, "A31", addr3);
     DEBUG_ADDR2(DebugLevel::DevInfo, "O3", reinterpret_cast<uintptr_t>(mpCurrPitSpeedLimit) - reinterpret_cast<uintptr_t>(module));
-    DEBUG_ADDR2(DebugLevel::DevInfo, "O31", 0x14A64ACuLL);
+    DEBUG_ADDR2(DebugLevel::DevInfo, "O31", 0x14A75ACuLL);
 
     if (mSCRPluginEnabled) {
       DEBUG_ADDR2(DebugLevel::DevInfo, "A4", mpRulesInstructionMessage);
       DEBUG_ADDR2(DebugLevel::DevInfo, "A41", addr4);
       DEBUG_ADDR2(DebugLevel::DevInfo, "O4", reinterpret_cast<uintptr_t>(mpRulesInstructionMessage) - reinterpret_cast<uintptr_t>(module));
-      DEBUG_ADDR2(DebugLevel::DevInfo, "O41", 0x14C49D8uLL);
+      DEBUG_ADDR2(DebugLevel::DevInfo, "O41", 0x14C5CD8uLL);
     }
   }
 
