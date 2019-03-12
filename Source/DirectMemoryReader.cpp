@@ -40,7 +40,6 @@ bool DirectMemoryReader::Initialize()
 
   ReadSCRPluginConfig();
 
-  DEBUG_MSG(DebugLevel::DevInfo, "Initializing Rules Instruction message.");
   mpLSIMessages = reinterpret_cast<char*>(Utils::FindPatternForPointerInMemory(module,
     reinterpret_cast<unsigned char*>("\x48\x83\xEC\x28\xE8\xB7\xC1\xF7\xFF\xE8\xB2\x2D\x15\x00\x48\x8D\x0D\x73\xA2\x07\x01\xE8\xA6\x8B\x08\x00\x88\x05\x8C\xA2\x07\x01"),
     "xxxxx????x????xxx????x????xx????", 17u));
