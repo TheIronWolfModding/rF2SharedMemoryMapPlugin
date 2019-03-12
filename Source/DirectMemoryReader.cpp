@@ -40,19 +40,15 @@ bool DirectMemoryReader::Initialize()
 
   ReadSCRPluginConfig();
 
-  if (mSCRPluginEnabled) {
-    DEBUG_MSG(DebugLevel::DevInfo, "Initializing Rules Instruction message.");
-    mpRulesInstructionMessage = reinterpret_cast<char*>(Utils::FindPatternForPointerInMemory(module,
-      reinterpret_cast<unsigned char*>("\x48\x83\xEC\x28\xE8\xB7\xC1\xF7\xFF\xE8\xB2\x2D\x15\x00\x48\x8D\x0D\x73\xA2\x07\x01\xE8\xA6\x8B\x08\x00\x88\x05\x8C\xA2\x07\x01"),
-      "xxxxx????x????xxx????x????xx????", 17u));
+  DEBUG_MSG(DebugLevel::DevInfo, "Initializing Rules Instruction message.");
+  mpLSIMessages = reinterpret_cast<char*>(Utils::FindPatternForPointerInMemory(module,
+    reinterpret_cast<unsigned char*>("\x48\x83\xEC\x28\xE8\xB7\xC1\xF7\xFF\xE8\xB2\x2D\x15\x00\x48\x8D\x0D\x73\xA2\x07\x01\xE8\xA6\x8B\x08\x00\x88\x05\x8C\xA2\x07\x01"),
+    "xxxxx????x????xxx????x????xx????", 17u));
 
-    if (mpRulesInstructionMessage == nullptr) {
-      DEBUG_MSG(DebugLevel::Errors, "ERROR: Failed to resolve LSI message pointer.");
-      return false;
-    }
+  if (mpLSIMessages == nullptr) {
+    DEBUG_MSG(DebugLevel::Errors, "ERROR: Failed to resolve LSI message pointer.");
+    return false;
   }
-
-  mpRulesInstructionMessage += 0x1D0uLL;
 
   auto const endTicks = TicksNow();
 
@@ -63,7 +59,7 @@ bool DirectMemoryReader::Initialize()
     auto const addr1 = reinterpret_cast<char*>(reinterpret_cast<uintptr_t>(::GetModuleHandle(nullptr)) + 0x14C7410uLL);
     auto const addr2 = *reinterpret_cast<char**>(reinterpret_cast<uintptr_t>(::GetModuleHandle(nullptr)) + 0x14C5A88uLL);
     auto const addr3 = reinterpret_cast<float*>(reinterpret_cast<uintptr_t>(::GetModuleHandle(nullptr)) + 0x14A75ACuLL);
-    auto const addr4 = reinterpret_cast<char*>(reinterpret_cast<uintptr_t>(::GetModuleHandle(nullptr)) + 0x14C5CD8uLL);
+    auto const addr4 = reinterpret_cast<char*>(reinterpret_cast<uintptr_t>(::GetModuleHandle(nullptr)) + 0x14C5B08uLL);
 
     DEBUG_ADDR2(DebugLevel::DevInfo, "A1", mpStatusMessage);
     DEBUG_ADDR2(DebugLevel::DevInfo, "A11", addr1);
@@ -80,12 +76,10 @@ bool DirectMemoryReader::Initialize()
     DEBUG_ADDR2(DebugLevel::DevInfo, "O3", reinterpret_cast<uintptr_t>(mpCurrPitSpeedLimit) - reinterpret_cast<uintptr_t>(module));
     DEBUG_ADDR2(DebugLevel::DevInfo, "O31", 0x14A75ACuLL);
 
-    if (mSCRPluginEnabled) {
-      DEBUG_ADDR2(DebugLevel::DevInfo, "A4", mpRulesInstructionMessage);
-      DEBUG_ADDR2(DebugLevel::DevInfo, "A41", addr4);
-      DEBUG_ADDR2(DebugLevel::DevInfo, "O4", reinterpret_cast<uintptr_t>(mpRulesInstructionMessage) - reinterpret_cast<uintptr_t>(module));
-      DEBUG_ADDR2(DebugLevel::DevInfo, "O41", 0x14C5CD8uLL);
-    }
+    DEBUG_ADDR2(DebugLevel::DevInfo, "A4", mpLSIMessages);
+    DEBUG_ADDR2(DebugLevel::DevInfo, "A41", addr4);
+    DEBUG_ADDR2(DebugLevel::DevInfo, "O4", reinterpret_cast<uintptr_t>(mpLSIMessages) - reinterpret_cast<uintptr_t>(module));
+    DEBUG_ADDR2(DebugLevel::DevInfo, "O41", 0x14C5B08uLL);
   }
 
   return true;
@@ -188,27 +182,45 @@ bool DirectMemoryReader::ReadOnNewSession(rF2Extended& extended) const
   return true;
 }
 
-bool DirectMemoryReader::ReadOnFCY(rF2Extended& extended)
+bool DirectMemoryReader::ReadOnLSIVisible(rF2Extended& extended)
 {
-  if (!mSCRPluginEnabled) {
-    assert(false && "SCR Plugin not enabled, should not call.");
-    return false;
-  }
-
-  if (mpStatusMessage == nullptr || mppMessageCenterMessages == nullptr || mpCurrPitSpeedLimit == nullptr || mpRulesInstructionMessage == nullptr) {
+  if (mpStatusMessage == nullptr || mppMessageCenterMessages == nullptr || mpCurrPitSpeedLimit == nullptr || mpLSIMessages == nullptr) {
     assert(false && "DMR not available, should not call.");
     return false;
   }
 
-  if (mpRulesInstructionMessage[0] == '\0')
-    return true;
+  auto const pPhase = mpLSIMessages + 0x50uLL;
+  if (pPhase[0] != '\0') {
+    strcpy_s(extended.mLSIPhaseMessage, pPhase);
+    if (strcmp(mPrevLSIPhaseMessage, extended.mLSIPhaseMessage) != 0) {
+      DEBUG_MSG2(DebugLevel::DevInfo, "LSI Phase message updated: ", extended.mLSIPhaseMessage);
 
-  strcpy_s(extended.mRulesInstructionMessage, mpRulesInstructionMessage);
-  if (strcmp(mPrevRulesInstructionMessage, extended.mRulesInstructionMessage) != 0) {
-    DEBUG_MSG2(DebugLevel::DevInfo, "Rules Instruction message updated: ", extended.mRulesInstructionMessage);
+      strcpy_s(mPrevLSIPhaseMessage, extended.mLSIPhaseMessage);
+      extended.mTicksLSIPhaseMessageUpdated = ::GetTickCount64();
+    }
+  }
 
-    strcpy_s(mPrevRulesInstructionMessage, extended.mRulesInstructionMessage);
-    extended.mTicksRulesInstructionMessageUpdated = ::GetTickCount64();
+  auto const pOrderInstruction = mpLSIMessages + 0x150uLL;
+  if (pOrderInstruction[0] != '\0') {
+    strcpy_s(extended.mLSIOrderInstructionMessage, pOrderInstruction);
+    if (strcmp(mPrevLSIOrderInstructionMessage, extended.mLSIOrderInstructionMessage) != 0) {
+      DEBUG_MSG2(DebugLevel::DevInfo, "LSI Order Instruction message updated: ", extended.mLSIOrderInstructionMessage);
+
+      strcpy_s(mPrevLSIOrderInstructionMessage, extended.mLSIOrderInstructionMessage);
+      extended.mTicksLSIOrderInstructionMessageUpdated = ::GetTickCount64();
+    }
+  }
+
+  auto const pRulesInstruction = mpLSIMessages + 0x1D0uLL;
+  if (mSCRPluginEnabled
+    && pRulesInstruction[0] != '\0') {
+    strcpy_s(extended.mLSIRulesInstructionMessage, pRulesInstruction);
+    if (strcmp(mPrevLSIRulesInstructionMessage, extended.mLSIRulesInstructionMessage) != 0) {
+      DEBUG_MSG2(DebugLevel::DevInfo, "LSI Rules Instruction message updated: ", extended.mLSIRulesInstructionMessage);
+
+      strcpy_s(mPrevLSIRulesInstructionMessage, extended.mLSIRulesInstructionMessage);
+      extended.mTicksLSIRulesInstructionMessageUpdated = ::GetTickCount64();
+    }
   }
 
   return true;

@@ -879,14 +879,22 @@ namespace rF2SMMonitor
       [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = rFactor2Constants.MAX_STATUS_MSG_LEN)]
       public byte[] mLastHistoryMessage;
 
-      public float mCurrentPitSpeedLimit;                  // speed limit m/s.
-
-      public Int64 mTicksRulesInstructionMessageUpdated;     // Ticks when last Rules FCY message was updated, only updated if mSCRPluginEnabled is true.
-      [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = rFactor2Constants.MAX_RULES_INSTRUCTION_MSG_LEN)]
-      public byte[] mRulesInstructionMessage;
+      public float mCurrentPitSpeedLimit;                      // speed limit m/s.
 
       public byte mSCRPluginEnabled;                           // Is Stock Car Rules plugin enabled?
-      public int mSCRPluginDoubleFileType;                    // Stock Car Rules plugin DoubleFileType value, only meaningful if mSCRPluginEnabled is true.
+      public int mSCRPluginDoubleFileType;                     // Stock Car Rules plugin DoubleFileType value, only meaningful if mSCRPluginEnabled is true.
+
+      public Int64 mTicksLSIPhaseMessageUpdated;               // Ticks when last LSI phase message was updated.
+      [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = rFactor2Constants.MAX_RULES_INSTRUCTION_MSG_LEN)]
+      public byte[] mLSIPhaseMessage;
+
+      public Int64 mTicksLSIOrderInstructionMessageUpdated;     // Ticks when last LSI order instruction message was updated.
+      [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = rFactor2Constants.MAX_RULES_INSTRUCTION_MSG_LEN)]
+      public byte[] mLSIOrderInstructionMessage;
+
+      public Int64 mTicksLSIRulesInstructionMessageUpdated;     // Ticks when last FCY rules message was updated.  Currently, only SCR plugin sets that.
+      [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = rFactor2Constants.MAX_RULES_INSTRUCTION_MSG_LEN)]
+      public byte[] mLSIRulesInstructionMessage;
     }
   }
 }

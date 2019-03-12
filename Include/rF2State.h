@@ -891,11 +891,17 @@ struct rF2Extended : public rF2MappedBufferHeader
 
   float mCurrentPitSpeedLimit;                      // speed limit m/s.
 
-  ULONGLONG mTicksRulesInstructionMessageUpdated;     // Ticks when last SCR FCY message was updated, only updated if mSCRPluginEnabled is true.
-  char mRulesInstructionMessage[rF2MappedBufferHeader::MAX_RULES_INSTRUCTION_MSG_LEN];
-
   bool mSCRPluginEnabled;                           // Is Stock Car Rules plugin enabled?
   long mSCRPluginDoubleFileType;                    // Stock Car Rules plugin DoubleFileType value, only meaningful if mSCRPluginEnabled is true.
+
+  ULONGLONG mTicksLSIPhaseMessageUpdated;           // Ticks when last LSI phase message was updated.
+  char mLSIPhaseMessage[rF2MappedBufferHeader::MAX_RULES_INSTRUCTION_MSG_LEN];
+
+  ULONGLONG mTicksLSIOrderInstructionMessageUpdated;     // Ticks when last LSI order instruction message was updated.
+  char mLSIOrderInstructionMessage[rF2MappedBufferHeader::MAX_RULES_INSTRUCTION_MSG_LEN];
+
+  ULONGLONG mTicksLSIRulesInstructionMessageUpdated;     // Ticks when last FCY rules message was updated.  Currently, only SCR plugin sets that.
+  char mLSIRulesInstructionMessage[rF2MappedBufferHeader::MAX_RULES_INSTRUCTION_MSG_LEN];
 };
 
 #pragma pack(pop)

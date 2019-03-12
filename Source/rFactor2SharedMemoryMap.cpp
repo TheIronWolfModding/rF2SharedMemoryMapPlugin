@@ -753,7 +753,8 @@ void SharedMemoryPlugin::UpdateScoring(ScoringInfoV01 const& info)
 
   if (SharedMemoryPlugin::msDirectMemoryAccessRequested) {
     if (!mDMR.Read(mExtStateTracker.mExtended)
-      || (mDMR.IsSCRPluginEnabled() && info.mYellowFlagState != 0 && !mDMR.ReadOnFCY(mExtStateTracker.mExtended))) { 
+      || ((info.mYellowFlagState != 0 || info.mGamePhase == static_cast<unsigned char>(rF2GamePhase::Formation))  // Read on FCY or Formation lap.
+        && !mDMR.ReadOnLSIVisible(mExtStateTracker.mExtended))) { 
       DEBUG_MSG(DebugLevel::Errors, "ERROR: DMA read failed, disabling.");
 
       // Disable DMA on failure.
