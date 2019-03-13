@@ -1277,7 +1277,9 @@ namespace rF2SMMonitor
     internal StringBuilder sbRulesLabel = new StringBuilder();
     internal StringBuilder sbRulesValues = new StringBuilder();
     internal StringBuilder sbFrozenOrderInfo = new StringBuilder();
+    internal StringBuilder sbFrozenOrderOnlineInfo = new StringBuilder();
     private FrozenOrderData prevFrozenOrderData;
+    private FrozenOrderData prevFrozenOrderDataOnline;
 
     public enum FrozenOrderPhase
     {
@@ -1637,6 +1639,29 @@ namespace rF2SMMonitor
         + $"Distance To Safety Car: {distToSC:N3}\n"
         );
 
+      var distToSCOnline = -1.0;
+      var fodOnline = this.GetFrozenOrderOnlineData(prevFrozenOrderData, ref playerVeh, ref scoring, ref extended, ref distToSCOnline);
+      prevFrozenOrderDataOnline = fodOnline;
+
+      var driverToFollowOnline = fodOnline.DriverToFollow;
+      if (((fodOnline.AssignedColumn == FrozenOrderColumn.None && fodOnline.AssignedPosition == 1)  // Single file order.
+          || (fodOnline.AssignedColumn != FrozenOrderColumn.None && fodOnline.AssignedPosition <= 2))  // Double file (grid) order.
+        && fodOnline.SafetyCarSpeed > 0.0)
+        driverToFollowOnline = "Safety Car";
+
+      this.sbFrozenOrderOnlineInfo = new StringBuilder();
+      this.sbFrozenOrderOnlineInfo.Append(
+        $"Frozen Order Phase: {fodOnline.Phase}\n"
+        + $"Frozen Order Action: {fodOnline.Action}\n"
+        + $"Assigned Position: {fodOnline.AssignedPosition}\n"
+        + $"Assigned Column: {fodOnline.AssignedColumn}\n"
+        + $"Assigned Grid Position: {fodOnline.AssignedGridPosition}\n"
+        + $"Driver To Follow: {driverToFollowOnline}\n"
+        + $"Safety Car Speed: {(fodOnline.SafetyCarSpeed == -1.0f ? "Not Present" : string.Format("{0:N3}km/h", fodOnline.SafetyCarSpeed * 3.6f))}\n"
+        + $"SCR DoubleFileType: {extended.mSCRPluginDoubleFileType}\n"
+        + $"Distance To Safety Car: {distToSCOnline:N3}\n"
+        );
+
       if (g != null)
       {
         float rulesY = 3.0f;
@@ -1644,7 +1669,8 @@ namespace rF2SMMonitor
         g.DrawString(this.sbRulesChanged.ToString(), SystemFonts.DefaultFont, Brushes.Orange, rulesX, rulesY);
         g.DrawString(this.sbRulesLabel.ToString(), SystemFonts.DefaultFont, Brushes.Green, rulesX + 30.0f, rulesY);
         g.DrawString(this.sbRulesValues.ToString(), SystemFonts.DefaultFont, Brushes.Purple, rulesX + 200.0f, rulesY);
-        g.DrawString(this.sbFrozenOrderInfo.ToString(), SystemFonts.DefaultFont, Brushes.DarkCyan, rulesX, rulesY + 450);
+        g.DrawString(this.sbFrozenOrderInfo.ToString(), SystemFonts.DefaultFont, Brushes.DarkCyan, rulesX - 100.0f, rulesY + 450);
+        g.DrawString(this.sbFrozenOrderOnlineInfo.ToString(), SystemFonts.DefaultFont, Brushes.Blue, rulesX + 100.0f, rulesY + 450);
       }
     }
 
@@ -1829,6 +1855,239 @@ namespace rF2SMMonitor
       if (rules.mTrackRules.mSafetyCarActive == 1)
         fod.SafetyCarSpeed = rules.mTrackRules.mSafetyCarSpeed;
 
+      return fod;
+    }
+
+    private FrozenOrderData GetFrozenOrderOnlineData(FrozenOrderData prevFrozenOrderData, ref rF2VehicleScoring vehicle,
+      ref rF2Scoring scoring, ref rF2Extended extended, ref double distToSC)
+    {
+      if (extended.mDirectMemoryAccessEnabled == 0)
+        return null;
+
+      var fod = new FrozenOrderData();
+
+      // Only applies to formation laps and FCY.
+      if (scoring.mScoringInfo.mGamePhase != (int)rF2GamePhase.Formation
+        && scoring.mScoringInfo.mGamePhase != (int)rF2GamePhase.FullCourseYellow)
+        return fod;
+
+      if (prevFrozenOrderData.Phase == FrozenOrderPhase.None)
+      {
+        // TODO: only on change, to avoid stale msg.
+        var phase = TransitionTracker.GetStringFromBytes(extended.mLSIPhaseMessage);
+
+        if (scoring.mScoringInfo.mGamePhase != (int)rF2GamePhase.Formation
+          && string.IsNullOrWhiteSpace(phase))
+          fod.Phase = FrozenOrderPhase.FormationStanding;
+        else if (!string.IsNullOrWhiteSpace(phase)
+          && phase == "Formation Lap")
+        {
+          // TODO: Pass speed in in CC.
+          var speed = Math.Sqrt((vehicle.mLocalVel.x * vehicle.mLocalVel.x)
+            + (vehicle.mLocalVel.y * vehicle.mLocalVel.y)
+            + (vehicle.mLocalVel.z * vehicle.mLocalVel.z));
+
+          fod.Phase = this.GetSector(vehicle.mSector) == 3 && speed > 10.0 ? FrozenOrderPhase.FastRolling : FrozenOrderPhase.Rolling;
+        }
+        else if (!string.IsNullOrWhiteSpace(phase)  // TODO: TEST
+          && phase == "Full Course Yellow")
+          fod.Phase = FrozenOrderPhase.FullCourseYellow;
+        else if (string.IsNullOrWhiteSpace(phase))
+          fod.Phase = prevFrozenOrderData.Phase;
+      }
+      else
+        fod.Phase = prevFrozenOrderData.Phase;
+
+      // NOTE: for formation/standing capture order once.   For other phases, rely on LSI text.
+
+      /*else if (foStage == rF2TrackRulesStage.FormationInit || foStage == rF2TrackRulesStage.FormationUpdate)
+      {
+        // Check for signs of a rolling start.
+        if ((prevFrozenOrderData != null && prevFrozenOrderData.Phase == FrozenOrderPhase.Rolling)  // If FO started as Rolling, keep it as Rolling even after SC leaves the track
+          || (rules.mTrackRules.mSafetyCarExists == 1 && rules.mTrackRules.mSafetyCarActive == 1)  // Of, if SC exists and is active
+          || (rules.mTrackRules.mSafetyCarExists == 0 && leaderLapDistAtFOPhaseStart > 0.0 && leaderSectorAtFOPhaseStart == 1)) // Or, if SC is not present on a track, and leader started ahead of S/F line and is insector 1.  This will be problem on some tracks.
+          fod.Phase = FrozenOrderPhase.Rolling;
+        else
+        {
+          // Formation / Standing and Fast Rolling have no Safety Car.
+          fod.Phase = rules.mTrackRules.mStage == rF2TrackRulesStage.FormationInit && this.GetSector(vehicle.mSector) == 3
+            ? FrozenOrderPhase.FastRolling  // Fast rolling never goes into FormationUpdate and usually starts in S3.
+            : FrozenOrderPhase.FormationStanding;
+        }
+      }
+
+      /*
+      var foStage = rules.mTrackRules.mStage;
+      if (foStage == rF2TrackRulesStage.Normal)
+        return fod; // Note, there's slight race between scoring and rules here, FO messages should have validation on them.
+
+      // rF2 currently does not expose what kind of race start is chosen.  For tracks with SC, I use presence of SC to distinguish between
+      // Formation/Standing and Rolling starts.  However, if SC does not exist (Kart tracks), I used the fact that in Rolling start leader is
+      // typically standing past S/F line (mLapDist is positive).  Obviously, there will be perverted tracks where that won't be true, but this
+      // all I could come up with, and real problem is in game being shit in this area.
+      var leaderLapDistAtFOPhaseStart = 0.0;
+      var leaderSectorAtFOPhaseStart = -1;
+      if (foStage != rF2TrackRulesStage.CautionInit && foStage != rF2TrackRulesStage.CautionUpdate  // If this is not FCY.
+        && (prevFrozenOrderData == null || prevFrozenOrderData.Phase == FrozenOrderPhase.None)  // And, this is first FO calculation.
+        && rules.mTrackRules.mSafetyCarExists == 0) // And, track has no SC.
+      {
+        // Find where leader is relatively to F/S line.
+        for (int i = 0; i < scoring.mScoringInfo.mNumVehicles; ++i)
+        {
+          var veh = scoring.mVehicles[i];
+          if (veh.mPlace == 1)
+          {
+            leaderLapDistAtFOPhaseStart = veh.mLapDist;
+            leaderSectorAtFOPhaseStart = this.GetSector(veh.mSector);
+            break;
+          }
+        }
+      }
+
+      // Figure out the phase:
+      if (foStage == rF2TrackRulesStage.CautionInit || foStage == rF2TrackRulesStage.CautionUpdate)
+        fod.Phase = FrozenOrderPhase.FullCourseYellow;
+      else if (foStage == rF2TrackRulesStage.FormationInit || foStage == rF2TrackRulesStage.FormationUpdate)
+      {
+        // Check for signs of a rolling start.
+        if ((prevFrozenOrderData != null && prevFrozenOrderData.Phase == FrozenOrderPhase.Rolling)  // If FO started as Rolling, keep it as Rolling even after SC leaves the track
+          || (rules.mTrackRules.mSafetyCarExists == 1 && rules.mTrackRules.mSafetyCarActive == 1)  // Of, if SC exists and is active
+          || (rules.mTrackRules.mSafetyCarExists == 0 && leaderLapDistAtFOPhaseStart > 0.0 && leaderSectorAtFOPhaseStart == 1)) // Or, if SC is not present on a track, and leader started ahead of S/F line and is insector 1.  This will be problem on some tracks.
+          fod.Phase = FrozenOrderPhase.Rolling;
+        else
+        {
+          // Formation / Standing and Fast Rolling have no Safety Car.
+          fod.Phase = rules.mTrackRules.mStage == rF2TrackRulesStage.FormationInit && this.GetSector(vehicle.mSector) == 3
+            ? FrozenOrderPhase.FastRolling  // Fast rolling never goes into FormationUpdate and usually starts in S3.
+            : FrozenOrderPhase.FormationStanding;
+        }
+      }
+
+      Debug.Assert(fod.Phase != FrozenOrderPhase.None);
+
+      if (vehicleRules.mPositionAssignment != -1)
+      {
+        var gridOrder = false;
+
+        var scrLastLapDoubleFile = fod.Phase == FrozenOrderPhase.FullCourseYellow
+          && extended.mSCRPluginEnabled == 1
+          && (extended.mSCRPluginDoubleFileType == 1 || extended.mSCRPluginDoubleFileType == 2)
+          && scoring.mScoringInfo.mYellowFlagState == (sbyte)rF2YellowFlagState.LastLap;
+
+        if (fod.Phase == FrozenOrderPhase.FullCourseYellow  // Core FCY does not use grid order. 
+          && !scrLastLapDoubleFile)  // With SCR rules, however, last lap might be double file depending on DoubleFileType configuration var value.
+        {
+          gridOrder = false;
+          fod.AssignedPosition = vehicleRules.mPositionAssignment + 1;  // + 1, because it is zero based with 0 meaning follow SC.
+        }
+        else  // This is not FCY, or last lap of Double File FCY with SCR plugin enabled.  The order reported is grid order, with columns specified.
+        {
+          gridOrder = true;
+          fod.AssignedGridPosition = vehicleRules.mPositionAssignment + 1;
+          fod.AssignedColumn = vehicleRules.mColumnAssignment == rF2TrackRulesColumn.LeftLane ? FrozenOrderColumn.Left : FrozenOrderColumn.Right;
+
+          if (rules.mTrackRules.mPoleColumn == rF2TrackRulesColumn.LeftLane)
+          {
+            fod.AssignedPosition = (vehicleRules.mColumnAssignment == rF2TrackRulesColumn.LeftLane
+              ? vehicleRules.mPositionAssignment * 2
+              : vehicleRules.mPositionAssignment * 2 + 1) + 1;
+          }
+          else if (rules.mTrackRules.mPoleColumn == rF2TrackRulesColumn.RightLane)
+          {
+            fod.AssignedPosition = (vehicleRules.mColumnAssignment == rF2TrackRulesColumn.RightLane
+              ? vehicleRules.mPositionAssignment * 2
+              : vehicleRules.mPositionAssignment * 2 + 1) + 1;
+          }
+
+        }
+
+        // Figure out Driver Name to follow.
+        // NOTE: In Formation/Standing, game does not report those in UI, but we could.
+        var vehToFollowId = -1;
+        var followSC = true;
+        if ((gridOrder && fod.AssignedPosition > 2)  // In grid order, first 2 vehicles are following SC.
+          || (!gridOrder && fod.AssignedPosition > 1))  // In non-grid order, 1st car is following SC.
+        {
+          followSC = false;
+          // Find the mID of a vehicle in front of us by frozen order.
+          for (int i = 0; i < rules.mTrackRules.mNumParticipants; ++i)
+          {
+            var p = rules.mParticipants[i];
+            if ((!gridOrder  // Don't care about column in non-grid order case.
+                || (gridOrder && p.mColumnAssignment == vehicleRules.mColumnAssignment))  // Should be vehicle in the same column.
+              && p.mPositionAssignment == (vehicleRules.mPositionAssignment - 1))
+            {
+              vehToFollowId = p.mID;
+              break;
+            }
+          }
+        }
+
+        var playerDist = this.GetDistanceCompleteded(ref scoring, ref vehicle);
+        var toFollowDist = -1.0;
+
+        if (!followSC)
+        {
+          // Now find the vehicle to follow from the scoring info.
+          for (int i = 0; i < scoring.mScoringInfo.mNumVehicles; ++i)
+          {
+            var v = scoring.mVehicles[i];
+            if (v.mID == vehToFollowId)
+            {
+              fod.DriverToFollow = TransitionTracker.GetStringFromBytes(v.mDriverName);
+
+              toFollowDist = this.GetDistanceCompleteded(ref scoring, ref v);
+              break;
+            }
+          }
+        }
+        else
+          toFollowDist = ((vehicle.mTotalLaps - vehicleRules.mRelativeLaps) * scoring.mScoringInfo.mLapDist) + rules.mTrackRules.mSafetyCarLapDist;
+
+        distToSC = rules.mTrackRules.mSafetyCarActive == 1
+          ? (((vehicle.mTotalLaps - vehicleRules.mRelativeLaps) * scoring.mScoringInfo.mLapDist) + rules.mTrackRules.mSafetyCarLapDist) - playerDist
+          : -1.0;
+
+        if (fod.Phase == FrozenOrderPhase.Rolling
+          && followSC
+          && rules.mTrackRules.mSafetyCarExists == 0)
+        {
+          // Find distance to car next to us if we're in pole.
+          var neighborDist = -1.0;
+          for (int i = 0; i < scoring.mScoringInfo.mNumVehicles; ++i)
+          {
+            var veh = scoring.mVehicles[i];
+            if (veh.mPlace == (vehicle.mPlace == 1 ? 2 : 1))
+            {
+              neighborDist = this.GetDistanceCompleteded(ref scoring, ref veh);
+              break;
+            }
+          }
+
+          var distDelta = neighborDist - playerDist;
+          // Special case if we have to stay in pole row, but there's no SC on this track.
+          if (fod.AssignedColumn == FrozenOrderColumn.None)
+            fod.Action = distDelta > 70.0 ? FrozenOrderAction.MoveToPole : FrozenOrderAction.StayInPole;
+          else
+            fod.Action = distDelta > 70.0 ? FrozenOrderAction.MoveToPole : FrozenOrderAction.StayInPole;
+        }
+        else
+        {
+          Debug.Assert(toFollowDist != -1.0);
+
+          fod.Action = FrozenOrderAction.Follow;
+
+          var distDelta = toFollowDist - playerDist;
+          if (distDelta < 0.0)
+            fod.Action = FrozenOrderAction.AllowToPass;
+          else if (distDelta > 70.0)
+            fod.Action = FrozenOrderAction.CatchUp;
+        }
+      }
+
+      if (rules.mTrackRules.mSafetyCarActive == 1)
+        fod.SafetyCarSpeed = rules.mTrackRules.mSafetyCarSpeed;
+      */
       return fod;
     }
 
