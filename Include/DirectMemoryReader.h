@@ -12,7 +12,7 @@ public:
 
   bool Initialize();
   bool Read(rF2Extended& extended);
-  bool ReadOnNewSession(rF2Extended& extended) const; 
+  bool ReadOnNewSession(rF2Extended& extended); 
   bool ReadOnLSIVisible(rF2Extended& extended);
 
   bool IsSCRPluginEnabled() const { return mSCRPluginEnabled; }
@@ -21,6 +21,7 @@ public:
 private:
   void ReadSCRPluginConfig();
   void ReadSCRPluginConfigValues(char* const pluginConfig);
+  void OnNewSession();
 
 private:
   char* mpStatusMessage = nullptr;

@@ -168,12 +168,14 @@ bool DirectMemoryReader::Read(rF2Extended& extended)
   return true;
 }
 
-bool DirectMemoryReader::ReadOnNewSession(rF2Extended& extended) const
+bool DirectMemoryReader::ReadOnNewSession(rF2Extended& extended)
 {
   if (mpStatusMessage == nullptr || mppMessageCenterMessages == nullptr || mpCurrPitSpeedLimit == nullptr) {
     assert(false && "DMR not available, should not call.");
     return false;
   }
+
+  OnNewSession();
 
   extended.mCurrentPitSpeedLimit = *mpCurrPitSpeedLimit;
   DEBUG_FLOAT2(DebugLevel::DevInfo, "Current pit speed limit: ", extended.mCurrentPitSpeedLimit);
@@ -296,4 +298,11 @@ void DirectMemoryReader::ReadSCRPluginConfigValues(char* const configFileContent
   mSCRPluginDoubleFileType = -1L;
 
   return;
+}
+
+void DirectMemoryReader::OnNewSession()
+{
+  mPrevLSIPhaseMessage[0] = '\0';
+  mPrevLSIOrderInstructionMessage[0] = '\0';
+  mPrevLSIRulesInstructionMessage[0] = '\0';
 }

@@ -1280,6 +1280,8 @@ namespace rF2SMMonitor
     internal StringBuilder sbFrozenOrderOnlineInfo = new StringBuilder();
     private FrozenOrderData prevFrozenOrderData;
     private FrozenOrderData prevFrozenOrderDataOnline;
+    private long mTicksLSIPhaseMessageUpdated = 0L;
+    private long mTicksLSIOrderInstructionMessageUpdated = 0L;
 
     public enum FrozenOrderPhase
     {
@@ -1640,7 +1642,7 @@ namespace rF2SMMonitor
         );
 
       var distToSCOnline = -1.0;
-      var fodOnline = this.GetFrozenOrderOnlineData(prevFrozenOrderData, ref playerVeh, ref scoring, ref extended, ref distToSCOnline);
+      var fodOnline = this.GetFrozenOrderOnlineData(prevFrozenOrderDataOnline, ref playerVeh, ref scoring, ref extended, ref distToSCOnline);
       prevFrozenOrderDataOnline = fodOnline;
 
       var driverToFollowOnline = fodOnline.DriverToFollow;
@@ -1871,9 +1873,13 @@ namespace rF2SMMonitor
         && scoring.mScoringInfo.mGamePhase != (int)rF2GamePhase.FullCourseYellow)
         return fod;
 
-      if (prevFrozenOrderData.Phase == FrozenOrderPhase.None)
+      if (prevFrozenOrderData == null || prevFrozenOrderData.Phase == FrozenOrderPhase.None)
       {
-        // TODO: only on change, to avoid stale msg.
+        if (this.mTicksLSIPhaseMessageUpdated == extended.mTicksLSIPhaseMessageUpdated)
+          return prevFrozenOrderData;
+
+        this.mTicksLSIPhaseMessageUpdated = extended.mTicksLSIPhaseMessageUpdated;
+
         var phase = TransitionTracker.GetStringFromBytes(extended.mLSIPhaseMessage);
 
         if (scoring.mScoringInfo.mGamePhase != (int)rF2GamePhase.Formation
@@ -1896,9 +1902,60 @@ namespace rF2SMMonitor
           fod.Phase = prevFrozenOrderData.Phase;
       }
       else
-        fod.Phase = prevFrozenOrderData.Phase;
+        fod = prevFrozenOrderData;
 
       // NOTE: for formation/standing capture order once.   For other phases, rely on LSI text.
+      if ((fod.Phase == FrozenOrderPhase.FastRolling || fod.Phase == FrozenOrderPhase.Rolling || fod.Phase == FrozenOrderPhase.FullCourseYellow)
+        && this.mTicksLSIOrderInstructionMessageUpdated != extended.mTicksLSIOrderInstructionMessageUpdated)
+      {
+        this.mTicksLSIOrderInstructionMessageUpdated = extended.mTicksLSIOrderInstructionMessageUpdated;
+
+        //Please Follow "Alexander Wurz" (In Right Line)
+        var orderInstruction = TransitionTracker.GetStringFromBytes(extended.mLSIOrderInstructionMessage);
+        if (!string.IsNullOrWhiteSpace(orderInstruction))
+        {
+          var followPrefix = @"Please Follow ";
+          var catchUpToPrefix = @"Please Catch Up To ";
+          // TODO: ALLOW TO PASS
+          var action = FrozenOrderAction.None;
+
+          string prefix = null;
+          if (orderInstruction.StartsWith(followPrefix))
+          {
+            prefix = followPrefix;
+            action = FrozenOrderAction.Follow;
+          }
+          else if (orderInstruction.StartsWith(catchUpToPrefix))
+          {
+            prefix = catchUpToPrefix;
+            action = FrozenOrderAction.CatchUp;
+          }
+
+          if (!string.IsNullOrWhiteSpace(prefix))
+          {
+            var closingQuoteIdx = orderInstruction.LastIndexOf("\"");
+            string driverName = null;
+            try
+            {
+              driverName = orderInstruction.Substring(prefix.Length + 1, orderInstruction.Length - closingQuoteIdx - 3);
+            }
+            catch (Exception){}
+
+            var column = FrozenOrderColumn.None;
+            if (orderInstruction.EndsWith("(In Right Line)"))
+              column = FrozenOrderColumn.Right;
+            else if (orderInstruction.EndsWith("(In Left Line)"))
+              column = FrozenOrderColumn.Left;
+
+            fod.Action = action;
+            fod.AssignedColumn = column;
+            fod.DriverToFollow = driverName;
+
+            // TODO: figure out assigned position by finding the driver
+            // NOTE: assigned Grid position only matters for Formation/Standing - don't bother figuring it out, just figure out assigned position (starting position).
+          }
+        }
+      }
 
       /*else if (foStage == rF2TrackRulesStage.FormationInit || foStage == rF2TrackRulesStage.FormationUpdate)
       {
