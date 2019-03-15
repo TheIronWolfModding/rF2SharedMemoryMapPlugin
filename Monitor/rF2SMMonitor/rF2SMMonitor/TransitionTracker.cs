@@ -1873,16 +1873,25 @@ namespace rF2SMMonitor
         && scoring.mScoringInfo.mGamePhase != (int)rF2GamePhase.FullCourseYellow)
         return fod;
 
-      if (prevFrozenOrderData == null || prevFrozenOrderData.Phase == FrozenOrderPhase.None)
+      if (prevFrozenOrderData != null)
       {
-        if (this.mTicksLSIPhaseMessageUpdated == extended.mTicksLSIPhaseMessageUpdated)
-          return prevFrozenOrderData;
+        // Carry old state over.
+        fod.Action = prevFrozenOrderData.Action;
+        fod.AssignedColumn = prevFrozenOrderData.AssignedColumn;
+        fod.AssignedPosition = prevFrozenOrderData.AssignedPosition;
+        fod.AssignedGridPosition = prevFrozenOrderData.AssignedGridPosition;
+        fod.DriverToFollow = prevFrozenOrderData.DriverToFollow;
+        fod.Phase = prevFrozenOrderData.Phase;
+        fod.SafetyCarSpeed = prevFrozenOrderData.SafetyCarSpeed;
+      }
 
-        this.mTicksLSIPhaseMessageUpdated = extended.mTicksLSIPhaseMessageUpdated;
+      if (fod.Phase == FrozenOrderPhase.None)
+      {
+        // Don't bother checking updated ticks, this showld allow catching multiple SC car phases.
 
         var phase = TransitionTracker.GetStringFromBytes(extended.mLSIPhaseMessage);
 
-        if (scoring.mScoringInfo.mGamePhase != (int)rF2GamePhase.Formation
+        if (scoring.mScoringInfo.mGamePhase == (int)rF2GamePhase.Formation
           && string.IsNullOrWhiteSpace(phase))
           fod.Phase = FrozenOrderPhase.FormationStanding;
         else if (!string.IsNullOrWhiteSpace(phase)
@@ -1901,8 +1910,6 @@ namespace rF2SMMonitor
         else if (string.IsNullOrWhiteSpace(phase))
           fod.Phase = prevFrozenOrderData.Phase;
       }
-      else
-        fod = prevFrozenOrderData;
 
       // NOTE: for formation/standing capture order once.   For other phases, rely on LSI text.
       if ((fod.Phase == FrozenOrderPhase.FastRolling || fod.Phase == FrozenOrderPhase.Rolling || fod.Phase == FrozenOrderPhase.FullCourseYellow)
@@ -1930,6 +1937,10 @@ namespace rF2SMMonitor
             prefix = catchUpToPrefix;
             action = FrozenOrderAction.CatchUp;
           }
+          else
+          {
+            Debug.Assert(false, "unhandled action");
+          }
 
           if (!string.IsNullOrWhiteSpace(prefix))
           {
@@ -1946,17 +1957,45 @@ namespace rF2SMMonitor
               column = FrozenOrderColumn.Right;
             else if (orderInstruction.EndsWith("(In Left Line)"))
               column = FrozenOrderColumn.Left;
+            else
+              Debug.Assert(false, "unrecognized postfix");
+
+            // NOTE: assigned Grid position only matters for Formation/Standing - don't bother figuring it out, just figure out assigned position (starting position).
+            var assignedPos = -1;
+            if (!string.IsNullOrWhiteSpace(driverName))
+            {
+              for (int i = 0; i < scoring.mScoringInfo.mNumVehicles; ++i)
+              {
+                var veh = scoring.mVehicles[i];
+                var driver = TransitionTracker.GetStringFromBytes(veh.mDriverName);
+                if (driver == driverName)
+                {
+                  assignedPos = action == FrozenOrderAction.Follow || action == FrozenOrderAction.CatchUp
+                    ? veh.mPlace + 1
+                    : veh.mPlace - 1; // Might not be true
+                }
+              }
+            }
 
             fod.Action = action;
             fod.AssignedColumn = column;
             fod.DriverToFollow = driverName;
-
-            // TODO: figure out assigned position by finding the driver
-            // NOTE: assigned Grid position only matters for Formation/Standing - don't bother figuring it out, just figure out assigned position (starting position).
+            fod.AssignedPosition = assignedPos;
           }
         }
       }
+      else if ((prevFrozenOrderData == null || prevFrozenOrderData.Phase == FrozenOrderPhase.None)
+        && fod.Phase == FrozenOrderPhase.FormationStanding)
+      {
+        // Just capture the starting position.
+        fod.AssignedColumn = vehicle.mTrackEdge > 0.0 ? FrozenOrderColumn.Right : FrozenOrderColumn.Left;
+        fod.AssignedPosition = vehicle.mPlace;
 
+        // We need to know which side of a grid leader is here, gosh what a bullshit.
+        //fod.AssignedGridPosition = vehicle.mPlace / 
+
+
+      }
       /*else if (foStage == rF2TrackRulesStage.FormationInit || foStage == rF2TrackRulesStage.FormationUpdate)
       {
         // Check for signs of a rolling start.
