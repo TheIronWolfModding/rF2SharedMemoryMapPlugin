@@ -175,7 +175,7 @@ bool DirectMemoryReader::ReadOnNewSession(rF2Extended& extended)
     return false;
   }
 
-  OnNewSession();
+  OnNewSession(extended);
 
   extended.mCurrentPitSpeedLimit = *mpCurrPitSpeedLimit;
   DEBUG_FLOAT2(DebugLevel::DevInfo, "Current pit speed limit: ", extended.mCurrentPitSpeedLimit);
@@ -300,9 +300,17 @@ void DirectMemoryReader::ReadSCRPluginConfigValues(char* const configFileContent
   return;
 }
 
-void DirectMemoryReader::OnNewSession()
+void DirectMemoryReader::OnNewSession(rF2Extended& extended)
 {
   mPrevLSIPhaseMessage[0] = '\0';
+  extended.mLSIPhaseMessage[0] = '\0';
+  extended.mTicksLSIPhaseMessageUpdated = ::GetTickCount64();
+
   mPrevLSIOrderInstructionMessage[0] = '\0';
+  extended.mLSIOrderInstructionMessage[0] = '\0';
+  extended.mTicksLSIOrderInstructionMessageUpdated = ::GetTickCount64();
+
   mPrevLSIRulesInstructionMessage[0] = '\0';
+  extended.mLSIRulesInstructionMessage[0] = '\0';
+  extended.mTicksLSIRulesInstructionMessageUpdated = ::GetTickCount64();
 }

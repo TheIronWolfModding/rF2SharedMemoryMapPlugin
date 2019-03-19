@@ -1280,7 +1280,6 @@ namespace rF2SMMonitor
     internal StringBuilder sbFrozenOrderOnlineInfo = new StringBuilder();
     private FrozenOrderData prevFrozenOrderData;
     private FrozenOrderData prevFrozenOrderDataOnline;
-    private long mTicksLSIPhaseMessageUpdated = 0L;
     private long mTicksLSIOrderInstructionMessageUpdated = 0L;
 
     public enum FrozenOrderPhase
@@ -1690,45 +1689,76 @@ namespace rF2SMMonitor
       if (foStage == rF2TrackRulesStage.Normal)
         return fod; // Note, there's slight race between scoring and rules here, FO messages should have validation on them.
 
-      // rF2 currently does not expose what kind of race start is chosen.  For tracks with SC, I use presence of SC to distinguish between
-      // Formation/Standing and Rolling starts.  However, if SC does not exist (Kart tracks), I used the fact that in Rolling start leader is
-      // typically standing past S/F line (mLapDist is positive).  Obviously, there will be perverted tracks where that won't be true, but this
-      // all I could come up with, and real problem is in game being shit in this area.
-      var leaderLapDistAtFOPhaseStart = 0.0;
-      var leaderSectorAtFOPhaseStart = -1;
-      if (foStage != rF2TrackRulesStage.CautionInit && foStage != rF2TrackRulesStage.CautionUpdate  // If this is not FCY.
-        && (prevFrozenOrderData == null || prevFrozenOrderData.Phase == FrozenOrderPhase.None)  // And, this is first FO calculation.
-        && rules.mTrackRules.mSafetyCarExists == 0) // And, track has no SC.
+      if (extended.mDirectMemoryAccessEnabled != 0)
       {
-        // Find where leader is relatively to F/S line.
-        for (int i = 0; i < scoring.mScoringInfo.mNumVehicles; ++i)
+        if (prevFrozenOrderData == null || prevFrozenOrderData.Phase == FrozenOrderPhase.None)
         {
-          var veh = scoring.mVehicles[i];
-          if (veh.mPlace == 1)
+          // Don't bother checking updated ticks, this showld allow catching multiple SC car phases.
+          var phase = TransitionTracker.GetStringFromBytes(extended.mLSIPhaseMessage);
+
+          if (scoring.mScoringInfo.mGamePhase == (int)rF2GamePhase.Formation
+            && string.IsNullOrWhiteSpace(phase))
+            fod.Phase = FrozenOrderPhase.FormationStanding;
+          else if (!string.IsNullOrWhiteSpace(phase)
+            && phase == "Formation Lap")
           {
-            leaderLapDistAtFOPhaseStart = veh.mLapDist;
-            leaderSectorAtFOPhaseStart = this.GetSector(veh.mSector);
-            break;
+            var speed = Math.Sqrt((vehicle.mLocalVel.x * vehicle.mLocalVel.x)
+              + (vehicle.mLocalVel.y * vehicle.mLocalVel.y)
+              + (vehicle.mLocalVel.z * vehicle.mLocalVel.z));
+
+            fod.Phase = this.GetSector(vehicle.mSector) == 3 && speed > 10.0 ? FrozenOrderPhase.FastRolling : FrozenOrderPhase.Rolling;
+          }
+          else if (!string.IsNullOrWhiteSpace(phase)  // TODO: TEST
+            && phase == "Full-Course Yellow")
+            fod.Phase = FrozenOrderPhase.FullCourseYellow;
+          else if (string.IsNullOrWhiteSpace(phase))
+            fod.Phase = prevFrozenOrderData.Phase;
+        }
+        else
+          fod.Phase = prevFrozenOrderData.Phase;
+      }
+      else
+      {
+        // rF2 currently does not expose what kind of race start is chosen.  For tracks with SC, I use presence of SC to distinguish between
+        // Formation/Standing and Rolling starts.  However, if SC does not exist (Kart tracks), I used the fact that in Rolling start leader is
+        // typically standing past S/F line (mLapDist is positive).  Obviously, there will be perverted tracks where that won't be true, but this
+        // all I could come up with, and real problem is in game being shit in this area.
+        var leaderLapDistAtFOPhaseStart = 0.0;
+        var leaderSectorAtFOPhaseStart = -1;
+        if (foStage != rF2TrackRulesStage.CautionInit && foStage != rF2TrackRulesStage.CautionUpdate  // If this is not FCY.
+          && (prevFrozenOrderData == null || prevFrozenOrderData.Phase == FrozenOrderPhase.None)  // And, this is first FO calculation.
+          && rules.mTrackRules.mSafetyCarExists == 0) // And, track has no SC.
+        {
+          // Find where leader is relatively to F/S line.
+          for (int i = 0; i < scoring.mScoringInfo.mNumVehicles; ++i)
+          {
+            var veh = scoring.mVehicles[i];
+            if (veh.mPlace == 1)
+            {
+              leaderLapDistAtFOPhaseStart = veh.mLapDist;
+              leaderSectorAtFOPhaseStart = this.GetSector(veh.mSector);
+              break;
+            }
           }
         }
-      }
 
-      // Figure out the phase:
-      if (foStage == rF2TrackRulesStage.CautionInit || foStage == rF2TrackRulesStage.CautionUpdate)
-        fod.Phase = FrozenOrderPhase.FullCourseYellow;
-      else if (foStage == rF2TrackRulesStage.FormationInit || foStage == rF2TrackRulesStage.FormationUpdate)
-      {
-        // Check for signs of a rolling start.
-        if ((prevFrozenOrderData != null && prevFrozenOrderData.Phase == FrozenOrderPhase.Rolling)  // If FO started as Rolling, keep it as Rolling even after SC leaves the track
-          || (rules.mTrackRules.mSafetyCarExists == 1 && rules.mTrackRules.mSafetyCarActive == 1)  // Of, if SC exists and is active
-          || (rules.mTrackRules.mSafetyCarExists == 0 && leaderLapDistAtFOPhaseStart > 0.0 && leaderSectorAtFOPhaseStart == 1)) // Or, if SC is not present on a track, and leader started ahead of S/F line and is insector 1.  This will be problem on some tracks.
-          fod.Phase = FrozenOrderPhase.Rolling;
-        else
+        // Figure out the phase:
+        if (foStage == rF2TrackRulesStage.CautionInit || foStage == rF2TrackRulesStage.CautionUpdate)
+          fod.Phase = FrozenOrderPhase.FullCourseYellow;
+        else if (foStage == rF2TrackRulesStage.FormationInit || foStage == rF2TrackRulesStage.FormationUpdate)
         {
-          // Formation / Standing and Fast Rolling have no Safety Car.
-          fod.Phase = rules.mTrackRules.mStage == rF2TrackRulesStage.FormationInit && this.GetSector(vehicle.mSector) == 3
-            ? FrozenOrderPhase.FastRolling  // Fast rolling never goes into FormationUpdate and usually starts in S3.
-            : FrozenOrderPhase.FormationStanding;
+          // Check for signs of a rolling start.
+          if ((prevFrozenOrderData != null && prevFrozenOrderData.Phase == FrozenOrderPhase.Rolling)  // If FO started as Rolling, keep it as Rolling even after SC leaves the track
+            || (rules.mTrackRules.mSafetyCarExists == 1 && rules.mTrackRules.mSafetyCarActive == 1)  // Of, if SC exists and is active
+            || (rules.mTrackRules.mSafetyCarExists == 0 && leaderLapDistAtFOPhaseStart > 0.0 && leaderSectorAtFOPhaseStart == 1)) // Or, if SC is not present on a track, and leader started ahead of S/F line and is insector 1.  This will be problem on some tracks.
+            fod.Phase = FrozenOrderPhase.Rolling;
+          else
+          {
+            // Formation / Standing and Fast Rolling have no Safety Car.
+            fod.Phase = rules.mTrackRules.mStage == rF2TrackRulesStage.FormationInit && this.GetSector(vehicle.mSector) == 3
+              ? FrozenOrderPhase.FastRolling  // Fast rolling never goes into FormationUpdate and usually starts in S3.
+              : FrozenOrderPhase.FormationStanding;
+          }
         }
       }
 
@@ -1888,24 +1918,21 @@ namespace rF2SMMonitor
       if (fod.Phase == FrozenOrderPhase.None)
       {
         // Don't bother checking updated ticks, this showld allow catching multiple SC car phases.
-
         var phase = TransitionTracker.GetStringFromBytes(extended.mLSIPhaseMessage);
 
-        // TODO: port into rules based FO (if DMA is ON) and remove "force rolling" flag.
         if (scoring.mScoringInfo.mGamePhase == (int)rF2GamePhase.Formation
           && string.IsNullOrWhiteSpace(phase))
           fod.Phase = FrozenOrderPhase.FormationStanding;
         else if (!string.IsNullOrWhiteSpace(phase)
           && phase == "Formation Lap")
         {
-          // TODO: Pass speed in in CC.
           var speed = Math.Sqrt((vehicle.mLocalVel.x * vehicle.mLocalVel.x)
             + (vehicle.mLocalVel.y * vehicle.mLocalVel.y)
             + (vehicle.mLocalVel.z * vehicle.mLocalVel.z));
 
           fod.Phase = this.GetSector(vehicle.mSector) == 3 && speed > 10.0 ? FrozenOrderPhase.FastRolling : FrozenOrderPhase.Rolling;
         }
-        else if (!string.IsNullOrWhiteSpace(phase)  // TODO: TEST
+        else if (!string.IsNullOrWhiteSpace(phase)
           && phase == "Full-Course Yellow")
           fod.Phase = FrozenOrderPhase.FullCourseYellow;
         else if (string.IsNullOrWhiteSpace(phase))
@@ -1927,6 +1954,7 @@ namespace rF2SMMonitor
           var action = FrozenOrderAction.None;
 
           string prefix = null;
+          // TODO: Please Allow "Rubens Barrichello" To Pass
           if (orderInstruction.StartsWith(followPrefix))
           {
             prefix = followPrefix;
@@ -1991,9 +2019,19 @@ namespace rF2SMMonitor
                   var driver = TransitionTracker.GetStringFromBytes(veh.mDriverName);
                   if (driver == driverName)
                   {
-                    assignedPos = action == FrozenOrderAction.Follow || action == FrozenOrderAction.CatchUp
-                      ? veh.mPlace + 1
-                      : veh.mPlace - 1; // Might not be true
+                    if (column == FrozenOrderColumn.None)
+                    {
+                      assignedPos = action == FrozenOrderAction.Follow || action == FrozenOrderAction.CatchUp
+                        ? veh.mPlace + 1
+                        : veh.mPlace - 1; // Might not be true
+                    }
+                    else
+                    {
+                      assignedPos = action == FrozenOrderAction.Follow || action == FrozenOrderAction.CatchUp
+                        ? veh.mPlace + 2
+                        : veh.mPlace - 2; // Might not be true
+                    }
+                    break;
                   }
                 }
               }

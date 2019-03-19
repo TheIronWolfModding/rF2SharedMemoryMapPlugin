@@ -21,7 +21,7 @@ public:
 private:
   void ReadSCRPluginConfig();
   void ReadSCRPluginConfigValues(char* const pluginConfig);
-  void OnNewSession();
+  void OnNewSession(rF2Extended& extended);
 
 private:
   char* mpStatusMessage = nullptr;
