@@ -1643,25 +1643,29 @@ namespace rF2SMMonitor
       var distToSCOnline = -1.0;
       var fodOnline = this.GetFrozenOrderOnlineData(prevFrozenOrderDataOnline, ref playerVeh, ref scoring, ref extended, ref distToSCOnline);
       prevFrozenOrderDataOnline = fodOnline;
+      if (fodOnline != null)
+      {
+        var driverToFollowOnline = fodOnline.DriverToFollow;
+        if (((fodOnline.AssignedColumn == FrozenOrderColumn.None && fodOnline.AssignedPosition == 1)  // Single file order.
+            || (fodOnline.AssignedColumn != FrozenOrderColumn.None && fodOnline.AssignedPosition <= 2))  // Double file (grid) order.
+          && fodOnline.SafetyCarSpeed > 0.0)
+          driverToFollowOnline = "Safety Car";
 
-      var driverToFollowOnline = fodOnline.DriverToFollow;
-      if (((fodOnline.AssignedColumn == FrozenOrderColumn.None && fodOnline.AssignedPosition == 1)  // Single file order.
-          || (fodOnline.AssignedColumn != FrozenOrderColumn.None && fodOnline.AssignedPosition <= 2))  // Double file (grid) order.
-        && fodOnline.SafetyCarSpeed > 0.0)
-        driverToFollowOnline = "Safety Car";
-
-      this.sbFrozenOrderOnlineInfo = new StringBuilder();
-      this.sbFrozenOrderOnlineInfo.Append(
-        $"Frozen Order Phase: {fodOnline.Phase}\n"
-        + $"Frozen Order Action: {fodOnline.Action}\n"
-        + $"Assigned Position: {fodOnline.AssignedPosition}\n"
-        + $"Assigned Column: {fodOnline.AssignedColumn}\n"
-        + $"Assigned Grid Position: {fodOnline.AssignedGridPosition}\n"
-        + $"Driver To Follow: {driverToFollowOnline}\n"
-        + $"Safety Car Speed: {(fodOnline.SafetyCarSpeed == -1.0f ? "Not Present" : string.Format("{0:N3}km/h", fodOnline.SafetyCarSpeed * 3.6f))}\n"
-        + $"SCR DoubleFileType: {extended.mSCRPluginDoubleFileType}\n"
-        + $"Distance To Safety Car: {distToSCOnline:N3}\n"
-        );
+        this.sbFrozenOrderOnlineInfo = new StringBuilder();
+        this.sbFrozenOrderOnlineInfo.Append(
+          $"Frozen Order Phase: {fodOnline.Phase}\n"
+          + $"Frozen Order Action: {fodOnline.Action}\n"
+          + $"Assigned Position: {fodOnline.AssignedPosition}\n"
+          + $"Assigned Column: {fodOnline.AssignedColumn}\n"
+          + $"Assigned Grid Position: {fodOnline.AssignedGridPosition}\n"
+          + $"Driver To Follow: {driverToFollowOnline}\n"
+          + $"Safety Car Speed: {(fodOnline.SafetyCarSpeed == -1.0f ? "Not Present" : string.Format("{0:N3}km/h", fodOnline.SafetyCarSpeed * 3.6f))}\n"
+          + $"SCR DoubleFileType: {extended.mSCRPluginDoubleFileType}\n"
+          + $"Distance To Safety Car: {distToSCOnline:N3}\n"
+          );
+      }
+      else
+        this.sbFrozenOrderOnlineInfo.Clear();
 
       if (g != null)
       {
