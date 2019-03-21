@@ -897,6 +897,9 @@ struct rF2Extended : public rF2MappedBufferHeader
   ULONGLONG mTicksLSIPhaseMessageUpdated;           // Ticks when last LSI phase message was updated.
   char mLSIPhaseMessage[rF2MappedBufferHeader::MAX_RULES_INSTRUCTION_MSG_LEN];
 
+  ULONGLONG mTicksLSIPitStateMessageUpdated;        // Ticks when last LSI pit state message was updated.
+  char mLSIPitStateMessage[rF2MappedBufferHeader::MAX_RULES_INSTRUCTION_MSG_LEN];
+
   ULONGLONG mTicksLSIOrderInstructionMessageUpdated;     // Ticks when last LSI order instruction message was updated.
   char mLSIOrderInstructionMessage[rF2MappedBufferHeader::MAX_RULES_INSTRUCTION_MSG_LEN];
 

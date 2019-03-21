@@ -1712,8 +1712,8 @@ namespace rF2SMMonitor
 
             fod.Phase = this.GetSector(vehicle.mSector) == 3 && speed > 10.0 ? FrozenOrderPhase.FastRolling : FrozenOrderPhase.Rolling;
           }
-          else if (!string.IsNullOrWhiteSpace(phase)  // TODO: TEST
-            && phase == "Full-Course Yellow")
+          else if (!string.IsNullOrWhiteSpace(phase)
+            && (phase == "Full-Course Yellow" || phase == "One Lap To Go"))
             fod.Phase = FrozenOrderPhase.FullCourseYellow;
           else if (string.IsNullOrWhiteSpace(phase))
             fod.Phase = prevFrozenOrderData.Phase;
@@ -1766,7 +1766,8 @@ namespace rF2SMMonitor
         }
       }
 
-      Debug.Assert(fod.Phase != FrozenOrderPhase.None);
+      if (fod.Phase == FrozenOrderPhase.None)
+        return fod;  // Wait a bit, there's a delay for string based phases.
 
       if (vehicleRules.mPositionAssignment != -1)
       {
@@ -1937,11 +1938,14 @@ namespace rF2SMMonitor
           fod.Phase = this.GetSector(vehicle.mSector) == 3 && speed > 10.0 ? FrozenOrderPhase.FastRolling : FrozenOrderPhase.Rolling;
         }
         else if (!string.IsNullOrWhiteSpace(phase)
-          && phase == "Full-Course Yellow")
+          && (phase == "Full-Course Yellow" || phase == "One Lap To Go"))
           fod.Phase = FrozenOrderPhase.FullCourseYellow;
         else if (string.IsNullOrWhiteSpace(phase))
           fod.Phase = prevFrozenOrderData.Phase;
       }
+
+      if (fod.Phase == FrozenOrderPhase.None)
+        return fod;  // Wait a bit, there's a delay for string based phases.
 
       // NOTE: for formation/standing capture order once.   For other phases, rely on LSI text.
       if ((fod.Phase == FrozenOrderPhase.FastRolling || fod.Phase == FrozenOrderPhase.Rolling || fod.Phase == FrozenOrderPhase.FullCourseYellow)
@@ -1954,11 +1958,11 @@ namespace rF2SMMonitor
         {
           var followPrefix = @"Please Follow ";
           var catchUpToPrefix = @"Please Catch Up To ";
-          // TODO: ALLOW TO PASS
+          var allowToPassPrefix = @"Please Allow ";
+          
           var action = FrozenOrderAction.None;
 
           string prefix = null;
-          // TODO: Please Allow "Rubens Barrichello" To Pass
           if (orderInstruction.StartsWith(followPrefix))
           {
             prefix = followPrefix;
@@ -1968,6 +1972,11 @@ namespace rF2SMMonitor
           {
             prefix = catchUpToPrefix;
             action = FrozenOrderAction.CatchUp;
+          }
+          else if (orderInstruction.StartsWith(allowToPassPrefix))
+          {
+            prefix = allowToPassPrefix;
+            action = FrozenOrderAction.AllowToPass;
           }
           else
           {
@@ -2008,7 +2017,7 @@ namespace rF2SMMonitor
               column = FrozenOrderColumn.Right;
             else if (orderInstruction.EndsWith("(In Left Line)"))
               column = FrozenOrderColumn.Left;
-            else if (!orderInstruction.EndsWith("\""))// TODO: print msg.
+            else if (!orderInstruction.EndsWith("\"") && action != FrozenOrderAction.AllowToPass)
               Debug.Assert(false, "unrecognized postfix");
 
             // Note: assigned Grid position only matters for Formation/Standing - don't bother figuring it out, just figure out assigned position (starting position).

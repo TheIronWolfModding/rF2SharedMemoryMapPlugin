@@ -888,6 +888,10 @@ namespace rF2SMMonitor
       [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = rFactor2Constants.MAX_RULES_INSTRUCTION_MSG_LEN)]
       public byte[] mLSIPhaseMessage;
 
+      public Int64 mTicksLSIPitStateMessageUpdated;               // Ticks when last LSI pit state message was updated.
+      [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = rFactor2Constants.MAX_RULES_INSTRUCTION_MSG_LEN)]
+      public byte[] mLSIPitStateMessage;
+
       public Int64 mTicksLSIOrderInstructionMessageUpdated;     // Ticks when last LSI order instruction message was updated.
       [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = rFactor2Constants.MAX_RULES_INSTRUCTION_MSG_LEN)]
       public byte[] mLSIOrderInstructionMessage;

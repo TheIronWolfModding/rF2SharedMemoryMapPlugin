@@ -43,7 +43,7 @@ bool DirectMemoryReader::Initialize()
 
     mpLSIMessages = reinterpret_cast<char*>(Utils::FindPatternForPointerInMemory(module,
       reinterpret_cast<unsigned char*>("\x42\x88\x8C\x38\x0F\x02\x00\x00\x84\xC9\x75\xEB\x48\x8D\x15\x70\x3A\x05\x01\x48\x8D\x0D\xB1\x20\x05\x01\xE8"),
-      "xxxxxxxxxxx?xxx????xxx????x", 22u));
+      "xxxxxxxxxxxxxxx????xxx????x", 22u));
 
     if (mpLSIMessages == nullptr) {
       DEBUG_MSG(DebugLevel::Errors, "ERROR: Failed to resolve LSI message pointer.");
@@ -221,6 +221,17 @@ bool DirectMemoryReader::ReadOnLSIVisible(rF2Extended& extended)
       }
     }
 
+    auto const pPitState = mpLSIMessages + 0xD0uLL;
+    if (pPitState[0] != '\0') {
+      strcpy_s(extended.mLSIPitStateMessage, pPitState);
+      if (strcmp(mPrevLSIPitStateMessage, extended.mLSIPitStateMessage) != 0) {
+        DEBUG_MSG2(DebugLevel::DevInfo, "LSI Pit State message updated: ", extended.mLSIPitStateMessage);
+
+        strcpy_s(mPrevLSIPitStateMessage, extended.mLSIPitStateMessage);
+        extended.mTicksLSIPitStateMessageUpdated = ::GetTickCount64();
+      }
+    }
+
     auto const pOrderInstruction = mpLSIMessages + 0x150uLL;
     if (pOrderInstruction[0] != '\0') {
       strcpy_s(extended.mLSIOrderInstructionMessage, pOrderInstruction);
@@ -331,6 +342,10 @@ void DirectMemoryReader::OnNewSession(rF2Extended& extended)
   mPrevLSIPhaseMessage[0] = '\0';
   extended.mLSIPhaseMessage[0] = '\0';
   extended.mTicksLSIPhaseMessageUpdated = ::GetTickCount64();
+
+  mPrevLSIPitStateMessage[0] = '\0';
+  extended.mLSIPitStateMessage[0] = '\0';
+  extended.mTicksLSIPitStateMessageUpdated = ::GetTickCount64();
 
   mPrevLSIOrderInstructionMessage[0] = '\0';
   extended.mLSIOrderInstructionMessage[0] = '\0';
