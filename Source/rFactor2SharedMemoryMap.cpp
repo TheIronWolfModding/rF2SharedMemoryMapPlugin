@@ -424,6 +424,8 @@ void SharedMemoryPlugin::UpdateInRealtimeFC(bool inRealTime)
   DEBUG_MSG(DebugLevel::Synchronization, inRealTime ? "Entering Realtime" : "Exiting Realtime");
 
   mExtStateTracker.mExtended.mInRealtimeFC = inRealTime;
+  if (!inRealTime)
+    mExtStateTracker.ResetDamageState();
 
   mExtended.BeginUpdate();
   memcpy(mExtended.mpBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));

@@ -1280,7 +1280,8 @@ namespace rF2SMMonitor
     internal StringBuilder sbFrozenOrderOnlineInfo = new StringBuilder();
     private FrozenOrderData prevFrozenOrderData;
     private FrozenOrderData prevFrozenOrderDataOnline;
-    private long mTicksLSIOrderInstructionMessageUpdated = 0L;
+    private long ticksLSIOrderInstructionMessageUpdated = 0L;
+    private int numFODetectPhaseAttempts = 0;
 
     public enum FrozenOrderPhase
     {
@@ -1687,7 +1688,10 @@ namespace rF2SMMonitor
       // Only applies to formation laps and FCY.
       if (scoring.mScoringInfo.mGamePhase != (int)rF2GamePhase.Formation
         && scoring.mScoringInfo.mGamePhase != (int)rF2GamePhase.FullCourseYellow)
+      {
+        this.numFODetectPhaseAttempts = 0;
         return fod;
+      }
 
       var foStage = rules.mTrackRules.mStage;
       if (foStage == rF2TrackRulesStage.Normal)
@@ -1702,7 +1706,12 @@ namespace rF2SMMonitor
 
           if (scoring.mScoringInfo.mGamePhase == (int)rF2GamePhase.Formation
             && string.IsNullOrWhiteSpace(phase))
-            fod.Phase = FrozenOrderPhase.FormationStanding;
+          {
+            if (this.numFODetectPhaseAttempts > 0)
+              fod.Phase = FrozenOrderPhase.FormationStanding;
+
+            ++this.numFODetectPhaseAttempts;
+          }
           else if (!string.IsNullOrWhiteSpace(phase)
             && phase == "Formation Lap")
           {
@@ -1906,7 +1915,10 @@ namespace rF2SMMonitor
       // Only applies to formation laps and FCY.
       if (scoring.mScoringInfo.mGamePhase != (int)rF2GamePhase.Formation
         && scoring.mScoringInfo.mGamePhase != (int)rF2GamePhase.FullCourseYellow)
+      {
+        this.numFODetectPhaseAttempts = 0;
         return fod;
+      }
 
       if (prevFrozenOrderData != null)
       {
@@ -1927,7 +1939,12 @@ namespace rF2SMMonitor
 
         if (scoring.mScoringInfo.mGamePhase == (int)rF2GamePhase.Formation
           && string.IsNullOrWhiteSpace(phase))
-          fod.Phase = FrozenOrderPhase.FormationStanding;
+        {
+          if (this.numFODetectPhaseAttempts > 0)
+            fod.Phase = FrozenOrderPhase.FormationStanding;
+
+          ++this.numFODetectPhaseAttempts;
+        }
         else if (!string.IsNullOrWhiteSpace(phase)
           && phase == "Formation Lap")
         {
@@ -1949,9 +1966,9 @@ namespace rF2SMMonitor
 
       // NOTE: for formation/standing capture order once.   For other phases, rely on LSI text.
       if ((fod.Phase == FrozenOrderPhase.FastRolling || fod.Phase == FrozenOrderPhase.Rolling || fod.Phase == FrozenOrderPhase.FullCourseYellow)
-        && this.mTicksLSIOrderInstructionMessageUpdated != extended.mTicksLSIOrderInstructionMessageUpdated)
+        && this.ticksLSIOrderInstructionMessageUpdated != extended.mTicksLSIOrderInstructionMessageUpdated)
       {
-        this.mTicksLSIOrderInstructionMessageUpdated = extended.mTicksLSIOrderInstructionMessageUpdated;
+        this.ticksLSIOrderInstructionMessageUpdated = extended.mTicksLSIOrderInstructionMessageUpdated;
 
         var orderInstruction = TransitionTracker.GetStringFromBytes(extended.mLSIOrderInstructionMessage);
         if (!string.IsNullOrWhiteSpace(orderInstruction))
