@@ -17,11 +17,12 @@ public:
 
   bool IsSCRPluginEnabled() const { return mSCRPluginEnabled; }
   long GetSCRPluginDoubleFileType() const { return mSCRPluginDoubleFileType; }
+  void ClearLSIValues(rF2Extended& extended);
 
 private:
   void ReadSCRPluginConfig();
   void ReadSCRPluginConfigValues(char* const pluginConfig);
-  void OnNewSession(rF2Extended& extended);
+  
 
 private:
   char* mpStatusMessage = nullptr;

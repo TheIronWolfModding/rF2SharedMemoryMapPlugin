@@ -28,7 +28,7 @@ Website: thecrewchief.org
 // Each component can be in [0:99] range.
 // Note: each time major version changes, that means layout has changed, and clients might need an update.
 #define PLUGIN_VERSION_MAJOR "3.5"
-#define PLUGIN_VERSION_MINOR "0.7"
+#define PLUGIN_VERSION_MINOR "0.9"
 
 #ifdef VERSION_AVX2
 #ifdef VERSION_MT
@@ -298,6 +298,8 @@ private:
   // One way to handle this is to take first mID in a telemetry frame, and use it as a starting offset.
   // This might be fine, because game appears to be sending mIDs in an ascending order.
   bool mParticipantTelemetryUpdated[rF2MappedBufferHeader::MAX_MAPPED_IDS];
+
+  bool mLastUpdateLSIWasVisible = false;
 
   MappedBuffer<rF2Telemetry> mTelemetry;
   MappedBuffer<rF2Scoring> mScoring;

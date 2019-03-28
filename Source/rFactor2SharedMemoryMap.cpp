@@ -338,6 +338,8 @@ void SharedMemoryPlugin::ClearTimingsAndCounters()
   mCurrTelemetryVehicleIndex = 0;
 
   memset(mParticipantTelemetryUpdated, 0, sizeof(mParticipantTelemetryUpdated));
+
+  mLastUpdateLSIWasVisible = false;
 }
 
 
@@ -754,14 +756,20 @@ void SharedMemoryPlugin::UpdateScoring(ScoringInfoV01 const& info)
   mScoring.EndUpdate();
 
   if (SharedMemoryPlugin::msDirectMemoryAccessRequested) {
+    auto const LSIVisible = info.mYellowFlagState != 0 || info.mGamePhase == static_cast<unsigned char>(rF2GamePhase::Formation);
     if (!mDMR.Read(mExtStateTracker.mExtended)
-      || ((info.mYellowFlagState != 0 || info.mGamePhase == static_cast<unsigned char>(rF2GamePhase::Formation))  // Read on FCY or Formation lap.
-        && !mDMR.ReadOnLSIVisible(mExtStateTracker.mExtended))) { 
+      || (LSIVisible && !mDMR.ReadOnLSIVisible(mExtStateTracker.mExtended))) {  // Read on FCY or Formation lap.
       DEBUG_MSG(DebugLevel::Errors, "ERROR: DMA read failed, disabling.");
 
       // Disable DMA on failure.
       SharedMemoryPlugin::msDirectMemoryAccessRequested = false;
       mExtStateTracker.mExtended.mDirectMemoryAccessEnabled = false;
+    }
+    else {  // Read succeeded.
+      if (mLastUpdateLSIWasVisible && !LSIVisible)
+        mDMR.ClearLSIValues(mExtStateTracker.mExtended);  // Clear LSI Values on LSI going away.
+
+      mLastUpdateLSIWasVisible = LSIVisible;
     }
   }
 

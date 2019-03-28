@@ -189,7 +189,7 @@ bool DirectMemoryReader::ReadOnNewSession(rF2Extended& extended)
       return false;
     }
 
-    OnNewSession(extended);
+    ClearLSIValues(extended);
 
     extended.mCurrentPitSpeedLimit = *mpCurrPitSpeedLimit;
     DEBUG_FLOAT2(DebugLevel::DevInfo, "Current pit speed limit: ", extended.mCurrentPitSpeedLimit);
@@ -337,8 +337,10 @@ void DirectMemoryReader::ReadSCRPluginConfigValues(char* const configFileContent
   return;
 }
 
-void DirectMemoryReader::OnNewSession(rF2Extended& extended)
+void DirectMemoryReader::ClearLSIValues(rF2Extended& extended)
 {
+  DEBUG_MSG(DebugLevel::DevInfo, "Clearing LSI values.");
+
   mPrevLSIPhaseMessage[0] = '\0';
   extended.mLSIPhaseMessage[0] = '\0';
   extended.mTicksLSIPhaseMessageUpdated = ::GetTickCount64();
