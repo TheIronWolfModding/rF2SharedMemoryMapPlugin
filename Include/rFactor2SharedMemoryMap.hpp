@@ -299,8 +299,6 @@ private:
   // This might be fine, because game appears to be sending mIDs in an ascending order.
   bool mParticipantTelemetryUpdated[rF2MappedBufferHeader::MAX_MAPPED_IDS];
 
-  bool mLastUpdateLSIWasVisible = false;
-
   MappedBuffer<rF2Telemetry> mTelemetry;
   MappedBuffer<rF2Scoring> mScoring;
   MappedBuffer<rF2Rules> mRules;
@@ -317,6 +315,7 @@ private:
   static bool msDirectMemoryAccessRequested;
 
   DirectMemoryReader mDMR;
+  bool mLastUpdateLSIWasVisible = false;
 };
 
 

@@ -61,6 +61,16 @@ If you would like to support this project, you can donate [here.](http://thecrew
 
 # Release history
 
+**03/29/2019 - v3.5.0.9**
+
+  Plugin:
+  * Expose LSI messages in DMA mode.
+  * Clear out accumulated damage on return to Monitor.
+  * Harden DMA mode against crashes.
+
+  Monitor:
+  * Implement Frozen Order detection based on LSI messages.  That's the only way to handle FO in the online sessions.
+
 **02/08/2019 - v3.4.0.6**
 
   Plugin/Monitor:
