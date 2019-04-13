@@ -27,8 +27,8 @@ Website: thecrewchief.org
 
 // Each component can be in [0:99] range.
 // Note: each time major version changes, that means layout has changed, and clients might need an update.
-#define PLUGIN_VERSION_MAJOR "3.5"
-#define PLUGIN_VERSION_MINOR "0.9"
+#define PLUGIN_VERSION_MAJOR "3.6"
+#define PLUGIN_VERSION_MINOR "0.0"
 
 #ifdef VERSION_AVX2
 #ifdef VERSION_MT
@@ -119,6 +119,8 @@ private:
       // Maybe there's a race between simulation and multimedia threads, but I can't debug due to game crashing on attach.
       // Traces suggest no race however.
       memset(&mExtended, 0, sizeof(rF2Extended));
+
+      static_assert(sizeof(mExtended.mVersion) >= sizeof(SHARED_MEMORY_VERSION), "Invalid plugin version string (too long).");
 
       strcpy_s(mExtended.mVersion, SHARED_MEMORY_VERSION);
       mExtended.is64bit = PLUGIN_64BIT;

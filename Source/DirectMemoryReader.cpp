@@ -99,12 +99,12 @@ bool DirectMemoryReader::Read(rF2Extended& extended)
       return false;
     }
 
-    strcpy_s(extended.mStatusMessage, mpStatusMessage);
-    if (strcmp(mPrevStatusMessage, extended.mStatusMessage) != 0) {
-      DEBUG_MSG2(DebugLevel::DevInfo, "Status message updated: ", extended.mStatusMessage);
-
+    if (strncmp(mPrevStatusMessage, mpStatusMessage, rF2MappedBufferHeader::MAX_STATUS_MSG_LEN) != 0) {
+      strcpy_s(extended.mStatusMessage, mpStatusMessage);
       strcpy_s(mPrevStatusMessage, extended.mStatusMessage);
       extended.mTicksStatusMessageUpdated = ::GetTickCount64();
+
+      DEBUG_MSG2(DebugLevel::DevInfo, "Status message updated: ", extended.mStatusMessage);
     }
 
     auto const pBegin = *mppMessageCenterMessages;
@@ -151,19 +151,17 @@ bool DirectMemoryReader::Read(rF2Extended& extended)
           }
         }
 
-        if (!seenSplit)
-          strcpy_s(extended.mLastHistoryMessage, pCurr);
-        else
-          strcpy_s(extended.mLastHistoryMessage, msgBuff);
+        auto const pMsg = !seenSplit ? pCurr : msgBuff;
 
-        if (strcmp(mPrevLastHistoryMessage, extended.mLastHistoryMessage) != 0) {
+        if (strncmp(mPrevLastHistoryMessage, pMsg, rF2MappedBufferHeader::MAX_STATUS_MSG_LEN) != 0) {
+          strcpy_s(extended.mLastHistoryMessage, pMsg);
+          strcpy_s(mPrevLastHistoryMessage, extended.mLastHistoryMessage);
+          extended.mTicksLastHistoryMessageUpdated = ::GetTickCount64();
+
           if (!seenSplit)
             DEBUG_MSG2(DebugLevel::DevInfo, "Last history message updated: ", extended.mLastHistoryMessage);
           else
             DEBUG_MSG2(DebugLevel::DevInfo, "Last history message updated (concatenated): ", extended.mLastHistoryMessage);
-
-          strcpy_s(mPrevLastHistoryMessage, extended.mLastHistoryMessage);
-          extended.mTicksLastHistoryMessageUpdated = ::GetTickCount64();
         }
 
         break;
@@ -211,48 +209,44 @@ bool DirectMemoryReader::ReadOnLSIVisible(rF2Extended& extended)
     }
 
     auto const pPhase = mpLSIMessages + 0x50uLL;
-    if (pPhase[0] != '\0') {
+    if (pPhase[0] != '\0'
+      && strncmp(mPrevLSIPhaseMessage, pPhase, rF2MappedBufferHeader::MAX_RULES_INSTRUCTION_MSG_LEN) != 0) {
       strcpy_s(extended.mLSIPhaseMessage, pPhase);
-      if (strcmp(mPrevLSIPhaseMessage, extended.mLSIPhaseMessage) != 0) {
-        DEBUG_MSG2(DebugLevel::DevInfo, "LSI Phase message updated: ", extended.mLSIPhaseMessage);
+      strcpy_s(mPrevLSIPhaseMessage, extended.mLSIPhaseMessage);
+      extended.mTicksLSIPhaseMessageUpdated = ::GetTickCount64();
 
-        strcpy_s(mPrevLSIPhaseMessage, extended.mLSIPhaseMessage);
-        extended.mTicksLSIPhaseMessageUpdated = ::GetTickCount64();
-      }
+      DEBUG_MSG2(DebugLevel::DevInfo, "LSI Phase message updated: ", extended.mLSIPhaseMessage);
     }
 
     auto const pPitState = mpLSIMessages + 0xD0uLL;
-    if (pPitState[0] != '\0') {
+    if (pPitState[0] != '\0'
+      && strncmp(mPrevLSIPitStateMessage, pPitState, rF2MappedBufferHeader::MAX_RULES_INSTRUCTION_MSG_LEN) != 0) {
       strcpy_s(extended.mLSIPitStateMessage, pPitState);
-      if (strcmp(mPrevLSIPitStateMessage, extended.mLSIPitStateMessage) != 0) {
-        DEBUG_MSG2(DebugLevel::DevInfo, "LSI Pit State message updated: ", extended.mLSIPitStateMessage);
+      strcpy_s(mPrevLSIPitStateMessage, extended.mLSIPitStateMessage);
+      extended.mTicksLSIPitStateMessageUpdated = ::GetTickCount64();
 
-        strcpy_s(mPrevLSIPitStateMessage, extended.mLSIPitStateMessage);
-        extended.mTicksLSIPitStateMessageUpdated = ::GetTickCount64();
-      }
+      DEBUG_MSG2(DebugLevel::DevInfo, "LSI Pit State message updated: ", extended.mLSIPitStateMessage);
     }
 
     auto const pOrderInstruction = mpLSIMessages + 0x150uLL;
-    if (pOrderInstruction[0] != '\0') {
+    if (pOrderInstruction[0] != '\0'
+     && strncmp(mPrevLSIOrderInstructionMessage, pOrderInstruction, rF2MappedBufferHeader::MAX_RULES_INSTRUCTION_MSG_LEN) != 0) {
       strcpy_s(extended.mLSIOrderInstructionMessage, pOrderInstruction);
-      if (strcmp(mPrevLSIOrderInstructionMessage, extended.mLSIOrderInstructionMessage) != 0) {
-        DEBUG_MSG2(DebugLevel::DevInfo, "LSI Order Instruction message updated: ", extended.mLSIOrderInstructionMessage);
+      strcpy_s(mPrevLSIOrderInstructionMessage, extended.mLSIOrderInstructionMessage);
+      extended.mTicksLSIOrderInstructionMessageUpdated = ::GetTickCount64();
 
-        strcpy_s(mPrevLSIOrderInstructionMessage, extended.mLSIOrderInstructionMessage);
-        extended.mTicksLSIOrderInstructionMessageUpdated = ::GetTickCount64();
-      }
+      DEBUG_MSG2(DebugLevel::DevInfo, "LSI Order Instruction message updated: ", extended.mLSIOrderInstructionMessage);
     }
 
     auto const pRulesInstruction = mpLSIMessages + 0x1D0uLL;
     if (mSCRPluginEnabled
-      && pRulesInstruction[0] != '\0') {
+      && pRulesInstruction[0] != '\0'
+      && strncmp(mPrevLSIRulesInstructionMessage, pRulesInstruction, rF2MappedBufferHeader::MAX_RULES_INSTRUCTION_MSG_LEN) != 0) {
       strcpy_s(extended.mLSIRulesInstructionMessage, pRulesInstruction);
-      if (strcmp(mPrevLSIRulesInstructionMessage, extended.mLSIRulesInstructionMessage) != 0) {
-        DEBUG_MSG2(DebugLevel::DevInfo, "LSI Rules Instruction message updated: ", extended.mLSIRulesInstructionMessage);
+      strcpy_s(mPrevLSIRulesInstructionMessage, extended.mLSIRulesInstructionMessage);
+      extended.mTicksLSIRulesInstructionMessageUpdated = ::GetTickCount64();
 
-        strcpy_s(mPrevLSIRulesInstructionMessage, extended.mLSIRulesInstructionMessage);
-        extended.mTicksLSIRulesInstructionMessageUpdated = ::GetTickCount64();
-      }
+      DEBUG_MSG2(DebugLevel::DevInfo, "LSI Rules Instruction message updated: ", extended.mLSIRulesInstructionMessage);
     }
   }
   __except (::GetExceptionCode() == EXCEPTION_ACCESS_VIOLATION ? EXCEPTION_EXECUTE_HANDLER : EXCEPTION_CONTINUE_SEARCH)

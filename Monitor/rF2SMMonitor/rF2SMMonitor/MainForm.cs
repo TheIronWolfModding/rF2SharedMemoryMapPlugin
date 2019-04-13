@@ -692,7 +692,7 @@ namespace rF2SMMonitor
         this.maxFFBValue = Math.Max(Math.Abs(this.forceFeedback.mForceValue), this.maxFFBValue);
 
         gameStateText.Append(
-          $"Plugin Version:    Expected: 3.5.0.9 64bit   Actual: {MainForm.GetStringFromBytes(this.extended.mVersion)} {(this.extended.is64bit == 1 ? "64bit" : "32bit")}{(this.extended.mSCRPluginEnabled == 1 ? "    SCR Plugin enabled" : "")}{(this.extended.mDirectMemoryAccessEnabled == 1 ? "    DMA enabled" : "")}    FPS: {this.fps}    FFB Curr: {this.forceFeedback.mForceValue:N3}  Max: {this.maxFFBValue:N3}");
+          $"Plugin Version:    Expected: 3.6.0.0 64bit   Actual: {MainForm.GetStringFromBytes(this.extended.mVersion)} {(this.extended.is64bit == 1 ? "64bit" : "32bit")}{(this.extended.mSCRPluginEnabled == 1 ? "    SCR Plugin enabled" : "")}{(this.extended.mDirectMemoryAccessEnabled == 1 ? "    DMA enabled" : "")}    FPS: {this.fps}    FFB Curr: {this.forceFeedback.mForceValue:N3}  Max: {this.maxFFBValue:N3}");
 
         // Draw header
         g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, brush, currX, currY);

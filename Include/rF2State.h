@@ -856,7 +856,7 @@ struct rF2SessionTransitionCapture
 
 struct rF2Extended : public rF2MappedBufferHeader
 {
-  char mVersion[8];                            // API version
+  char mVersion[12];                           // API version
   bool is64bit;                                // Is 64bit plugin?
 
   // Physics options (updated on session start):
