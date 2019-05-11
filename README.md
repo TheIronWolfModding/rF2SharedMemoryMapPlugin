@@ -61,6 +61,12 @@ If you would like to support this project, you can donate [here.](http://thecrew
 
 # Release history
 
+**05/01/2019 - v3.6.0.0**
+
+  Plugin:
+  * Fix version string not behaving as expected (breaking rF2Extended change, Sorry!)
+  * Reduce amount of string copies in DMA mode.
+
 **03/29/2019 - v3.5.0.9**
 
   Plugin:
