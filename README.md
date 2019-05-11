@@ -55,6 +55,7 @@ Please also be aware, that Crew Chief will always ship with the latest version o
 * rFactor 2 Log Analyzer: https://forum.studio-397.com/index.php?threads/rfactor2-log-analyzer-ver-2-with-offline-and-league-championship-manager.48117/
 * Sim Racing Studio tools: https://www.simracingstudio.com/download
 * Second Monitor: https://github.com/Winzarten/SecondMonitor
+* Realistic Gearshift: https://forum.studio-397.com/index.php?threads/realistic-gearshift-version-2.62996/
 
 ## Support this project
 If you would like to support this project, you can donate [here.](http://thecrewchief.org/misc.php?do=donate)
