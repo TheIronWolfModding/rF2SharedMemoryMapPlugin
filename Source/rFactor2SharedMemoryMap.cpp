@@ -1025,9 +1025,8 @@ void SharedMemoryPlugin::UpdateGraphics(GraphicsInfoV02 const& info)
 
   DEBUG_MSG(DebugLevel::Timing, "GRAPHICS - updated.");
 
-  mGraphics.BeginUpdate();
-  memcpy(&(mGraphics.mpBuff), &info, sizeof(rF2GraphicsInfo));
-  mGraphics.EndUpdate();
+  // Do not version Graphics buffer, as it is asynchronous by the nature anyway.
+  memcpy(&(mGraphics.mpBuff->mGraphicsInfo), &info, sizeof(rF2GraphicsInfo));
 }
 
 ////////////////////////////////////////////

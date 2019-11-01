@@ -311,7 +311,7 @@ private:
   MappedBuffer<rF2Rules> mRules;
   MappedBuffer<rF2MultiRules> mMultiRules;
   MappedBuffer<rF2ForceFeedback> mForceFeedback;
-  MappedBuffer<rF2GraphicsInfo> mGraphics;
+  MappedBuffer<rF2Graphics> mGraphics;
   MappedBuffer<rF2Extended> mExtended;
 
   // Buffers mapped successfully or not.

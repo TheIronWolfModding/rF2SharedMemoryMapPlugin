@@ -852,9 +852,17 @@ struct rF2MultiRules : public rF2MappedBufferHeaderWithSize
 };
 
 
+// Note: not versioned due to high referesh rate and no need for consistent buffer view.
 struct rF2ForceFeedback : public rF2MappedBufferHeader
 {
   double mForceValue;  // Current FFB value reported via InternalsPlugin::ForceFeedback.
+};
+
+
+// Note: not versioned due to high referesh rate and no need for consistent buffer view.
+struct rF2Graphics : public rF2MappedBufferHeader
+{
+  rF2GraphicsInfo mGraphicsInfo;
 };
 
 
