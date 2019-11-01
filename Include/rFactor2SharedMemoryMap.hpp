@@ -27,7 +27,7 @@ Website: thecrewchief.org
 
 // Each component can be in [0:99] range.
 // Note: each time major version changes, that means layout has changed, and clients might need an update.
-#define PLUGIN_VERSION_MAJOR "3.6"
+#define PLUGIN_VERSION_MAJOR "3.7"
 #define PLUGIN_VERSION_MINOR "0.0"
 
 #ifdef VERSION_AVX2
@@ -83,6 +83,7 @@ public:
   static char const* const MM_RULES_FILE_NAME;
   static char const* const MM_MULTI_RULES_FILE_NAME;
   static char const* const MM_FORCE_FEEDBACK_FILE_NAME;
+  static char const* const MM_GRAPHICS_FILE_NAME;
   static char const* const MM_EXTENDED_FILE_NAME;
 
   static char const* const INTERNALS_TELEMETRY_FILENAME;
@@ -254,6 +255,10 @@ public:
   void AccessCustomVariable(CustomVariableV01& var) override;      // This will be called at startup, shutdown, and any time that the variable is changed (within the UI).
   void GetCustomVariableSetting(CustomVariableV01& var, long i, CustomSettingV01& setting) override; // This gets the name of each possible setting for a given variable.
 
+  // GRAPHICS
+  bool WantsGraphicsUpdates() override { return true; }       // whether we want graphics updates
+  void UpdateGraphics(GraphicsInfoV02 const& info) override;  // update plugin with graphics info
+
 private:
   SharedMemoryPlugin(SharedMemoryPlugin const& rhs) = delete;
   SharedMemoryPlugin& operator =(SharedMemoryPlugin const& rhs) = delete;
@@ -306,6 +311,7 @@ private:
   MappedBuffer<rF2Rules> mRules;
   MappedBuffer<rF2MultiRules> mMultiRules;
   MappedBuffer<rF2ForceFeedback> mForceFeedback;
+  MappedBuffer<rF2GraphicsInfo> mGraphics;
   MappedBuffer<rF2Extended> mExtended;
 
   // Buffers mapped successfully or not.

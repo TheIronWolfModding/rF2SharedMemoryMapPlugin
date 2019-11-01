@@ -122,6 +122,7 @@ char const* const SharedMemoryPlugin::MM_SCORING_FILE_NAME = "$rFactor2SMMP_Scor
 char const* const SharedMemoryPlugin::MM_RULES_FILE_NAME = "$rFactor2SMMP_Rules$";
 char const* const SharedMemoryPlugin::MM_MULTI_RULES_FILE_NAME = "$rFactor2SMMP_MultiRules$";
 char const* const SharedMemoryPlugin::MM_FORCE_FEEDBACK_FILE_NAME = "$rFactor2SMMP_ForceFeedback$";
+char const* const SharedMemoryPlugin::MM_GRAPHICS_FILE_NAME = "$rFactor2SMMP_Graphics$";
 char const* const SharedMemoryPlugin::MM_EXTENDED_FILE_NAME = "$rFactor2SMMP_Extended$";
 
 char const* const SharedMemoryPlugin::INTERNALS_TELEMETRY_FILENAME = R"(UserData\Log\RF2SMMP_InternalsTelemetryOutput.txt)";
@@ -155,6 +156,7 @@ SharedMemoryPlugin::SharedMemoryPlugin()
     , mRules(SharedMemoryPlugin::MM_RULES_FILE_NAME)
     , mMultiRules(SharedMemoryPlugin::MM_MULTI_RULES_FILE_NAME)
     , mForceFeedback(SharedMemoryPlugin::MM_FORCE_FEEDBACK_FILE_NAME)
+    , mGraphics(SharedMemoryPlugin::MM_GRAPHICS_FILE_NAME)
     , mExtended(SharedMemoryPlugin::MM_EXTENDED_FILE_NAME)
 {
   memset(mParticipantTelemetryUpdated, 0, sizeof(mParticipantTelemetryUpdated));
@@ -208,6 +210,11 @@ void SharedMemoryPlugin::Startup(long version)
     return;
   }
 
+  if (!mGraphics.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
+    DEBUG_MSG(DebugLevel::Errors, "Failed to initialize graphics mapping");
+    return;
+  }
+
   if (!mExtended.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
     DEBUG_MSG(DebugLevel::Errors, "Failed to initialize extended mapping");
     return;
@@ -250,6 +257,11 @@ void SharedMemoryPlugin::Startup(long version)
     size = static_cast<int>(sizeof(rF2ForceFeedback) + sizeof(rF2MappedBufferVersionBlock));
     _itoa_s(size, sizeSz, 10);
     DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of force feedback buffer:", sizeSz, "bytes.");
+
+    sizeSz[0] = '\0';
+    size = static_cast<int>(sizeof(rF2GraphicsInfo) + sizeof(rF2MappedBufferVersionBlock));
+    _itoa_s(size, sizeSz, 10);
+    DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of graphics buffer:", sizeSz, "bytes.");
 
     sizeSz[0] = '\0';
     size = static_cast<int>(sizeof(rF2Extended) + sizeof(rF2MappedBufferVersionBlock));
@@ -318,6 +330,9 @@ void SharedMemoryPlugin::Shutdown()
   mForceFeedback.ClearState(nullptr /*pInitialContents*/);
   mForceFeedback.ReleaseResources();
 
+  mGraphics.ClearState(nullptr /*pInitialContents*/);
+  mGraphics.ReleaseResources();
+
   mExtended.ClearState(nullptr /*pInitialContents*/);
   mExtended.ReleaseResources();
 }
@@ -352,6 +367,7 @@ void SharedMemoryPlugin::ClearState()
   mScoring.ClearState(nullptr /*pInitialContents*/);
   mRules.ClearState(nullptr /*pInitialContents*/);
   mForceFeedback.ClearState(nullptr /*pInitialContents*/);
+  mGraphics.ClearState(nullptr /*pInitialContents*/);
   // Do not clear mMultiRules as they're updated in between sessions.
 
   // Certain members of the extended state persist between restarts/sessions.
@@ -788,7 +804,7 @@ bool SharedMemoryPlugin::ForceFeedback(double& forceValue)
   if (!mIsMapped)
     return false;
 
-  DEBUG_MSG(DebugLevel::Timing, "ForceFeedback - Invoked.");
+  DEBUG_MSG(DebugLevel::Timing, "FORCE FEEDBACK - Updated");
 
   // If I understand correctly, this is atomic operation.  Since this is a single value buffer, no need to do anything else.
   mForceFeedback.mpBuff->mForceValue = forceValue;
@@ -1000,6 +1016,18 @@ void SharedMemoryPlugin::GetCustomVariableSetting(CustomVariableV01& var, long i
     else
       strcpy_s(setting.mName, "True");
   }
+}
+
+void SharedMemoryPlugin::UpdateGraphics(GraphicsInfoV02 const& info)
+{
+  if (!mIsMapped)
+    return;
+
+  DEBUG_MSG(DebugLevel::Timing, "GRAPHICS - updated.");
+
+  mGraphics.BeginUpdate();
+  memcpy(&(mGraphics.mpBuff), &info, sizeof(rF2GraphicsInfo));
+  mGraphics.EndUpdate();
 }
 
 ////////////////////////////////////////////

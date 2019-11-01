@@ -531,6 +531,39 @@ static_assert(sizeof(rF2PhysicsOptions) == sizeof(PhysicsOptionsV01), "rF2Physic
 
 
 //////////////////////////////////////////////////////////////////////////////////////////
+// Identical to GraphicsInfoV02, except where noted by MM_NEW/MM_NOT_USED comments.
+//////////////////////////////////////////////////////////////////////////////////////////
+struct rF2GraphicsInfo
+{
+  rF2Vec3 mCamPos;              // camera position
+  rF2Vec3 mCamOri[3];           // rows of orientation matrix (use TelemQuat conversions if desired), also converts local
+  HWND mHWND;                   // app handle
+
+  double mAmbientRed;
+  double mAmbientGreen;
+  double mAmbientBlue;
+
+  long mID;                      // slot ID being viewed (-1 if invalid)
+
+  // Camera types (some of these may only be used for *setting* the camera type in WantsToViewVehicle())
+  //    0  = TV cockpit
+  //    1  = cockpit
+  //    2  = nosecam
+  //    3  = swingman
+  //    4  = trackside (nearest)
+  //    5  = onboard000
+  //       :
+  //       :
+  // 1004  = onboard999
+  // 1005+ = (currently unsupported, in the future may be able to set/get specific trackside camera)
+  long mCameraType;              // see above comments for possible values
+
+  unsigned char mExpansion[128]; // for future use (possibly camera name)
+};
+static_assert(sizeof(rF2GraphicsInfo) == sizeof(GraphicsInfoV02), "rF2GraphicsInfo and GraphicsInfoV02 structures are out of sync");
+
+
+//////////////////////////////////////////////////////////////////////////////////////////
 // Identical to TrackRulesCommandV01, except where noted by MM_NEW/MM_NOT_USED comments.  Renamed to match plugin convention.
 //////////////////////////////////////////////////////////////////////////////////////////
 enum class rF2TrackRulesCommand
