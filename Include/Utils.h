@@ -68,4 +68,17 @@ uintptr_t FindPattern(uintptr_t start, size_t length, unsigned char const* patte
 uintptr_t* FindPatternForPointerInMemory(HMODULE module, unsigned char const* pattern, char const* mask, size_t bytedIntoPatternToFindPointer);
 
 char* GetFileContents(char const* const filePath);
+
+template <typename E, typename F>
+bool IsFlagOn(E value, F flag)
+{
+  return (value & static_cast<E>(flag)) != static_cast<E>(0);
+}
+
+template <typename E, typename F>
+bool IsFlagOff(E value, F flag)
+{
+  return !IsFlagOn(value, flag);
+}
+
 }

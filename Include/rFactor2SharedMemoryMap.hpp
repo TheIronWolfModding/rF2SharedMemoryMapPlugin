@@ -55,17 +55,28 @@ Website: thecrewchief.org
 #include "MappedBuffer.h"
 #include "DirectMemoryReader.h"
 
-enum DebugLevel
+enum class DebugLevel
 {
   Off = 0,
   Errors = 1,
   CriticalInfo = 2,      // Errors + Critical Info
-  DevInfo = 3,         // Errors + Critical Info + Dev Info
+  DevInfo = 3,           // Errors + Critical Info + Dev Info
   Warnings = 4,          // Errors + Critical Info + Dev Info + Warnings
   Synchronization = 5,   // Errors + Critical Info + Dev Info + Warnings + Sync messages
   Perf = 6,              // Errors + Critical Info + Dev Info + Warnings + Sync messages + Perf
   Timing = 7,            // Errors + Critical Info + Dev Info + Warnings + Sync messages + Perf + Timing deltas
   Verbose = 8            // All
+};
+
+enum class SubscribedBuffer
+{
+  Telemetry = 1,
+  Scoring = 2,
+  Rules = 4,
+  MultiRules = 8,
+  ForceFeedback = 16,
+  Graphics = 32,
+  All = 127
 };
 
 double TicksNow();
@@ -96,6 +107,8 @@ public:
   static DebugLevel msDebugOutputLevel;
   static bool msDebugISIInternals;
   static bool msDedicatedServerMapGlobally;
+  static long msUnsubscribedBuffersMask;
+
 
   // Ouptut files:
   static FILE* msDebugFile;
@@ -224,11 +237,11 @@ public:
   void EndSession() override;             // session has ended
 
   // GAME OUTPUT
-  long WantsTelemetryUpdates() override { return 2L; } // whether we want telemetry updates (0=no 1=player-only 2=all vehicles)
+  long WantsTelemetryUpdates() override { return Utils::IsFlagOff(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Telemetry) ? 2L : 0L; } // whether we want telemetry updates (0=no 1=player-only 2=all vehicles)
   void UpdateTelemetry(TelemInfoV01 const& info) override;
 
   // SCORING OUTPUT
-  bool WantsScoringUpdates() override { return true; }
+  bool WantsScoringUpdates() override { return Utils::IsFlagOff(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Scoring); }
   void UpdateScoring(ScoringInfoV01 const& info) override; // update plugin with scoring info (approximately five times per second)
 
   bool ForceFeedback(double& forceValue) override; // alternate force feedback computation - return true if editing the value
@@ -237,13 +250,13 @@ public:
   void ThreadStarted(long type) override; // called just after a primary thread is started (type is 0=multimedia or 1=simulation)
   void ThreadStopping(long type) override;  // called just before a primary thread is stopped (type is 0=multimedia or 1=simulation)
 
-  bool WantsTrackRulesAccess() override { return true; } // change to true in order to read or write track order (during formation or caution laps)
+  bool WantsTrackRulesAccess() override { return Utils::IsFlagOff(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Rules); } // change to true in order to read or write track order (during formation or caution laps)
   bool AccessTrackRules(TrackRulesV01& info) override; // current track order passed in; return true if you want to change it (note: this will be called immediately after UpdateScoring() when appropriate)
 
   void SetPhysicsOptions(PhysicsOptionsV01& options) override;
 
   // SCORING CONTROL (only available in single-player or on multiplayer server)
-  bool WantsMultiSessionRulesAccess() override { return true; } // change to true in order to read or write multi-session rules
+  bool WantsMultiSessionRulesAccess() override { return Utils::IsFlagOff(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::MultiRules); } // change to true in order to read or write multi-session rules
   bool AccessMultiSessionRules(MultiSessionRulesV01& info); // current internal rules passed in; return true if you want to change them
 
   // CUSTOM PLUGIN VARIABLES
@@ -256,7 +269,7 @@ public:
   void GetCustomVariableSetting(CustomVariableV01& var, long i, CustomSettingV01& setting) override; // This gets the name of each possible setting for a given variable.
 
   // GRAPHICS
-  bool WantsGraphicsUpdates() override { return true; }       // whether we want graphics updates
+  bool WantsGraphicsUpdates() override { return Utils::IsFlagOff(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Graphics); }       // whether we want graphics updates
   void UpdateGraphics(GraphicsInfoV02 const& info) override;  // update plugin with graphics info
 
 private:
