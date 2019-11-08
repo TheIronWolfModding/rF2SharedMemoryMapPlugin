@@ -22,7 +22,24 @@ Plugin is built using VS 2015 Community Edition, targeting VC12 (VS 2013) runtim
 * Rules - 3FPS.
 * Multi Rules - on callback from a game, usually once a session and in between sessions.
 * ForceFeedback - 400FPS.
+* Graphics - 400FPS.
 * Extended - 5FPS and on tracked callback by the game.
+
+Note: Graphics buffer is unsbscribed by default.
+
+## Unsubscribing from the buffer updatdes
+It is possible to configure which buffers get updated and which don't.  This is done via `UnsubscribedBuffersMask` value in the `CustomPluginVariables.json` file.  To specify buffers to unsubscribe from, add desired flag values up.
+
+`Telemetry = 1,
+Scoring = 2,
+Rules = 4,
+MultiRules = 8,
+ForceFeedback = 16,
+Graphics = 32`
+
+So, to unsubscribe from `Multi Rules` and `Graphics` buffeers set `UnsubscribedBuffersMask` to 40 (8 + 32).
+
+Note: unsubscribing from `Extended` buffer updates is not supported.
 
 ## Limitations/Assumptions:
 * Negative mID is not supported.
@@ -61,6 +78,22 @@ Please also be aware, that Crew Chief will always ship with the latest version o
 If you would like to support this project, you can donate [here.](http://thecrewchief.org/misc.php?do=donate)
 
 # Release history
+
+**11/08/2019 - v3.7.0.0**
+
+Plugin:
+
+* Expose rF2Graphics (GraphicsInfoV02) buffer via $rFactor2SMMP_Graphics$.  Note that it is not subsribed to by default.
+* It is now possible to configure which buffers get updated and which don't.  This is done via `UnsubscribedBuffersMask` value in the `CustomPluginVariables.json` file.  To specify buffers to unsubscribe from, add desired flag values up.
+
+`Telemetry = 1,
+Scoring = 2,
+Rules = 4,
+MultiRules = 8,
+ForceFeedback = 16,
+Graphics = 32`
+
+So, to unsubscribe from `Multi Rules` and `Graphics` buffeers set `UnsubscribedBuffersMask` to 40 (8 + 32).
 
 **05/01/2019 - v3.6.0.0**
 

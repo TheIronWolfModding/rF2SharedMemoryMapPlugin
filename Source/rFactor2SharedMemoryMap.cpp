@@ -39,11 +39,14 @@ Refresh rates:
   Rules - every 300ms (3FPS).
   MultiRules - updated only on session change.
   ForceFeedback - approximately every 2.5ms (400FPS).
+  Graphics - approximately 400FPS.
   Extended - every 200ms or on tracked function call.
 
   Plugin does not add artificial delays, except:
     - game calls UpdateTelemetry in bursts every 10ms.  However, as of 02/18 data changes only every 20ms, so one of those bursts is dropped.
     - telemetry updates with same game time are skipped
+
+  Plugin supports unsubscribing from buffer updates via UnsubscribedBuffersMask CustomPluginVariables.json flag.
 
 Telemetry state:
   rF2 calls UpdateTelemetry for each vehicle.  Plugin tries to guess when all vehicles received an update, and only after that buffer write is marked as complete.
@@ -111,6 +114,7 @@ DebugLevel SharedMemoryPlugin::msDebugOutputLevel = DebugLevel::Off;
 bool SharedMemoryPlugin::msDebugISIInternals = false;
 bool SharedMemoryPlugin::msDedicatedServerMapGlobally = false;
 bool SharedMemoryPlugin::msDirectMemoryAccessRequested = false;
+long SharedMemoryPlugin::msUnsubscribedBuffersMask = 0L;
 
 FILE* SharedMemoryPlugin::msDebugFile;
 FILE* SharedMemoryPlugin::msIsiTelemetryFile;
@@ -122,6 +126,7 @@ char const* const SharedMemoryPlugin::MM_SCORING_FILE_NAME = "$rFactor2SMMP_Scor
 char const* const SharedMemoryPlugin::MM_RULES_FILE_NAME = "$rFactor2SMMP_Rules$";
 char const* const SharedMemoryPlugin::MM_MULTI_RULES_FILE_NAME = "$rFactor2SMMP_MultiRules$";
 char const* const SharedMemoryPlugin::MM_FORCE_FEEDBACK_FILE_NAME = "$rFactor2SMMP_ForceFeedback$";
+char const* const SharedMemoryPlugin::MM_GRAPHICS_FILE_NAME = "$rFactor2SMMP_Graphics$";
 char const* const SharedMemoryPlugin::MM_EXTENDED_FILE_NAME = "$rFactor2SMMP_Extended$";
 
 char const* const SharedMemoryPlugin::INTERNALS_TELEMETRY_FILENAME = R"(UserData\Log\RF2SMMP_InternalsTelemetryOutput.txt)";
@@ -155,6 +160,7 @@ SharedMemoryPlugin::SharedMemoryPlugin()
     , mRules(SharedMemoryPlugin::MM_RULES_FILE_NAME)
     , mMultiRules(SharedMemoryPlugin::MM_MULTI_RULES_FILE_NAME)
     , mForceFeedback(SharedMemoryPlugin::MM_FORCE_FEEDBACK_FILE_NAME)
+    , mGraphics(SharedMemoryPlugin::MM_GRAPHICS_FILE_NAME)
     , mExtended(SharedMemoryPlugin::MM_EXTENDED_FILE_NAME)
 {
   memset(mParticipantTelemetryUpdated, 0, sizeof(mParticipantTelemetryUpdated));
@@ -178,38 +184,64 @@ void SharedMemoryPlugin::Startup(long version)
   DEBUG_INT2(DebugLevel::CriticalInfo, "DebugISIInternals:", SharedMemoryPlugin::msDebugISIInternals);
   DEBUG_INT2(DebugLevel::CriticalInfo, "DedicatedServerMapGlobally:", SharedMemoryPlugin::msDedicatedServerMapGlobally);
   DEBUG_INT2(DebugLevel::CriticalInfo, "EnableDirectMemoryAccess:", SharedMemoryPlugin::msDirectMemoryAccessRequested);
+  DEBUG_INT2(DebugLevel::CriticalInfo, "UnsubscribedBuffersMask:", SharedMemoryPlugin::msUnsubscribedBuffersMask);
+
+  if (SharedMemoryPlugin::msUnsubscribedBuffersMask != 0L) {
+    if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Telemetry))
+      DEBUG_MSG(DebugLevel::CriticalInfo, "Unsubscribed from the Telemetry updates");
+
+    if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Scoring))
+      DEBUG_MSG(DebugLevel::CriticalInfo, "Unsubscribed from the Scoring updates");
+
+    if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Rules))
+      DEBUG_MSG(DebugLevel::CriticalInfo, "Unsubscribed from the Rules updates");
+
+    if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::MultiRules))
+      DEBUG_MSG(DebugLevel::CriticalInfo, "Unsubscribed from the Multi Rules updates");
+
+    if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::ForceFeedback))
+      DEBUG_MSG(DebugLevel::CriticalInfo, "Unsubscribed from the Force Feedback updates");
+
+    if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Graphics))
+      DEBUG_MSG(DebugLevel::CriticalInfo, "Unsubscribed from the Graphics updates");
+  }
 
   char temp[80] = {};
   sprintf(temp, "-STARTUP- (version %.3f)", (float)version / 1000.0f);
   WriteToAllExampleOutputFiles("w", temp);
 
   if (!mTelemetry.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
-    DEBUG_MSG(DebugLevel::Errors, "Failed to initialize telemetry mapping");
+    DEBUG_MSG(DebugLevel::Errors, "Failed to initialize Telemetry mapping");
     return;
   }
 
   if (!mScoring.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
-    DEBUG_MSG(DebugLevel::Errors, "Failed to initialize scoring mapping");
+    DEBUG_MSG(DebugLevel::Errors, "Failed to initialize Scoring mapping");
     return;
   }
 
   if (!mRules.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
-    DEBUG_MSG(DebugLevel::Errors, "Failed to initialize rules mapping");
+    DEBUG_MSG(DebugLevel::Errors, "Failed to initialize Rules mapping");
     return;
   }
 
   if (!mMultiRules.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
-    DEBUG_MSG(DebugLevel::Errors, "Failed to initialize multi rules mapping");
+    DEBUG_MSG(DebugLevel::Errors, "Failed to initialize Multi Rules mapping");
     return;
   }
 
   if (!mForceFeedback.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
-    DEBUG_MSG(DebugLevel::Errors, "Failed to initialize force feedback mapping");
+    DEBUG_MSG(DebugLevel::Errors, "Failed to initialize Force Feedback mapping");
+    return;
+  }
+
+  if (!mGraphics.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
+    DEBUG_MSG(DebugLevel::Errors, "Failed to initialize Graphics mapping");
     return;
   }
 
   if (!mExtended.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
-    DEBUG_MSG(DebugLevel::Errors, "Failed to initialize extended mapping");
+    DEBUG_MSG(DebugLevel::Errors, "Failed to initialize Extended mapping");
     return;
   }
 
@@ -225,36 +257,41 @@ void SharedMemoryPlugin::Startup(long version)
     char sizeSz[20] = {};
     auto size = static_cast<int>(sizeof(rF2Telemetry) + sizeof(rF2MappedBufferVersionBlock));
     _itoa_s(size, sizeSz, 10);
-    DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of telemetry buffer:", sizeSz, "bytes.");
+    DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the Telemetry buffer:", sizeSz, "bytes.");
     assert(sizeof(rF2Telemetry) == offsetof(rF2Telemetry, mVehicles[rF2MappedBufferHeader::MAX_MAPPED_VEHICLES]));
 
     sizeSz[0] = '\0';
     size = static_cast<int>(sizeof(rF2Scoring) + sizeof(rF2MappedBufferVersionBlock));
     _itoa_s(size, sizeSz, 10);
-    DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of scoring buffer:", sizeSz, "bytes.");
+    DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the Scoring buffer:", sizeSz, "bytes.");
     assert(sizeof(rF2Scoring) == offsetof(rF2Scoring, mVehicles[rF2MappedBufferHeader::MAX_MAPPED_VEHICLES]));
 
     sizeSz[0] = '\0';
     size = static_cast<int>(sizeof(rF2Rules) + sizeof(rF2MappedBufferVersionBlock));
     _itoa_s(size, sizeSz, 10);
-    DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of rules buffer:", sizeSz, "bytes.");
+    DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the Rules buffer:", sizeSz, "bytes.");
     assert(sizeof(rF2Rules) == offsetof(rF2Rules, mParticipants[rF2MappedBufferHeader::MAX_MAPPED_VEHICLES]));
 
     sizeSz[0] = '\0';
     size = static_cast<int>(sizeof(rF2MultiRules) + sizeof(rF2MappedBufferVersionBlock));
     _itoa_s(size, sizeSz, 10);
-    DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of multi rules buffer:", sizeSz, "bytes.");
+    DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the Multi Rules buffer:", sizeSz, "bytes.");
     assert(sizeof(rF2MultiRules) == offsetof(rF2MultiRules, mParticipants[rF2MappedBufferHeader::MAX_MAPPED_VEHICLES]));
 
     sizeSz[0] = '\0';
     size = static_cast<int>(sizeof(rF2ForceFeedback) + sizeof(rF2MappedBufferVersionBlock));
     _itoa_s(size, sizeSz, 10);
-    DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of force feedback buffer:", sizeSz, "bytes.");
+    DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the Force Feedback buffer:", sizeSz, "bytes.");
+
+    sizeSz[0] = '\0';
+    size = static_cast<int>(sizeof(rF2GraphicsInfo) + sizeof(rF2MappedBufferVersionBlock));
+    _itoa_s(size, sizeSz, 10);
+    DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the Graphics buffer:", sizeSz, "bytes.");
 
     sizeSz[0] = '\0';
     size = static_cast<int>(sizeof(rF2Extended) + sizeof(rF2MappedBufferVersionBlock));
     _itoa_s(size, sizeSz, 10);
-    DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of extended buffer:", sizeSz, "bytes.");
+    DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the Extended buffer:", sizeSz, "bytes.");
   }
 
   if (SharedMemoryPlugin::msDirectMemoryAccessRequested) {
@@ -318,6 +355,9 @@ void SharedMemoryPlugin::Shutdown()
   mForceFeedback.ClearState(nullptr /*pInitialContents*/);
   mForceFeedback.ReleaseResources();
 
+  mGraphics.ClearState(nullptr /*pInitialContents*/);
+  mGraphics.ReleaseResources();
+
   mExtended.ClearState(nullptr /*pInitialContents*/);
   mExtended.ReleaseResources();
 }
@@ -352,6 +392,7 @@ void SharedMemoryPlugin::ClearState()
   mScoring.ClearState(nullptr /*pInitialContents*/);
   mRules.ClearState(nullptr /*pInitialContents*/);
   mForceFeedback.ClearState(nullptr /*pInitialContents*/);
+  mGraphics.ClearState(nullptr /*pInitialContents*/);
   // Do not clear mMultiRules as they're updated in between sessions.
 
   // Certain members of the extended state persist between restarts/sessions.
@@ -785,10 +826,10 @@ void SharedMemoryPlugin::UpdateScoring(ScoringInfoV01 const& info)
 // Invoked at ~400FPS.
 bool SharedMemoryPlugin::ForceFeedback(double& forceValue)
 {
-  if (!mIsMapped)
+  if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::ForceFeedback) || !mIsMapped)
     return false;
 
-  DEBUG_MSG(DebugLevel::Timing, "ForceFeedback - Invoked.");
+  DEBUG_MSG(DebugLevel::Timing, "FORCE FEEDBACK - Updated");
 
   // If I understand correctly, this is atomic operation.  Since this is a single value buffer, no need to do anything else.
   mForceFeedback.mpBuff->mForceValue = forceValue;
@@ -920,7 +961,7 @@ bool SharedMemoryPlugin::GetCustomVariable(long i, CustomVariableV01& var)
   }
   else if (i == 1) {
     strcpy_s(var.mCaption, "DebugOutputLevel");
-    var.mNumSettings = 8;
+    var.mNumSettings = 9;
     var.mCurrentSetting = 0;
     return true;
   }
@@ -942,6 +983,16 @@ bool SharedMemoryPlugin::GetCustomVariable(long i, CustomVariableV01& var)
     var.mCurrentSetting = 0;
     return true;
   }
+  else if (i == 5) {
+    strcpy_s(var.mCaption, "UnsubscribedBuffersMask");
+    var.mNumSettings = 1;
+
+    // By default, unsubscribe from the Graphics buffer updates.
+    // CC does not need some other buffers either, however it is going to be a headache
+    // to explain SH users who rely on them how to configure plugin, so let it be.
+    var.mCurrentSetting = 32;
+    return true;
+  }
 
   return false;
 }
@@ -954,7 +1005,7 @@ void SharedMemoryPlugin::AccessCustomVariable(CustomVariableV01& var)
   if (_stricmp(var.mCaption, " Enabled") == 0)
     ; // Do nothing; this variable is just for rF2 to know whether to keep the plugin loaded.
   else if (_stricmp(var.mCaption, "DebugOutputLevel") == 0) {
-    auto sanitized = min(max(var.mCurrentSetting, 0L), DebugLevel::Verbose);
+    auto sanitized = min(max(var.mCurrentSetting, 0L), static_cast<long>(DebugLevel::Verbose));
     SharedMemoryPlugin::msDebugOutputLevel = static_cast<DebugLevel>(sanitized);
 
     // Remove previous debug output.
@@ -967,6 +1018,10 @@ void SharedMemoryPlugin::AccessCustomVariable(CustomVariableV01& var)
     SharedMemoryPlugin::msDedicatedServerMapGlobally = var.mCurrentSetting != 0;
   else if (_stricmp(var.mCaption, "EnableDirectMemoryAccess") == 0)
     SharedMemoryPlugin::msDirectMemoryAccessRequested = var.mCurrentSetting != 0;
+  else if (_stricmp(var.mCaption, "UnsubscribedBuffersMask") == 0) {
+    auto sanitized = min(max(var.mCurrentSetting, 0L), static_cast<long>(SubscribedBuffer::All));
+    SharedMemoryPlugin::msUnsubscribedBuffersMask = sanitized;
+  }
 }
 
 
@@ -1000,6 +1055,17 @@ void SharedMemoryPlugin::GetCustomVariableSetting(CustomVariableV01& var, long i
     else
       strcpy_s(setting.mName, "True");
   }
+}
+
+void SharedMemoryPlugin::UpdateGraphics(GraphicsInfoV02 const& info)
+{
+  if (!mIsMapped)
+    return;
+
+  DEBUG_MSG(DebugLevel::Timing, "GRAPHICS - updated.");
+
+  // Do not version Graphics buffer, as it is asynchronous by the nature anyway.
+  memcpy(&(mGraphics.mpBuff->mGraphicsInfo), &info, sizeof(rF2GraphicsInfo));
 }
 
 ////////////////////////////////////////////

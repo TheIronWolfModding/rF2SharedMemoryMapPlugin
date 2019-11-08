@@ -29,6 +29,7 @@ namespace rF2SMMonitor
     public const string MM_SCORING_FILE_NAME = "$rFactor2SMMP_Scoring$";
     public const string MM_RULES_FILE_NAME = "$rFactor2SMMP_Rules$";
     public const string MM_FORCE_FEEDBACK_FILE_NAME = "$rFactor2SMMP_ForceFeedback$";
+    public const string MM_GRAPHICS_FILE_NAME = "$rFactor2SMMP_Graphics$";
     public const string MM_EXTENDED_FILE_NAME = "$rFactor2SMMP_Extended$";
     
     public const int MAX_MAPPED_VEHICLES = 128;
@@ -801,6 +802,51 @@ namespace rF2SMMonitor
       public uint mVersionUpdateEnd;            // Incremented after buffer write is done.
 
       public double mForceValue;                // Current FFB value reported via InternalsPlugin::ForceFeedback.
+    }
+
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
+    public struct rF2GraphicsInfo
+    {
+      public rF2Vec3 mCamPos;              // camera position
+
+      [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = 3)]
+      public rF2Vec3[] mCamOri;           // rows of orientation matrix (use TelemQuat conversions if desired), also converts local
+
+      [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = 8)]
+      public byte[] mHWND;                // app handle
+
+      public double mAmbientRed;
+      public double mAmbientGreen;
+      public double mAmbientBlue;
+
+      public int mID;                    // slot ID being viewed (-1 if invalid)
+
+      // Camera types (some of these may only be used for *setting* the camera type in WantsToViewVehicle())
+      //    0  = TV cockpit
+      //    1  = cockpit
+      //    2  = nosecam
+      //    3  = swingman
+      //    4  = trackside (nearest)
+      //    5  = onboard000
+      //       :
+      //       :
+      // 1004  = onboard999
+      // 1005+ = (currently unsupported, in the future may be able to set/get specific trackside camera)
+      public int mCameraType;           // see above comments for possible values
+
+      [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = 128)]
+      public byte[] mExpansion;         // for future use (possibly camera name)
+    };
+
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
+    public struct rF2Graphics
+    {
+      public uint mVersionUpdateBegin;          // Incremented right before buffer is written to.
+      public uint mVersionUpdateEnd;            // Incremented after buffer write is done.
+
+      public rF2GraphicsInfo mGraphicsInfo;
     }
 
 
