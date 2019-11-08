@@ -46,7 +46,7 @@ Refresh rates:
     - game calls UpdateTelemetry in bursts every 10ms.  However, as of 02/18 data changes only every 20ms, so one of those bursts is dropped.
     - telemetry updates with same game time are skipped
 
-  Plugin supports unsubscribing from buffer updates via UnsubscribedBuffersMask.
+  Plugin supports unsubscribing from buffer updates via UnsubscribedBuffersMask CustomPluginVariables.json flag.
 
 Telemetry state:
   rF2 calls UpdateTelemetry for each vehicle.  Plugin tries to guess when all vehicles received an update, and only after that buffer write is marked as complete.
@@ -986,10 +986,13 @@ bool SharedMemoryPlugin::GetCustomVariable(long i, CustomVariableV01& var)
   else if (i == 5) {
     strcpy_s(var.mCaption, "UnsubscribedBuffersMask");
     var.mNumSettings = 1;
+
+    // By default, unsubscribe from the Graphics buffer updates.
+    // CC does not need some other buffers either, however it is going to be a headache
+    // to explain SH users who rely on them how to configure plugin, so let it be.
     var.mCurrentSetting = 32;
     return true;
   }
-  
 
   return false;
 }
