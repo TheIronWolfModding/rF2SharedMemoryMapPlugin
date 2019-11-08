@@ -272,6 +272,9 @@ public:
   bool WantsGraphicsUpdates() override { return Utils::IsFlagOff(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Graphics); }       // whether we want graphics updates
   void UpdateGraphics(GraphicsInfoV02 const& info) override;  // update plugin with graphics info
 
+  // Supress C4266.
+  void UpdateGraphics(GraphicsInfoV01 const&) override {}     // update plugin with graphics info
+
 private:
   SharedMemoryPlugin(SharedMemoryPlugin const& rhs) = delete;
   SharedMemoryPlugin& operator =(SharedMemoryPlugin const& rhs) = delete;

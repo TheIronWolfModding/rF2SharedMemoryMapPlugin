@@ -1,12 +1,13 @@
 To collect/refresh PGO data:
 
 1. Build Release_PGOGEN[_MT].  This would do two things:
-	- Create instrumented rFactor2SharedMemoryMapPlugin.dll and place it in game plugins folder.
-	- Overwrite pgo\rFactor2SharedMemoryMapPlugin_saved[_mt].pgd with the new .pgd.  Do not check this one in yet, until step 5 is complete.
-2. Place pgort120.dll next to instrumented rFactor2.exe
+	- Build instrumented rFactor2SharedMemoryMapPlugin.dll.  Build will place it in the game plugins folder.
+	- Build will Overwrite pgo\rFactor2SharedMemoryMapPlugin_saved[_mt].pgd with the new .pgd.  Do not check this one in yet, until step 5 is complete.
+2. Place pgort120.dll next to rFactor2.exe
 3. Run the game
-4. Copy rFactor2SharedMemoryMapPlugin![N].pgc back to pgo folder
-5. Build Realease_AVX2.  This will:
-	- produce merged pgo\rFactor2SharedMemoryMapPlugin.pgd
+4. Copy rFactor2SharedMemoryMapPlugin![N].pgc from the rF2 Bin64\Plugins folder back to the pgo folder
+5. Build Realease_AVX2[_MT].  This will:
+	- Produce merged pgo\rFactor2SharedMemoryMapPlugin.pgd
 	- Overwrite pgo\rFactor2SharedMemoryMapPlugin_saved[_mt].pgd with the new merged .pgd.
+	- Produce and place PGO optimized plugin.
 6. Check in the newly merged .pgd
