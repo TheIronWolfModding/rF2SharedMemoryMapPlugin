@@ -11,6 +11,9 @@ This plugin is carefully implemented with an intent of becoming a shared compone
 #### Was inspired by:
   * rF1 Shared Memory Map Plugin by Dan Allongo found at: https://github.com/dallongo/rFactorSharedMemoryMap
 
+## Download:
+https://www.mediafire.com/file/hzlugtn3t7sc3gw/rf2_sm_tools_3.7.0.0.zip/file
+
 ## Features
 Plugin offers optional weak synchronization by using version variables on each of the buffers.
 
