@@ -39,11 +39,14 @@ Refresh rates:
   Rules - every 300ms (3FPS).
   MultiRules - updated only on session change.
   ForceFeedback - approximately every 2.5ms (400FPS).
+  Graphics - approximately 400FPS.
   Extended - every 200ms or on tracked function call.
 
   Plugin does not add artificial delays, except:
     - game calls UpdateTelemetry in bursts every 10ms.  However, as of 02/18 data changes only every 20ms, so one of those bursts is dropped.
     - telemetry updates with same game time are skipped
+
+  Plugin supports unsubscribing from buffer updates via UnsubscribedBuffersMask.
 
 Telemetry state:
   rF2 calls UpdateTelemetry for each vehicle.  Plugin tries to guess when all vehicles received an update, and only after that buffer write is marked as complete.

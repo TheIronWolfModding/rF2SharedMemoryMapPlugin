@@ -303,7 +303,8 @@ namespace rF2SMMonitor
     MappedBuffer<rF2Telemetry> telemetryBuffer = new MappedBuffer<rF2Telemetry>(rFactor2Constants.MM_TELEMETRY_FILE_NAME, true /*partial*/, true /*skipUnchanged*/);
     MappedBuffer<rF2Scoring> scoringBuffer = new MappedBuffer<rF2Scoring>(rFactor2Constants.MM_SCORING_FILE_NAME, true /*partial*/, true /*skipUnchanged*/);
     MappedBuffer<rF2Rules> rulesBuffer = new MappedBuffer<rF2Rules>(rFactor2Constants.MM_RULES_FILE_NAME, true /*partial*/, true /*skipUnchanged*/);
-    MappedBuffer<rF2ForceFeedback> forceFeedbackBuffer = new MappedBuffer<rF2ForceFeedback>(rFactor2Constants.MM_FORCE_FEEDBACK_FILE_NAME, false /*partial*/, true /*skipUnchanged*/);
+    MappedBuffer<rF2ForceFeedback> forceFeedbackBuffer = new MappedBuffer<rF2ForceFeedback>(rFactor2Constants.MM_FORCE_FEEDBACK_FILE_NAME, false /*partial*/, false /*skipUnchanged*/);
+    MappedBuffer<rF2Graphics> graphicsBuffer = new MappedBuffer<rF2Graphics>(rFactor2Constants.MM_GRAPHICS_FILE_NAME, false /*partial*/, false /*skipUnchanged*/);
     MappedBuffer<rF2Extended> extendedBuffer = new MappedBuffer<rF2Extended>(rFactor2Constants.MM_EXTENDED_FILE_NAME, false /*partial*/, true /*skipUnchanged*/);
 
     // Marshalled views:
@@ -311,6 +312,7 @@ namespace rF2SMMonitor
     rF2Scoring scoring;
     rF2Rules rules;
     rF2ForceFeedback forceFeedback;
+    rF2Graphics graphics;
     rF2Extended extended;
 
     // Track rF2 transitions.
@@ -600,6 +602,7 @@ namespace rF2SMMonitor
         telemetryBuffer.GetMappedData(ref telemetry);
         rulesBuffer.GetMappedData(ref rules);
         forceFeedbackBuffer.GetMappedDataUnsynchronized(ref forceFeedback);
+        graphicsBuffer.GetMappedDataUnsynchronized(ref graphics);
 
         watch.Stop();
         var microseconds = watch.ElapsedTicks * 1000000 / System.Diagnostics.Stopwatch.Frequency;
@@ -692,7 +695,7 @@ namespace rF2SMMonitor
         this.maxFFBValue = Math.Max(Math.Abs(this.forceFeedback.mForceValue), this.maxFFBValue);
 
         gameStateText.Append(
-          $"Plugin Version:    Expected: 3.6.0.0 64bit   Actual: {MainForm.GetStringFromBytes(this.extended.mVersion)} {(this.extended.is64bit == 1 ? "64bit" : "32bit")}{(this.extended.mSCRPluginEnabled == 1 ? "    SCR Plugin enabled" : "")}{(this.extended.mDirectMemoryAccessEnabled == 1 ? "    DMA enabled" : "")}    FPS: {this.fps}    FFB Curr: {this.forceFeedback.mForceValue:N3}  Max: {this.maxFFBValue:N3}");
+          $"Plugin Version:    Expected: 3.7.0.0 64bit   Actual: {MainForm.GetStringFromBytes(this.extended.mVersion)} {(this.extended.is64bit == 1 ? "64bit" : "32bit")}{(this.extended.mSCRPluginEnabled == 1 ? "    SCR Plugin enabled" : "")}{(this.extended.mDirectMemoryAccessEnabled == 1 ? "    DMA enabled" : "")}    FPS: {this.fps}    FFB Curr: {this.forceFeedback.mForceValue:N3}  Max: {this.maxFFBValue:N3}");
 
         // Draw header
         g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, brush, currX, currY);
@@ -1087,6 +1090,7 @@ namespace rF2SMMonitor
           this.scoringBuffer.Connect();
           this.rulesBuffer.Connect();
           this.forceFeedbackBuffer.Connect();
+          this.graphicsBuffer.Connect();
           this.extendedBuffer.Connect();
 
           this.connected = true;
@@ -1125,6 +1129,7 @@ namespace rF2SMMonitor
       this.rulesBuffer.Disconnect();
       this.telemetryBuffer.Disconnect();
       this.forceFeedbackBuffer.Disconnect();
+      this.graphicsBuffer.Disconnect();
 
       this.connected = false;
 
