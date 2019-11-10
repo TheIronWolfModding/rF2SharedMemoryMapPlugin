@@ -82,6 +82,11 @@ If you would like to support this project, you can donate [here.](http://thecrew
 
 # Release history
 
+**11/10/2019 - v3.7.1.0**
+
+  Plugin:
+  * Expose `UsubscribedBuffersMask` via `rF2Extended::mUnsubscribedBuffersMask`.  This can be used by clients to validate UBM, and might be made client writable in the future.
+
 **11/08/2019 - v3.7.0.0**
 
 Plugin:
@@ -96,7 +101,7 @@ MultiRules = 8,
 ForceFeedback = 16,
 Graphics = 32`
 
-So, to unsubscribe from `Multi Rules` and `Graphics` buffeers set `UnsubscribedBuffersMask` to 40 (8 + 32).
+So, to unsubscribe from `Multi Rules` and `Graphics` buffers set `UnsubscribedBuffersMask` to 40 (8 + 32).
 
 **05/01/2019 - v3.6.0.0**
 

@@ -294,23 +294,24 @@ void SharedMemoryPlugin::Startup(long version)
     DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the Extended buffer:", sizeSz, "bytes.");
   }
 
+  mExtStateTracker.mExtended.mUnsubscribedBuffersMask = SharedMemoryPlugin::msUnsubscribedBuffersMask;
   if (SharedMemoryPlugin::msDirectMemoryAccessRequested) {
     if (!mDMR.Initialize()) {
       DEBUG_MSG(DebugLevel::Errors, "ERROR: Failed to initialize DMA, disabling DMA.");
 
       // Disable DMA on failure.
       SharedMemoryPlugin::msDirectMemoryAccessRequested = false;
-      mExtStateTracker.mExtended.mDirectMemoryAccessEnabled = false;  // No flip necessary as this defaults to false anyway.
+      mExtStateTracker.mExtended.mDirectMemoryAccessEnabled = false;
     }
     else {
       mExtStateTracker.mExtended.mDirectMemoryAccessEnabled = true;
       mExtStateTracker.mExtended.mSCRPluginEnabled = mDMR.IsSCRPluginEnabled();
       mExtStateTracker.mExtended.mSCRPluginDoubleFileType = mDMR.GetSCRPluginDoubleFileType();
-
-      mExtended.BeginUpdate();
-      memcpy(mExtended.mpBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
-      mExtended.EndUpdate();
     }
+
+    mExtended.BeginUpdate();
+    memcpy(mExtended.mpBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
+    mExtended.EndUpdate();
   }
 }
 
