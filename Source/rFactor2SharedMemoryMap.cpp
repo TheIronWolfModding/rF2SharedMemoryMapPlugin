@@ -74,7 +74,7 @@ Synchronization:
   Plugin does not offer hard guarantees for mapped buffer synchronization, because using synchronization primitives opens door for misuse and
   eventually, way of harming game FPS as number of clients grows.
 
-  However, each of shared memory buffers begins with rF2MappedBufferVersionBlock structure.  If you would like to make sure you're not 
+  However, each of shared memory buffers begins with rF2MappedBufferVersionBlock structure.  If you would like to make sure you're not
   reading a torn (partially overwritten) frame, you can check rF2MappedBufferVersionBlock::mVersionUpdateBegin and rF2MappedBufferVersionBlock::mVersionUpdateEnd values.
   If they are equal, buffer is either not torn, or, in an extreme case, currently being written into.
   Note: $rFactor2SMMP_ForceFeedback$ buffer consists of a single double variable.  Since write into double is atomic, version block is not used (I assume compiler aligned
@@ -83,7 +83,7 @@ Synchronization:
   Most clients (HUDs, Dashes, visualizers) won't need synchronization.  There are many ways on detecting torn frames, Monitor app contains sample approach
   used in the Crew Chief app.
   * For basic reading from C#, see: rF2SMMonitor.MainForm.MappedBuffer<>.GetMappedDataUnsynchronized.
-  * To see one of the ways to avoid torn frames, see: rF2SMMonitor.MainForm.MappedBuffer<>.GetMappedData. 
+  * To see one of the ways to avoid torn frames, see: rF2SMMonitor.MainForm.MappedBuffer<>.GetMappedData.
 
 
 Dedicated server use:
@@ -128,6 +128,7 @@ char const* const SharedMemoryPlugin::MM_MULTI_RULES_FILE_NAME = "$rFactor2SMMP_
 char const* const SharedMemoryPlugin::MM_FORCE_FEEDBACK_FILE_NAME = "$rFactor2SMMP_ForceFeedback$";
 char const* const SharedMemoryPlugin::MM_GRAPHICS_FILE_NAME = "$rFactor2SMMP_Graphics$";
 char const* const SharedMemoryPlugin::MM_EXTENDED_FILE_NAME = "$rFactor2SMMP_Extended$";
+char const* const SharedMemoryPlugin::MM_PIT_MENU_FILE_NAME = "$rFactor2SMMP_PitMenu$";
 
 char const* const SharedMemoryPlugin::INTERNALS_TELEMETRY_FILENAME = R"(UserData\Log\RF2SMMP_InternalsTelemetryOutput.txt)";
 char const* const SharedMemoryPlugin::INTERNALS_SCORING_FILENAME = R"(UserData\Log\RF2SMMP_InternalsScoringOutput.txt)";
@@ -151,6 +152,16 @@ void __cdecl DestroyPluginObject(PluginObject* obj) { delete((SharedMemoryPlugin
 
 
 //////////////////////////////////////
+// Point this at one of the strings used by CheckHWControl(), examples include
+// DisplayMode PitRequest PitMenuUp PitMenuDown PitMenuIncrementValue
+// PitMenuDecrementValue Horn Headlights.  Once the control has been sent
+// ControlToAction points to an empty string again.
+
+// TBD an API function to set this pointer to the string to be actioned
+char* ControlToAction = "";
+//////////////////////////////////////
+
+//////////////////////////////////////
 // SharedMemoryPlugin class
 //////////////////////////////////////
 
@@ -162,6 +173,7 @@ SharedMemoryPlugin::SharedMemoryPlugin()
     , mForceFeedback(SharedMemoryPlugin::MM_FORCE_FEEDBACK_FILE_NAME)
     , mGraphics(SharedMemoryPlugin::MM_GRAPHICS_FILE_NAME)
     , mExtended(SharedMemoryPlugin::MM_EXTENDED_FILE_NAME)
+    , mPitMenu(SharedMemoryPlugin::MM_PIT_MENU_FILE_NAME)
 {
   memset(mParticipantTelemetryUpdated, 0, sizeof(mParticipantTelemetryUpdated));
 }
@@ -242,6 +254,11 @@ void SharedMemoryPlugin::Startup(long version)
 
   if (!mExtended.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
     DEBUG_MSG(DebugLevel::Errors, "Failed to initialize Extended mapping");
+    return;
+  }
+
+  if (!mPitMenu.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
+    DEBUG_MSG(DebugLevel::Errors, "Failed to initialize Pit Menu mapping");
     return;
   }
 
@@ -372,6 +389,7 @@ void SharedMemoryPlugin::ClearTimingsAndCounters()
   mLastScoringUpdateMillis = 0.0;
   mLastRulesUpdateMillis = 0.0;
   mLastMultiRulesUpdateMillis = 0.0;
+  mLastPitMenuUpdateMillis = 0.0;
 
   mLastTelemetryUpdateET = -1.0;
   mLastScoringUpdateET = -1.0;
@@ -415,7 +433,7 @@ void SharedMemoryPlugin::StartSession()
 
   mExtStateTracker.mExtended.mSessionStarted = true;
   mExtStateTracker.mExtended.mTicksSessionStarted = ::GetTickCount64();
-  
+
   // Sometimes, game sends updates, including final qualification positions,
   // between Session Start/End.  We need to capture some of that info, because
   // it might be overwritten by the next session.
@@ -520,7 +538,7 @@ double TicksNow() {
   LARGE_INTEGER now = {};
   QueryPerformanceCounter(&now);
   return static_cast<double>(now.QuadPart) / frequencyMicrosecond;
-#else 
+#else
   return GetTickCount64() * MICROSECONDS_IN_MILLISECOND;
 #endif
 }
@@ -574,7 +592,7 @@ void SharedMemoryPlugin::TelemetryTraceBeginUpdate(double telUpdateET, double de
 }
 
 
-void SharedMemoryPlugin::TelemetryTraceVehicleAdded(TelemInfoV01 const& info) 
+void SharedMemoryPlugin::TelemetryTraceVehicleAdded(TelemInfoV01 const& info)
 {
   if (SharedMemoryPlugin::msDebugOutputLevel == DebugLevel::Verbose) {
     auto const prevBuff = mTelemetry.mpBuff;
@@ -672,7 +690,7 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
     // vehicle not having predefined position in a chain.
     // Current solution is to detect when 20ms step happens, which means that we effectively limit refresh
     // to 50FPS (seems to be what game's doing anyway).  Alternatively, we could test position info changes.
-    
+
     // We need to pick min ET for the frame because one of the vehicles in a frame might be slightly ahead of the rest.
     mLastTelemetryUpdateET = min(mLastTelemetryUpdateET, info.mElapsedTime);
   }
@@ -878,7 +896,7 @@ bool SharedMemoryPlugin::AccessTrackRules(TrackRulesV01& info)
   TraceBeginUpdate(mRules, mLastRulesUpdateMillis, "RULES");
 
   mRules.BeginUpdate();
-  
+
   // Copy main struct.
   memcpy(&(mRules.mpBuff->mTrackRules), &info, sizeof(rF2TrackRules));
 
@@ -928,7 +946,7 @@ bool SharedMemoryPlugin::AccessMultiSessionRules(MultiSessionRulesV01& info)
     return false;
 
   TraceBeginUpdate(mMultiRules, mLastMultiRulesUpdateMillis, "MULTI RULES");
- 
+
   mMultiRules.BeginUpdate();
   // Copy main struct.
   memcpy(&(mMultiRules.mpBuff->mMultiSessionRules), &info, sizeof(rF2MultiSessionRules));
@@ -1069,6 +1087,106 @@ void SharedMemoryPlugin::UpdateGraphics(GraphicsInfoV02 const& info)
   memcpy(&(mGraphics.mpBuff->mGraphicsInfo), &info, sizeof(rF2GraphicsInfo));
 }
 
+
+///////////////////////////////////////////////////////////
+// Access the Pit Menu
+
+bool SharedMemoryPlugin::AccessPitMenu(PitMenuV01& info)
+{
+  // Read the Pit Menu display when it is active.
+  static long category = 99;  // The info values rarely change so record them
+  static long choice = 99;    // and only act when they do change
+  if (!mIsMapped)
+    return false;
+
+  TraceBeginUpdate(mPitMenu, mLastPitMenuUpdateMillis, "PIT UPDATE");
+
+  mPitMenu.BeginUpdate();
+  // Copy main struct.
+  //memcpy(&(mPitMenu.mpBuff), &info, sizeof(rF2PitMenu));
+
+  // Proof of concept - send changes in the Pit Menu contents to the debug stream
+  if (category != info.mCategoryIndex)
+  {
+    category = info.mCategoryIndex;
+    DEBUG_MSG(DebugLevel::DevInfo, info.mCategoryName);
+  }
+  if (choice != info.mChoiceIndex)
+  {
+    choice = info.mChoiceIndex;
+    DEBUG_MSG(DebugLevel::DevInfo, info.mChoiceString);
+  }
+
+  mPitMenu.EndUpdate();
+
+  return false;
+}
+
+///////////////////////////////////////////////////////////
+// Hardware Control
+
+///////////////////////////////////////////////////////////
+// ISI comments:
+// See if the plugin wants to take over a hardware control.  If the plugin takes over the
+// control, this method returns true and sets the value of the double pointed to by the
+// second arg.  Otherwise, it returns false and leaves the double unmodified.
+///////////////////////////////////////////////////////////
+
+// More detail at https://www.studio-397.com/modding-resources/ rFactor2 internals plugin / Instruction
+// but in short: this is called with each control name in turn, if it returns
+// true that control is actioned within rFactor.
+
+//!!!!!!!! Doesn't appear to be called
+bool SharedMemoryPlugin::CheckHWControl(const char* const controlName, double& fRetVal)
+{
+  DEBUG_MSG(DebugLevel::DevInfo, "CheckHWControl called");
+  // only if enabled, of course
+  if (false) // TBD process to disable HW control
+    return(false);
+
+  ///////////////////////////////////////////////////////////
+  // ISI comments:
+  // Note that incoming value is the game's computation, in case you're interested.
+
+  // Sorry, no control allowed over actual vehicle inputs ... would be too easy to cheat!
+  // However, you can still look at the values.
+
+  // Note: since the game calls this function every frame for every available control, you might consider
+  // doing a binary search if you are checking more than 7 or 8 strings, just to keep the speed up.
+  ///////////////////////////////////////////////////////////
+
+  // I suggest that a simple hash function might be more efficient, especially
+  // if only a limited set of controls is provided (most of them seem of little use)
+
+  if (_stricmp(controlName, ControlToAction) == 0)
+  {
+    ControlToAction = "";
+    fRetVal = 1.0f; // I can't remember what that does
+    DEBUG_MSG(DebugLevel::DevInfo, controlName); // + " actioned");
+    return(true);
+  }
+
+  // DEMO
+  if (_stricmp(controlName, "Headlights") == 0)
+  {
+    DEBUG_MSG(DebugLevel::DevInfo, "Headlights control");
+    const float headlightsSwitcher = fmodf(mET, 2.0f);
+    if (headlightsSwitcher < 0.5)
+    {
+      fRetVal = 1.0f;
+      DEBUG_MSG(DebugLevel::DevInfo, "Headlights control 1");
+    }
+    else
+    {
+      fRetVal = 0.0f;
+      DEBUG_MSG(DebugLevel::DevInfo, "Headlights control 0");
+    }
+    return(true);
+  }
+
+  return false;
+}
+
 ////////////////////////////////////////////
 // Debug output helpers.
 ////////////////////////////////////////////
@@ -1134,11 +1252,11 @@ void SharedMemoryPlugin::TraceLastWin32Error()
 
   LPSTR messageBuffer = nullptr;
   auto const retChars = ::FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-    nullptr  /*lpSource*/, lastError, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), reinterpret_cast<LPSTR>(&messageBuffer), 
+    nullptr  /*lpSource*/, lastError, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), reinterpret_cast<LPSTR>(&messageBuffer),
     0  /*nSize*/, nullptr  /*argunments*/);
 
   DEBUG_INT2(DebugLevel::Errors, "Win32 error code:", lastError);
-  
+
   if (retChars > 0 && messageBuffer != nullptr)
     DEBUG_MSG2(DebugLevel::Errors, "Win32 error description:", messageBuffer);
 
