@@ -38,7 +38,8 @@ Scoring = 2,
 Rules = 4,
 MultiRules = 8,
 ForceFeedback = 16,
-Graphics = 32`
+Graphics = 32,
+PitDisplay = 64`
 
 So, to unsubscribe from `Multi Rules` and `Graphics` buffeers set `UnsubscribedBuffersMask` to 40 (8 + 32).
 
@@ -60,6 +61,19 @@ Plugin comes with rF2SMMonitor program that shows how to access exposed internal
 
 ## Dedicated server use
 If ran in dedicated server process, each shared memory buffer name has server PID appended.  If DedicatedServerMapGlobally preference is set to 1, plugin will attempt creating shared memory buffers in the Global section.  Note that "Create Global Objects" permission is needed on user account running dedicated server.
+
+## Debugging
+Set DebugOutputLevel in `UserData\<player>\CustomPluginVariables.json`
+*  `Off = 0,`
+*  `Errors = 1,`
+*  `CriticalInfo = 2,      // Errors + Critical Info`
+*  `DevInfo = 3,           // Errors + Critical Info + Dev Info`
+*  `Warnings = 4,          // Errors + Critical Info + Dev Info + Warnings`
+*  `Synchronization = 5,   // Errors + Critical Info + Dev Info + Warnings + Sync messages`
+*  `Perf = 6,              // Errors + Critical Info + Dev Info + Warnings + Sync messages + Perf`
+*  `Timing = 7,            // Errors + Critical Info + Dev Info + Warnings + Sync messages + Perf + Timing deltas`
+*  `Verbose = 8            // All`
+
 
 ## Distribution and reuse
 You are allowed to include this .dll with your distribution, as long as it is:
