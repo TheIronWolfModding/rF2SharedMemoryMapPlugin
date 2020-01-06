@@ -110,12 +110,7 @@ Sample consumption:
 #include <stdlib.h>
 #include <cstddef>                              // offsetof
 
-#ifdef _AMD64_
-  DebugLevel SharedMemoryPlugin::msDebugOutputLevel = DebugLevel::Off;
-#else // 32 bit for rFactor 1 which doesn't have plugin controls
-  // Hack - should read our own ini file?
-  DebugLevel SharedMemoryPlugin::msDebugOutputLevel = DebugLevel::DevInfo;
-#endif
+DebugLevel SharedMemoryPlugin::msDebugOutputLevel = DebugLevel::Off;
 
 bool SharedMemoryPlugin::msDebugISIInternals = false;
 bool SharedMemoryPlugin::msDedicatedServerMapGlobally = false;
