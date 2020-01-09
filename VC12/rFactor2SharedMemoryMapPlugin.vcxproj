@@ -87,7 +87,7 @@
     <TargetName>rFactor2SharedMemoryMapPlugin32</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
     <PlatformToolset>v142</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
@@ -393,6 +393,7 @@
     <GenerateManifest>false</GenerateManifest>
     <CustomBuildAfterTargets>
     </CustomBuildAfterTargets>
+    <PostBuildEventUseInBuild>false</PostBuildEventUseInBuild>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Midl>
@@ -434,7 +435,7 @@
       <OutputFile>.\Release/rFactor2SharedMemoryMapPlugin32.bsc</OutputFile>
     </Bscmake>
     <PostBuildEvent>
-      <Command />
+      <Command>copy /y $(OutputPath)$(AssemblyName)$(PlatformArchitecture).dll  "d:\games\SteamLibrary\steamapps\common\rFactor\Plugins\$(AssemblyName)$(PlatformArchitecture)t.dll"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release_MT|Win32'">
@@ -794,8 +795,9 @@
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <OutputFile>.\Release/rFactor2SharedMemoryMapPlugin64.bsc</OutputFile>
     </Bscmake>
+    <PostBuildEvent />
     <PostBuildEvent>
-      <Command>copy /y $(Platform)\$(Configuration)\rFactor2SharedMemoryMapPlugin64.dll "c:\Games\Steam\steamapps\common\rFactor 2\Bin64\Plugins\."</Command>
+      <Command>copy /y $(OutputPath)$(AssemblyName)$(PlatformArchitecture).dll  "$(ProgramFiles)\Steam\steamapps\common\rFactor 2\Bin64\Plugins\$(AssemblyName)$(PlatformArchitecture)t.dll"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release_MT|x64'">
@@ -842,7 +844,7 @@
       <OutputFile>.\Release/rFactor2SharedMemoryMapPlugin64.bsc</OutputFile>
     </Bscmake>
     <PostBuildEvent>
-      <Command>copy /y $(Platform)\$(Configuration)\rFactor2SharedMemoryMapPlugin64.dll "c:\Games\Steam\steamapps\common\rFactor 2\Bin64\Plugins\."</Command>
+      <Command>copy /y $(Platform)\$(Configuration)\rFactor2SharedMemoryMapPlugin64.dll "$(ProgramFiles)\Steam\steamapps\common\rFactor 2\Bin64\Plugins\."</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release_PDBGEN_MT|x64'">
@@ -889,7 +891,7 @@
       <OutputFile>.\Release/rFactor2SharedMemoryMapPlugin64.bsc</OutputFile>
     </Bscmake>
     <PostBuildEvent>
-      <Command>copy /y $(Platform)\$(Configuration)\rFactor2SharedMemoryMapPlugin64.dll "c:\Games\Steam\steamapps\common\rFactor 2\Bin64\Plugins\."</Command>
+      <Command>copy /y $(Platform)\$(Configuration)\rFactor2SharedMemoryMapPlugin64.dll "$(ProgramFiles)\Steam\steamapps\common\rFactor 2\Bin64\Plugins\."</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release_PDBGEN|x64'">
@@ -935,7 +937,7 @@
       <OutputFile>.\Release/rFactor2SharedMemoryMapPlugin64.bsc</OutputFile>
     </Bscmake>
     <PostBuildEvent>
-      <Command>copy /y $(Platform)\$(Configuration)\rFactor2SharedMemoryMapPlugin64.dll "c:\Games\Steam\steamapps\common\rFactor 2\Bin64\Plugins\."</Command>
+      <Command>copy /y $(Platform)\$(Configuration)\rFactor2SharedMemoryMapPlugin64.dll "$(ProgramFiles)\Steam\steamapps\common\rFactor 2\Bin64\Plugins\."</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release_AVX2|x64'">
@@ -989,7 +991,7 @@
       <OutputFile>.\Release/rFactor2SharedMemoryMapPlugin64.bsc</OutputFile>
     </Bscmake>
     <PostBuildEvent>
-      <Command>copy /y $(Platform)\$(Configuration)\rFactor2SharedMemoryMapPlugin64.dll "c:\Games\Steam\steamapps\common\rFactor 2\Bin64\Plugins\." &amp; copy /y ..\pgo\rFactor2SharedMemoryMapPlugin64.pgd ..\pgo\rFactor2SharedMemoryMapPlugin64_saved.pgd &amp; del ..\pgo\rFactor2SharedMemoryMapPlugin64.pgd</Command>
+      <Command>copy /y $(Platform)\$(Configuration)\rFactor2SharedMemoryMapPlugin64.dll "$(ProgramFiles)\Steam\steamapps\common\rFactor 2\Bin64\Plugins\."</Command>
     </PostBuildEvent>
     <PreLinkEvent>
       <Command>copy /y ..\pgo\rFactor2SharedMemoryMapPlugin64_saved.pgd ..\pgo\rFactor2SharedMemoryMapPlugin64.pgd</Command>
@@ -1047,7 +1049,7 @@
       <OutputFile>.\Release/rFactor2SharedMemoryMapPlugin64.bsc</OutputFile>
     </Bscmake>
     <PostBuildEvent>
-      <Command>copy /y $(Platform)\$(Configuration)\rFactor2SharedMemoryMapPlugin64.dll "c:\Games\Steam\steamapps\common\rFactor 2\Bin64\Plugins\." &amp; copy /y ..\pgo\rFactor2SharedMemoryMapPlugin64.pgd ..\pgo\rFactor2SharedMemoryMapPlugin64_saved_mt.pgd &amp; del ..\pgo\rFactor2SharedMemoryMapPlugin64.pgd</Command>
+      <Command>copy /y $(Platform)\$(Configuration)\rFactor2SharedMemoryMapPlugin64.dll "$(ProgramFiles)\Steam\steamapps\common\rFactor 2\Bin64\Plugins\."</Command>
     </PostBuildEvent>
     <PreLinkEvent>
       <Command>copy /y ..\pgo\rFactor2SharedMemoryMapPlugin64_saved_mt.pgd ..\pgo\rFactor2SharedMemoryMapPlugin64.pgd</Command>
@@ -1104,7 +1106,7 @@
       <OutputFile>.\Release/rFactor2SharedMemoryMapPlugin64.bsc</OutputFile>
     </Bscmake>
     <PostBuildEvent>
-      <Command>copy /y $(Platform)\$(Configuration)\rFactor2SharedMemoryMapPlugin64.dll "c:\Games\Steam\steamapps\common\rFactor 2\Bin64\Plugins\." &amp; copy /y x64\Release_PGOGEN\rFactor2SharedMemoryMapPlugin64.pgd ..\pgo\rFactor2SharedMemoryMapPlugin64_saved.pgd</Command>
+      <Command>copy /y $(Platform)\$(Configuration)\rFactor2SharedMemoryMapPlugin64.dll "$(ProgramFiles)\Steam\steamapps\common\rFactor 2\Bin64\Plugins\."</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release_PGOGEN_MT|x64'">
@@ -1160,7 +1162,7 @@
       <OutputFile>.\Release/rFactor2SharedMemoryMapPlugin64.bsc</OutputFile>
     </Bscmake>
     <PostBuildEvent>
-      <Command>copy /y $(Platform)\$(Configuration)\rFactor2SharedMemoryMapPlugin64.dll "c:\Games\Steam\steamapps\common\rFactor 2\Bin64\Plugins\." &amp; copy /y x64\Release_PGOGEN_MT\rFactor2SharedMemoryMapPlugin64.pgd ..\pgo\rFactor2SharedMemoryMapPlugin64_saved_mt.pgd</Command>
+      <Command>copy /y $(Platform)\$(Configuration)\rFactor2SharedMemoryMapPlugin64.dll "$(ProgramFiles)\Steam\steamapps\common\rFactor 2\Bin64\Plugins\."</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -1205,7 +1207,7 @@
       <OutputFile>.\Debug/rFactor2SharedMemoryMapPlugin32.bsc</OutputFile>
     </Bscmake>
     <PostBuildEvent>
-      <Command />
+      <Command>copy /y $(OutputPath)$(AssemblyName)$(PlatformArchitecture)t.dll  "d:\games\SteamLibrary\steamapps\common\rFactor\Plugins"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -1248,13 +1250,14 @@
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <OutputFile>.\Debug/rFactor2SharedMemoryMapPlugin64.bsc</OutputFile>
     </Bscmake>
-    <PostBuildEvent>
-      <Command>copy /y $(Platform)\$(Configuration)\rFactor2SharedMemoryMapPlugin64.dll "c:\games\Steam\steamapps\common\rFactor 2\Bin64\Plugins\."</Command>
-    </PostBuildEvent>
+    <PostBuildEvent />
     <CustomBuildStep>
       <Command>
       </Command>
     </CustomBuildStep>
+    <PostBuildEvent>
+      <Command>copy /y $(OutputPath)$(AssemblyName)$(PlatformArchitecture).dll  "$(ProgramFiles)\Steam\steamapps\common\rFactor 2\Bin64\Plugins"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\source\DirectMemoryReader.cpp" />

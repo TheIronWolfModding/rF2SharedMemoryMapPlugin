@@ -110,7 +110,13 @@ Sample consumption:
 #include <stdlib.h>
 #include <cstddef>                              // offsetof
 
-DebugLevel SharedMemoryPlugin::msDebugOutputLevel = DebugLevel::Off;
+#ifdef _AMD64_
+  DebugLevel SharedMemoryPlugin::msDebugOutputLevel = DebugLevel::Off;
+#else // 32 bit for rFactor 1 which doesn't have plugin controls
+  // Hack - should read our own ini file?
+  DebugLevel SharedMemoryPlugin::msDebugOutputLevel = DebugLevel::DevInfo;
+#endif
+
 bool SharedMemoryPlugin::msDebugISIInternals = false;
 bool SharedMemoryPlugin::msDedicatedServerMapGlobally = false;
 bool SharedMemoryPlugin::msDirectMemoryAccessRequested = false;
@@ -1103,7 +1109,7 @@ bool SharedMemoryPlugin::AccessPitMenu(PitMenuV01& info)
 
   mPitMenu.BeginUpdate();
   // Copy main struct.
-  //memcpy(&(mPitMenu.mpBuff), &info, sizeof(rF2PitMenu));
+  memcpy(&(mPitMenu.mpBuff), &info, sizeof(rF2PitMenu));
 
   // Proof of concept - send changes in the Pit Menu contents to the debug stream
   if (category != info.mCategoryIndex)
@@ -1136,6 +1142,8 @@ bool SharedMemoryPlugin::AccessPitMenu(PitMenuV01& info)
 // but in short: this is called with each control name in turn, if it returns
 // true that control is actioned within rFactor.
 
+// NOTE: doesn't do anything if the AI is driving
+
 //!!!!!!!! Doesn't appear to be called
 bool SharedMemoryPlugin::CheckHWControl(const char* const controlName, double& fRetVal)
 {
@@ -1143,6 +1151,17 @@ bool SharedMemoryPlugin::CheckHWControl(const char* const controlName, double& f
   // only if enabled, of course
   if (false) // TBD process to disable HW control
     return(false);
+
+  // Hack test - flash the headlights
+  if (_stricmp(controlName, "Headlights") == 0)
+  {
+    const float headSwitcheroo = fmodf(mET, 2.0f);
+    if (headSwitcheroo < 0.5)
+      fRetVal = 1.0f;
+    else
+      fRetVal = 0.0f;
+    return(true);
+  }
 
   ///////////////////////////////////////////////////////////
   // ISI comments:

@@ -124,7 +124,11 @@ public:
   static void WriteScoringInternals(ScoringInfoV01 const& info);
   static void TraceLastWin32Error();
 
+#ifdef UNITTEST
+public:
+#else
 private:
+#endif
 
   class ExtendedStateTracker
   {
@@ -280,10 +284,10 @@ public:
   // PIT MENU INFO (currently, the only way to edit the pit menu is to use this in conjunction with CheckHWControl())
   bool WantsPitMenuAccess()  override { return Utils::IsFlagOff(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::PitInfo); } // change to true in order to view pit menu info
 
-  bool AccessPitMenu(PitMenuV01& info); // currently, the return code should always be false (because we may allow more direct editing in the future)
+  bool AccessPitMenu(PitMenuV01& info) override; // currently, the return code should always be false (because we may allow more direct editing in the future)
 
   // HW Control- action a control within the game
-  bool CheckHWControl(const char* const controlName, double& fRetVal);
+  bool CheckHWControl(const char* const controlName, double& fRetVal) override;
 
 private:
   SharedMemoryPlugin(SharedMemoryPlugin const& rhs) = delete;
