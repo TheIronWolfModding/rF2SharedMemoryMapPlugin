@@ -959,6 +959,8 @@ struct rF2PitMenu : public rF2MappedBufferHeader
   char mChoiceString[32];             // name of the current choice (may have some translated words)
   long mNumChoices;                     // total number of choices (0 <= mChoiceIndex < mNumChoices)
 
-  unsigned char mExpansion[256];      // for future use
+  bool changed;                       // Set if the Pit Display has changed
+
+  unsigned char mExpansion[256-sizeof(changed)];      // for future use
 };
 #pragma pack(pop)

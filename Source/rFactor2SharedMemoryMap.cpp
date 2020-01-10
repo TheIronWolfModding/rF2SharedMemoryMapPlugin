@@ -222,6 +222,9 @@ void SharedMemoryPlugin::Startup(long version)
 
     if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Graphics))
       DEBUG_MSG(DebugLevel::CriticalInfo, "Unsubscribed from the Graphics updates");
+
+    if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::PitInfo))
+      DEBUG_MSG(DebugLevel::CriticalInfo, "Unsubscribed from the Pit Menu updates");
   }
 
   char temp[80] = {};
@@ -312,6 +315,11 @@ void SharedMemoryPlugin::Startup(long version)
     DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the Graphics buffer:", sizeSz, "bytes.");
 
     sizeSz[0] = '\0';
+    size = static_cast<int>(sizeof(rF2PitMenu) + sizeof(rF2MappedBufferVersionBlock));
+    _itoa_s(size, sizeSz, 10);
+    DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the Pit Menu buffer:", sizeSz, "bytes.");
+
+    sizeSz[0] = '\0';
     size = static_cast<int>(sizeof(rF2Extended) + sizeof(rF2MappedBufferVersionBlock));
     _itoa_s(size, sizeSz, 10);
     DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the Extended buffer:", sizeSz, "bytes.");
@@ -384,6 +392,10 @@ void SharedMemoryPlugin::Shutdown()
 
   mExtended.ClearState(nullptr /*pInitialContents*/);
   mExtended.ReleaseResources();
+
+  mPitMenu.ClearState(nullptr /*pInitialContents*/);
+  mPitMenu.ReleaseResources();
+ 
 }
 
 void SharedMemoryPlugin::ClearTimingsAndCounters()
@@ -424,6 +436,7 @@ void SharedMemoryPlugin::ClearState()
   // So, clear the state but pass persisting state as initial state.
   mExtStateTracker.ClearState();
   mExtended.ClearState(&(mExtStateTracker.mExtended));
+  mPitMenu.ClearState(nullptr /*pInitialContents*/);
 
   ClearTimingsAndCounters();
 }
@@ -556,7 +569,7 @@ void SharedMemoryPlugin::TelemetryTraceSkipUpdate(TelemInfoV01 const& info, doub
     && !mTelemetrySkipFrameReported) {
     mTelemetrySkipFrameReported = true;
     char msg[512] = {};
-    sprintf(msg, "TELEMETRY - Skipping update due to no changes in the input data.  Delta ET: %f  New ET: %f  Prev ET:%f  mID(new):%d", deltaET, info.mElapsedTime, mLastTelemetryUpdateET, info.mID);
+    sprintf(msg, "TELEMETRY - Skipping update due to no changes in the input data.  Delta ET: %f  New ET: %f  Prev ET:%f  mID(new):%ld", deltaET, info.mElapsedTime, mLastTelemetryUpdateET, info.mID);
     DEBUG_MSG(DebugLevel::Timing, msg);
 
     // We complete frame every 20ms, so on skip we need to compare to the current write buffer.
@@ -569,7 +582,7 @@ void SharedMemoryPlugin::TelemetryTraceSkipUpdate(TelemInfoV01 const& info, doub
       || info.mPos.z != prevBuff->mVehicles->mPos.z)
     {
       char msg[512] = {};
-      sprintf(msg, "WARNING - Pos Mismatch on skip update!!!  New ET: %f  Prev ET:%f  mID(old):%d  Prev Pos: %f %f %f  New Pos %f %f %f", info.mElapsedTime, mLastTelemetryUpdateET, prevBuff->mVehicles->mID,
+      sprintf(msg, "WARNING - Pos Mismatch on skip update!!!  New ET: %f  Prev ET:%f  mID(old):%ld  Prev Pos: %f %f %f  New Pos %f %f %f", info.mElapsedTime, mLastTelemetryUpdateET, prevBuff->mVehicles->mID,
         info.mPos.x, info.mPos.y, info.mPos.z,
         prevBuff->mVehicles->mPos.x,
         prevBuff->mVehicles->mPos.y,
@@ -588,7 +601,7 @@ void SharedMemoryPlugin::TelemetryTraceBeginUpdate(double telUpdateET, double de
     auto const delta = ticksNow - mLastTelemetryUpdateMillis;
 
     char msg[512] = {};
-    sprintf(msg, "TELEMETRY - Begin Update:  ET:%f  ET delta:%f  Time delta since last update:%f  Version Begin:%d  End:%d",
+    sprintf(msg, "TELEMETRY - Begin Update:  ET:%f  ET delta:%f  Time delta since last update:%f  Version Begin:%ld  End:%ld",
       telUpdateET, deltaET, delta / MICROSECONDS_IN_SECOND, mTelemetry.mpBuffVersionBlock->mVersionUpdateBegin, mTelemetry.mpBuffVersionBlock->mVersionUpdateEnd);
 
     DEBUG_MSG(DebugLevel::Timing, msg);
@@ -607,7 +620,7 @@ void SharedMemoryPlugin::TelemetryTraceVehicleAdded(TelemInfoV01 const& info)
       && info.mPos.z == prevBuff->mVehicles[mCurrTelemetryVehicleIndex].mPos.z;
 
     char msg[512] = {};
-    sprintf(msg, "Telemetry added - mID:%d  ET:%f  Pos Changed:%s", info.mID, info.mElapsedTime, samePos ? "Same" : "Changed");
+    sprintf(msg, "Telemetry added - mID:%ld  ET:%f  Pos Changed:%s", info.mID, info.mElapsedTime, samePos ? "Same" : "Changed");
     DEBUG_MSG(DebugLevel::Verbose, msg);
   }
 
@@ -622,7 +635,7 @@ void SharedMemoryPlugin::TelemetryTraceEndUpdate(int numVehiclesInChain) const
     auto const deltaSysTimeMicroseconds = mLastTelemetryVehicleAddedMillis - mLastTelemetryUpdateMillis;
 
     char msg[512] = {};
-    sprintf(msg, "TELEMETRY - End Update.  Telemetry chain update took %f:  Vehicles in chain: %d  Version Begin:%d  End:%d",
+    sprintf(msg, "TELEMETRY - End Update.  Telemetry chain update took %f:  Vehicles in chain: %d  Version Begin:%ld  End:%ld",
       deltaSysTimeMicroseconds / MICROSECONDS_IN_SECOND, numVehiclesInChain, mTelemetry.mpBuffVersionBlock->mVersionUpdateBegin, mTelemetry.mpBuffVersionBlock->mVersionUpdateEnd);
 
     DEBUG_MSG(DebugLevel::Timing, msg);
@@ -780,7 +793,7 @@ void SharedMemoryPlugin::TraceBeginUpdate(BuffT const& buffer, double& lastUpdat
     auto const delta = ticksNow - lastUpdateMillis;
 
     char msg[512] = {};
-    sprintf(msg, "%s - Begin Update:  Delta since last update:%f  Version Begin:%d  End:%d", msgPrefix, delta / MICROSECONDS_IN_SECOND,
+    sprintf(msg, "%s - Begin Update:  Delta since last update:%f  Version Begin:%ld  End:%ld", msgPrefix, delta / MICROSECONDS_IN_SECOND,
       buffer.mpBuffVersionBlock->mVersionUpdateBegin, buffer.mpBuffVersionBlock->mVersionUpdateEnd);
 
     DEBUG_MSG(DebugLevel::Timing, msg);
@@ -1061,7 +1074,7 @@ void SharedMemoryPlugin::GetCustomVariableSetting(CustomVariableV01& var, long i
       strcpy_s(setting.mName, "True");
   }
   else if (_stricmp(var.mCaption, "DebugOutputLevel") == 0)
-    sprintf_s(setting.mName, "%d%%", i);
+    sprintf_s(setting.mName, "%ld%%", i);
   else if (_stricmp(var.mCaption, "DebugISIInternals") == 0) {
     if (i == 0)
       strcpy_s(setting.mName, "False");
@@ -1109,17 +1122,19 @@ bool SharedMemoryPlugin::AccessPitMenu(PitMenuV01& info)
 
   mPitMenu.BeginUpdate();
   // Copy main struct.
-  memcpy(&(mPitMenu.mpBuff), &info, sizeof(rF2PitMenu));
+  memcpy(mPitMenu.mpBuff, &info, sizeof(rF2PitMenu));
 
   // Proof of concept - send changes in the Pit Menu contents to the debug stream
   if (category != info.mCategoryIndex)
   {
     category = info.mCategoryIndex;
+    mPitMenu.mpBuff->changed = true;
     DEBUG_MSG(DebugLevel::DevInfo, info.mCategoryName);
   }
   if (choice != info.mChoiceIndex)
   {
     choice = info.mChoiceIndex;
+    mPitMenu.mpBuff->changed = true;
     DEBUG_MSG(DebugLevel::DevInfo, info.mChoiceString);
   }
 
@@ -1243,7 +1258,7 @@ void SharedMemoryPlugin::WriteDebugMsg(DebugLevel lvl, const char* const format,
   SYSTEMTIME st = {};
   ::GetLocalTime(&st);
 
-  fprintf(SharedMemoryPlugin::msDebugFile, "%.2d:%.2d:%.2d.%.3d TID:0x%04x  ", st.wHour, st.wMinute, st.wSecond , st.wMilliseconds, ::GetCurrentThreadId());
+  fprintf(SharedMemoryPlugin::msDebugFile, "%.2d:%.2d:%.2d.%.3d TID:0x%04lx  ", st.wHour, st.wMinute, st.wSecond , st.wMilliseconds, ::GetCurrentThreadId());
   if (SharedMemoryPlugin::msDebugFile != nullptr) {
     va_start(argList, format);
     vfprintf(SharedMemoryPlugin::msDebugFile, format, argList);
