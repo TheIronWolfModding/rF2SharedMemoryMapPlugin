@@ -1400,9 +1400,9 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\source\DirectMemoryReader.cpp" />
+    <ClCompile Include="..\Source\ISIInternalsDump.cpp" />
     <ClCompile Include="..\Source\rFactor2SharedMemoryMap.cpp" />
     <ClCompile Include="..\source\Utils.cpp" />
-    <ClCompile Include="ISIInternalsDump.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Include\DirectMemoryReader.h" />
