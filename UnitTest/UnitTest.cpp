@@ -1,7 +1,12 @@
 #include "pch.h"
 #include "CppUnitTest.h"
 #include <direct.h>
-#define UNITTEST
+#include <iostream>
+#include <fstream>
+using namespace std;
+
+#define UNITTEST  // Make private methods and data available to unit test
+// Perhaps not necessary if a client created?
 #include "rFactor2SharedMemoryMap.hpp"
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
@@ -57,6 +62,8 @@ namespace UnitTestMethods // startup code tested, now use it to test the rest
     _mkdir("Userdata");
     _mkdir("Userdata\\Log");
 
+    SharedMemoryPlugin::msDebugISIInternals = true;
+
     TEST_NAME_IN_DEBUG("INITIALIZE");
     // Set debug level to capture everything
     strcpy_s(var.mCaption, sizeof(var.mCaption), "DebugOutputLevel");
@@ -97,6 +104,16 @@ namespace UnitTestMethods // startup code tested, now use it to test the rest
     {
       //char* name = GetPluginName();
     }
+
+    TEST_METHOD(Test_HasHardwareInputs)
+    {
+      double RetVal;
+
+      TEST_NAME_IN_DEBUG("Test_HasHardwareInputs");
+      bool ret = smp_obj.HasHardwareInputs();
+      Assert::IsTrue(ret);
+    }
+
     TEST_METHOD(Test_CheckHWControl)
     {
       double RetVal;
@@ -127,6 +144,8 @@ namespace UnitTestMethods // startup code tested, now use it to test the rest
       TelemInfoV01 info;
       TEST_NAME_IN_DEBUG("Test_UpdateTelemetry");
       smp_obj.UpdateTelemetry(info);
+      SharedMemoryPlugin::msDebugISIInternals = false; // fprintf goes bang if called twice
+      smp_obj.UpdateTelemetry(info);
     }
 
     TEST_METHOD(TestAccessPitMenu)
@@ -151,10 +170,37 @@ namespace UnitTestMethods // startup code tested, now use it to test the rest
       TEST_NAME_IN_DEBUG("TestAccessPitMenu_Timing");
       // Hit it several times to test the timing
       smp_obj.AccessPitMenu(info);
+      SharedMemoryPlugin::msDebugISIInternals = false; // fprintf goes bang if called twice
       smp_obj.AccessPitMenu(info);
       smp_obj.AccessPitMenu(info);
       smp_obj.AccessPitMenu(info);
       smp_obj.AccessPitMenu(info);
+    }
+
+    TEST_METHOD(TestISIinternals)
+    {
+      CustomVariableV01 var;
+
+      // Set debug level to capture everything
+      strcpy_s(var.mCaption, sizeof(var.mCaption), "DebugISIInternals");
+      var.mCurrentSetting = static_cast<long>(1);
+      smp_obj.AccessCustomVariable(var);
+
+      const char *FILENAME = "Userdata\\Log\\RF2SMMP_InternalsPitMenuOutput.txt";
+      remove(FILENAME);
+
+      PitMenuV01 info;
+      info.mCategoryIndex = 3;
+      info.mChoiceIndex = 3;
+      strcpy_s(info.mCategoryName, sizeof(info.mCategoryName), "PIT MENU 3");
+      strcpy_s(info.mChoiceString, sizeof(info.mChoiceString), "CHOICE 3");
+      TEST_NAME_IN_DEBUG("TestAccessPitMenu_Timing");
+      smp_obj.AccessPitMenu(info);
+#ifdef write_RF2SMMP_InternalsPitMenuOutput_disabled
+      // Writing twice causes a crash??? smp_obj.AccessPitMenu(info);
+      ifstream RF2SMMP_InternalsPitMenuOutput(FILENAME);
+      Assert::IsTrue(RF2SMMP_InternalsPitMenuOutput.is_open());
+#endif
     }
   };
 }

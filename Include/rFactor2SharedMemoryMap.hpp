@@ -101,6 +101,7 @@ public:
 
   static char const* const INTERNALS_TELEMETRY_FILENAME;
   static char const* const INTERNALS_SCORING_FILENAME;
+  static char const* const INTERNALS_PITMENU_FILENAME;
   static char const* const DEBUG_OUTPUT_FILENAME;
 
   static int const BUFFER_IO_BYTES = 2048;
@@ -116,12 +117,14 @@ public:
   static FILE* msDebugFile;
   static FILE* msIsiTelemetryFile;
   static FILE* msIsiScoringFile;
+  static FILE* msIsiPitMenuFile;
 
   // Debug output helpers
   static void WriteDebugMsg(DebugLevel lvl, char const* const format, ...);
   static void WriteToAllExampleOutputFiles(char const* const openStr, char const* const msg);
   static void WriteTelemetryInternals(TelemInfoV01 const& info);
   static void WriteScoringInternals(ScoringInfoV01 const& info);
+  static void WritePitMenuInternals(PitMenuV01 const& info);
   static void TraceLastWin32Error();
 
 #ifdef UNITTEST // Make private methods available to unit test
@@ -287,6 +290,7 @@ public:
   bool AccessPitMenu(PitMenuV01& info) override; // currently, the return code should always be false (because we may allow more direct editing in the future)
 
   // HW Control- action a control within the game
+  bool HasHardwareInputs() { return(true); }
   bool CheckHWControl(const char* const controlName, double& fRetVal) override;
 
 private:

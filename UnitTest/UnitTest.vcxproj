@@ -31,7 +31,7 @@
     <ProjectGuid>{1FBF2D19-C0C9-4F6C-AB59-898A04D963C4}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>UnitTest</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.18362.0</WindowsTargetPlatformVersion>
     <ProjectSubType>NativeUnitTestProject</ProjectSubType>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -156,6 +156,18 @@
       <AdditionalLibraryDirectories>$(OutputPath);$(VCInstallDir)UnitTest\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>$(OutputPath)rFactor2SharedMemoryMapPlugin$(PlatformArchitecture).lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PreLinkEvent>
+      <Command>
+      </Command>
+      <Message>No idea why output lib needs to be copied to another folder</Message>
+    </PreLinkEvent>
+    <PreBuildEvent>
+      <Command>cmd /c dir</Command>
+      <Message>To find the root dir which is \UnitTest</Message>
+    </PreBuildEvent>
+    <PostBuildEvent>
+      <Command>copy /y ..\VC12\x64\UnitTest\rFactor2SharedMemoryMapPlugin64.lib ..\x64\UnitTest\rFactor2SharedMemoryMapPlugin64.lib </Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>

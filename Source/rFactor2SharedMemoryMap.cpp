@@ -125,6 +125,7 @@ long SharedMemoryPlugin::msUnsubscribedBuffersMask = 0L;
 FILE* SharedMemoryPlugin::msDebugFile;
 FILE* SharedMemoryPlugin::msIsiTelemetryFile;
 FILE* SharedMemoryPlugin::msIsiScoringFile;
+FILE* SharedMemoryPlugin::msIsiPitMenuFile;
 
 // _Weather ?
 char const* const SharedMemoryPlugin::MM_TELEMETRY_FILE_NAME = "$rFactor2SMMP_Telemetry$";
@@ -138,6 +139,7 @@ char const* const SharedMemoryPlugin::MM_PIT_MENU_FILE_NAME = "$rFactor2SMMP_Pit
 
 char const* const SharedMemoryPlugin::INTERNALS_TELEMETRY_FILENAME = R"(UserData\Log\RF2SMMP_InternalsTelemetryOutput.txt)";
 char const* const SharedMemoryPlugin::INTERNALS_SCORING_FILENAME = R"(UserData\Log\RF2SMMP_InternalsScoringOutput.txt)";
+char const* const SharedMemoryPlugin::INTERNALS_PITMENU_FILENAME = R"(UserData\Log\RF2SMMP_InternalsPitMenuOutput.txt)";
 char const* const SharedMemoryPlugin::DEBUG_OUTPUT_FILENAME = R"(UserData\Log\RF2SMMP_DebugOutput.txt)";
 
 // plugin information
@@ -370,6 +372,11 @@ void SharedMemoryPlugin::Shutdown()
     msIsiScoringFile = nullptr;
   }
 
+  if (msIsiPitMenuFile != nullptr) {
+    fclose(msIsiPitMenuFile);
+    msIsiPitMenuFile = nullptr;
+  }
+
   mIsMapped = false;
 
   mTelemetry.ClearState(nullptr /*pInitialContents*/);
@@ -395,7 +402,7 @@ void SharedMemoryPlugin::Shutdown()
 
   mPitMenu.ClearState(nullptr /*pInitialContents*/);
   mPitMenu.ReleaseResources();
- 
+
 }
 
 void SharedMemoryPlugin::ClearTimingsAndCounters()
@@ -1112,12 +1119,20 @@ void SharedMemoryPlugin::UpdateGraphics(GraphicsInfoV02 const& info)
 
 bool SharedMemoryPlugin::AccessPitMenu(PitMenuV01& info)
 {
+  // disable return false;
+
   // Read the Pit Menu display when it is active.
   static long category = 99;  // The info values rarely change so record them
   static long choice = 99;    // and only act when they do change
+
+  // Used to crash rF2  still does if msDebugISIInternals is set
+  WritePitMenuInternals(info);
+
+  DEBUG_MSG(DebugLevel::DevInfo, info.mCategoryName);
   if (!mIsMapped)
     return false;
 
+  // gets here DEBUG_MSG(DebugLevel::DevInfo, "AccessPitMenu mIsMapped");
   TraceBeginUpdate(mPitMenu, mLastPitMenuUpdateMillis, "PIT UPDATE");
 
   mPitMenu.BeginUpdate();
@@ -1129,12 +1144,14 @@ bool SharedMemoryPlugin::AccessPitMenu(PitMenuV01& info)
   {
     category = info.mCategoryIndex;
     mPitMenu.mpBuff->changed = true;
+    // this works
     DEBUG_MSG(DebugLevel::DevInfo, info.mCategoryName);
   }
   if (choice != info.mChoiceIndex)
   {
     choice = info.mChoiceIndex;
     mPitMenu.mpBuff->changed = true;
+    // this works
     DEBUG_MSG(DebugLevel::DevInfo, info.mChoiceString);
   }
 
@@ -1159,10 +1176,10 @@ bool SharedMemoryPlugin::AccessPitMenu(PitMenuV01& info)
 
 // NOTE: doesn't do anything if the AI is driving
 
-//!!!!!!!! Doesn't appear to be called
+// Only called if rFactor2SharedMemoryMap.hpp HasHardwareInputs() returns true
 bool SharedMemoryPlugin::CheckHWControl(const char* const controlName, double& fRetVal)
 {
-  DEBUG_MSG(DebugLevel::DevInfo, "CheckHWControl called");
+  //DEBUG_MSG(DebugLevel::DevInfo, "CheckHWControl called");
   // only if enabled, of course
   if (false) // TBD process to disable HW control
     return(false);
@@ -1172,9 +1189,17 @@ bool SharedMemoryPlugin::CheckHWControl(const char* const controlName, double& f
   {
     const float headSwitcheroo = fmodf(mET, 2.0f);
     if (headSwitcheroo < 0.5)
+    {
       fRetVal = 1.0f;
+      // we get here but headlights don't flash  DEBUG_MSG(DebugLevel::DevInfo, "Headlight control 01");
+      // ** Sorry, no control allowed over actual vehicle inputs ... would be too easy to cheat! **
+
+    }
     else
+    {
       fRetVal = 0.0f;
+      //DEBUG_MSG(DebugLevel::DevInfo, "Headlight control 00");
+    }
     return(true);
   }
 
@@ -1237,6 +1262,12 @@ void SharedMemoryPlugin::WriteToAllExampleOutputFiles(const char * const openStr
   }
 
   fo = fopen(SharedMemoryPlugin::INTERNALS_SCORING_FILENAME, openStr);
+  if (fo != nullptr) {
+    fprintf(fo, "%s\n", msg);
+    fclose(fo);
+  }
+
+  fo = fopen(SharedMemoryPlugin::INTERNALS_PITMENU_FILENAME, openStr);
   if (fo != nullptr) {
     fprintf(fo, "%s\n", msg);
     fclose(fo);

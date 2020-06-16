@@ -178,3 +178,28 @@ void SharedMemoryPlugin::WriteScoringInternals(ScoringInfoV01 const& info)
     fclose(fo);
   }
 }
+
+void SharedMemoryPlugin::WritePitMenuInternals(PitMenuV01 const& info)
+{
+  if (!SharedMemoryPlugin::msDebugISIInternals)
+    return;
+
+  // Use the incoming data, for now I'll just write some of it to a file to a) make sure it
+  if (SharedMemoryPlugin::msIsiPitMenuFile == nullptr) {
+    SharedMemoryPlugin::msIsiPitMenuFile = _fsopen(SharedMemoryPlugin::INTERNALS_PITMENU_FILENAME, "a", _SH_DENYNO);
+    setvbuf(SharedMemoryPlugin::msIsiPitMenuFile, nullptr, _IOFBF, SharedMemoryPlugin::BUFFER_IO_BYTES);
+  }
+
+  auto fo = SharedMemoryPlugin::msIsiPitMenuFile;
+  if (fo != nullptr)
+  {
+    fprintf(fo, "mCategoryIndex=%ld  ", info.mCategoryIndex);
+    fprintf(fo, "mCategoryName='%s'\n", info.mCategoryName);
+    fprintf(fo, "mChoiceIndex=%ld  ", info.mChoiceIndex);
+    fprintf(fo, "mChoiceString='%s'\n", info.mChoiceString);
+    // Close file
+    DEBUG_MSG(DebugLevel::DevInfo, "WritePitMenuInternals");
+    fclose(fo);
+  }
+
+}

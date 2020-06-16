@@ -250,3 +250,5 @@ paket-files/
 .idea/
 *.sln.iml
 /VS2019
+/CheckHWControl_listSorted.txt
+/CheckHWControl_list.txt
