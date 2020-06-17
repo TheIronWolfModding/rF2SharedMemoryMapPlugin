@@ -1169,6 +1169,8 @@ bool SharedMemoryPlugin::AccessPitMenu(PitMenuV01& info)
 // control, this method returns true and sets the value of the double pointed to by the
 // second arg.  Otherwise, it returns false and leaves the double unmodified.
 ///////////////////////////////////////////////////////////
+// My guess is that when the double is set the button is pressed, when it's 0
+// it's released.  But why use a double???
 
 // More detail at https://www.studio-397.com/modding-resources/ rFactor2 internals plugin / Instruction
 // but in short: this is called with each control name in turn, if it returns
@@ -1186,7 +1188,7 @@ bool SharedMemoryPlugin::CheckHWControl(const char* const controlName, double& f
 
   /*
   // Hack test - flash the headlights
-  // Doesn't work, presumably because it's an "actual vehicle input"?
+  // Doesn't work, presumably because it's an "actual vehicle input"? Confirmed by Lazza.
   // ** Sorry, no control allowed over actual vehicle inputs ... would be too easy to cheat! **
   if (_stricmp(controlName, "Headlights") == 0)
   {
@@ -1211,9 +1213,9 @@ bool SharedMemoryPlugin::CheckHWControl(const char* const controlName, double& f
     DEBUG_MSG(DebugLevel::DevInfo, "PitDisplay match"); // Doesn't happen
   }
   // Hack test - operate Pit Menu
+  const double headSwitcheroo = fmod(mET, 2.0);
   if (_stricmp(controlName, "PitMenuIncrementValue") == 0)
   {
-    const double headSwitcheroo = fmod(mET, 2.0);
     if (headSwitcheroo < 0.5)
     {
       fRetVal = 1.0;
@@ -1225,7 +1227,7 @@ bool SharedMemoryPlugin::CheckHWControl(const char* const controlName, double& f
   }
   else if (_stricmp(controlName, "PitMenuDecrementValue") == 0)
   {
-    const double headSwitcheroo = fmod(mET, 2.0);
+    DEBUG_MSG(DebugLevel::DevInfo, "PitMenuDecrementValue match");
     if ((headSwitcheroo > 1.0) && (headSwitcheroo < 1.5))
     {
       fRetVal = 1.0;
@@ -1237,7 +1239,6 @@ bool SharedMemoryPlugin::CheckHWControl(const char* const controlName, double& f
   }
   else if (_stricmp(controlName, "PitMenuUp") == 0)
   {
-    const double headSwitcheroo = fmod(mET, 2.0);
     if ((headSwitcheroo > 1.0) && (headSwitcheroo < 1.5))
       fRetVal = 1.0;
     else
@@ -1246,7 +1247,6 @@ bool SharedMemoryPlugin::CheckHWControl(const char* const controlName, double& f
   }
   else if (_stricmp(controlName, "PitMenuDown") == 0)
   {
-    const double headSwitcheroo = fmod(mET, 2.0);
     if ((headSwitcheroo > 1.0) && (headSwitcheroo < 1.5))
       fRetVal = 1.0;
     else
@@ -1255,7 +1255,7 @@ bool SharedMemoryPlugin::CheckHWControl(const char* const controlName, double& f
   }
   else if (_stricmp(controlName, "DisplayMode") == 0)
   {
-    const double headSwitcheroo = fmod(mET, 2.0);
+    DEBUG_MSG(DebugLevel::DevInfo, "DisplayMode match");
     if ((headSwitcheroo > 1.0) && (headSwitcheroo < 1.5))
     {
       fRetVal = 1.0;
@@ -1283,7 +1283,7 @@ bool SharedMemoryPlugin::CheckHWControl(const char* const controlName, double& f
   {
     ControlToAction = "";
     fRetVal = 1.0f; // I can't remember what that does
-    DEBUG_MSG(DebugLevel::DevInfo, controlName); // + " actioned");
+    DEBUG_MSG2(DebugLevel::DevInfo, controlName, " actioned");
     return(true);
   }
 
