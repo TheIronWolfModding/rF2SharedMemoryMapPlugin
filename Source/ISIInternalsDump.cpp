@@ -184,7 +184,6 @@ void SharedMemoryPlugin::WritePitMenuInternals(PitMenuV01 const& info)
   if (!SharedMemoryPlugin::msDebugISIInternals)
     return;
 
-  // Use the incoming data, for now I'll just write some of it to a file to a) make sure it
   if (SharedMemoryPlugin::msIsiPitMenuFile == nullptr) {
     SharedMemoryPlugin::msIsiPitMenuFile = _fsopen(SharedMemoryPlugin::INTERNALS_PITMENU_FILENAME, "a", _SH_DENYNO);
     setvbuf(SharedMemoryPlugin::msIsiPitMenuFile, nullptr, _IOFBF, SharedMemoryPlugin::BUFFER_IO_BYTES);

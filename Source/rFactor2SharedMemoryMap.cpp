@@ -1125,10 +1125,10 @@ bool SharedMemoryPlugin::AccessPitMenu(PitMenuV01& info)
   static long category = 99;  // The info values rarely change so record them
   static long choice = 99;    // and only act when they do change
 
-  // Used to crash rF2  still does if msDebugISIInternals is set
-  WritePitMenuInternals(info);
+  // Used to crash rF2 - still does if msDebugISIInternals is set
+  // WritePitMenuInternals(info);
 
-  DEBUG_MSG(DebugLevel::DevInfo, info.mCategoryName);
+  //DEBUG_MSG(DebugLevel::DevInfo, info.mCategoryName);
   if (!mIsMapped)
     return false;
 
@@ -1145,14 +1145,14 @@ bool SharedMemoryPlugin::AccessPitMenu(PitMenuV01& info)
     category = info.mCategoryIndex;
     mPitMenu.mpBuff->changed = true;
     // this works
-    DEBUG_MSG(DebugLevel::DevInfo, info.mCategoryName);
+    DEBUG_MSG2(DebugLevel::DevInfo, "Pit menu category changed:", info.mCategoryName);
   }
   if (choice != info.mChoiceIndex)
   {
     choice = info.mChoiceIndex;
     mPitMenu.mpBuff->changed = true;
     // this works
-    DEBUG_MSG(DebugLevel::DevInfo, info.mChoiceString);
+    DEBUG_MSG2(DebugLevel::DevInfo, "Pit menu choice changed:", info.mChoiceString);
   }
 
   mPitMenu.EndUpdate();
@@ -1179,20 +1179,22 @@ bool SharedMemoryPlugin::AccessPitMenu(PitMenuV01& info)
 // Only called if rFactor2SharedMemoryMap.hpp HasHardwareInputs() returns true
 bool SharedMemoryPlugin::CheckHWControl(const char* const controlName, double& fRetVal)
 {
-  //DEBUG_MSG(DebugLevel::DevInfo, "CheckHWControl called");
+  // DEBUG_MSG(DebugLevel::DevInfo, "CheckHWControl called");
   // only if enabled, of course
   if (false) // TBD process to disable HW control
     return(false);
 
+  /*
   // Hack test - flash the headlights
+  // Doesn't work, presumably because it's an "actual vehicle input"?
+  // ** Sorry, no control allowed over actual vehicle inputs ... would be too easy to cheat! **
   if (_stricmp(controlName, "Headlights") == 0)
   {
     const float headSwitcheroo = fmodf(mET, 2.0f);
     if (headSwitcheroo < 0.5)
     {
       fRetVal = 1.0f;
-      // we get here but headlights don't flash  DEBUG_MSG(DebugLevel::DevInfo, "Headlight control 01");
-      // ** Sorry, no control allowed over actual vehicle inputs ... would be too easy to cheat! **
+      // we get here DEBUG_MSG(DebugLevel::DevInfo, "Headlight control 01");
 
     }
     else
@@ -1202,7 +1204,67 @@ bool SharedMemoryPlugin::CheckHWControl(const char* const controlName, double& f
     }
     return(true);
   }
+  */
 
+  if (_stricmp(controlName, "PitDisplay") == 0)
+  {
+    DEBUG_MSG(DebugLevel::DevInfo, "PitDisplay match"); // Doesn't happen
+  }
+  // Hack test - operate Pit Menu
+  if (_stricmp(controlName, "PitMenuIncrementValue") == 0)
+  {
+    const double headSwitcheroo = fmod(mET, 2.0);
+    if (headSwitcheroo < 0.5)
+    {
+      fRetVal = 1.0;
+      DEBUG_MSG(DebugLevel::DevInfo, "PitMenuIncrementValue 1");
+    }
+    else
+      fRetVal = 0.0;
+    return(true);
+  }
+  else if (_stricmp(controlName, "PitMenuDecrementValue") == 0)
+  {
+    const double headSwitcheroo = fmod(mET, 2.0);
+    if ((headSwitcheroo > 1.0) && (headSwitcheroo < 1.5))
+    {
+      fRetVal = 1.0;
+      DEBUG_MSG(DebugLevel::DevInfo, "PitMenuDecrementValue 1");
+    }
+    else
+      fRetVal = 0.0;
+    return(true);
+  }
+  else if (_stricmp(controlName, "PitMenuUp") == 0)
+  {
+    const double headSwitcheroo = fmod(mET, 2.0);
+    if ((headSwitcheroo > 1.0) && (headSwitcheroo < 1.5))
+      fRetVal = 1.0;
+    else
+      fRetVal = 0.0;
+    return(true);
+  }
+  else if (_stricmp(controlName, "PitMenuDown") == 0)
+  {
+    const double headSwitcheroo = fmod(mET, 2.0);
+    if ((headSwitcheroo > 1.0) && (headSwitcheroo < 1.5))
+      fRetVal = 1.0;
+    else
+      fRetVal = 0.0;
+    return(true);
+  }
+  else if (_stricmp(controlName, "DisplayMode") == 0)
+  {
+    const double headSwitcheroo = fmod(mET, 2.0);
+    if ((headSwitcheroo > 1.0) && (headSwitcheroo < 1.5))
+    {
+      fRetVal = 1.0;
+      DEBUG_MSG(DebugLevel::DevInfo, "DisplayMode 1");
+    }
+    else
+      fRetVal = 0.0;
+    return(true);
+  }
   ///////////////////////////////////////////////////////////
   // ISI comments:
   // Note that incoming value is the game's computation, in case you're interested.
@@ -1222,24 +1284,6 @@ bool SharedMemoryPlugin::CheckHWControl(const char* const controlName, double& f
     ControlToAction = "";
     fRetVal = 1.0f; // I can't remember what that does
     DEBUG_MSG(DebugLevel::DevInfo, controlName); // + " actioned");
-    return(true);
-  }
-
-  // DEMO
-  if (_stricmp(controlName, "Headlights") == 0)
-  {
-    DEBUG_MSG(DebugLevel::DevInfo, "Headlights control");
-    const float headlightsSwitcher = fmodf(mET, 2.0f);
-    if (headlightsSwitcher < 0.5)
-    {
-      fRetVal = 1.0f;
-      DEBUG_MSG(DebugLevel::DevInfo, "Headlights control 1");
-    }
-    else
-    {
-      fRetVal = 0.0f;
-      DEBUG_MSG(DebugLevel::DevInfo, "Headlights control 0");
-    }
     return(true);
   }
 

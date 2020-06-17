@@ -1,3 +1,21 @@
+NOTES ON THIS VERSION
+Unit tests added - build SMMP for debug and it will be lib which is used by the unit tests, build for Release and it's a DLL T_rFactor2SharedMemoryMapPlugin64.dll which is copied to c:\Program Files (x86)\Steam\steamapps\common\rFactor 2\Bin64\Plugins
+Use this entry in UserData\player\CustomPluginVariables.JSON:
+  "T_rFactor2SharedMemoryMapPlugin64.dll":{
+    " Enabled":1,
+    "DebugISIInternals":0,
+    "DebugOutputLevel":5,
+    "DedicatedServerMapGlobally":0,
+    "EnableDirectMemoryAccess":1,
+    "UnsubscribedBuffersMask":32
+  },
+"DebugISIInternals":1 crashes rF2 (the same crash in unit test if AccessPitMenu/WritePitMenuInternals is called TWICE because the fprintf pointer (I think that's what it is) is null the second time.
+
+CheckHWControl did switch between the LCD modes and change the category but that stopped working when I commented out some DEBUG_MSGs.  Mystery!!
+
+rF2SMMonitor edited to display rF2PitMenu but it never gets any information (because rF2PitMenu is not shared properly??)
+
+
 # rFactor 2 Internals Shared Memory Map Plugin
 
 This plugin mirrors exposed rFactor 2 internal state into shared memory buffers.  Essentially, this is direct memcpy of rFactor 2 internals.
