@@ -89,140 +89,140 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v120</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
     <TargetName>rFactor2SharedMemoryMapPlugin32</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='UnitTest|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v120</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
     <TargetName>rFactor2SharedMemoryMapPlugin32</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
-    <PlatformToolset>v120</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
     <TargetName>rFactor2SharedMemoryMapPlugin64</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='UnitTest|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
-    <PlatformToolset>v120</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
     <TargetName>rFactor2SharedMemoryMapPlugin64</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v120</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
     <TargetName>rFactor2SharedMemoryMapPlugin32</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_MT|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v120</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
     <TargetName>rFactor2SharedMemoryMapPlugin32</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_PDBGEN_MT|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v120</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
     <TargetName>rFactor2SharedMemoryMapPlugin32</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_PDBGEN|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v120</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
     <TargetName>rFactor2SharedMemoryMapPlugin32</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_AVX2|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v120</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
     <TargetName>rFactor2SharedMemoryMapPlugin32</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_AVX2_MT|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v120</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
     <TargetName>rFactor2SharedMemoryMapPlugin32</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_PGOGEN|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v120</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
     <TargetName>rFactor2SharedMemoryMapPlugin32</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_PGOGEN_MT|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v120</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
     <TargetName>rFactor2SharedMemoryMapPlugin32</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v120</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
     <TargetName>rFactor2SharedMemoryMapPlugin64</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_MT|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v120</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
     <TargetName>rFactor2SharedMemoryMapPlugin64</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_PDBGEN_MT|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v120</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
     <TargetName>rFactor2SharedMemoryMapPlugin64</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_PDBGEN|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v120</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
     <TargetName>rFactor2SharedMemoryMapPlugin64</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_AVX2|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v120</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
     <TargetName>rFactor2SharedMemoryMapPlugin64</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_AVX2_MT|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v120</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
     <TargetName>rFactor2SharedMemoryMapPlugin64</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_PGOGEN|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v120</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
     <TargetName>rFactor2SharedMemoryMapPlugin64</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_PGOGEN_MT|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v120</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
     <TargetName>rFactor2SharedMemoryMapPlugin64</TargetName>
@@ -479,7 +479,7 @@
       <OutputFile>.\Release/rFactor2SharedMemoryMapPlugin32.bsc</OutputFile>
     </Bscmake>
     <PostBuildEvent>
-      <Command>copy $(Platform)\$(Configuration)\rFactor2SharedMemoryMapPlugin64.dll "c:\games\Steam\steamapps\common\rFactor 2\Bin64\Plugins\."</Command>
+      <Command>copy /y $(OutputPath)$(AssemblyName)$(PlatformArchitecture).dll  "d:\games\SteamLibrary\steamapps\common\rFactor\Plugins\$(AssemblyName)$(PlatformArchitecture)t.dll"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release_MT|Win32'">
@@ -841,7 +841,7 @@
     </Bscmake>
     <PostBuildEvent />
     <PostBuildEvent>
-      <Command>copy $(Platform)\$(Configuration)\rFactor2SharedMemoryMapPlugin64.dll "c:\games\Steam\steamapps\common\rFactor 2\Bin64\Plugins\."</Command>
+      <Command>copy /y $(OutputPath)$(AssemblyName)$(PlatformArchitecture).dll  "$(ProgramFiles)\Steam\steamapps\common\rFactor 2\Bin64\Plugins\$(AssemblyName)$(PlatformArchitecture)t.dll"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release_MT|x64'">
@@ -888,7 +888,7 @@
       <OutputFile>.\Release/rFactor2SharedMemoryMapPlugin64.bsc</OutputFile>
     </Bscmake>
     <PostBuildEvent>
-      <Command>copy $(Platform)\$(Configuration)\rFactor2SharedMemoryMapPlugin64.dll "c:\games\Steam\steamapps\common\rFactor 2\Bin64\Plugins\."</Command>
+      <Command>copy /y $(Platform)\$(Configuration)\rFactor2SharedMemoryMapPlugin64.dll "$(ProgramFiles)\Steam\steamapps\common\rFactor 2\Bin64\Plugins\."</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release_PDBGEN_MT|x64'">
@@ -935,7 +935,7 @@
       <OutputFile>.\Release/rFactor2SharedMemoryMapPlugin64.bsc</OutputFile>
     </Bscmake>
     <PostBuildEvent>
-      <Command>copy $(Platform)\$(Configuration)\rFactor2SharedMemoryMapPlugin64.dll "c:\games\Steam\steamapps\common\rFactor 2\Bin64\Plugins\."</Command>
+      <Command>copy /y $(Platform)\$(Configuration)\rFactor2SharedMemoryMapPlugin64.dll "$(ProgramFiles)\Steam\steamapps\common\rFactor 2\Bin64\Plugins\."</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release_PDBGEN|x64'">
@@ -981,7 +981,7 @@
       <OutputFile>.\Release/rFactor2SharedMemoryMapPlugin64.bsc</OutputFile>
     </Bscmake>
     <PostBuildEvent>
-      <Command>copy $(Platform)\$(Configuration)\rFactor2SharedMemoryMapPlugin64.dll "c:\games\Steam\steamapps\common\rFactor 2\Bin64\Plugins\."</Command>
+      <Command>copy /y $(Platform)\$(Configuration)\rFactor2SharedMemoryMapPlugin64.dll "$(ProgramFiles)\Steam\steamapps\common\rFactor 2\Bin64\Plugins\."</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release_AVX2|x64'">
@@ -1035,7 +1035,7 @@
       <OutputFile>.\Release/rFactor2SharedMemoryMapPlugin64.bsc</OutputFile>
     </Bscmake>
     <PostBuildEvent>
-      <Command>copy $(Platform)\$(Configuration)\rFactor2SharedMemoryMapPlugin64.dll "c:\games\Steam\steamapps\common\rFactor 2\Bin64\Plugins\."</Command>
+      <Command>copy /y $(Platform)\$(Configuration)\rFactor2SharedMemoryMapPlugin64.dll "$(ProgramFiles)\Steam\steamapps\common\rFactor 2\Bin64\Plugins\."</Command>
     </PostBuildEvent>
     <PreLinkEvent>
       <Command>copy /y ..\pgo\rFactor2SharedMemoryMapPlugin64_saved.pgd ..\pgo\rFactor2SharedMemoryMapPlugin64.pgd</Command>
@@ -1093,7 +1093,7 @@
       <OutputFile>.\Release/rFactor2SharedMemoryMapPlugin64.bsc</OutputFile>
     </Bscmake>
     <PostBuildEvent>
-      <Command>copy $(Platform)\$(Configuration)\rFactor2SharedMemoryMapPlugin64.dll "c:\games\Steam\steamapps\common\rFactor 2\Bin64\Plugins\."</Command>
+      <Command>copy /y $(Platform)\$(Configuration)\rFactor2SharedMemoryMapPlugin64.dll "$(ProgramFiles)\Steam\steamapps\common\rFactor 2\Bin64\Plugins\."</Command>
     </PostBuildEvent>
     <PreLinkEvent>
       <Command>copy /y ..\pgo\rFactor2SharedMemoryMapPlugin64_saved_mt.pgd ..\pgo\rFactor2SharedMemoryMapPlugin64.pgd</Command>
@@ -1150,7 +1150,7 @@
       <OutputFile>.\Release/rFactor2SharedMemoryMapPlugin64.bsc</OutputFile>
     </Bscmake>
     <PostBuildEvent>
-      <Command>copy $(Platform)\$(Configuration)\rFactor2SharedMemoryMapPlugin64.dll "c:\games\Steam\steamapps\common\rFactor 2\Bin64\Plugins\."</Command>
+      <Command>copy /y $(Platform)\$(Configuration)\rFactor2SharedMemoryMapPlugin64.dll "$(ProgramFiles)\Steam\steamapps\common\rFactor 2\Bin64\Plugins\."</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release_PGOGEN_MT|x64'">
@@ -1206,7 +1206,7 @@
       <OutputFile>.\Release/rFactor2SharedMemoryMapPlugin64.bsc</OutputFile>
     </Bscmake>
     <PostBuildEvent>
-      <Command>copy $(Platform)\$(Configuration)\rFactor2SharedMemoryMapPlugin64.dll "c:\games\Steam\steamapps\common\rFactor 2\Bin64\Plugins\."</Command>
+      <Command>copy /y $(Platform)\$(Configuration)\rFactor2SharedMemoryMapPlugin64.dll "$(ProgramFiles)\Steam\steamapps\common\rFactor 2\Bin64\Plugins\."</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
