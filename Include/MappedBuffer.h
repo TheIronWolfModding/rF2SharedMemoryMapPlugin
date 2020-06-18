@@ -9,7 +9,7 @@ Description:
   to detect torn frames.  In mapped memory, BuffT is preceeded by rF2MappedBufferVersionBlock.
 
   rF2MappedBufferVersionBlock variables allow users who need to ensure consistent buffer view to check if
-  buffer is being written to.  mVersionUpdateBegin and mVersionUpdateEnd version block variables should 
+  buffer is being written to.  mVersionUpdateBegin and mVersionUpdateEnd version block variables should
   be equal and differ only while buffer (mpBuff) contents are updated.
 
   MappedBuffer<> client code has to call BeginUpdate before updating buffer (mpBuff) contents and
@@ -24,7 +24,7 @@ class MappedBuffer
 {
 public:
 
-  MappedBuffer(char const* mmFileName) 
+  MappedBuffer(char const* mmFileName)
     : MM_FILE_NAME(mmFileName)
   {}
 
@@ -68,7 +68,7 @@ public:
       if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::Synchronization) {
         char msg[512] = {};
 
-        sprintf(msg, "BeginUpdate: versions out of sync.  Version Begin:%d  End:%d",
+        sprintf(msg, "BeginUpdate: versions out of sync.  Version Begin:%ld  End:%ld",
           mpBuffVersionBlock->mVersionUpdateBegin, mpBuffVersionBlock->mVersionUpdateEnd);
 
         DEBUG_MSG(DebugLevel::Synchronization, msg);
@@ -93,7 +93,7 @@ public:
       if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::Synchronization) {
         char msg[512] = {};
 
-        sprintf(msg, "EndUpdate: versions out of sync.  Version Begin:%d  End:%d",
+        sprintf(msg, "EndUpdate: versions out of sync.  Version Begin:%ld  End:%ld",
           mpBuffVersionBlock->mVersionUpdateBegin, mpBuffVersionBlock->mVersionUpdateEnd);
 
         DEBUG_MSG(DebugLevel::Synchronization, msg);
@@ -122,7 +122,7 @@ public:
     mMapped = false;
 
     // Unmap view and close all handles.
-    if (mpMappedView != nullptr 
+    if (mpMappedView != nullptr
       && !::UnmapViewOfFile(mpMappedView)) {
       DEBUG_MSG(DebugLevel::Errors, "Failed to unmap mapped buffer view");
       SharedMemoryPlugin::TraceLastWin32Error();
@@ -130,7 +130,7 @@ public:
 
     mpMappedView = nullptr;
     mpBuff = nullptr;
-    mpBuffVersionBlock = nullptr; 
+    mpBuffVersionBlock = nullptr;
 
     // Note: we didn't ever close this apparently before V3, oops.
     if (mhMap != nullptr
@@ -142,7 +142,11 @@ public:
     mhMap = nullptr;
   }
 
+#ifdef UNITTEST // Make private mpBuff available to unit test
+public:
+#else
 private:
+#endif
   MappedBuffer(MappedBuffer const&) = delete;
   MappedBuffer& operator=(MappedBuffer const&) = delete;
 
@@ -158,7 +162,7 @@ private:
     else {
       // Dedicated server use.  Append processId for dedicated server to allow multiple instances.
       char pid[8] = {};
-      sprintf(pid, "%d", ::GetCurrentProcessId());
+      sprintf(pid, "%ld", ::GetCurrentProcessId());
 
       if (dedicatedServerMapGlobally)
         sprintf(mappingName, "Global\\%s%s", fileName, pid);
@@ -212,13 +216,13 @@ private:
         sizeof(rF2MappedBufferVersionBlock) + sizeof(BuffT),
         mappingName);
     }
-    
+
     if (hMap == nullptr) {
       DEBUG_MSG2(DebugLevel::Errors, "Failed to create file mapping for file:", mappingName);
       SharedMemoryPlugin::TraceLastWin32Error();
       return nullptr;
     }
-    
+
     if (::GetLastError() == ERROR_ALREADY_EXISTS)
       DEBUG_MSG2(DebugLevel::Warnings, "WARNING: File mapping already exists for file:", mappingName);
 

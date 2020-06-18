@@ -716,7 +716,7 @@ struct rF2TrackRules
   float mMaximumSpeed;                  // maximum speed that anybody should be driving (-1 to indicate no limit)
 
   char mMessage[ 96 ];                  // a message for everybody to explain what is going on (which will get run through translator on client machines)
-  
+
   // MM_NOT_USED
   // TrackRulesParticipantV01 *mParticipant;         // array of partipants (vehicles)
   // MM_NEW
@@ -950,4 +950,17 @@ struct rF2Extended : public rF2MappedBufferHeader
   long mUnsubscribedBuffersMask;                  // Currently active UnsbscribedBuffersMask value.  This will be allowed for clients to write to in the future, but not yet.
 };
 
+struct rF2PitMenu : public rF2MappedBufferHeader
+{
+  long mCategoryIndex;                  // index of the current category
+  char mCategoryName[32];             // name of the current category (untranslated)
+
+  long mChoiceIndex;                    // index of the current choice (within the current category)
+  char mChoiceString[32];             // name of the current choice (may have some translated words)
+  long mNumChoices;                     // total number of choices (0 <= mChoiceIndex < mNumChoices)
+
+  bool changed;                       // Set if the Pit Display has changed
+
+  unsigned char mExpansion[256-sizeof(changed)];      // for future use
+};
 #pragma pack(pop)

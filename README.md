@@ -1,3 +1,21 @@
+NOTES ON THIS VERSION
+Unit tests added - build SMMP for debug and it will be lib which is used by the unit tests, build for Release and it's a DLL T_rFactor2SharedMemoryMapPlugin64.dll which is copied to c:\Program Files (x86)\Steam\steamapps\common\rFactor 2\Bin64\Plugins
+Use this entry in UserData\player\CustomPluginVariables.JSON:
+  "T_rFactor2SharedMemoryMapPlugin64.dll":{
+    " Enabled":1,
+    "DebugISIInternals":0,
+    "DebugOutputLevel":5,
+    "DedicatedServerMapGlobally":0,
+    "EnableDirectMemoryAccess":1,
+    "UnsubscribedBuffersMask":32
+  },
+"DebugISIInternals":1 crashes rF2 (the same crash in unit test if AccessPitMenu/WritePitMenuInternals is called TWICE because the fprintf pointer (I think that's what it is) is null the second time.
+
+CheckHWControl did switch between the LCD modes and change the category but that stopped working when I commented out some DEBUG_MSGs.  Mystery!!
+
+rF2SMMonitor edited to display rF2PitMenu but it never gets any information (because rF2PitMenu is not shared properly??)
+
+
 # rFactor 2 Internals Shared Memory Map Plugin
 
 This plugin mirrors exposed rFactor 2 internal state into shared memory buffers.  Essentially, this is direct memcpy of rFactor 2 internals.
@@ -38,7 +56,8 @@ Scoring = 2,
 Rules = 4,
 MultiRules = 8,
 ForceFeedback = 16,
-Graphics = 32`
+Graphics = 32,
+PitDisplay = 64`
 
 So, to unsubscribe from `Multi Rules` and `Graphics` buffeers set `UnsubscribedBuffersMask` to 40 (8 + 32).
 
@@ -60,6 +79,19 @@ Plugin comes with rF2SMMonitor program that shows how to access exposed internal
 
 ## Dedicated server use
 If ran in dedicated server process, each shared memory buffer name has server PID appended.  If DedicatedServerMapGlobally preference is set to 1, plugin will attempt creating shared memory buffers in the Global section.  Note that "Create Global Objects" permission is needed on user account running dedicated server.
+
+## Debugging
+Set DebugOutputLevel in `UserData\<player>\CustomPluginVariables.json`
+*  `Off = 0,`
+*  `Errors = 1,`
+*  `CriticalInfo = 2,      // Errors + Critical Info`
+*  `DevInfo = 3,           // Errors + Critical Info + Dev Info`
+*  `Warnings = 4,          // Errors + Critical Info + Dev Info + Warnings`
+*  `Synchronization = 5,   // Errors + Critical Info + Dev Info + Warnings + Sync messages`
+*  `Perf = 6,              // Errors + Critical Info + Dev Info + Warnings + Sync messages + Perf`
+*  `Timing = 7,            // Errors + Critical Info + Dev Info + Warnings + Sync messages + Perf + Timing deltas`
+*  `Verbose = 8            // All`
+
 
 ## Distribution and reuse
 You are allowed to include this .dll with your distribution, as long as it is:
