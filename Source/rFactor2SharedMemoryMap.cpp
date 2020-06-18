@@ -1138,14 +1138,12 @@ bool SharedMemoryPlugin::AccessPitMenu(PitMenuV01& info)
   if (category != info.mCategoryIndex)
   {
     category = info.mCategoryIndex;
-    mPitMenu.mpBuff->changed = true;
     // this works
     DEBUG_MSG2(DebugLevel::DevInfo, "Pit menu category changed:", info.mCategoryName);
   }
   if (choice != info.mChoiceIndex)
   {
     choice = info.mChoiceIndex;
-    mPitMenu.mpBuff->changed = true;
     // this works
     DEBUG_MSG2(DebugLevel::DevInfo, "Pit menu choice changed:", info.mChoiceString);
   }
@@ -1173,14 +1171,17 @@ bool SharedMemoryPlugin::AccessPitMenu(PitMenuV01& info)
 
 // NOTE: doesn't do anything if the AI is driving
 
+// TODO_PM:
 // Only called if rFactor2SharedMemoryMap.hpp HasHardwareInputs() returns true
-bool SharedMemoryPlugin::CheckHWControl(const char* const controlName, double& fRetVal)
+bool SharedMemoryPlugin::CheckHWControl(const char* const /*controlName*/, double& /*fRetVal*/)
 {
   // DEBUG_MSG(DebugLevel::DevInfo, "CheckHWControl called");
   // only if enabled, of course
-  if (false) // TBD process to disable HW control
+  return false;
+#if 0
+  if (true) // TBD process to disable HW control
     return(false);
-
+ 
   /*
   // Hack test - flash the headlights
   // Doesn't work, presumably because it's an "actual vehicle input"? Confirmed by Lazza.
@@ -1208,6 +1209,7 @@ bool SharedMemoryPlugin::CheckHWControl(const char* const controlName, double& f
     DEBUG_MSG(DebugLevel::DevInfo, "PitDisplay match"); // Doesn't happen
   }
   // Hack test - operate Pit Menu
+  // TODO_PM:
   const double headSwitcheroo = fmod(mET, 2.0);
   if (_stricmp(controlName, "PitMenuIncrementValue") == 0)
   {
@@ -1223,14 +1225,15 @@ bool SharedMemoryPlugin::CheckHWControl(const char* const controlName, double& f
   else if (_stricmp(controlName, "PitMenuDecrementValue") == 0)
   {
     DEBUG_MSG(DebugLevel::DevInfo, "PitMenuDecrementValue match");
-    if ((headSwitcheroo > 1.0) && (headSwitcheroo < 1.5))
+    // TODO_PM:
+    /*if ((headSwitcheroo > 1.0) && (headSwitcheroo < 1.5))
     {
       fRetVal = 1.0;
       DEBUG_MSG(DebugLevel::DevInfo, "PitMenuDecrementValue 1");
     }
     else
       fRetVal = 0.0;
-    return(true);
+    return(true);*/
   }
   else if (_stricmp(controlName, "PitMenuUp") == 0)
   {
@@ -1281,8 +1284,10 @@ bool SharedMemoryPlugin::CheckHWControl(const char* const controlName, double& f
     DEBUG_MSG2(DebugLevel::DevInfo, controlName, " actioned");
     return(true);
   }
+    return false;
+#endif
 
-  return false;
+
 }
 
 ////////////////////////////////////////////
