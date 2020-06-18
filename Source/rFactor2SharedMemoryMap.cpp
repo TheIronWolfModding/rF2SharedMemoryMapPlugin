@@ -176,7 +176,7 @@ SharedMemoryPlugin::SharedMemoryPlugin()
     , mForceFeedback(SharedMemoryPlugin::MM_FORCE_FEEDBACK_FILE_NAME)
     , mGraphics(SharedMemoryPlugin::MM_GRAPHICS_FILE_NAME)
     , mExtended(SharedMemoryPlugin::MM_EXTENDED_FILE_NAME)
-    , mPitMenu(SharedMemoryPlugin::MM_PIT_MENU_FILE_NAME)
+    , mPitInfo(SharedMemoryPlugin::MM_PIT_MENU_FILE_NAME)
 {
   memset(mParticipantTelemetryUpdated, 0, sizeof(mParticipantTelemetryUpdated));
 }
@@ -263,7 +263,7 @@ void SharedMemoryPlugin::Startup(long version)
     return;
   }
 
-  if (!mPitMenu.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
+  if (!mPitInfo.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
     DEBUG_MSG(DebugLevel::Errors, "Failed to initialize Pit Menu mapping");
     return;
   }
@@ -395,8 +395,8 @@ void SharedMemoryPlugin::Shutdown()
   mExtended.ClearState(nullptr /*pInitialContents*/);
   mExtended.ReleaseResources();
 
-  mPitMenu.ClearState(nullptr /*pInitialContents*/);
-  mPitMenu.ReleaseResources();
+  mPitInfo.ClearState(nullptr /*pInitialContents*/);
+  mPitInfo.ReleaseResources();
 
 }
 
@@ -438,7 +438,7 @@ void SharedMemoryPlugin::ClearState()
   // So, clear the state but pass persisting state as initial state.
   mExtStateTracker.ClearState();
   mExtended.ClearState(&(mExtStateTracker.mExtended));
-  mPitMenu.ClearState(nullptr /*pInitialContents*/);
+  mPitInfo.ClearState(nullptr /*pInitialContents*/);
 
   ClearTimingsAndCounters();
 }
@@ -1128,11 +1128,11 @@ bool SharedMemoryPlugin::AccessPitMenu(PitMenuV01& info)
     return false;
 
   // gets here DEBUG_MSG(DebugLevel::DevInfo, "AccessPitMenu mIsMapped");
-  TraceBeginUpdate(mPitMenu, mLastPitMenuUpdateMillis, "PIT UPDATE");
+  TraceBeginUpdate(mPitInfo, mLastPitMenuUpdateMillis, "PIT UPDATE");
 
-  mPitMenu.BeginUpdate();
+  mPitInfo.BeginUpdate();
   // Copy main struct.
-  memcpy(mPitMenu.mpBuff, &info, sizeof(rF2PitMenu));
+  memcpy(mPitInfo.mpBuff, &info, sizeof(rF2PitMenu));
 
   // Proof of concept - send changes in the Pit Menu contents to the debug stream
   if (category != info.mCategoryIndex)
@@ -1148,7 +1148,7 @@ bool SharedMemoryPlugin::AccessPitMenu(PitMenuV01& info)
     DEBUG_MSG2(DebugLevel::DevInfo, "Pit menu choice changed:", info.mChoiceString);
   }
 
-  mPitMenu.EndUpdate();
+  mPitInfo.EndUpdate();
 
   return false;
 }

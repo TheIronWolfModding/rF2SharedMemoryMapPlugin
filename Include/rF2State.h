@@ -794,6 +794,22 @@ struct rF2MultiSessionRules
 static_assert(sizeof(rF2MultiSessionRules) == sizeof(MultiSessionRulesV01), "rF2MultiSessionRules and MultiSessionRulesV01 structs are out of sync");
 
 
+//////////////////////////////////////////////////////////////////////////////////////////
+// Identical to PitMenuV01, except where noted by MM_NEW/MM_NOT_USED comments.
+//////////////////////////////////////////////////////////////////////////////////////////
+struct rF2PitMenu
+{
+  long mCategoryIndex;                  // index of the current category
+  char mCategoryName[32];               // name of the current category (untranslated)
+
+  long mChoiceIndex;                    // index of the current choice (within the current category)
+  char mChoiceString[32];               // name of the current choice (may have some translated words)
+  long mNumChoices;                     // total number of choices (0 <= mChoiceIndex < mNumChoices)
+
+  unsigned char mExpansion[256];        // for future use
+};
+static_assert(sizeof(rF2PitMenu) == sizeof(PitMenuV01), "rF2PitMenu and PitMenuV0 structs are out of sync");
+
 ///////////////////////////////////////////
 // Mapped wrapper structures
 ///////////////////////////////////////////
@@ -863,6 +879,12 @@ struct rF2ForceFeedback : public rF2MappedBufferHeader
 struct rF2Graphics : public rF2MappedBufferHeader
 {
   rF2GraphicsInfo mGraphicsInfo;
+};
+
+
+struct rF2PitInfo : public rF2MappedBufferHeader
+{
+  rF2PitMenu mPitMenu;
 };
 
 
@@ -950,15 +972,4 @@ struct rF2Extended : public rF2MappedBufferHeader
   long mUnsubscribedBuffersMask;                      // Currently active UnsbscribedBuffersMask value.  This will be allowed for clients to write to in the future, but not yet.
 };
 
-struct rF2PitMenu : public rF2MappedBufferHeader
-{
-  long mCategoryIndex;                  // index of the current category
-  char mCategoryName[32];               // name of the current category (untranslated)
-
-  long mChoiceIndex;                    // index of the current choice (within the current category)
-  char mChoiceString[32];               // name of the current choice (may have some translated words)
-  long mNumChoices;                     // total number of choices (0 <= mChoiceIndex < mNumChoices)
-
-  unsigned char mExpansion[256];        // for future use
-};
 #pragma pack(pop)

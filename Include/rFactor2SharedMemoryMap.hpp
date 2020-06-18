@@ -353,7 +353,7 @@ private:
   MappedBuffer<rF2ForceFeedback> mForceFeedback;
   MappedBuffer<rF2Graphics> mGraphics;
   MappedBuffer<rF2Extended> mExtended;
-  MappedBuffer<rF2PitMenu> mPitMenu;
+  MappedBuffer<rF2PitInfo> mPitInfo;
 
   // Buffers mapped successfully or not.
   bool mIsMapped = false;
