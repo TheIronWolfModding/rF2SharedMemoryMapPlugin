@@ -716,7 +716,7 @@ struct rF2TrackRules
   float mMaximumSpeed;                  // maximum speed that anybody should be driving (-1 to indicate no limit)
 
   char mMessage[ 96 ];                  // a message for everybody to explain what is going on (which will get run through translator on client machines)
-  
+
   // MM_NOT_USED
   // TrackRulesParticipantV01 *mParticipant;         // array of partipants (vehicles)
   // MM_NEW
@@ -794,6 +794,22 @@ struct rF2MultiSessionRules
 static_assert(sizeof(rF2MultiSessionRules) == sizeof(MultiSessionRulesV01), "rF2MultiSessionRules and MultiSessionRulesV01 structs are out of sync");
 
 
+//////////////////////////////////////////////////////////////////////////////////////////
+// Identical to PitMenuV01, except where noted by MM_NEW/MM_NOT_USED comments.
+//////////////////////////////////////////////////////////////////////////////////////////
+struct rF2PitMenu
+{
+  long mCategoryIndex;                  // index of the current category
+  char mCategoryName[32];               // name of the current category (untranslated)
+
+  long mChoiceIndex;                    // index of the current choice (within the current category)
+  char mChoiceString[32];               // name of the current choice (may have some translated words)
+  long mNumChoices;                     // total number of choices (0 <= mChoiceIndex < mNumChoices)
+
+  unsigned char mExpansion[256];        // for future use
+};
+static_assert(sizeof(rF2PitMenu) == sizeof(PitMenuV01), "rF2PitMenu and PitMenuV0 structs are out of sync");
+
 ///////////////////////////////////////////
 // Mapped wrapper structures
 ///////////////////////////////////////////
@@ -866,6 +882,12 @@ struct rF2Graphics : public rF2MappedBufferHeader
 };
 
 
+struct rF2PitInfo : public rF2MappedBufferHeader
+{
+  rF2PitMenu mPitMenu;
+};
+
+
 struct rF2TrackedDamage
 {
   double mMaxImpactMagnitude;                 // Max impact magnitude.  Tracked on every telemetry update, and reset on visit to pits or Session restart.
@@ -935,19 +957,19 @@ struct rF2Extended : public rF2MappedBufferHeader
   bool mSCRPluginEnabled;                           // Is Stock Car Rules plugin enabled?
   long mSCRPluginDoubleFileType;                    // Stock Car Rules plugin DoubleFileType value, only meaningful if mSCRPluginEnabled is true.
 
-  ULONGLONG mTicksLSIPhaseMessageUpdated;           // Ticks when last LSI phase message was updated.
+  ULONGLONG mTicksLSIPhaseMessageUpdated;             // Ticks when last LSI phase message was updated.
   char mLSIPhaseMessage[rF2MappedBufferHeader::MAX_RULES_INSTRUCTION_MSG_LEN];
 
-  ULONGLONG mTicksLSIPitStateMessageUpdated;        // Ticks when last LSI pit state message was updated.
+  ULONGLONG mTicksLSIPitStateMessageUpdated;          // Ticks when last LSI pit state message was updated.
   char mLSIPitStateMessage[rF2MappedBufferHeader::MAX_RULES_INSTRUCTION_MSG_LEN];
 
-  ULONGLONG mTicksLSIOrderInstructionMessageUpdated;     // Ticks when last LSI order instruction message was updated.
+  ULONGLONG mTicksLSIOrderInstructionMessageUpdated;  // Ticks when last LSI order instruction message was updated.
   char mLSIOrderInstructionMessage[rF2MappedBufferHeader::MAX_RULES_INSTRUCTION_MSG_LEN];
 
-  ULONGLONG mTicksLSIRulesInstructionMessageUpdated;     // Ticks when last FCY rules message was updated.  Currently, only SCR plugin sets that.
+  ULONGLONG mTicksLSIRulesInstructionMessageUpdated;  // Ticks when last FCY rules message was updated.  Currently, only SCR plugin sets that.
   char mLSIRulesInstructionMessage[rF2MappedBufferHeader::MAX_RULES_INSTRUCTION_MSG_LEN];
 
-  long mUnsubscribedBuffersMask;                  // Currently active UnsbscribedBuffersMask value.  This will be allowed for clients to write to in the future, but not yet.
+  long mUnsubscribedBuffersMask;                      // Currently active UnsbscribedBuffersMask value.  This will be allowed for clients to write to in the future, but not yet.
 };
 
 #pragma pack(pop)

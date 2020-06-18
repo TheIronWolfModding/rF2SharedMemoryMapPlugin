@@ -28,7 +28,7 @@ Website: thecrewchief.org
 // Each component can be in [0:99] range.
 // Note: each time major version changes, that means layout has changed, and clients might need an update.
 #define PLUGIN_VERSION_MAJOR "3.7"
-#define PLUGIN_VERSION_MINOR "1.0"
+#define PLUGIN_VERSION_MINOR "2.0"
 
 #ifdef VERSION_AVX2
 #ifdef VERSION_MT
@@ -76,6 +76,7 @@ enum class SubscribedBuffer
   MultiRules = 8,
   ForceFeedback = 16,
   Graphics = 32,
+  PitInfo = 64,
   All = 127
 };
 
@@ -96,11 +97,13 @@ public:
   static char const* const MM_FORCE_FEEDBACK_FILE_NAME;
   static char const* const MM_GRAPHICS_FILE_NAME;
   static char const* const MM_EXTENDED_FILE_NAME;
+  static char const* const MM_PIT_MENU_FILE_NAME;
 
   static char const* const INTERNALS_TELEMETRY_FILENAME;
   static char const* const INTERNALS_SCORING_FILENAME;
+  static char const* const INTERNALS_PITMENU_FILENAME;
   static char const* const DEBUG_OUTPUT_FILENAME;
-  
+
   static int const BUFFER_IO_BYTES = 2048;
   static int const DEBUG_IO_FLUSH_PERIOD_SECS = 10;
 
@@ -114,15 +117,21 @@ public:
   static FILE* msDebugFile;
   static FILE* msIsiTelemetryFile;
   static FILE* msIsiScoringFile;
+  static FILE* msIsiPitMenuFile;
 
   // Debug output helpers
   static void WriteDebugMsg(DebugLevel lvl, char const* const format, ...);
   static void WriteToAllExampleOutputFiles(char const* const openStr, char const* const msg);
   static void WriteTelemetryInternals(TelemInfoV01 const& info);
   static void WriteScoringInternals(ScoringInfoV01 const& info);
+  static void WritePitMenuInternals(PitMenuV01 const& info);
   static void TraceLastWin32Error();
 
+#ifdef UNITTEST // Make private methods available to unit test
+public:
+#else
 private:
+#endif
 
   class ExtendedStateTracker
   {
@@ -275,6 +284,15 @@ public:
   // Supress C4266.
   void UpdateGraphics(GraphicsInfoV01 const&) override {}     // update plugin with graphics info
 
+  // PIT MENU INFO (currently, the only way to edit the pit menu is to use this in conjunction with CheckHWControl())
+  bool WantsPitMenuAccess()  override { return Utils::IsFlagOff(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::PitInfo); } // change to true in order to view pit menu info
+
+  bool AccessPitMenu(PitMenuV01& info) override; // currently, the return code should always be false (because we may allow more direct editing in the future)
+
+  // HW Control- action a control within the game
+  bool HasHardwareInputs() { return(true); }
+  bool CheckHWControl(const char* const controlName, double& fRetVal) override;
+
 private:
   SharedMemoryPlugin(SharedMemoryPlugin const& rhs) = delete;
   SharedMemoryPlugin& operator =(SharedMemoryPlugin const& rhs) = delete;
@@ -296,13 +314,19 @@ private:
   template <typename BuffT>
   void TraceBeginUpdate(BuffT const& buffer, double& lastUpdateMillis, char const msgPrefix[]) const;
 
+#ifdef UNITTEST // Make private methods available to unit test
+public:
+#else
 private:
+#endif
+
   // Only used for debugging in Timing level
   double mLastTelemetryUpdateMillis = 0.0;
   double mLastTelemetryVehicleAddedMillis = 0.0;
   double mLastScoringUpdateMillis = 0.0;
   double mLastRulesUpdateMillis = 0.0;
   double mLastMultiRulesUpdateMillis = 0.0;
+  double mLastPitMenuUpdateMillis = 0.0;
 
   ExtendedStateTracker mExtStateTracker;
 
@@ -329,6 +353,7 @@ private:
   MappedBuffer<rF2ForceFeedback> mForceFeedback;
   MappedBuffer<rF2Graphics> mGraphics;
   MappedBuffer<rF2Extended> mExtended;
+  MappedBuffer<rF2PitInfo> mPitInfo;
 
   // Buffers mapped successfully or not.
   bool mIsMapped = false;

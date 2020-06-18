@@ -139,7 +139,7 @@ namespace rF2SMMonitor
       {
         // This method tries to ensure we read consistent buffer view in three steps.
         // 1. Pre-Check:
-        //       - read version header and retry reading this buffer if begin/end versions don't match.  This reduces a chance of 
+        //       - read version header and retry reading this buffer if begin/end versions don't match.  This reduces a chance of
         //         reading torn frame during full buffer read.  This saves CPU time.
         //       - return if version matches last failed read version (stuck frame).
         //       - return if version matches previously successfully read buffer.  This saves CPU time by avoiding the full read of most likely identical data.
@@ -237,9 +237,9 @@ namespace rF2SMMonitor
             // sometimes will be required if buffer is updated between checks.
             //
             // Anyway, the case is
-            // * Reader thread reads updateBegin version and continues to read buffer. 
+            // * Reader thread reads updateBegin version and continues to read buffer.
             // * Simultaneously, Writer thread begins overwriting the buffer.
-            // * If Reader thread reads updateEnd before Writer thread finishes, it will look 
+            // * If Reader thread reads updateEnd before Writer thread finishes, it will look
             //   like updateBegin == updateEnd.But we actually just read a partially overwritten buffer.
             //
             // Hence, this second check is needed here.  Even if writer thread still hasn't finished writing,
@@ -306,6 +306,7 @@ namespace rF2SMMonitor
     MappedBuffer<rF2ForceFeedback> forceFeedbackBuffer = new MappedBuffer<rF2ForceFeedback>(rFactor2Constants.MM_FORCE_FEEDBACK_FILE_NAME, false /*partial*/, false /*skipUnchanged*/);
     MappedBuffer<rF2Graphics> graphicsBuffer = new MappedBuffer<rF2Graphics>(rFactor2Constants.MM_GRAPHICS_FILE_NAME, false /*partial*/, false /*skipUnchanged*/);
     MappedBuffer<rF2Extended> extendedBuffer = new MappedBuffer<rF2Extended>(rFactor2Constants.MM_EXTENDED_FILE_NAME, false /*partial*/, true /*skipUnchanged*/);
+    MappedBuffer<rF2PitMenu> pitMenuBuffer = new MappedBuffer<rF2PitMenu>(rFactor2Constants.MM_PITMENU_FILE_NAME, true /*partial*/, false /*skipUnchanged*/);
 
     // Marshalled views:
     rF2Telemetry telemetry;
@@ -314,6 +315,7 @@ namespace rF2SMMonitor
     rF2ForceFeedback forceFeedback;
     rF2Graphics graphics;
     rF2Extended extended;
+    rF2PitMenu pitmenu;
 
     // Track rF2 transitions.
     TransitionTracker tracker = new TransitionTracker();
@@ -331,7 +333,7 @@ namespace rF2SMMonitor
     bool logTiming = true;
     bool logRules = true;
     bool logLightMode = false;
-    
+
     // Capture of the max FFB force.
     double maxFFBValue = 0.0;
 
@@ -400,7 +402,7 @@ namespace rF2SMMonitor
     private void CheckBoxLightMode_CheckedChanged(object sender, EventArgs e)
     {
       this.logLightMode = this.checkBoxLightMode.Checked;
-      
+
       // Disable/enable rendering options
       this.globalGroupBox.Enabled = !this.logLightMode;
       this.groupBoxFocus.Enabled = !this.logLightMode;
@@ -539,7 +541,7 @@ namespace rF2SMMonitor
     {
       if (disposing && (components != null))
         components.Dispose();
-      
+
       if (disposing)
         Disconnect();
 
@@ -603,6 +605,7 @@ namespace rF2SMMonitor
         rulesBuffer.GetMappedData(ref rules);
         forceFeedbackBuffer.GetMappedDataUnsynchronized(ref forceFeedback);
         graphicsBuffer.GetMappedDataUnsynchronized(ref graphics);
+        pitMenuBuffer.GetMappedData(ref pitmenu);
 
         watch.Stop();
         var microseconds = watch.ElapsedTicks * 1000000 / System.Diagnostics.Stopwatch.Frequency;
@@ -654,7 +657,7 @@ namespace rF2SMMonitor
       var nullIdx = Array.IndexOf(bytes, (byte)0);
 
       return nullIdx >= 0
-        ? Encoding.Default.GetString(bytes, 0, nullIdx) 
+        ? Encoding.Default.GetString(bytes, 0, nullIdx)
         : Encoding.Default.GetString(bytes);
     }
 
@@ -671,6 +674,7 @@ namespace rF2SMMonitor
       this.tracker.TrackDamage(ref this.scoring, ref this.telemetry, ref this.extended, g, this.logDamage);
       this.tracker.TrackTimings(ref this.scoring, ref this.telemetry, ref this.rules, ref this.extended, g, this.logTiming);
       this.tracker.TrackRules(ref this.scoring, ref this.telemetry, ref this.rules, ref this.extended, g, this.logRules);
+      //pitmenu
 
       this.UpdateFPS();
 
@@ -702,7 +706,7 @@ namespace rF2SMMonitor
 
         gameStateText.Clear();
 
-        // Build map of mID -> telemetry.mVehicles[i]. 
+        // Build map of mID -> telemetry.mVehicles[i].
         // They are typically matching values, however, we need to handle online cases and dropped vehicles (mID can be reused).
         var idsToTelIndices = new Dictionary<long, int>();
         for (int i = 0; i < this.telemetry.mNumVehicles; ++i)
@@ -788,6 +792,7 @@ namespace rF2SMMonitor
           + "Scoring:\n"
           + "Rules:\n"
           + "Extended:\n"
+          + "Pit menu:\n"
           + "Avg read:");
 
         g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Black, 1500, 570);
@@ -797,7 +802,8 @@ namespace rF2SMMonitor
           this.telemetryBuffer.GetStats() + '\n'
           + this.scoringBuffer.GetStats() + '\n'
           + this.rulesBuffer.GetStats() + '\n'
-          + this.extendedBuffer.GetStats() + '\n' 
+          + this.extendedBuffer.GetStats() + '\n'
+          + this.pitMenuBuffer.GetStats() + '\n'
           + this.avgDelayMicroseconds.ToString("0.000") + " microseconds");
 
         g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Black, 1560, 570);
@@ -813,7 +819,10 @@ namespace rF2SMMonitor
             + "Last LSI Phase:\n"
             + "Last LSI Pit:\n"
             + "Last LSI Order:\n"
-            + "Last SCR Instr.:\n");
+            + "Last SCR Instr.:\n"
+            + "Last Pit Categ.:\n"
+            + "Last Pit Choice:\n"
+            );
 
           g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Purple, 1500, 640);
 
@@ -825,7 +834,10 @@ namespace rF2SMMonitor
             + MainForm.GetStringFromBytes(this.extended.mLSIPhaseMessage) + '\n'
             + MainForm.GetStringFromBytes(this.extended.mLSIPitStateMessage) + '\n'
             + MainForm.GetStringFromBytes(this.extended.mLSIOrderInstructionMessage) + '\n'
-            + MainForm.GetStringFromBytes(this.extended.mLSIRulesInstructionMessage) + '\n');
+            + MainForm.GetStringFromBytes(this.extended.mLSIRulesInstructionMessage) + '\n'
+            + MainForm.GetStringFromBytes(this.pitmenu.mCategoryName) + '\n'
+            + MainForm.GetStringFromBytes(this.pitmenu.mChoiceString) + '\n'
+            );
 
           g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Purple, 1580, 640);
 
@@ -1092,6 +1104,7 @@ namespace rF2SMMonitor
           this.forceFeedbackBuffer.Connect();
           this.graphicsBuffer.Connect();
           this.extendedBuffer.Connect();
+          this.pitMenuBuffer.Connect();
 
           this.connected = true;
 
@@ -1229,7 +1242,7 @@ namespace rF2SMMonitor
       this.logTiming = true;
       if (int.TryParse(this.config.Read("logTiming"), out intResult) && intResult == 0)
         this.logTiming = false;
-      
+
       this.checkBoxLogTiming.Checked = this.logTiming;
 
       intResult = 0;

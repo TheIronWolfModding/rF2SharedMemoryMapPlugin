@@ -31,7 +31,8 @@ namespace rF2SMMonitor
     public const string MM_FORCE_FEEDBACK_FILE_NAME = "$rFactor2SMMP_ForceFeedback$";
     public const string MM_GRAPHICS_FILE_NAME = "$rFactor2SMMP_Graphics$";
     public const string MM_EXTENDED_FILE_NAME = "$rFactor2SMMP_Extended$";
-    
+    public const string MM_PITMENU_FILE_NAME = "$rFactor2SMMP_PitMenu$";
+
     public const int MAX_MAPPED_VEHICLES = 128;
     public const int MAX_MAPPED_IDS = 512;
     public const int MAX_STATUS_MSG_LEN = 128;
@@ -948,5 +949,21 @@ namespace rF2SMMonitor
 
       public long mUnsubscribedBuffersMask;                     // Currently active UnsbscribedBuffersMask value.  This will be allowed for clients to write to in the future, but not yet.
     }
-  }
+
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
+    public struct rF2PitMenu
+    {
+      public long mCategoryIndex;                  // index of the current category
+      public byte[] mCategoryName;             // name of the current category (untranslated)
+
+      public long mChoiceIndex;                    // index of the current choice (within the current category)
+      public byte[] mChoiceString;             // name of the current choice (may have some translated words)
+      public long mNumChoices;                     // total number of choices (0 <= mChoiceIndex < mNumChoices)
+
+      public bool changed;                       // Set if the Pit Display has changed
+
+      public byte[] mExpansion;      // for future use
+  };
+}
 }
