@@ -839,7 +839,6 @@
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <OutputFile>.\Release/rFactor2SharedMemoryMapPlugin64.bsc</OutputFile>
     </Bscmake>
-    <PostBuildEvent />
     <PostBuildEvent>
       <Command>copy $(Platform)\$(Configuration)\rFactor2SharedMemoryMapPlugin64.dll "c:\Games\Steam\steamapps\common\rFactor 2\Bin64\Plugins\."</Command>
     </PostBuildEvent>
