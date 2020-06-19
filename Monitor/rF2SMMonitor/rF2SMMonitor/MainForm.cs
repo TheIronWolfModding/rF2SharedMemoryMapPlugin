@@ -306,7 +306,7 @@ namespace rF2SMMonitor
     MappedBuffer<rF2ForceFeedback> forceFeedbackBuffer = new MappedBuffer<rF2ForceFeedback>(rFactor2Constants.MM_FORCE_FEEDBACK_FILE_NAME, false /*partial*/, false /*skipUnchanged*/);
     MappedBuffer<rF2Graphics> graphicsBuffer = new MappedBuffer<rF2Graphics>(rFactor2Constants.MM_GRAPHICS_FILE_NAME, false /*partial*/, false /*skipUnchanged*/);
     MappedBuffer<rF2Extended> extendedBuffer = new MappedBuffer<rF2Extended>(rFactor2Constants.MM_EXTENDED_FILE_NAME, false /*partial*/, true /*skipUnchanged*/);
-    MappedBuffer<rF2PitMenu> pitMenuBuffer = new MappedBuffer<rF2PitMenu>(rFactor2Constants.MM_PITMENU_FILE_NAME, true /*partial*/, false /*skipUnchanged*/);
+    MappedBuffer<rF2PitMenu> pitMenuBuffer = new MappedBuffer<rF2PitMenu>(rFactor2Constants.MM_PITMENU_FILE_NAME, false /*partial*/, false /*skipUnchanged*/);
 
     // Marshalled views:
     rF2Telemetry telemetry;
