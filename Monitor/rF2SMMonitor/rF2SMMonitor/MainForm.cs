@@ -305,8 +305,8 @@ namespace rF2SMMonitor
     MappedBuffer<rF2Rules> rulesBuffer = new MappedBuffer<rF2Rules>(rFactor2Constants.MM_RULES_FILE_NAME, true /*partial*/, true /*skipUnchanged*/);
     MappedBuffer<rF2ForceFeedback> forceFeedbackBuffer = new MappedBuffer<rF2ForceFeedback>(rFactor2Constants.MM_FORCE_FEEDBACK_FILE_NAME, false /*partial*/, false /*skipUnchanged*/);
     MappedBuffer<rF2Graphics> graphicsBuffer = new MappedBuffer<rF2Graphics>(rFactor2Constants.MM_GRAPHICS_FILE_NAME, false /*partial*/, false /*skipUnchanged*/);
+    MappedBuffer<rF2PitInfo> pitInfoBuffer = new MappedBuffer<rF2PitInfo>(rFactor2Constants.MM_PITINFO_FILE_NAME, false /*partial*/, false /*skipUnchanged*/);
     MappedBuffer<rF2Extended> extendedBuffer = new MappedBuffer<rF2Extended>(rFactor2Constants.MM_EXTENDED_FILE_NAME, false /*partial*/, true /*skipUnchanged*/);
-    MappedBuffer<rF2PitMenu> pitMenuBuffer = new MappedBuffer<rF2PitMenu>(rFactor2Constants.MM_PITMENU_FILE_NAME, false /*partial*/, false /*skipUnchanged*/);
 
     // Marshalled views:
     rF2Telemetry telemetry;
@@ -314,8 +314,8 @@ namespace rF2SMMonitor
     rF2Rules rules;
     rF2ForceFeedback forceFeedback;
     rF2Graphics graphics;
+    rF2PitInfo pitInfo;
     rF2Extended extended;
-    rF2PitMenu pitmenu;
 
     // Track rF2 transitions.
     TransitionTracker tracker = new TransitionTracker();
@@ -605,7 +605,7 @@ namespace rF2SMMonitor
         rulesBuffer.GetMappedData(ref rules);
         forceFeedbackBuffer.GetMappedDataUnsynchronized(ref forceFeedback);
         graphicsBuffer.GetMappedDataUnsynchronized(ref graphics);
-        pitMenuBuffer.GetMappedData(ref pitmenu);
+        pitInfoBuffer.GetMappedData(ref pitInfo);
 
         watch.Stop();
         var microseconds = watch.ElapsedTicks * 1000000 / System.Diagnostics.Stopwatch.Frequency;
@@ -699,7 +699,7 @@ namespace rF2SMMonitor
         this.maxFFBValue = Math.Max(Math.Abs(this.forceFeedback.mForceValue), this.maxFFBValue);
 
         gameStateText.Append(
-          $"Plugin Version:    Expected: 3.7.1.0 64bit   Actual: {MainForm.GetStringFromBytes(this.extended.mVersion)} {(this.extended.is64bit == 1 ? "64bit" : "32bit")}{(this.extended.mSCRPluginEnabled == 1 ? "    SCR Plugin enabled" : "")}{(this.extended.mDirectMemoryAccessEnabled == 1 ? "    DMA enabled" : "")}    UBM: {this.extended.mUnsubscribedBuffersMask}    FPS: {this.fps}    FFB Curr: {this.forceFeedback.mForceValue:N3}  Max: {this.maxFFBValue:N3}");
+          $"Plugin Version:    Expected: 3.7.2.0 64bit   Actual: {MainForm.GetStringFromBytes(this.extended.mVersion)} {(this.extended.is64bit == 1 ? "64bit" : "32bit")}{(this.extended.mSCRPluginEnabled == 1 ? "    SCR Plugin enabled" : "")}{(this.extended.mDirectMemoryAccessEnabled == 1 ? "    DMA enabled" : "")}    UBM: {this.extended.mUnsubscribedBuffersMask}    FPS: {this.fps}    FFB Curr: {this.forceFeedback.mForceValue:N3}  Max: {this.maxFFBValue:N3}");
 
         // Draw header
         g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, brush, currX, currY);
@@ -802,15 +802,14 @@ namespace rF2SMMonitor
           this.telemetryBuffer.GetStats() + '\n'
           + this.scoringBuffer.GetStats() + '\n'
           + this.rulesBuffer.GetStats() + '\n'
+          + this.pitInfoBuffer.GetStats() + '\n'
           + this.extendedBuffer.GetStats() + '\n'
-          + this.pitMenuBuffer.GetStats() + '\n'
           + this.avgDelayMicroseconds.ToString("0.000") + " microseconds");
 
         g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Black, 1560, 570);
 
         if (this.extended.mDirectMemoryAccessEnabled == 1)
         {
-          // Print buffer stats.
           gameStateText.Clear();
           gameStateText.Append(
             "Status:\n"
@@ -820,11 +819,9 @@ namespace rF2SMMonitor
             + "Last LSI Pit:\n"
             + "Last LSI Order:\n"
             + "Last SCR Instr.:\n"
-            + "Last Pit Categ.:\n"
-            + "Last Pit Choice:\n"
             );
 
-          g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Purple, 1500, 640);
+          g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Purple, 1500, 650);
 
           gameStateText.Clear();
           gameStateText.Append(
@@ -835,11 +832,9 @@ namespace rF2SMMonitor
             + MainForm.GetStringFromBytes(this.extended.mLSIPitStateMessage) + '\n'
             + MainForm.GetStringFromBytes(this.extended.mLSIOrderInstructionMessage) + '\n'
             + MainForm.GetStringFromBytes(this.extended.mLSIRulesInstructionMessage) + '\n'
-            + MainForm.GetStringFromBytes(this.pitmenu.mCategoryName) + '\n'
-            + MainForm.GetStringFromBytes(this.pitmenu.mChoiceString) + '\n'
             );
 
-          g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Purple, 1580, 640);
+          g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Purple, 1580, 650);
 
           gameStateText.Clear();
           gameStateText.Append(
@@ -851,8 +846,34 @@ namespace rF2SMMonitor
             + "updated: " + this.extended.mTicksLSIOrderInstructionMessageUpdated + '\n'
             + "updated: " + this.extended.mTicksLSIRulesInstructionMessageUpdated + '\n');
 
+          g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Purple, 1800, 650);
+        }
 
-          g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Purple, 1800, 640);
+        if ((this.extended.mUnsubscribedBuffersMask & (long)SubscribedBuffer.PitInfo) == 0)
+        {
+          // Print pit info:
+          gameStateText.Clear();
+
+          gameStateText.Append(
+            "PI Cat Index:\n"
+            + "PI Cat Name:\n"
+            + "PI Choice Index:\n"
+            + "PI Choice String:\n"
+            + "PI Num Choices:\n"
+            );
+
+          g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Orange, 1500, 750);
+
+          gameStateText.Clear();
+          gameStateText.Append(
+            this.pitInfo.mPitMneu.mCategoryIndex + '\n'
+            + MainForm.GetStringFromBytes(this.pitInfo.mPitMneu.mCategoryName) + '\n'
+            + this.pitInfo.mPitMneu.mChoiceIndex + '\n'
+            + MainForm.GetStringFromBytes(this.pitInfo.mPitMneu.mChoiceString) + '\n'
+            + this.pitInfo.mPitMneu.mNumChoices + '\n'
+            );
+
+          g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Orange, 1600, 750);
         }
 
         if (this.scoring.mScoringInfo.mNumVehicles == 0
@@ -1103,8 +1124,8 @@ namespace rF2SMMonitor
           this.rulesBuffer.Connect();
           this.forceFeedbackBuffer.Connect();
           this.graphicsBuffer.Connect();
+          this.pitInfoBuffer.Connect();
           this.extendedBuffer.Connect();
-          this.pitMenuBuffer.Connect();
 
           this.connected = true;
 
@@ -1142,6 +1163,7 @@ namespace rF2SMMonitor
       this.rulesBuffer.Disconnect();
       this.telemetryBuffer.Disconnect();
       this.forceFeedbackBuffer.Disconnect();
+      this.pitInfoBuffer.Disconnect();
       this.graphicsBuffer.Disconnect();
 
       this.connected = false;

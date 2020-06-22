@@ -31,7 +31,7 @@ namespace rF2SMMonitor
     public const string MM_FORCE_FEEDBACK_FILE_NAME = "$rFactor2SMMP_ForceFeedback$";
     public const string MM_GRAPHICS_FILE_NAME = "$rFactor2SMMP_Graphics$";
     public const string MM_EXTENDED_FILE_NAME = "$rFactor2SMMP_Extended$";
-    public const string MM_PITMENU_FILE_NAME = "$rFactor2SMMP_PitMenu$";
+    public const string MM_PITINFO_FILE_NAME = "$rFactor2SMMP_PitInfo$";
 
     public const int MAX_MAPPED_VEHICLES = 128;
     public const int MAX_MAPPED_IDS = 512;
@@ -722,8 +722,33 @@ namespace rF2SMMonitor
       // future input/output expansion
       [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = 256)]
       public byte[] mInputOutputExpansion;
-    };
+    }
 
+
+    //////////////////////////////////////////////////////////////////////////////////////////
+    // Identical to PitMenuV01, except where noted by MM_NEW/MM_NOT_USED comments.
+    //////////////////////////////////////////////////////////////////////////////////////////
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
+    public struct rF2PitMenu
+    {
+      public int mCategoryIndex;                    // index of the current category
+
+      [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = 32)]
+      public byte[] mCategoryName;                 // name of the current category (untranslated)
+      public int mChoiceIndex;                     // index of the current choice (within the current category)
+
+      [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = 32)]
+      public byte[] mChoiceString;                 // name of the current choice (may have some translated words)
+      public int mNumChoices;                      // total number of choices (0 <= mChoiceIndex < mNumChoices)
+
+      [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = 256)]
+      public byte[] mExpansion;                    // for future use
+    }
+
+
+    ///////////////////////////////////////////
+    // Mapped wrapper structures
+    ///////////////////////////////////////////
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
     public struct rF2MappedBufferVersionBlock
@@ -851,7 +876,17 @@ namespace rF2SMMonitor
     }
 
 
-    [StructLayout(LayoutKind.Sequential, Pack = 4)]
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
+    public struct rF2PitInfo
+    {
+      public uint mVersionUpdateBegin;          // Incremented right before buffer is written to.
+      public uint mVersionUpdateEnd;            // Incremented after buffer write is done.
+
+      public rF2PitMenu mPitMneu;
+    }
+
+
+      [StructLayout(LayoutKind.Sequential, Pack = 4)]
     public struct rF2TrackedDamage
     {
       public double mMaxImpactMagnitude;                 // Max impact magnitude.  Tracked on every telemetry update, and reset on visit to pits or Session restart.
@@ -950,20 +985,16 @@ namespace rF2SMMonitor
       public long mUnsubscribedBuffersMask;                     // Currently active UnsbscribedBuffersMask value.  This will be allowed for clients to write to in the future, but not yet.
     }
 
-
-    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
-    public struct rF2PitMenu
+    enum SubscribedBuffer
     {
-      public long mCategoryIndex;                  // index of the current category
-      public byte[] mCategoryName;             // name of the current category (untranslated)
-
-      public long mChoiceIndex;                    // index of the current choice (within the current category)
-      public byte[] mChoiceString;             // name of the current choice (may have some translated words)
-      public long mNumChoices;                     // total number of choices (0 <= mChoiceIndex < mNumChoices)
-
-      public bool changed;                       // Set if the Pit Display has changed
-
-      public byte[] mExpansion;      // for future use
-  };
-}
+      Telemetry = 1,
+      Scoring = 2,
+      Rules = 4,
+      MultiRules = 8,
+      ForceFeedback = 16,
+      Graphics = 32,
+      PitInfo = 64,
+      All = 127
+    };
+  }
 }

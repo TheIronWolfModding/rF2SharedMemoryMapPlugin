@@ -27,6 +27,7 @@ Shared resources:
     * Rules - mapped view of rF2Rules structure
     * MultiRules - mapped view of rF2MultiRules structure
     * ForceFeedback - mapped view of rF2ForceFeedback structure
+    * PitInfo - mapped view of rF2PitInfo structure
     * Extended - mapped view of rF2Extended structure
 
   Aside from Extended (see below), those types are (with few exceptions) exact mirror of ISI structures, plugin constantly memcpy'es them from game to memory mapped files.
@@ -40,6 +41,7 @@ Refresh rates:
   MultiRules - updated only on session change.
   ForceFeedback - approximately every 2.5ms (400FPS).
   Graphics - approximately 400FPS.
+  PitInfo - 100FPS.
   Extended - every 200ms or on tracked function call.
 
   Plugin does not add artificial delays, except:
@@ -120,7 +122,6 @@ long SharedMemoryPlugin::msUnsubscribedBuffersMask = 0L;
 FILE* SharedMemoryPlugin::msDebugFile;
 FILE* SharedMemoryPlugin::msIsiTelemetryFile;
 FILE* SharedMemoryPlugin::msIsiScoringFile;
-FILE* SharedMemoryPlugin::msIsiPitMenuFile;
 
 // _Weather ?
 char const* const SharedMemoryPlugin::MM_TELEMETRY_FILE_NAME = "$rFactor2SMMP_Telemetry$";
@@ -130,11 +131,10 @@ char const* const SharedMemoryPlugin::MM_MULTI_RULES_FILE_NAME = "$rFactor2SMMP_
 char const* const SharedMemoryPlugin::MM_FORCE_FEEDBACK_FILE_NAME = "$rFactor2SMMP_ForceFeedback$";
 char const* const SharedMemoryPlugin::MM_GRAPHICS_FILE_NAME = "$rFactor2SMMP_Graphics$";
 char const* const SharedMemoryPlugin::MM_EXTENDED_FILE_NAME = "$rFactor2SMMP_Extended$";
-char const* const SharedMemoryPlugin::MM_PIT_MENU_FILE_NAME = "$rFactor2SMMP_PitMenu$";
+char const* const SharedMemoryPlugin::MM_PIT_INFO_FILE_NAME = "$rFactor2SMMP_PitInfo$";
 
 char const* const SharedMemoryPlugin::INTERNALS_TELEMETRY_FILENAME = R"(UserData\Log\RF2SMMP_InternalsTelemetryOutput.txt)";
 char const* const SharedMemoryPlugin::INTERNALS_SCORING_FILENAME = R"(UserData\Log\RF2SMMP_InternalsScoringOutput.txt)";
-char const* const SharedMemoryPlugin::INTERNALS_PITMENU_FILENAME = R"(UserData\Log\RF2SMMP_InternalsPitMenuOutput.txt)";
 char const* const SharedMemoryPlugin::DEBUG_OUTPUT_FILENAME = R"(UserData\Log\RF2SMMP_DebugOutput.txt)";
 
 // plugin information
@@ -155,16 +155,6 @@ void __cdecl DestroyPluginObject(PluginObject* obj) { delete((SharedMemoryPlugin
 
 
 //////////////////////////////////////
-// Point this at one of the strings used by CheckHWControl(), examples include
-// DisplayMode PitRequest PitMenuUp PitMenuDown PitMenuIncrementValue
-// PitMenuDecrementValue Horn Headlights.  Once the control has been sent
-// ControlToAction points to an empty string again.
-
-// TBD an API function to set this pointer to the string to be actioned
-char* ControlToAction = "";
-//////////////////////////////////////
-
-//////////////////////////////////////
 // SharedMemoryPlugin class
 //////////////////////////////////////
 
@@ -176,7 +166,7 @@ SharedMemoryPlugin::SharedMemoryPlugin()
     , mForceFeedback(SharedMemoryPlugin::MM_FORCE_FEEDBACK_FILE_NAME)
     , mGraphics(SharedMemoryPlugin::MM_GRAPHICS_FILE_NAME)
     , mExtended(SharedMemoryPlugin::MM_EXTENDED_FILE_NAME)
-    , mPitInfo(SharedMemoryPlugin::MM_PIT_MENU_FILE_NAME)
+    , mPitInfo(SharedMemoryPlugin::MM_PIT_INFO_FILE_NAME)
 {
   memset(mParticipantTelemetryUpdated, 0, sizeof(mParticipantTelemetryUpdated));
 }
@@ -221,7 +211,7 @@ void SharedMemoryPlugin::Startup(long version)
       DEBUG_MSG(DebugLevel::CriticalInfo, "Unsubscribed from the Graphics updates");
 
     if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::PitInfo))
-      DEBUG_MSG(DebugLevel::CriticalInfo, "Unsubscribed from the Pit Menu updates");
+      DEBUG_MSG(DebugLevel::CriticalInfo, "Unsubscribed from the Pit Info updates");
   }
 
   char temp[80] = {};
@@ -264,7 +254,7 @@ void SharedMemoryPlugin::Startup(long version)
   }
 
   if (!mPitInfo.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
-    DEBUG_MSG(DebugLevel::Errors, "Failed to initialize Pit Menu mapping");
+    DEBUG_MSG(DebugLevel::Errors, "Failed to initialize Pit Info mapping");
     return;
   }
 
@@ -312,9 +302,9 @@ void SharedMemoryPlugin::Startup(long version)
     DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the Graphics buffer:", sizeSz, "bytes.");
 
     sizeSz[0] = '\0';
-    size = static_cast<int>(sizeof(rF2PitMenu) + sizeof(rF2MappedBufferVersionBlock));
+    size = static_cast<int>(sizeof(rF2PitInfo) + sizeof(rF2MappedBufferVersionBlock));
     _itoa_s(size, sizeSz, 10);
-    DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the Pit Menu buffer:", sizeSz, "bytes.");
+    DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the Pit Info buffer:", sizeSz, "bytes.");
 
     sizeSz[0] = '\0';
     size = static_cast<int>(sizeof(rF2Extended) + sizeof(rF2MappedBufferVersionBlock));
@@ -367,11 +357,6 @@ void SharedMemoryPlugin::Shutdown()
     msIsiScoringFile = nullptr;
   }
 
-  if (msIsiPitMenuFile != nullptr) {
-    fclose(msIsiPitMenuFile);
-    msIsiPitMenuFile = nullptr;
-  }
-
   mIsMapped = false;
 
   mTelemetry.ClearState(nullptr /*pInitialContents*/);
@@ -409,7 +394,6 @@ void SharedMemoryPlugin::ClearTimingsAndCounters()
   mLastScoringUpdateMillis = 0.0;
   mLastRulesUpdateMillis = 0.0;
   mLastMultiRulesUpdateMillis = 0.0;
-  mLastPitMenuUpdateMillis = 0.0;
 
   mLastTelemetryUpdateET = -1.0;
   mLastScoringUpdateET = -1.0;
@@ -1114,39 +1098,14 @@ void SharedMemoryPlugin::UpdateGraphics(GraphicsInfoV02 const& info)
 
 bool SharedMemoryPlugin::AccessPitMenu(PitMenuV01& info)
 {
-  // disable return false;
-
-  // Read the Pit Menu display when it is active.
-  static long category = 99;  // The info values rarely change so record them
-  static long choice = 99;    // and only act when they do change
-
-  // Used to crash rF2 - still does if msDebugISIInternals is set
-  // WritePitMenuInternals(info);
-
-  //DEBUG_MSG(DebugLevel::DevInfo, info.mCategoryName);
   if (!mIsMapped)
     return false;
 
-  // gets here DEBUG_MSG(DebugLevel::DevInfo, "AccessPitMenu mIsMapped");
-  TraceBeginUpdate(mPitInfo, mLastPitMenuUpdateMillis, "PIT UPDATE");
-
+  DEBUG_MSG(DebugLevel::Timing, "PIT MENU - updated.");
+  
   mPitInfo.BeginUpdate();
-  // Copy main struct.
+  
   memcpy(&(mPitInfo.mpBuff->mPitMenu), &info, sizeof(rF2PitMenu));
-
-  // Proof of concept - send changes in the Pit Menu contents to the debug stream
-  if (category != info.mCategoryIndex)
-  {
-    category = info.mCategoryIndex;
-    // this works
-    DEBUG_MSG2(DebugLevel::DevInfo, "Pit menu category changed:", info.mCategoryName);
-  }
-  if (choice != info.mChoiceIndex)
-  {
-    choice = info.mChoiceIndex;
-    // this works
-    DEBUG_MSG2(DebugLevel::DevInfo, "Pit menu choice changed:", info.mChoiceString);
-  }
 
   mPitInfo.EndUpdate();
 
@@ -1181,7 +1140,7 @@ bool SharedMemoryPlugin::CheckHWControl(const char* const /*controlName*/, doubl
 #if 0
   if (true) // TBD process to disable HW control
     return(false);
-
+ 
   /*
   // Hack test - flash the headlights
   // Doesn't work, presumably because it's an "actual vehicle input"? Confirmed by Lazza.
@@ -1306,12 +1265,6 @@ void SharedMemoryPlugin::WriteToAllExampleOutputFiles(const char * const openStr
   }
 
   fo = fopen(SharedMemoryPlugin::INTERNALS_SCORING_FILENAME, openStr);
-  if (fo != nullptr) {
-    fprintf(fo, "%s\n", msg);
-    fclose(fo);
-  }
-
-  fo = fopen(SharedMemoryPlugin::INTERNALS_PITMENU_FILENAME, openStr);
   if (fo != nullptr) {
     fprintf(fo, "%s\n", msg);
     fclose(fo);
