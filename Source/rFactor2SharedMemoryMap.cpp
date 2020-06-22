@@ -1132,7 +1132,7 @@ bool SharedMemoryPlugin::AccessPitMenu(PitMenuV01& info)
 
   mPitInfo.BeginUpdate();
   // Copy main struct.
-  memcpy(mPitInfo.mpBuff, &info, sizeof(rF2PitMenu));
+  memcpy(&(mPitInfo.mpBuff->mPitMenu), &info, sizeof(rF2PitMenu));
 
   // Proof of concept - send changes in the Pit Menu contents to the debug stream
   if (category != info.mCategoryIndex)
@@ -1181,7 +1181,7 @@ bool SharedMemoryPlugin::CheckHWControl(const char* const /*controlName*/, doubl
 #if 0
   if (true) // TBD process to disable HW control
     return(false);
- 
+
   /*
   // Hack test - flash the headlights
   // Doesn't work, presumably because it's an "actual vehicle input"? Confirmed by Lazza.
