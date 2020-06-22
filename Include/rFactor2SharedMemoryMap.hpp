@@ -97,7 +97,7 @@ public:
   static char const* const MM_FORCE_FEEDBACK_FILE_NAME;
   static char const* const MM_GRAPHICS_FILE_NAME;
   static char const* const MM_EXTENDED_FILE_NAME;
-  static char const* const MM_PIT_MENU_FILE_NAME;
+  static char const* const MM_PIT_INFO_FILE_NAME;
 
   static char const* const INTERNALS_TELEMETRY_FILENAME;
   static char const* const INTERNALS_SCORING_FILENAME;
@@ -112,19 +112,16 @@ public:
   static bool msDedicatedServerMapGlobally;
   static long msUnsubscribedBuffersMask;
 
-
   // Ouptut files:
   static FILE* msDebugFile;
   static FILE* msIsiTelemetryFile;
   static FILE* msIsiScoringFile;
-  static FILE* msIsiPitMenuFile;
 
   // Debug output helpers
   static void WriteDebugMsg(DebugLevel lvl, char const* const format, ...);
   static void WriteToAllExampleOutputFiles(char const* const openStr, char const* const msg);
   static void WriteTelemetryInternals(TelemInfoV01 const& info);
   static void WriteScoringInternals(ScoringInfoV01 const& info);
-  static void WritePitMenuInternals(PitMenuV01 const& info);
   static void TraceLastWin32Error();
 
 #ifdef UNITTEST // Make private methods available to unit test
@@ -286,11 +283,10 @@ public:
 
   // PIT MENU INFO (currently, the only way to edit the pit menu is to use this in conjunction with CheckHWControl())
   bool WantsPitMenuAccess()  override { return Utils::IsFlagOff(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::PitInfo); } // change to true in order to view pit menu info
-
   bool AccessPitMenu(PitMenuV01& info) override; // currently, the return code should always be false (because we may allow more direct editing in the future)
 
   // HW Control- action a control within the game
-  bool HasHardwareInputs() { return(true); }
+  bool HasHardwareInputs() override { return false; }
   bool CheckHWControl(const char* const controlName, double& fRetVal) override;
 
 private:
@@ -326,8 +322,7 @@ private:
   double mLastScoringUpdateMillis = 0.0;
   double mLastRulesUpdateMillis = 0.0;
   double mLastMultiRulesUpdateMillis = 0.0;
-  double mLastPitMenuUpdateMillis = 0.0;
-
+  
   ExtendedStateTracker mExtStateTracker;
 
   // Elapsed times reported by the game.
