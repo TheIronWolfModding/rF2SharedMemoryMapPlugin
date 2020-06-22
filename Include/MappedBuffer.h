@@ -117,6 +117,35 @@ public:
     EndUpdate();
   }
 
+  bool CheckReadBuffer()
+  { // Return true if buffer valid and it is new
+    static unsigned long mVersionUpdateBegin = -1;
+    if (!mMapped) {
+      DEBUG_MSG(DebugLevel::Errors, "Accessing unmapped buffer.");
+      return false;
+    }
+
+    // Check out of sync situation.
+    if (mpBuffVersionBlock->mVersionUpdateBegin != mpBuffVersionBlock->mVersionUpdateEnd) {
+      if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::Synchronization) {
+        char msg[512] = {};
+
+        sprintf(msg, "BeginUpdate: versions out of sync.  Version Begin:%ld  End:%ld",
+          mpBuffVersionBlock->mVersionUpdateBegin, mpBuffVersionBlock->mVersionUpdateEnd);
+
+        DEBUG_MSG(DebugLevel::Synchronization, msg);
+      }
+      return false;
+    }
+    // It's valid, is it new?
+    if (mVersionUpdateBegin != mpBuffVersionBlock->mVersionUpdateBegin)
+    {
+      mVersionUpdateBegin = mpBuffVersionBlock->mVersionUpdateBegin;
+      return true;
+    }
+    return false;
+  }
+
   void ReleaseResources()
   {
     mMapped = false;

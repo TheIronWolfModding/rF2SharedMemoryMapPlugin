@@ -99,6 +99,8 @@ public:
   static char const* const MM_EXTENDED_FILE_NAME;
   static char const* const MM_PIT_INFO_FILE_NAME;
 
+  static char const* const MM_HWCONTROL_FILE_NAME;  // Shared memory to input
+
   static char const* const INTERNALS_TELEMETRY_FILENAME;
   static char const* const INTERNALS_SCORING_FILENAME;
   static char const* const INTERNALS_PITMENU_FILENAME;
@@ -288,6 +290,8 @@ public:
   // HW Control- action a control within the game
   bool HasHardwareInputs() override { return false; }
   bool CheckHWControl(const char* const controlName, double& fRetVal) override;
+// UNITTEST access fn
+  void __SetHWControl(const char* const controlName, double fRetVal);
 
 private:
   SharedMemoryPlugin(SharedMemoryPlugin const& rhs) = delete;
@@ -349,6 +353,7 @@ private:
   MappedBuffer<rF2Graphics> mGraphics;
   MappedBuffer<rF2Extended> mExtended;
   MappedBuffer<rF2PitInfo> mPitInfo;
+  MappedBuffer<rF2HWControl> mHWControl;
 
   // Buffers mapped successfully or not.
   bool mIsMapped = false;

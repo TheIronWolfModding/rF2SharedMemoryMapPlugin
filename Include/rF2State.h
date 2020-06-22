@@ -957,19 +957,24 @@ struct rF2Extended : public rF2MappedBufferHeader
   bool mSCRPluginEnabled;                           // Is Stock Car Rules plugin enabled?
   long mSCRPluginDoubleFileType;                    // Stock Car Rules plugin DoubleFileType value, only meaningful if mSCRPluginEnabled is true.
 
-  ULONGLONG mTicksLSIPhaseMessageUpdated;             // Ticks when last LSI phase message was updated.
+  ULONGLONG mTicksLSIPhaseMessageUpdated;           // Ticks when last LSI phase message was updated.
   char mLSIPhaseMessage[rF2MappedBufferHeader::MAX_RULES_INSTRUCTION_MSG_LEN];
 
-  ULONGLONG mTicksLSIPitStateMessageUpdated;          // Ticks when last LSI pit state message was updated.
+  ULONGLONG mTicksLSIPitStateMessageUpdated;        // Ticks when last LSI pit state message was updated.
   char mLSIPitStateMessage[rF2MappedBufferHeader::MAX_RULES_INSTRUCTION_MSG_LEN];
 
-  ULONGLONG mTicksLSIOrderInstructionMessageUpdated;  // Ticks when last LSI order instruction message was updated.
+  ULONGLONG mTicksLSIOrderInstructionMessageUpdated;     // Ticks when last LSI order instruction message was updated.
   char mLSIOrderInstructionMessage[rF2MappedBufferHeader::MAX_RULES_INSTRUCTION_MSG_LEN];
 
-  ULONGLONG mTicksLSIRulesInstructionMessageUpdated;  // Ticks when last FCY rules message was updated.  Currently, only SCR plugin sets that.
+  ULONGLONG mTicksLSIRulesInstructionMessageUpdated;     // Ticks when last FCY rules message was updated.  Currently, only SCR plugin sets that.
   char mLSIRulesInstructionMessage[rF2MappedBufferHeader::MAX_RULES_INSTRUCTION_MSG_LEN];
 
-  long mUnsubscribedBuffersMask;                      // Currently active UnsbscribedBuffersMask value.  This will be allowed for clients to write to in the future, but not yet.
+  long mUnsubscribedBuffersMask;                  // Currently active UnsbscribedBuffersMask value.  This will be allowed for clients to write to in the future, but not yet.
 };
 
+struct rF2HWControl : public rF2MappedBufferHeader
+{
+  char mControlName[96];
+  double mfRetVal;
+};
 #pragma pack(pop)
