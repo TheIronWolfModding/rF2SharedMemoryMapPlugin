@@ -341,6 +341,11 @@ private:
   // This might be fine, because game appears to be sending mIDs in an ascending order.
   bool mParticipantTelemetryUpdated[rF2MappedBufferHeader::MAX_MAPPED_IDS];
 
+  // Pit menu update trackers.
+  long mPitMenuLastCategoryIndex = -1L;
+  long mPitMenuLastChoiceIndex = -1L;
+  long mPitMenuLastNumChoices = -1L;
+
   MappedBuffer<rF2Telemetry> mTelemetry;
   MappedBuffer<rF2Scoring> mScoring;
   MappedBuffer<rF2Rules> mRules;

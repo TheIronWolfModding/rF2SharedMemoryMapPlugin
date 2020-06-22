@@ -305,7 +305,7 @@ namespace rF2SMMonitor
     MappedBuffer<rF2Rules> rulesBuffer = new MappedBuffer<rF2Rules>(rFactor2Constants.MM_RULES_FILE_NAME, true /*partial*/, true /*skipUnchanged*/);
     MappedBuffer<rF2ForceFeedback> forceFeedbackBuffer = new MappedBuffer<rF2ForceFeedback>(rFactor2Constants.MM_FORCE_FEEDBACK_FILE_NAME, false /*partial*/, false /*skipUnchanged*/);
     MappedBuffer<rF2Graphics> graphicsBuffer = new MappedBuffer<rF2Graphics>(rFactor2Constants.MM_GRAPHICS_FILE_NAME, false /*partial*/, false /*skipUnchanged*/);
-    MappedBuffer<rF2PitInfo> pitInfoBuffer = new MappedBuffer<rF2PitInfo>(rFactor2Constants.MM_PITINFO_FILE_NAME, false /*partial*/, false /*skipUnchanged*/);
+    MappedBuffer<rF2PitInfo> pitInfoBuffer = new MappedBuffer<rF2PitInfo>(rFactor2Constants.MM_PITINFO_FILE_NAME, false /*partial*/, true /*skipUnchanged*/);
     MappedBuffer<rF2Extended> extendedBuffer = new MappedBuffer<rF2Extended>(rFactor2Constants.MM_EXTENDED_FILE_NAME, false /*partial*/, true /*skipUnchanged*/);
 
     // Marshalled views:
@@ -865,12 +865,15 @@ namespace rF2SMMonitor
           g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Orange, 1500, 750);
 
           gameStateText.Clear();
+          var catName = MainForm.GetStringFromBytes(this.pitInfo.mPitMneu.mCategoryName);
+          var choiceStr = MainForm.GetStringFromBytes(this.pitInfo.mPitMneu.mChoiceString);
+
           gameStateText.Append(
-            this.pitInfo.mPitMneu.mCategoryIndex + '\n'
-            + MainForm.GetStringFromBytes(this.pitInfo.mPitMneu.mCategoryName) + '\n'
-            + this.pitInfo.mPitMneu.mChoiceIndex + '\n'
-            + MainForm.GetStringFromBytes(this.pitInfo.mPitMneu.mChoiceString) + '\n'
-            + this.pitInfo.mPitMneu.mNumChoices + '\n'
+            this.pitInfo.mPitMneu.mCategoryIndex + "\n"
+            + (string.IsNullOrWhiteSpace(catName) ? "<empty>" : catName) + "\n"
+            + this.pitInfo.mPitMneu.mChoiceIndex + "\n"
+            + (string.IsNullOrWhiteSpace(choiceStr) ? "<empty>" : choiceStr) + "\n"
+            + this.pitInfo.mPitMneu.mNumChoices + "\n"
             );
 
           g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Orange, 1600, 750);
