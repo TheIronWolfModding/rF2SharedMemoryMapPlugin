@@ -36,10 +36,29 @@
     <Filter Include="includes">
       <UniqueIdentifier>{79e81626-698a-4723-adea-817fd98c4996}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Documentation">
+      <UniqueIdentifier>{d0a43a88-e9be-426f-b229-672cf24eb061}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\.gitignore" />
     <None Include="..\LICENSE" />
     <None Include="..\README.md" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="..\Documentation\rF2SharedMemoryHWControl.jpg">
+      <Filter>Documentation</Filter>
+    </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="..\Documentation\rF2SharedMemoryHWControl.txt">
+      <Filter>Documentation</Filter>
+    </Text>
+    <Text Include="..\Documentation\CheckHWControl_strings.txt">
+      <Filter>Documentation</Filter>
+    </Text>
+    <Text Include="..\Documentation\controllerBindingsNames.txt">
+      <Filter>Documentation</Filter>
+    </Text>
   </ItemGroup>
 </Project>

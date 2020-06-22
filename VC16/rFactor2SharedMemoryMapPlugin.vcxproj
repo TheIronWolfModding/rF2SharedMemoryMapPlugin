@@ -1277,6 +1277,14 @@
     <None Include="..\LICENSE" />
     <None Include="..\README.md" />
   </ItemGroup>
+  <ItemGroup>
+    <Image Include="..\Documentation\rF2SharedMemoryHWControl.jpg" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="..\Documentation\CheckHWControl_strings.txt" />
+    <Text Include="..\Documentation\controllerBindingsNames.txt" />
+    <Text Include="..\Documentation\rF2SharedMemoryHWControl.txt" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

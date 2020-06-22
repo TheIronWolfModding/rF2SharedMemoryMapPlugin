@@ -1,0 +1,197 @@
+UI : Mouse Click
+UI : Mouse Down
+UI : Mouse Left
+UI : Mouse Right
+UI : Mouse Up
+VR : Decrease IPD
+VR : Increase IPD
+VR : Reset IPD
+Adjust Seat Aft
+Adjust Seat Down
+Adjust Seat Fore
+Adjust Seat Up
+Alt Brake
+Alt Shift Down
+Alt Shift Up
+Alt Steer Left
+Alt Steer Right
+Alt Throttle
+Alternate Esc
+Anti-lock Brakes
+Antilock Brake System Down
+Antilock Brake System Up
+Auto Clutch
+Auto Pit Lane
+Auto Shifting
+Bias Forward
+Bias Rearward
+Brake
+Braking Help
+CPU Time
+Camera Move Backward
+Camera Move Down
+Camera Move Forward
+Camera Move Left
+Camera Move Right
+Camera Move Up
+Camera Slow Move
+Camera Tilt Down
+Camera Tilt Left
+Camera Tilt Right
+Camera Tilt Up
+Camera Turn Left
+Camera Turn Right
+Camera Zoom In
+Camera Zoom Out
+Clutch In
+Custom Plugin #1
+Custom Plugin #10
+Custom Plugin #11
+Custom Plugin #12
+Custom Plugin #2
+Custom Plugin #3
+Custom Plugin #4
+Custom Plugin #5
+Custom Plugin #6
+Custom Plugin #7
+Custom Plugin #8
+Custom Plugin #9
+Cycle HUD MFDs
+Dec Front ARB
+Dec Rear ARB
+Decrease Vertical FOV
+Decrement Boost
+Decrement Mixture
+Display Mode
+Display Vehicle Labels
+Driver Hot Swap
+Driving Aids
+Driving Cameras
+Eighth Gear
+Engine Brake Map Down
+Engine Brake Map Up
+External Signal Cancel
+External Signal Down
+External Signal Left
+External Signal Right
+External Signal Select
+External Signal Up
+Extra Info
+Fifth Gear
+First Gear
+Fourth Gear
+Framerate
+Front Flap
+Handbrake
+Handfrontbrake
+Headlights
+Horn
+Ignition
+Inc Front ARB
+Inc Rear ARB
+Increase Vertical FOV
+Increment Boost
+Increment Mixture
+Instant Replay
+Invulnerability
+Launch Control
+Load Vehicles
+Look Down
+Look Left
+Look Right
+Look Roll Left
+Look Roll Right
+Look Up
+Lower Track Bar
+Message History
+Music Volume Down
+Music Volume Up
+Neutral
+Ninth Gear
+Onboard Cameras
+Opposite Lock
+Passenger Select
+Pause
+Pause Music
+Penalties Display
+Pit Display
+Pit Menu Dec
+Pit Menu Down
+Pit Menu Inc
+Pit Menu Up
+Pit Request
+Play Music
+Play Next Song
+Play Previous Song
+Power Demand
+Push To Talk Control for Voice Chat
+Push To change camera view
+Quick Chat #1
+Quick Chat #10
+Quick Chat #11
+Quick Chat #12
+Quick Chat #2
+Quick Chat #3
+Quick Chat #4
+Quick Chat #5
+Quick Chat #6
+Quick Chat #7
+Quick Chat #8
+Quick Chat #9
+Race Info
+Raise Track Bar
+Realtime Chat
+Rear Flap
+Rear Look
+Reset Force Feedback
+Restart Race
+Reverse Gear
+Screenshot
+Second Gear
+Seventh Gear
+Shift Down
+Shift Up
+Sixth Gear
+Skip Formation
+Spectator Cameras
+Speed Limiter
+Spin Recovery
+Stability Control
+Standard Display
+Standings Display
+Starter
+Steer Left
+Steer Right
+Steering Help
+Swingman Camera
+Swingman Down
+Swingman Left
+Swingman Reset
+Swingman Right
+Swingman Up
+Swingman Zoom In
+Swingman Zoom Out
+TCOverride
+Temporary Boost
+Third Gear
+Throttle
+Time Acceleration
+Toggle AI Control
+Toggle Free Move
+Toggle HUD Stats Bar
+Toggle HUD Tachometer
+Toggle Mirror
+Toggle Overlays
+Toggle use of hardware plugins
+Tracking Cameras
+Traction Control
+Traction Control Down
+Traction Control Up
+Triples And Tires
+VR : Re-Center head position
+Vehicle Status
+View Next Vehicle
+View Original Vehicle
+View Previous Vehicle
+Wipers
+Zero Free Move
