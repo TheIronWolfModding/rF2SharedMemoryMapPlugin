@@ -411,6 +411,10 @@ void SharedMemoryPlugin::ClearTimingsAndCounters()
   memset(mParticipantTelemetryUpdated, 0, sizeof(mParticipantTelemetryUpdated));
 
   mLastUpdateLSIWasVisible = false;
+
+  mPitMenuLastCategoryIndex = -1L;
+  mPitMenuLastChoiceIndex = -1L;
+  mPitMenuLastNumChoices = -1L;
 }
 
 
@@ -1109,6 +1113,13 @@ bool SharedMemoryPlugin::AccessPitMenu(PitMenuV01& info)
   if (!mIsMapped)
     return false;
 
+  if (mPitMenuLastCategoryIndex == info.mCategoryIndex
+    && mPitMenuLastChoiceIndex == info.mChoiceIndex
+    && mPitMenuLastNumChoices == info.mNumChoices) {
+    DEBUG_MSG(DebugLevel::Timing, "PIT MENU - no changes.");
+    return false;
+  }
+  
   DEBUG_MSG(DebugLevel::Timing, "PIT MENU - updated.");
   
   mPitInfo.BeginUpdate();
@@ -1116,6 +1127,11 @@ bool SharedMemoryPlugin::AccessPitMenu(PitMenuV01& info)
   memcpy(&(mPitInfo.mpBuff->mPitMenu), &info, sizeof(rF2PitMenu));
 
   mPitInfo.EndUpdate();
+
+  // Avoid unnecessary interlocked operations unless pit menu state actually changed.
+  mPitMenuLastCategoryIndex = info.mCategoryIndex;
+  mPitMenuLastChoiceIndex = info.mChoiceIndex;
+  mPitMenuLastNumChoices = info.mNumChoices;
 
   return false;
 }
