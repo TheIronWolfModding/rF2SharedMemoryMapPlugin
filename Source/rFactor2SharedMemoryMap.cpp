@@ -1119,11 +1119,11 @@ bool SharedMemoryPlugin::AccessPitMenu(PitMenuV01& info)
     DEBUG_MSG(DebugLevel::Timing, "PIT MENU - no changes.");
     return false;
   }
-  
+
   DEBUG_MSG(DebugLevel::Timing, "PIT MENU - updated.");
-  
+
   mPitInfo.BeginUpdate();
-  
+
   memcpy(&(mPitInfo.mpBuff->mPitMenu), &info, sizeof(rF2PitMenu));
 
   mPitInfo.EndUpdate();
