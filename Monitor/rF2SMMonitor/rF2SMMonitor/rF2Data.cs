@@ -37,7 +37,7 @@ namespace rF2SMMonitor
     public const int MAX_MAPPED_IDS = 512;
     public const int MAX_STATUS_MSG_LEN = 128;
     public const int MAX_RULES_INSTRUCTION_MSG_LEN = 96;
-    public const int MAX_PIT_MENU_MSG_LEN = 96;
+    public const int MAX_HWCONTROL_NAME_LEN = 96;
     public const string RFACTOR2_PROCESS_NAME = "rFactor2";
 
     public const byte RowX = 0;
@@ -995,7 +995,7 @@ namespace rF2SMMonitor
 
       public long mVersion;                     // really?
 
-      [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = rFactor2Constants.MAX_PIT_MENU_MSG_LEN)]
+      [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = rFactor2Constants.MAX_HWCONTROL_NAME_LEN)]
       public byte[] mControlName;
       public double mfRetVal;
     }
