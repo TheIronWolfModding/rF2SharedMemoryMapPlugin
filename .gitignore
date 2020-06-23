@@ -249,3 +249,5 @@ paket-files/
 # JetBrains Rider
 .idea/
 *.sln.iml
+/UnitTest/pch.h
+/UnitTest/pch.cpp
