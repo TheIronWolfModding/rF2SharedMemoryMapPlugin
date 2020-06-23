@@ -33,6 +33,8 @@ namespace rF2SMMonitor
     public const string MM_EXTENDED_FILE_NAME = "$rFactor2SMMP_Extended$";
     public const string MM_PITINFO_FILE_NAME = "$rFactor2SMMP_PitInfo$";
 
+    public const string MM_HWCONTROL_FILE_NAME = "$rFactor2SMMP_HWControl$";
+
     public const int MAX_MAPPED_VEHICLES = 128;
     public const int MAX_MAPPED_IDS = 512;
     public const int MAX_STATUS_MSG_LEN = 128;

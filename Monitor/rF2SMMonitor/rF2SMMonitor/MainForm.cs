@@ -40,6 +40,7 @@ namespace rF2SMMonitor
     MappedBuffer<rF2Graphics> graphicsBuffer = new MappedBuffer<rF2Graphics>(rFactor2Constants.MM_GRAPHICS_FILE_NAME, false /*partial*/, false /*skipUnchanged*/);
     MappedBuffer<rF2PitInfo> pitInfoBuffer = new MappedBuffer<rF2PitInfo>(rFactor2Constants.MM_PITINFO_FILE_NAME, false /*partial*/, true /*skipUnchanged*/);
     MappedBuffer<rF2Extended> extendedBuffer = new MappedBuffer<rF2Extended>(rFactor2Constants.MM_EXTENDED_FILE_NAME, false /*partial*/, true /*skipUnchanged*/);
+    MappedBuffer<rF2HWControl> hwcontrolBuffer = new MappedBuffer<rF2HWControl>(rFactor2Constants.MM_HWCONTROL_FILE_NAME, false /*partial*/, true /*skipUnchanged*/);
 
     // Marshalled views:
     rF2Telemetry telemetry;
@@ -49,6 +50,7 @@ namespace rF2SMMonitor
     rF2Graphics graphics;
     rF2PitInfo pitInfo;
     rF2Extended extended;
+    rF2HWControl hwcontrol;
 
     // Track rF2 transitions.
     TransitionTracker tracker = new TransitionTracker();
@@ -122,6 +124,8 @@ namespace rF2SMMonitor
       this.view.Paint += View_Paint;
       this.MouseClick += MainForm_MouseClick;
       this.view.MouseClick += MainForm_MouseClick;
+      this.KeyDown += MainForm_KeyDown;  // but the event doesn't happen
+      this.view.KeyDown += MainForm_KeyDown;
 
       Application.Idle += HandleApplicationIdle;
     }
@@ -176,6 +180,26 @@ namespace rF2SMMonitor
         // No stats for FFB buffer (single value buffer).
 
         this.maxFFBValue = 0.0;
+      }
+    }
+
+    private void MainForm_KeyDown(object sender, KeyEventArgs e)
+    {
+      if (e.KeyCode == Keys.Left)
+      {
+        // send "PitMenuDecrementValue"
+      }
+      else if (e.KeyCode == Keys.Right)
+      {
+        // send "PitMenuIncrementValue"
+      }
+      else if (e.KeyCode == Keys.Down)
+      {
+        // send "PitMenuDown"
+      }
+      else if (e.KeyCode == Keys.Up)
+      {
+        // send "PitMenuUp"
       }
     }
 
@@ -269,7 +293,6 @@ namespace rF2SMMonitor
       if (e.KeyCode == Keys.Enter)
         this.view.Focus();
     }
-
     protected override void Dispose(bool disposing)
     {
       if (disposing && (components != null))
@@ -862,6 +885,8 @@ namespace rF2SMMonitor
           this.graphicsBuffer.Connect();
           this.pitInfoBuffer.Connect();
           this.extendedBuffer.Connect();
+
+          this.hwcontrolBuffer.Connect();
 
           this.connected = true;
 

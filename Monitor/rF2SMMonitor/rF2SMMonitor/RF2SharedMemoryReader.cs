@@ -269,7 +269,78 @@ namespace rF2SMMonitor
         handleBuffer.Free();
       }
     }
-    public void SendMappedDataUnsynchronized(ref MappedBufferT mappedData)
+
+    // Sending data
+#if false
+    private void BeginUpdate()
+    {
+      if (!mMapped)
+      {
+        DEBUG_MSG(DebugLevel::Errors, "Accessing unmapped buffer.");
+        return;
+      }
+
+      // Fix up out of sync situation.
+      if (mpBuffVersionBlock->mVersionUpdateBegin != mpBuffVersionBlock->mVersionUpdateEnd)
+      {
+        if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::Synchronization)
+        {
+          char msg[512] = { };
+
+          sprintf(msg, "BeginUpdate: versions out of sync.  Version Begin:%ld  End:%ld",
+            mpBuffVersionBlock->mVersionUpdateBegin, mpBuffVersionBlock->mVersionUpdateEnd);
+
+          DEBUG_MSG(DebugLevel::Synchronization, msg);
+        }
+      ::InterlockedExchange(&mpBuffVersionBlock->mVersionUpdateEnd, mpBuffVersionBlock->mVersionUpdateBegin);
+      }
+
+    ::InterlockedIncrement(&mpBuffVersionBlock->mVersionUpdateBegin);
+    }
+
+    private void EndUpdate()
+    {
+      if (!mMapped)
+      {
+        DEBUG_MSG(DebugLevel::Errors, "Accessing unmapped buffer.");
+        return;
+      }
+
+    ::InterlockedIncrement(&mpBuffVersionBlock->mVersionUpdateEnd);
+
+      // Fix up out of sync situation.
+      if (mpBuffVersionBlock->mVersionUpdateBegin != mpBuffVersionBlock->mVersionUpdateEnd)
+      {
+        if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::Synchronization)
+        {
+          char msg[512] = { };
+
+          sprintf(msg, "EndUpdate: versions out of sync.  Version Begin:%ld  End:%ld",
+            mpBuffVersionBlock->mVersionUpdateBegin, mpBuffVersionBlock->mVersionUpdateEnd);
+
+          DEBUG_MSG(DebugLevel::Synchronization, msg);
+        }
+      ::InterlockedExchange(&mpBuffVersionBlock->mVersionUpdateBegin, mpBuffVersionBlock->mVersionUpdateEnd);
+      }
+    }
+
+    private void ClearState(BuffT const* pInitialContents)
+  {
+    if (!mMapped)
+      return;
+
+    BeginUpdate();
+
+    if (pInitialContents != nullptr)
+      memcpy(mpBuff, pInitialContents, sizeof(BuffT));
+    else
+      memset(mpBuff, 0, sizeof(BuffT));
+
+    EndUpdate();
+  }
+
+#endif
+  public void SendMappedDataUnsynchronized(ref MappedBufferT mappedData)
     {
       using (var sharedMemoryStreamView = this.memoryMappedFile.CreateViewStream())
       {
