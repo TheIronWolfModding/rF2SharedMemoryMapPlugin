@@ -290,8 +290,6 @@ public:
   // HW Control- action a control within the game
   bool HasHardwareInputs() override { return false; }
   bool CheckHWControl(const char* const controlName, double& fRetVal) override;
-// UNITTEST access fn
-  void __SetHWControl(const char* const controlName, double fRetVal);
 
 private:
   SharedMemoryPlugin(SharedMemoryPlugin const& rhs) = delete;

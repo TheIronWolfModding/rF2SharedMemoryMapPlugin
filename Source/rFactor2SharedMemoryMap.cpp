@@ -1158,7 +1158,10 @@ bool SharedMemoryPlugin::AccessPitMenu(PitMenuV01& info)
 // Only called if rFactor2SharedMemoryMap.hpp HasHardwareInputs() returns true
 bool SharedMemoryPlugin::CheckHWControl(const char* const controlName, double& fRetVal)
 {
-  // DEBUG_MSG(DebugLevel::DevInfo, "CheckHWControl called");
+  static char mControlName[rF2MappedBufferHeader::MAX_HWCONTROL_NAME_LEN];
+  // how to do that programmatically? sizeof(rF2HWControl.mControlName)];
+  static double mfRetVal;
+  DEBUG_MSG(DebugLevel::Verbose, "CheckHWControl called");
   // only if enabled, of course
   if (false) // TBD process to disable HW control
     return(false);
@@ -1179,22 +1182,17 @@ bool SharedMemoryPlugin::CheckHWControl(const char* const controlName, double& f
 
   if (mHWControl.CheckReadBuffer())
   {
-    if (_stricmp(controlName, mHWControl.mpBuff->mControlName) == 0)
-    {
-      fRetVal = mHWControl.mpBuff->mfRetVal;
-      return(true);
-    }
+    strcpy(mControlName, mHWControl.mpBuff->mControlName);
+    mfRetVal = mHWControl.mpBuff->mfRetVal;
+  }
+  if (_stricmp(controlName, mControlName) == 0)
+  {
+    fRetVal = mfRetVal;
+    mControlName[0] = NULL; // so it won't match again
+    return(true);
   }
   return false;
 }
-
-// UNITTEST access fn
-void SharedMemoryPlugin::__SetHWControl(const char* const controlName, double fRetVal)
-{
-  strcpy(mHWControl.mpBuff->mControlName, (char *)controlName);
-  mHWControl.mpBuff->mfRetVal = fRetVal;
-}
-
 
 ////////////////////////////////////////////
 // Debug output helpers.

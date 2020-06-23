@@ -827,6 +827,7 @@ struct rF2MappedBufferHeader
   static int const MAX_MAPPED_IDS = 512;
   static int const MAX_STATUS_MSG_LEN = 128;
   static int const MAX_RULES_INSTRUCTION_MSG_LEN = 96;
+  static int const MAX_HWCONTROL_NAME_LEN = 96;
 };
 
 
@@ -974,7 +975,7 @@ struct rF2Extended : public rF2MappedBufferHeader
 
 struct rF2HWControl : public rF2MappedBufferHeader
 {
-  char mControlName[96];
+  char mControlName[rF2MappedBufferHeader::MAX_HWCONTROL_NAME_LEN];
   double mfRetVal;
 };
 #pragma pack(pop)

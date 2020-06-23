@@ -1,4 +1,4 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.30204.135
@@ -29,8 +29,6 @@ Global
 		Release|x64 = Release|x64
 		UnitTest|Win32 = UnitTest|Win32
 		UnitTest|x64 = UnitTest|x64
-		UnitTestSM|Win32 = UnitTestSM|Win32
-		UnitTestSM|x64 = UnitTestSM|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{0F4496AA-02DE-43C9-BEBB-4CD84D9B1843}.Debug|Win32.ActiveCfg = Debug|Win32
@@ -73,10 +71,6 @@ Global
 		{0F4496AA-02DE-43C9-BEBB-4CD84D9B1843}.UnitTest|Win32.Build.0 = Release|Win32
 		{0F4496AA-02DE-43C9-BEBB-4CD84D9B1843}.UnitTest|x64.ActiveCfg = UnitTest|x64
 		{0F4496AA-02DE-43C9-BEBB-4CD84D9B1843}.UnitTest|x64.Build.0 = UnitTest|x64
-		{0F4496AA-02DE-43C9-BEBB-4CD84D9B1843}.UnitTestSM|Win32.ActiveCfg = UnitTest|Win32
-		{0F4496AA-02DE-43C9-BEBB-4CD84D9B1843}.UnitTestSM|Win32.Build.0 = UnitTest|Win32
-		{0F4496AA-02DE-43C9-BEBB-4CD84D9B1843}.UnitTestSM|x64.ActiveCfg = UnitTest|x64
-		{0F4496AA-02DE-43C9-BEBB-4CD84D9B1843}.UnitTestSM|x64.Build.0 = UnitTest|x64
 		{1FBF2D19-C0C9-4F6C-AB59-898A04D963C4}.Debug|Win32.ActiveCfg = Debug|Win32
 		{1FBF2D19-C0C9-4F6C-AB59-898A04D963C4}.Debug|Win32.Build.0 = Debug|Win32
 		{1FBF2D19-C0C9-4F6C-AB59-898A04D963C4}.Debug|x64.ActiveCfg = Debug|x64
@@ -117,10 +111,6 @@ Global
 		{1FBF2D19-C0C9-4F6C-AB59-898A04D963C4}.UnitTest|Win32.Build.0 = UnitTest|Win32
 		{1FBF2D19-C0C9-4F6C-AB59-898A04D963C4}.UnitTest|x64.ActiveCfg = UnitTest|x64
 		{1FBF2D19-C0C9-4F6C-AB59-898A04D963C4}.UnitTest|x64.Build.0 = UnitTest|x64
-		{1FBF2D19-C0C9-4F6C-AB59-898A04D963C4}.UnitTestSM|Win32.ActiveCfg = UnitTest|Win32
-		{1FBF2D19-C0C9-4F6C-AB59-898A04D963C4}.UnitTestSM|Win32.Build.0 = UnitTest|Win32
-		{1FBF2D19-C0C9-4F6C-AB59-898A04D963C4}.UnitTestSM|x64.ActiveCfg = UnitTest|x64
-		{1FBF2D19-C0C9-4F6C-AB59-898A04D963C4}.UnitTestSM|x64.Build.0 = UnitTest|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -116,15 +116,32 @@ namespace UnitTestMethods // startup code tested, now use it to test the rest
 
     TEST_METHOD(Test_CheckHWControl)
     {
-      double RetVal = 1.0f;
-
-#define CONTROL_NAME "ToggleMFDB"
+      double RetVal;
+      bool ret;
       TEST_NAME_IN_DEBUG("Test_CheckHWControl");
-      smp_obj.__SetHWControl(CONTROL_NAME, RetVal);
+
+      // Set up the test
+      // Init the shared memory
+#define CONTROL_NAME "ToggleMFDB"
+#define IGNORED_CONTROL_NAME "ToggleMFDA"
+      strcpy_s(smp_obj.mHWControl.mpBuff->mControlName, sizeof(CONTROL_NAME), CONTROL_NAME);
+      smp_obj.mHWControl.mpBuff->mfRetVal = 1.0f;
+
       RetVal = 0.0f;
-      bool ret = smp_obj.CheckHWControl(CONTROL_NAME, RetVal);
+      // Check that a call with another control name doesn't respond
+      ret = smp_obj.CheckHWControl(IGNORED_CONTROL_NAME, RetVal);
+      Assert::IsFalse(ret);
+      Assert::AreEqual(RetVal, (double)0.0f);
+
+      // Check the positive response
+      ret = smp_obj.CheckHWControl(CONTROL_NAME, RetVal);
       Assert::IsTrue(ret);
       Assert::AreEqual(RetVal, (double)1.0f);
+
+      // Check that a second call doesn't respond
+      ret = smp_obj.CheckHWControl(CONTROL_NAME, RetVal);
+      Assert::IsFalse(ret);
+      // Don't care about RetVal
     }
 
     TEST_METHOD(Test_UpdateGraphics)
@@ -155,30 +172,42 @@ namespace UnitTestMethods // startup code tested, now use it to test the rest
     TEST_METHOD(TestAccessPitMenu)
     {
       PitMenuV01 info;
+      TEST_NAME_IN_DEBUG("TestAccessPitMenu");
+      // Init the shared memory
+      smp_obj.mPitInfo.mpBuff->mCategoryName[0] = NULL;
+      smp_obj.mPitInfo.mpBuff->mChoiceString[0] = NULL;
+
+      // Load rFactor's input
       info.mCategoryIndex = 1;
       info.mChoiceIndex = 1;
       strcpy_s(info.mCategoryName, sizeof(info.mCategoryName), "PIT MENU 1");
       strcpy_s(info.mChoiceString, sizeof(info.mChoiceString), "CHOICE 1");
-      TEST_NAME_IN_DEBUG("TestAccessPitMenu");
       smp_obj.AccessPitMenu(info);
-      Assert::IsTrue(smp_obj.mPitInfo.mpBuff->changed);
+      Assert::AreEqual(smp_obj.mPitInfo.mpBuff->mCategoryName, "PIT MENU 1");
+      Assert::AreEqual(smp_obj.mPitInfo.mpBuff->mChoiceString, "CHOICE 1");
     }
 
     TEST_METHOD(TestAccessPitMenu_Timing)
     {
       PitMenuV01 info;
+      TEST_NAME_IN_DEBUG("TestAccessPitMenu_Timing");
+      // Init the shared memory
+      smp_obj.mPitInfo.mpBuff->mCategoryName[0] = NULL;
+      smp_obj.mPitInfo.mpBuff->mChoiceString[0] = NULL;
+
+      // Load rFactor's input
       info.mCategoryIndex = 2;
       info.mChoiceIndex = 2;
       strcpy_s(info.mCategoryName, sizeof(info.mCategoryName), "PIT MENU 2");
       strcpy_s(info.mChoiceString, sizeof(info.mChoiceString), "CHOICE 2");
-      TEST_NAME_IN_DEBUG("TestAccessPitMenu_Timing");
       // Hit it several times to test the timing
       smp_obj.AccessPitMenu(info);
-      SharedMemoryPlugin::msDebugISIInternals = false; // fprintf goes bang if called twice
       smp_obj.AccessPitMenu(info);
       smp_obj.AccessPitMenu(info);
       smp_obj.AccessPitMenu(info);
       smp_obj.AccessPitMenu(info);
+      Assert::AreEqual(smp_obj.mPitInfo.mpBuff->mCategoryName, "PIT MENU 2");
+      Assert::AreEqual(smp_obj.mPitInfo.mpBuff->mChoiceString, "CHOICE 2");
     }
 
     TEST_METHOD(TestISIinternals)
