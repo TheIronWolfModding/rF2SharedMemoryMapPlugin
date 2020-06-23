@@ -37,6 +37,7 @@ namespace rF2SMMonitor
     public const int MAX_MAPPED_IDS = 512;
     public const int MAX_STATUS_MSG_LEN = 128;
     public const int MAX_RULES_INSTRUCTION_MSG_LEN = 96;
+    public const int MAX_PIT_MENU_MSG_LEN = 96;
     public const string RFACTOR2_PROCESS_NAME = "rFactor2";
 
     public const byte RowX = 0;
@@ -985,7 +986,21 @@ namespace rF2SMMonitor
       public long mUnsubscribedBuffersMask;                     // Currently active UnsbscribedBuffersMask value.  This will be allowed for clients to write to in the future, but not yet.
     }
 
-    enum SubscribedBuffer
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
+    public struct rF2HWControl
+    {
+      public uint mVersionUpdateBegin;          // Incremented right before buffer is written to.
+      public uint mVersionUpdateEnd;            // Incremented after buffer write is done.
+
+      public long mVersion;                     // really?
+
+      [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = rFactor2Constants.MAX_PIT_MENU_MSG_LEN)]
+      public byte[] mControlName;
+      public double mfRetVal;
+    }
+
+  enum SubscribedBuffer
     {
       Telemetry = 1,
       Scoring = 2,
