@@ -78,7 +78,6 @@ namespace UnitTestMethods // startup code tested, now use it to test the rest
   {
     // Run once when the module is unloaded.
     // Could delete Userdata\Log folder but then wouldn't be able to read them!
-
   }
 
   /////////////////////////////////////////////////////////////////////////////
