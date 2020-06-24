@@ -185,7 +185,7 @@ private:
     ::GetModuleFileNameA(nullptr, moduleName, sizeof(moduleName));
 
     char mappingName[MAX_PATH] = {};
-    auto isDedicatedServer = true;
+    auto isDedicatedServer = false;
     if (strstr(moduleName, "Dedicated.exe") == nullptr)
       strcpy_s(mappingName, fileName);  // Regular client use.
     else {
