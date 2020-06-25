@@ -2,7 +2,7 @@
 #include "CppUnitTest.h"
 #include <direct.h>
 #include "rFactor2SharedMemoryMap.hpp"
-#include "MappedBuffer.h""
+#include "MappedBuffer.h"
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
