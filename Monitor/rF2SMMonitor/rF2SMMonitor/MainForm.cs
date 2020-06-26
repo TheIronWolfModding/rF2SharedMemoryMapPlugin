@@ -140,9 +140,9 @@ namespace rF2SMMonitor
         return false;
 
       byte[] commandStr = null;
-      var fRetVal = 1.0;
+      float fRetVal = 1.0f;
       if (msg.Msg != 0x100)
-        fRetVal = 0.0;
+        fRetVal = 0.0f;
 
       if ((int)msg.WParam == (int)Keys.Y)
         commandStr = Encoding.Default.GetBytes("PitMenuDecrementValue");
@@ -152,7 +152,15 @@ namespace rF2SMMonitor
         commandStr = Encoding.Default.GetBytes("PitMenuDown");
       else if ((int)msg.WParam == (int)Keys.P)
         commandStr = Encoding.Default.GetBytes("PitMenuUp");
+      else if ((int)msg.WParam == (int)Keys.P)
+        commandStr = Encoding.Default.GetBytes("PitMenuUp");
 
+      sendPitMenuCmd(commandStr, fRetVal);
+      return false;
+    }
+
+    private void sendPitMenuCmd(byte[] commandStr, float fRetVal)
+    {
       if (commandStr != null)
       {
         this.hwcontrol.mVersionUpdateBegin = this.hwcontrol.mVersionUpdateEnd = this.hwcontrol.mVersionUpdateBegin + 1;
@@ -165,10 +173,7 @@ namespace rF2SMMonitor
 
         this.hwcontrolBuffer.PutMappedData(ref this.hwcontrol);
       }
-
-      return false;
     }
-
     private void CheckBoxLogRules_CheckedChanged(object sender, EventArgs e)
     {
       this.logRules = this.checkBoxLogRules.Checked;
@@ -912,6 +917,9 @@ namespace rF2SMMonitor
 
           this.connected = true;
 
+          sendPitMenuCmd(Encoding.Default.GetBytes("ToggleMFDB"), 1.0f);
+          System.Threading.Thread.Sleep(100);
+          sendPitMenuCmd(Encoding.Default.GetBytes("ToggleMFDB"), 0.0f);
           this.EnableControls(true);
         }
         catch (Exception)
