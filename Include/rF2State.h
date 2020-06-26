@@ -975,6 +975,8 @@ struct rF2Extended : public rF2MappedBufferHeader
 
 struct rF2HWControl : public rF2MappedBufferHeader
 {
+  long mLayoutVersion;
+
   char mControlName[rF2MappedBufferHeader::MAX_HWCONTROL_NAME_LEN];
   double mfRetVal;
 };

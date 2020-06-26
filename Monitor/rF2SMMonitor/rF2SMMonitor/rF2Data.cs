@@ -34,6 +34,7 @@ namespace rF2SMMonitor
     public const string MM_PITINFO_FILE_NAME = "$rFactor2SMMP_PitInfo$";
 
     public const string MM_HWCONTROL_FILE_NAME = "$rFactor2SMMP_HWControl$";
+    public const int MM_HWCONTROL_LAYOUT_VERSION = 1;
 
     public const int MAX_MAPPED_VEHICLES = 128;
     public const int MAX_MAPPED_IDS = 512;
@@ -995,14 +996,14 @@ namespace rF2SMMonitor
       public uint mVersionUpdateBegin;          // Incremented right before buffer is written to.
       public uint mVersionUpdateEnd;            // Incremented after buffer write is done.
 
-      public long mVersion;                     // really?
+      public int mLayoutVersion;
 
       [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = rFactor2Constants.MAX_HWCONTROL_NAME_LEN)]
       public byte[] mControlName;
       public double mfRetVal;
     }
 
-  enum SubscribedBuffer
+    enum SubscribedBuffer
     {
       Telemetry = 1,
       Scoring = 2,
