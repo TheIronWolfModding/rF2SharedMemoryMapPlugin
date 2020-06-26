@@ -348,6 +348,10 @@ private:
   long mPitMenuLastChoiceIndex = -1L;
   long mPitMenuLastNumChoices = -1L;
 
+  // HWControl request tracking variables.  Empty indicates initial state or the fact that request passed to rF2.
+  char mHWControlRequest_mControlName[rF2MappedBufferHeader::MAX_HWCONTROL_NAME_LEN];
+  double mHWControlRequest_mfRetVal = 0.0;
+
   MappedBuffer<rF2Telemetry> mTelemetry;
   MappedBuffer<rF2Scoring> mScoring;
   MappedBuffer<rF2Rules> mRules;
