@@ -140,9 +140,9 @@ namespace rF2SMMonitor
         return false;
 
       byte[] commandStr = null;
-      float fRetVal = 1.0f;
+      var fRetVal = 1.0;
       if (msg.Msg != 0x100)
-        fRetVal = 0.0f;
+        fRetVal = 0.0;
 
       if ((int)msg.WParam == (int)Keys.Y)
         commandStr = Encoding.Default.GetBytes("PitMenuDecrementValue");
@@ -152,14 +152,12 @@ namespace rF2SMMonitor
         commandStr = Encoding.Default.GetBytes("PitMenuDown");
       else if ((int)msg.WParam == (int)Keys.P)
         commandStr = Encoding.Default.GetBytes("PitMenuUp");
-      else if ((int)msg.WParam == (int)Keys.P)
-        commandStr = Encoding.Default.GetBytes("PitMenuUp");
 
-      sendPitMenuCmd(commandStr, fRetVal);
+      this.SendPitMenuCmd(commandStr, fRetVal);
       return false;
     }
 
-    private void sendPitMenuCmd(byte[] commandStr, float fRetVal)
+    private void SendPitMenuCmd(byte[] commandStr, double fRetVal)
     {
       if (commandStr != null)
       {
@@ -917,14 +915,11 @@ namespace rF2SMMonitor
 
           this.connected = true;
 
-          sendPitMenuCmd(Encoding.Default.GetBytes("ToggleMFDB"), 1.0f);
-          System.Threading.Thread.Sleep(100);
-          sendPitMenuCmd(Encoding.Default.GetBytes("ToggleMFDB"), 0.0f);
           this.EnableControls(true);
         }
         catch (Exception)
         {
-          Disconnect();
+          this.Disconnect();
         }
       }
     }
