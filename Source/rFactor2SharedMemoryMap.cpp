@@ -193,6 +193,10 @@ void SharedMemoryPlugin::Startup(long version)
   DEBUG_INT2(DebugLevel::CriticalInfo, "DedicatedServerMapGlobally:", SharedMemoryPlugin::msDedicatedServerMapGlobally);
   DEBUG_INT2(DebugLevel::CriticalInfo, "EnableDirectMemoryAccess:", SharedMemoryPlugin::msDirectMemoryAccessRequested);
   DEBUG_INT2(DebugLevel::CriticalInfo, "UnsubscribedBuffersMask:", SharedMemoryPlugin::msUnsubscribedBuffersMask);
+  if (HasHardwareInputs())
+  {
+    DEBUG_MSG(DebugLevel::CriticalInfo, "CheckHWControl ACTIVE");
+  }
 
   if (SharedMemoryPlugin::msUnsubscribedBuffersMask != 0L) {
     if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Telemetry))
@@ -1120,7 +1124,12 @@ bool SharedMemoryPlugin::AccessPitMenu(PitMenuV01& info)
     return false;
   }
 
-  DEBUG_MSG(DebugLevel::Timing, "PIT MENU - updated.");
+  if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::DevInfo)
+  {
+    char temp[80] = {};
+    sprintf(temp, "PIT MENU - '%s' : '%s'", info.mCategoryName, info.mChoiceString);
+    DEBUG_MSG(DebugLevel::DevInfo, temp);
+  }
 
   mPitInfo.BeginUpdate();
 
@@ -1184,9 +1193,23 @@ bool SharedMemoryPlugin::CheckHWControl(const char* const controlName, double& f
   {
     strcpy(mControlName, mHWControl.mpBuff->mControlName);
     mfRetVal = mHWControl.mpBuff->mfRetVal;
+    if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::DevInfo)
+    {
+      char temp[80] = {};
+      sprintf(temp, "CheckHWControl received '%s' %1.1f", mControlName, mfRetVal);
+
+      DEBUG_MSG(DebugLevel::DevInfo, temp);
+    }
   }
   if (_stricmp(controlName, mControlName) == 0)
   {
+    if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::DevInfo)
+    {
+      char temp[80] = {};
+      sprintf(temp, "CheckHWControl matched '%s' %1.1f", mControlName, mfRetVal);
+
+      DEBUG_MSG(DebugLevel::DevInfo, temp);
+    }
     fRetVal = mfRetVal;
     mControlName[0] = NULL; // so it won't match again
     return(true);

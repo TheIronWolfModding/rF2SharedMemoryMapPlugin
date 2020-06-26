@@ -288,7 +288,7 @@ public:
   bool AccessPitMenu(PitMenuV01& info) override; // currently, the return code should always be false (because we may allow more direct editing in the future)
 
   // HW Control- action a control within the game
-  bool HasHardwareInputs() override { return false; }
+  bool HasHardwareInputs() override { return true; }
   bool CheckHWControl(const char* const controlName, double& fRetVal) override;
 
 private:
@@ -324,7 +324,7 @@ private:
   double mLastScoringUpdateMillis = 0.0;
   double mLastRulesUpdateMillis = 0.0;
   double mLastMultiRulesUpdateMillis = 0.0;
-  
+
   ExtendedStateTracker mExtStateTracker;
 
   // Elapsed times reported by the game.
