@@ -133,7 +133,7 @@ namespace rF2SMMonitor
       Application.Idle += this.HandleApplicationIdle;
     }
 
-    protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+    protected override bool ProcessKeyPreview(ref Message msg)
     {
       // TODO: add checkbox.
       if (!this.connected)
@@ -141,13 +141,16 @@ namespace rF2SMMonitor
 
       byte[] commandStr = null;
       var fRetVal = 1.0;
-      if (keyData == Keys.Y)
-        commandStr = Encoding.Default.GetBytes("PitMenuDcrementValue");
-      else if (keyData == Keys.U)
+      if (msg.Msg != 0x100)
+        fRetVal = 0.0;
+
+      if ((int)msg.WParam == (int)Keys.Y)
+        commandStr = Encoding.Default.GetBytes("PitMenuDecrementValue");
+      else if ((int)msg.WParam == (int)Keys.U)
         commandStr = Encoding.Default.GetBytes("PitMenuIncrementValue");
-      else if (keyData == Keys.O)
+      else if ((int)msg.WParam == (int)Keys.O)
         commandStr = Encoding.Default.GetBytes("PitMenuDown");
-      else if (keyData == Keys.P)
+      else if ((int)msg.WParam == (int)Keys.P)
         commandStr = Encoding.Default.GetBytes("PitMenuUp");
 
       if (commandStr != null)
