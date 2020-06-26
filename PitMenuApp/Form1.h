@@ -13,7 +13,9 @@ namespace CppCLRWinformsProjekt {
 	/// <summary>
 	/// Zusammenfassung für Form1
 	/// </summary>
-	public ref class Form1 : public System::Windows::Forms::Form
+  
+  
+  public ref class Form1 : public System::Windows::Forms::Form
 	{
 	public:
 		Form1(void)
@@ -120,6 +122,7 @@ namespace CppCLRWinformsProjekt {
       this->tableLayoutPanel1->ResumeLayout(false);
       this->tableLayoutPanel1->PerformLayout();
       this->ResumeLayout(false);
+      oHWControl.Initialize();
 
     }
 #pragma endregion
@@ -128,46 +131,46 @@ namespace CppCLRWinformsProjekt {
 private: System::Void Form1_KeyDown(System::Object^ sender, System::Windows::Forms::KeyEventArgs^ e) {
   if (e->KeyData == Keys::A)
   {
-    this->oHWControl.sendHWControl("PitMenuDecrementValue", 1.0f);
+    oHWControl.sendHWControl("PitMenuDecrementValue", 1.0f);
   }
   else if (e->KeyData == Keys::D)
   {
-    this->oHWControl.sendHWControl("PitMenuIncrementValue", 1.0f);
+    oHWControl.sendHWControl("PitMenuIncrementValue", 1.0f);
   }
   else if (e->KeyData == Keys::W)
   {
-    this->oHWControl.sendHWControl("PitMenuUp", 1.0f);
+    oHWControl.sendHWControl("PitMenuUp", 1.0f);
   }
   else if (e->KeyData == Keys::S)
   {
-    this->oHWControl.sendHWControl("PitMenuDown", 1.0f);
+    oHWControl.sendHWControl("PitMenuDown", 1.0f);
   }
   else
   {
-    this->oHWControl.sendHWControl("ToggleMFDB", 1.0f);
+    oHWControl.sendHWControl("ToggleMFDB", 1.0f);
   }
 }
 
   private: System::Void Form1_KeyUp(System::Object^ sender, System::Windows::Forms::KeyEventArgs^ e) {
     if (e->KeyData == Keys::A)
     {
-      this->oHWControl.sendHWControl("PitMenuDecrementValue", 0.0f);
+      oHWControl.sendHWControl("PitMenuDecrementValue", 0.0f);
     }
     else if (e->KeyData == Keys::D)
     {
-      this->oHWControl.sendHWControl("PitMenuIncrementValue", 0.0f);
+      oHWControl.sendHWControl("PitMenuIncrementValue", 0.0f);
     }
     else if (e->KeyData == Keys::W)
     {
-      this->oHWControl.sendHWControl("PitMenuUp", 0.0f);
+      oHWControl.sendHWControl("PitMenuUp", 0.0f);
     }
     else if (e->KeyData == Keys::S)
     {
-      this->oHWControl.sendHWControl("PitMenuDown", 0.0f);
+      oHWControl.sendHWControl("PitMenuDown", 0.0f);
     }
     else
     {
-      this->oHWControl.sendHWControl("ToggleMFDB", 0.0f);
+      oHWControl.sendHWControl("ToggleMFDB", 0.0f);
     }
   }
 };
