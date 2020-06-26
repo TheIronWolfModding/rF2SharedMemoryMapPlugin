@@ -251,3 +251,4 @@ paket-files/
 *.sln.iml
 /UnitTest/pch.h
 /UnitTest/pch.cpp
+/Monitor/rF2SMMonitor/rF2SMMonitor/MainForm.cs.new

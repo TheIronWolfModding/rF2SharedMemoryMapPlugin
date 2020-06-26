@@ -59,9 +59,9 @@ namespace CppCLRWinformsProjekt {
       this->label1 = (gcnew System::Windows::Forms::Label());
       this->tableLayoutPanel1->SuspendLayout();
       this->SuspendLayout();
-      //
+      // 
       // tableLayoutPanel1
-      //
+      // 
       this->tableLayoutPanel1->ColumnCount = 2;
       this->tableLayoutPanel1->ColumnStyles->Add((gcnew System::Windows::Forms::ColumnStyle(System::Windows::Forms::SizeType::Percent,
         46.02941F)));
@@ -74,12 +74,12 @@ namespace CppCLRWinformsProjekt {
       this->tableLayoutPanel1->RowCount = 2;
       this->tableLayoutPanel1->RowStyles->Add((gcnew System::Windows::Forms::RowStyle(System::Windows::Forms::SizeType::Percent, 43.72093F)));
       this->tableLayoutPanel1->RowStyles->Add((gcnew System::Windows::Forms::RowStyle(System::Windows::Forms::SizeType::Percent, 56.27907F)));
-      this->tableLayoutPanel1->Size = System::Drawing::Size(680, 430);
+      this->tableLayoutPanel1->Size = System::Drawing::Size(709, 430);
       this->tableLayoutPanel1->TabIndex = 0;
       this->tableLayoutPanel1->Paint += gcnew System::Windows::Forms::PaintEventHandler(this, &Form1::tableLayoutPanel1_Paint);
-      //
+      // 
       // textBox1
-      //
+      // 
       this->textBox1->Anchor = static_cast<System::Windows::Forms::AnchorStyles>((((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Bottom)
         | System::Windows::Forms::AnchorStyles::Left)
         | System::Windows::Forms::AnchorStyles::Right));
@@ -89,26 +89,26 @@ namespace CppCLRWinformsProjekt {
       this->textBox1->Multiline = true;
       this->textBox1->Name = L"textBox1";
       this->textBox1->ReadOnly = true;
-      this->textBox1->Size = System::Drawing::Size(306, 181);
+      this->textBox1->Size = System::Drawing::Size(320, 181);
       this->textBox1->TabIndex = 0;
       this->textBox1->Text = L"FUEL: +10.0/4\r\nFL PRESS: 20.0\r\nFR PRESS: 20.0\r\nRL PRESS: 18.5\r\nRR PRESS: 18.5";
       this->textBox1->KeyDown += gcnew System::Windows::Forms::KeyEventHandler(this, &Form1::Form1_KeyDown);
       this->textBox1->KeyUp += gcnew System::Windows::Forms::KeyEventHandler(this, &Form1::Form1_KeyUp);
-      //
+      // 
       // label1
-      //
+      // 
       this->label1->AutoSize = true;
       this->label1->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 12, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point,
         static_cast<System::Byte>(0)));
-      this->label1->Location = System::Drawing::Point(322, 10);
+      this->label1->Location = System::Drawing::Point(336, 10);
       this->label1->Margin = System::Windows::Forms::Padding(10);
       this->label1->Name = L"label1";
-      this->label1->Size = System::Drawing::Size(298, 64);
+      this->label1->Size = System::Drawing::Size(350, 64);
       this->label1->TabIndex = 1;
-      this->label1->Text = L"Use the cursor keys \r\nto control the Pit Menu";
-      //
+      this->label1->Text = L"Use ASDW as cursor keys \r\nto control the Pit Menu";
+      // 
       // Form1
-      //
+      // 
       this->AutoScaleDimensions = System::Drawing::SizeF(9, 20);
       this->AutoScaleMode = System::Windows::Forms::AutoScaleMode::Font;
       this->ClientSize = System::Drawing::Size(733, 546);
@@ -121,8 +121,6 @@ namespace CppCLRWinformsProjekt {
       this->tableLayoutPanel1->PerformLayout();
       this->ResumeLayout(false);
 
-      //this->oHWControl = (gcnew HWControl());
-      this->oHWControl.Initialize();
     }
 #pragma endregion
 	private: System::Void tableLayoutPanel1_Paint(System::Object^ sender, System::Windows::Forms::PaintEventArgs^ e) {
