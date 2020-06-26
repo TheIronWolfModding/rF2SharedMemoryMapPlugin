@@ -133,7 +133,10 @@ namespace rF2SMMonitor
       Application.Idle += this.HandleApplicationIdle;
     }
 
-    protected override bool ProcessKeyPreview(ref Message msg)
+    [DllImport("user32.dll")]
+    static extern short GetAsyncKeyState(System.Windows.Forms.Keys vKey);
+
+    private bool ProcessKeys()
     {
       // TODO: add checkbox.
       if (!this.connected)
@@ -141,16 +144,16 @@ namespace rF2SMMonitor
 
       byte[] commandStr = null;
       var fRetVal = 1.0;
-      if (msg.Msg != 0x100)
-        fRetVal = 0.0;
+      //if (msg.Msg != 0x100)
+       // fRetVal = 0.0;
 
-      if ((int)msg.WParam == (int)Keys.Y)
+      if (MainForm.GetAsyncKeyState(Keys.Y) < 0)
         commandStr = Encoding.Default.GetBytes("PitMenuDecrementValue");
-      else if ((int)msg.WParam == (int)Keys.U)
+      else if (MainForm.GetAsyncKeyState(Keys.U) < 0)
         commandStr = Encoding.Default.GetBytes("PitMenuIncrementValue");
-      else if ((int)msg.WParam == (int)Keys.O)
+      else if (MainForm.GetAsyncKeyState(Keys.O) < 0)
         commandStr = Encoding.Default.GetBytes("PitMenuDown");
-      else if ((int)msg.WParam == (int)Keys.P)
+      else if (MainForm.GetAsyncKeyState(Keys.P) < 0)
         commandStr = Encoding.Default.GetBytes("PitMenuUp");
 
       this.SendPitMenuCmd(commandStr, fRetVal);
@@ -354,6 +357,8 @@ namespace rF2SMMonitor
           {
             this.MainRender();
           }
+
+          this.ProcessKeys();
 
           if (this.logLightMode)
             Thread.Sleep(LIGHT_MODE_REFRESH_MS);
