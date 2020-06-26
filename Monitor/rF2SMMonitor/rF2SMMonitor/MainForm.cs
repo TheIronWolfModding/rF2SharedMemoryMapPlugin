@@ -33,6 +33,7 @@ namespace rF2SMMonitor
     System.Windows.Forms.Timer disconnectTimer = new System.Windows.Forms.Timer();
     bool connected = false;
 
+    // Read buffers:
     MappedBuffer<rF2Telemetry> telemetryBuffer = new MappedBuffer<rF2Telemetry>(rFactor2Constants.MM_TELEMETRY_FILE_NAME, true /*partial*/, true /*skipUnchanged*/);
     MappedBuffer<rF2Scoring> scoringBuffer = new MappedBuffer<rF2Scoring>(rFactor2Constants.MM_SCORING_FILE_NAME, true /*partial*/, true /*skipUnchanged*/);
     MappedBuffer<rF2Rules> rulesBuffer = new MappedBuffer<rF2Rules>(rFactor2Constants.MM_RULES_FILE_NAME, true /*partial*/, true /*skipUnchanged*/);
@@ -40,7 +41,9 @@ namespace rF2SMMonitor
     MappedBuffer<rF2Graphics> graphicsBuffer = new MappedBuffer<rF2Graphics>(rFactor2Constants.MM_GRAPHICS_FILE_NAME, false /*partial*/, false /*skipUnchanged*/);
     MappedBuffer<rF2PitInfo> pitInfoBuffer = new MappedBuffer<rF2PitInfo>(rFactor2Constants.MM_PITINFO_FILE_NAME, false /*partial*/, true /*skipUnchanged*/);
     MappedBuffer<rF2Extended> extendedBuffer = new MappedBuffer<rF2Extended>(rFactor2Constants.MM_EXTENDED_FILE_NAME, false /*partial*/, true /*skipUnchanged*/);
-    MappedBuffer<rF2HWControl> hwcontrolBuffer = new MappedBuffer<rF2HWControl>(rFactor2Constants.MM_HWCONTROL_FILE_NAME, false /*partial*/, true /*skipUnchanged*/);
+
+    // Write buffers:
+    MappedBuffer<rF2HWControl> hwcontrolBuffer = new MappedBuffer<rF2HWControl>(rFactor2Constants.MM_HWCONTROL_FILE_NAME);
 
     // Marshalled views:
     rF2Telemetry telemetry;
@@ -50,6 +53,8 @@ namespace rF2SMMonitor
     rF2Graphics graphics;
     rF2PitInfo pitInfo;
     rF2Extended extended;
+
+    // Marashalled output views:
     rF2HWControl hwcontrol;
 
     // Track rF2 transitions.
@@ -121,15 +126,52 @@ namespace rF2SMMonitor
       this.disconnectTimer.Start();
 
       this.view.BorderStyle = BorderStyle.Fixed3D;
-      this.view.Paint += View_Paint;
-      this.MouseClick += MainForm_MouseClick;
-      this.view.MouseClick += MainForm_MouseClick;
-      this.KeyDown += MainForm_KeyDown;  // but the event doesn't happen
-      this.view.KeyDown += MainForm_KeyDown;
+      this.view.Paint += this.View_Paint;
+      this.MouseClick += this.MainForm_MouseClick;
+      this.view.MouseClick += this.MainForm_MouseClick;
 
-      Application.Idle += HandleApplicationIdle;
+      Application.Idle += this.HandleApplicationIdle;
     }
 
+    protected override bool ProcessKeyPreview(ref Message msg)
+    {
+      // TODO: add checkbox.
+      if (!this.connected)
+        return false;
+
+      byte[] commandStr = null;
+      var fRetVal = 1.0;
+      if (msg.Msg != 0x100)
+        fRetVal = 0.0;
+
+      if ((int)msg.WParam == (int)Keys.Y)
+        commandStr = Encoding.Default.GetBytes("PitMenuDecrementValue");
+      else if ((int)msg.WParam == (int)Keys.U)
+        commandStr = Encoding.Default.GetBytes("PitMenuIncrementValue");
+      else if ((int)msg.WParam == (int)Keys.O)
+        commandStr = Encoding.Default.GetBytes("PitMenuDown");
+      else if ((int)msg.WParam == (int)Keys.P)
+        commandStr = Encoding.Default.GetBytes("PitMenuUp");
+
+      this.SendPitMenuCmd(commandStr, fRetVal);
+      return false;
+    }
+
+    private void SendPitMenuCmd(byte[] commandStr, double fRetVal)
+    {
+      if (commandStr != null)
+      {
+        this.hwcontrol.mVersionUpdateBegin = this.hwcontrol.mVersionUpdateEnd = this.hwcontrol.mVersionUpdateBegin + 1;
+
+        this.hwcontrol.mControlName = new byte[rFactor2Constants.MAX_HWCONTROL_NAME_LEN];
+        for (int i = 0; i < commandStr.Length; ++i)
+          this.hwcontrol.mControlName[i] = commandStr[i];
+
+        this.hwcontrol.mfRetVal = fRetVal;
+
+        this.hwcontrolBuffer.PutMappedData(ref this.hwcontrol);
+      }
+    }
     private void CheckBoxLogRules_CheckedChanged(object sender, EventArgs e)
     {
       this.logRules = this.checkBoxLogRules.Checked;
@@ -180,26 +222,6 @@ namespace rF2SMMonitor
         // No stats for FFB buffer (single value buffer).
 
         this.maxFFBValue = 0.0;
-      }
-    }
-
-    private void MainForm_KeyDown(object sender, KeyEventArgs e)
-    {
-      if (e.KeyCode == Keys.Left)
-      {
-        // send "PitMenuDecrementValue"
-      }
-      else if (e.KeyCode == Keys.Right)
-      {
-        // send "PitMenuIncrementValue"
-      }
-      else if (e.KeyCode == Keys.Down)
-      {
-        // send "PitMenuDown"
-      }
-      else if (e.KeyCode == Keys.Up)
-      {
-        // send "PitMenuUp"
       }
     }
 
@@ -888,13 +910,16 @@ namespace rF2SMMonitor
 
           this.hwcontrolBuffer.Connect();
 
+          this.hwcontrol.mLayoutVersion = rFactor2Constants.MM_HWCONTROL_LAYOUT_VERSION;
+          this.hwcontrol.mVersionUpdateBegin = this.hwcontrol.mVersionUpdateEnd = 0;
+
           this.connected = true;
 
           this.EnableControls(true);
         }
         catch (Exception)
         {
-          Disconnect();
+          this.Disconnect();
         }
       }
     }
@@ -926,6 +951,8 @@ namespace rF2SMMonitor
       this.forceFeedbackBuffer.Disconnect();
       this.pitInfoBuffer.Disconnect();
       this.graphicsBuffer.Disconnect();
+
+      this.hwcontrolBuffer.Disconnect();
 
       this.connected = false;
 

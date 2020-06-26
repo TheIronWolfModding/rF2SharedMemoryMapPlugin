@@ -169,9 +169,10 @@ SharedMemoryPlugin::SharedMemoryPlugin()
     , mGraphics(SharedMemoryPlugin::MM_GRAPHICS_FILE_NAME)
     , mExtended(SharedMemoryPlugin::MM_EXTENDED_FILE_NAME)
     , mPitInfo(SharedMemoryPlugin::MM_PIT_INFO_FILE_NAME)
-    , mHWControl(SharedMemoryPlugin::MM_HWCONTROL_FILE_NAME)
+    , mHWControl(SharedMemoryPlugin::MM_HWCONTROL_FILE_NAME, rF2MappedBufferHeader::MAX_HWCONTROL_LAYOUT_VERSION)
 {
   memset(mParticipantTelemetryUpdated, 0, sizeof(mParticipantTelemetryUpdated));
+  memset(mHWControlRequest_mControlName, 0, sizeof(mHWControlRequest_mControlName));
 }
 
 
@@ -221,9 +222,9 @@ void SharedMemoryPlugin::Startup(long version)
       DEBUG_MSG(DebugLevel::CriticalInfo, "Unsubscribed from the Pit Info updates");
   }
 
-  char temp[80] = {};
-  sprintf(temp, "-STARTUP- (version %.3f)", (float)version / 1000.0f);
-  WriteToAllExampleOutputFiles("w", temp);
+  char charBuff[80] = {};
+  sprintf(charBuff, "-STARTUP- (version %.3f)", (float)version / 1000.0f);
+  WriteToAllExampleOutputFiles("w", charBuff);
 
   if (!mTelemetry.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
     DEBUG_MSG(DebugLevel::Errors, "Failed to initialize Telemetry mapping");
@@ -340,7 +341,7 @@ void SharedMemoryPlugin::Startup(long version)
     }
 
     mExtended.BeginUpdate();
-    memcpy(mExtended.mpBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
+    memcpy(mExtended.mpWriteBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
     mExtended.EndUpdate();
   }
 }
@@ -419,6 +420,9 @@ void SharedMemoryPlugin::ClearTimingsAndCounters()
   mPitMenuLastCategoryIndex = -1L;
   mPitMenuLastChoiceIndex = -1L;
   mPitMenuLastNumChoices = -1L;
+
+  memset(mHWControlRequest_mControlName, 0, sizeof(mHWControlRequest_mControlName));
+  mHWControlRequest_mfRetVal = 0.0;
 }
 
 
@@ -459,7 +463,7 @@ void SharedMemoryPlugin::StartSession()
   // between Session Start/End.  We need to capture some of that info, because
   // it might be overwritten by the next session.
   // Current read buffer for Scoring info contains last Scoring Update.
-  mExtStateTracker.CaptureSessionTransition(*mScoring.mpBuff);
+  mExtStateTracker.CaptureSessionTransition(*mScoring.mpWriteBuff);
 
   if (SharedMemoryPlugin::msDirectMemoryAccessRequested) {
     if (!mDMR.ReadOnNewSession(mExtStateTracker.mExtended)) {
@@ -491,10 +495,10 @@ void SharedMemoryPlugin::EndSession()
   mExtStateTracker.mExtended.mTicksSessionEnded = ::GetTickCount64();
 
   // Capture Session End state.
-  mExtStateTracker.CaptureSessionTransition(*mScoring.mpBuff);
+  mExtStateTracker.CaptureSessionTransition(*mScoring.mpWriteBuff);
 
   mExtended.BeginUpdate();
-  memcpy(mExtended.mpBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
+  memcpy(mExtended.mpWriteBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
   mExtended.EndUpdate();
 }
 
@@ -511,7 +515,7 @@ void SharedMemoryPlugin::UpdateInRealtimeFC(bool inRealTime)
     mExtStateTracker.ResetDamageState();
 
   mExtended.BeginUpdate();
-  memcpy(mExtended.mpBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
+  memcpy(mExtended.mpWriteBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
   mExtended.EndUpdate();
 }
 
@@ -578,7 +582,7 @@ void SharedMemoryPlugin::TelemetryTraceSkipUpdate(TelemInfoV01 const& info, doub
     // Below a  ssumes that we begin skip on the first vehicle, which is not guaranteed.  However, that's ok
     // since this code is diagnostic.
     // The goal here is to detect situation where rF2 changes and begins to send telemetry more frequently.
-    auto const prevBuff = mTelemetry.mpBuff;
+    auto const prevBuff = mTelemetry.mpWriteBuff;
     if (info.mPos.x != prevBuff->mVehicles->mPos.x
       || info.mPos.y != prevBuff->mVehicles->mPos.y
       || info.mPos.z != prevBuff->mVehicles->mPos.z)
@@ -604,7 +608,7 @@ void SharedMemoryPlugin::TelemetryTraceBeginUpdate(double telUpdateET, double de
 
     char msg[512] = {};
     sprintf(msg, "TELEMETRY - Begin Update:  ET:%f  ET delta:%f  Time delta since last update:%f  Version Begin:%ld  End:%ld",
-      telUpdateET, deltaET, delta / MICROSECONDS_IN_SECOND, mTelemetry.mpBuffVersionBlock->mVersionUpdateBegin, mTelemetry.mpBuffVersionBlock->mVersionUpdateEnd);
+      telUpdateET, deltaET, delta / MICROSECONDS_IN_SECOND, mTelemetry.mpWriteBuffVersionBlock->mVersionUpdateBegin, mTelemetry.mpWriteBuffVersionBlock->mVersionUpdateEnd);
 
     DEBUG_MSG(DebugLevel::Timing, msg);
   }
@@ -616,7 +620,7 @@ void SharedMemoryPlugin::TelemetryTraceBeginUpdate(double telUpdateET, double de
 void SharedMemoryPlugin::TelemetryTraceVehicleAdded(TelemInfoV01 const& info)
 {
   if (SharedMemoryPlugin::msDebugOutputLevel == DebugLevel::Verbose) {
-    auto const prevBuff = mTelemetry.mpBuff;
+    auto const prevBuff = mTelemetry.mpWriteBuff;
     bool const samePos = info.mPos.x == prevBuff->mVehicles[mCurrTelemetryVehicleIndex].mPos.x
       && info.mPos.y == prevBuff->mVehicles[mCurrTelemetryVehicleIndex].mPos.y
       && info.mPos.z == prevBuff->mVehicles[mCurrTelemetryVehicleIndex].mPos.z;
@@ -638,7 +642,7 @@ void SharedMemoryPlugin::TelemetryTraceEndUpdate(int numVehiclesInChain) const
 
     char msg[512] = {};
     sprintf(msg, "TELEMETRY - End Update.  Telemetry chain update took %f:  Vehicles in chain: %d  Version Begin:%ld  End:%ld",
-      deltaSysTimeMicroseconds / MICROSECONDS_IN_SECOND, numVehiclesInChain, mTelemetry.mpBuffVersionBlock->mVersionUpdateBegin, mTelemetry.mpBuffVersionBlock->mVersionUpdateEnd);
+      deltaSysTimeMicroseconds / MICROSECONDS_IN_SECOND, numVehiclesInChain, mTelemetry.mpWriteBuffVersionBlock->mVersionUpdateBegin, mTelemetry.mpWriteBuffVersionBlock->mVersionUpdateEnd);
 
     DEBUG_MSG(DebugLevel::Timing, msg);
   }
@@ -666,12 +670,12 @@ void SharedMemoryPlugin::TelemetryCompleteFrame()
   if (mTelemetryFrameCompleted)
     return;
 
-  mTelemetry.mpBuff->mNumVehicles = mCurrTelemetryVehicleIndex;
-  mTelemetry.mpBuff->mBytesUpdatedHint = static_cast<int>(offsetof(rF2Telemetry, mVehicles[mTelemetry.mpBuff->mNumVehicles]));
+  mTelemetry.mpWriteBuff->mNumVehicles = mCurrTelemetryVehicleIndex;
+  mTelemetry.mpWriteBuff->mBytesUpdatedHint = static_cast<int>(offsetof(rF2Telemetry, mVehicles[mTelemetry.mpWriteBuff->mNumVehicles]));
 
   mTelemetry.EndUpdate();
 
-  TelemetryTraceEndUpdate(mTelemetry.mpBuff->mNumVehicles);
+  TelemetryTraceEndUpdate(mTelemetry.mpWriteBuff->mNumVehicles);
 
   mTelemetryFrameCompleted = true;
 }
@@ -752,12 +756,12 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
     TelemetryTraceVehicleAdded(info);
 
     // Write vehicle telemetry.
-    memcpy(&(mTelemetry.mpBuff->mVehicles[mCurrTelemetryVehicleIndex]), &info, sizeof(rF2VehicleTelemetry));
+    memcpy(&(mTelemetry.mpWriteBuff->mVehicles[mCurrTelemetryVehicleIndex]), &info, sizeof(rF2VehicleTelemetry));
     ++mCurrTelemetryVehicleIndex;
 
     // Do not hold this frame open for longer than necessary, as it increases collision window.
     // This also reduces latency to the minimum.
-    if (mScoring.mpBuff->mScoringInfo.mNumVehicles == mCurrTelemetryVehicleIndex)
+    if (mScoring.mpWriteBuff->mScoringInfo.mNumVehicles == mCurrTelemetryVehicleIndex)
       TelemetryCompleteFrame();
   }
   else {
@@ -796,7 +800,7 @@ void SharedMemoryPlugin::TraceBeginUpdate(BuffT const& buffer, double& lastUpdat
 
     char msg[512] = {};
     sprintf(msg, "%s - Begin Update:  Delta since last update:%f  Version Begin:%ld  End:%ld", msgPrefix, delta / MICROSECONDS_IN_SECOND,
-      buffer.mpBuffVersionBlock->mVersionUpdateBegin, buffer.mpBuffVersionBlock->mVersionUpdateEnd);
+      buffer.mpWriteBuffVersionBlock->mVersionUpdateBegin, buffer.mpWriteBuffVersionBlock->mVersionUpdateEnd);
 
     DEBUG_MSG(DebugLevel::Timing, msg);
 
@@ -823,16 +827,16 @@ void SharedMemoryPlugin::UpdateScoring(ScoringInfoV01 const& info)
 
   mScoring.BeginUpdate();
 
-  memcpy(&(mScoring.mpBuff->mScoringInfo), &info, sizeof(rF2ScoringInfo));
+  memcpy(&(mScoring.mpWriteBuff->mScoringInfo), &info, sizeof(rF2ScoringInfo));
 
   if (info.mNumVehicles >= rF2MappedBufferHeader::MAX_MAPPED_VEHICLES)
     DEBUG_MSG(DebugLevel::Errors, "ERROR: Scoring exceeded maximum of allowed mapped vehicles.");
 
   auto const numScoringVehicles = min(info.mNumVehicles, rF2MappedBufferHeader::MAX_MAPPED_VEHICLES);
   for (int i = 0; i < numScoringVehicles; ++i)
-    memcpy(&(mScoring.mpBuff->mVehicles[i]), &(info.mVehicle[i]), sizeof(rF2VehicleScoring));
+    memcpy(&(mScoring.mpWriteBuff->mVehicles[i]), &(info.mVehicle[i]), sizeof(rF2VehicleScoring));
 
-  mScoring.mpBuff->mBytesUpdatedHint = static_cast<int>(offsetof(rF2Scoring, mVehicles[numScoringVehicles]));
+  mScoring.mpWriteBuff->mBytesUpdatedHint = static_cast<int>(offsetof(rF2Scoring, mVehicles[numScoringVehicles]));
 
   mScoring.EndUpdate();
 
@@ -859,7 +863,7 @@ void SharedMemoryPlugin::UpdateScoring(ScoringInfoV01 const& info)
 
   // FUTURE: Minor optimization would be track if mExtended has been updated in Telemetry/Scoring and flip only if that is the case.
   mExtended.BeginUpdate();
-  memcpy(mExtended.mpBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
+  memcpy(mExtended.mpWriteBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
   mExtended.EndUpdate();
 }
 
@@ -872,7 +876,7 @@ bool SharedMemoryPlugin::ForceFeedback(double& forceValue)
   DEBUG_MSG(DebugLevel::Timing, "FORCE FEEDBACK - Updated");
 
   // If I understand correctly, this is atomic operation.  Since this is a single value buffer, no need to do anything else.
-  mForceFeedback.mpBuff->mForceValue = forceValue;
+  mForceFeedback.mpWriteBuff->mForceValue = forceValue;
 
   return false;
 }
@@ -884,7 +888,7 @@ void SharedMemoryPlugin::UpdateThreadState(long type, bool starting)
     = starting;
 
   mExtended.BeginUpdate();
-  memcpy(mExtended.mpBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
+  memcpy(mExtended.mpWriteBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
   mExtended.EndUpdate();
 }
 
@@ -919,7 +923,7 @@ bool SharedMemoryPlugin::AccessTrackRules(TrackRulesV01& info)
   mRules.BeginUpdate();
 
   // Copy main struct.
-  memcpy(&(mRules.mpBuff->mTrackRules), &info, sizeof(rF2TrackRules));
+  memcpy(&(mRules.mpWriteBuff->mTrackRules), &info, sizeof(rF2TrackRules));
 
   // Copy actions.
   if (info.mNumActions >= rF2MappedBufferHeader::MAX_MAPPED_VEHICLES)
@@ -927,7 +931,7 @@ bool SharedMemoryPlugin::AccessTrackRules(TrackRulesV01& info)
 
   auto const numActions = min(info.mNumActions, rF2MappedBufferHeader::MAX_MAPPED_VEHICLES);
   for (int i = 0; i < numActions; ++i)
-    memcpy(&(mRules.mpBuff->mActions[i]), &(info.mAction[i]), sizeof(rF2TrackRulesAction));
+    memcpy(&(mRules.mpWriteBuff->mActions[i]), &(info.mAction[i]), sizeof(rF2TrackRulesAction));
 
   // Copy participants.
   if (info.mNumParticipants >= rF2MappedBufferHeader::MAX_MAPPED_VEHICLES)
@@ -935,10 +939,10 @@ bool SharedMemoryPlugin::AccessTrackRules(TrackRulesV01& info)
 
   auto const numRulesVehicles = min(info.mNumParticipants, rF2MappedBufferHeader::MAX_MAPPED_VEHICLES);
   for (int i = 0; i < numRulesVehicles; ++i) {
-    memcpy(&(mRules.mpBuff->mParticipants[i]), &(info.mParticipant[i]), sizeof(rF2TrackRulesParticipant));
+    memcpy(&(mRules.mpWriteBuff->mParticipants[i]), &(info.mParticipant[i]), sizeof(rF2TrackRulesParticipant));
   }
 
-  mRules.mpBuff->mBytesUpdatedHint = static_cast<int>(offsetof(rF2Rules, mParticipants[numRulesVehicles]));
+  mRules.mpWriteBuff->mBytesUpdatedHint = static_cast<int>(offsetof(rF2Rules, mParticipants[numRulesVehicles]));
 
   mRules.EndUpdate();
 
@@ -956,7 +960,7 @@ void SharedMemoryPlugin::SetPhysicsOptions(PhysicsOptionsV01& options)
   memcpy(&(mExtStateTracker.mExtended.mPhysics), &options, sizeof(rF2PhysicsOptions));
 
   mExtended.BeginUpdate();
-  memcpy(mExtended.mpBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
+  memcpy(mExtended.mpWriteBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
   mExtended.EndUpdate();
 }
 
@@ -970,7 +974,7 @@ bool SharedMemoryPlugin::AccessMultiSessionRules(MultiSessionRulesV01& info)
 
   mMultiRules.BeginUpdate();
   // Copy main struct.
-  memcpy(&(mMultiRules.mpBuff->mMultiSessionRules), &info, sizeof(rF2MultiSessionRules));
+  memcpy(&(mMultiRules.mpWriteBuff->mMultiSessionRules), &info, sizeof(rF2MultiSessionRules));
 
   // Copy participants.
   if (info.mNumParticipants >= rF2MappedBufferHeader::MAX_MAPPED_VEHICLES)
@@ -978,9 +982,9 @@ bool SharedMemoryPlugin::AccessMultiSessionRules(MultiSessionRulesV01& info)
 
   auto const numMultiRulesVehicles = min(info.mNumParticipants, rF2MappedBufferHeader::MAX_MAPPED_VEHICLES);
   for (int i = 0; i < numMultiRulesVehicles; ++i)
-    memcpy(&(mMultiRules.mpBuff->mParticipants[i]), &(info.mParticipant[i]), sizeof(rF2MultiSessionParticipant));
+    memcpy(&(mMultiRules.mpWriteBuff->mParticipants[i]), &(info.mParticipant[i]), sizeof(rF2MultiSessionParticipant));
 
-  mMultiRules.mpBuff->mBytesUpdatedHint = static_cast<int>(offsetof(rF2MultiRules, mParticipants[numMultiRulesVehicles]));
+  mMultiRules.mpWriteBuff->mBytesUpdatedHint = static_cast<int>(offsetof(rF2MultiRules, mParticipants[numMultiRulesVehicles]));
 
   mMultiRules.EndUpdate();
 
@@ -1105,7 +1109,7 @@ void SharedMemoryPlugin::UpdateGraphics(GraphicsInfoV02 const& info)
   DEBUG_MSG(DebugLevel::Timing, "GRAPHICS - updated.");
 
   // Do not version Graphics buffer, as it is asynchronous by the nature anyway.
-  memcpy(&(mGraphics.mpBuff->mGraphicsInfo), &info, sizeof(rF2GraphicsInfo));
+  memcpy(&(mGraphics.mpWriteBuff->mGraphicsInfo), &info, sizeof(rF2GraphicsInfo));
 }
 
 
@@ -1126,14 +1130,14 @@ bool SharedMemoryPlugin::AccessPitMenu(PitMenuV01& info)
 
   if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::DevInfo)
   {
-    char temp[80] = {};
-    sprintf(temp, "PIT MENU - '%s' : '%s'", info.mCategoryName, info.mChoiceString);
-    DEBUG_MSG(DebugLevel::DevInfo, temp);
+    char charBuff[80] = {};
+    sprintf(charBuff, "PIT MENU - Updated.  Category: '%s'  Value: '%s'", info.mCategoryName, info.mChoiceString);
+    DEBUG_MSG(DebugLevel::DevInfo, charBuff);
   }
 
   mPitInfo.BeginUpdate();
 
-  memcpy(&(mPitInfo.mpBuff->mPitMenu), &info, sizeof(rF2PitMenu));
+  memcpy(&(mPitInfo.mpWriteBuff->mPitMenu), &info, sizeof(rF2PitMenu));
 
   mPitInfo.EndUpdate();
 
@@ -1148,72 +1152,50 @@ bool SharedMemoryPlugin::AccessPitMenu(PitMenuV01& info)
 ///////////////////////////////////////////////////////////
 // Hardware Control
 
-///////////////////////////////////////////////////////////
-// ISI comments:
-// See if the plugin wants to take over a hardware control.  If the plugin takes over the
-// control, this method returns true and sets the value of the double pointed to by the
-// second arg.  Otherwise, it returns false and leaves the double unmodified.
-///////////////////////////////////////////////////////////
-// My guess is that when the double is set the button is pressed, when it's 0
-// it's released.  But why use a double???
-
-// More detail at https://www.studio-397.com/modding-resources/ rFactor2 internals plugin / Instruction
-// but in short: this is called with each control name in turn, if it returns
-// true that control is actioned within rFactor.
-
-// NOTE: doesn't do anything if the AI is driving
-
-// TODO_PM:
-// Only called if rFactor2SharedMemoryMap.hpp HasHardwareInputs() returns true
-bool SharedMemoryPlugin::CheckHWControl(const char* const controlName, double& fRetVal)
+bool SharedMemoryPlugin::CheckHWControl(char const* const controlName, double& fRetVal)
 {
-  static char mControlName[rF2MappedBufferHeader::MAX_HWCONTROL_NAME_LEN];
-  // how to do that programmatically? sizeof(rF2HWControl.mControlName)];
-  static double mfRetVal;
-  DEBUG_MSG(DebugLevel::Verbose, "CheckHWControl called");
-  // only if enabled, of course
-  if (false) // TBD process to disable HW control
+  DEBUG_MSG(DebugLevel::Timing, "CheckHWControl - invoked.");
+
+  if (false) // TODO: process to disable HW control
     return(false);
 
-  ///////////////////////////////////////////////////////////
-  // ISI comments:
-  // Note that incoming value is the game's computation, in case you're interested.
+  if (mHWControl.ReadUpdate()) {
+    // TODO: Not the right way to do this, revisit.
+    if (mHWControl.mReadBuff.mLayoutVersion != rF2MappedBufferHeader::MAX_HWCONTROL_LAYOUT_VERSION) {
+      DEBUG_INT2(DebugLevel::Errors, "CheckHWControl: unsupported input buffer layout version  ", mHWControl.mReadBuff.mLayoutVersion);
+      DEBUG_MSG(DebugLevel::Errors, "CheckHWControl: disabling HWControl.");
+      // TODO: Disable
+    }
 
-  // Sorry, no control allowed over actual vehicle inputs ... would be too easy to cheat!
-  // However, you can still look at the values.
+    strcpy_s(mHWControlRequest_mControlName, mHWControl.mReadBuff.mControlName);
+    mHWControlRequest_mfRetVal = mHWControl.mReadBuff.mfRetVal;
+    
+    if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::DevInfo) {
+      char charBuff[200] = {};
+      sprintf_s(charBuff, "CheckHWControl received:  '%s'  %1.1f", mHWControlRequest_mControlName, mHWControlRequest_mfRetVal);
 
-  // Note: since the game calls this function every frame for every available control, you might consider
-  // doing a binary search if you are checking more than 7 or 8 strings, just to keep the speed up.
-  ///////////////////////////////////////////////////////////
-
-  // I suggest that a simple hash function might be more efficient, especially
-  // if only a limited set of controls is provided (most of them seem of little use)
-
-  if (mHWControl.CheckReadBuffer())
-  {
-    strcpy(mControlName, mHWControl.mpBuff->mControlName);
-    mfRetVal = mHWControl.mpBuff->mfRetVal;
-    if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::DevInfo)
-    {
-      char temp[80] = {};
-      sprintf(temp, "CheckHWControl received '%s' %1.1f", mControlName, mfRetVal);
-
-      DEBUG_MSG(DebugLevel::DevInfo, temp);
+      DEBUG_MSG(DebugLevel::DevInfo, charBuff);
     }
   }
-  if (_stricmp(controlName, mControlName) == 0)
-  {
-    if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::DevInfo)
-    {
-      char temp[80] = {};
-      sprintf(temp, "CheckHWControl matched '%s' %1.1f", mControlName, mfRetVal);
 
-      DEBUG_MSG(DebugLevel::DevInfo, temp);
+  if (mHWControlRequest_mControlName[0] != '\0'
+    && _stricmp(controlName, mHWControlRequest_mControlName) == 0) {
+    if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::DevInfo) {
+      char charBuff[200] = {};
+      sprintf_s(charBuff, "CheckHWControl matched:  '%s'  %1.1f", mHWControlRequest_mControlName, mHWControlRequest_mfRetVal);
+
+      DEBUG_MSG(DebugLevel::DevInfo, charBuff);
     }
-    fRetVal = mfRetVal;
-    mControlName[0] = NULL; // so it won't match again
-    return(true);
+
+    fRetVal = mHWControlRequest_mfRetVal;
+
+    // Mark cached vars as handled.
+    mHWControlRequest_mControlName[0] ='\0';
+    mHWControlRequest_mfRetVal = 0.0;
+
+    return true;
   }
+
   return false;
 }
 

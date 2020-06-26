@@ -26,7 +26,14 @@ public:
 
   MappedBuffer(char const* mmFileName)
     : MM_FILE_NAME(mmFileName)
+    , mReadBufferSupportedLayoutVersion(0)
   {}
+
+  MappedBuffer(char const* mmFileName, long mLayoutVersion)
+    : MM_FILE_NAME(mmFileName)
+    , mReadBufferSupportedLayoutVersion(mLayoutVersion)
+  {}
+
 
   ~MappedBuffer()
   {
@@ -36,7 +43,7 @@ public:
   bool Initialize(bool mapGlobally)
   {
     assert(!mMapped);
-    mhMap = MapMemoryFile(MM_FILE_NAME, mapGlobally, mpMappedView, mpBuffVersionBlock, mpBuff);
+    mhMap = MapMemoryFile(MM_FILE_NAME, mapGlobally, mpMappedView, mpWriteBuffVersionBlock, mpWriteBuff);
     if (mhMap == nullptr) {
       DEBUG_MSG(DebugLevel::Errors, "Failed to map file");
       ReleaseResources();
@@ -45,8 +52,8 @@ public:
     }
 
     assert(mpMappedView != nullptr);
-    assert(mpBuffVersionBlock != nullptr);
-    assert(mpBuff != nullptr);
+    assert(mpWriteBuffVersionBlock != nullptr);
+    assert(mpWriteBuff != nullptr);
 
     // Minimal risk here that this will get accessed before mMapped == true, but who cares.
     memset(mpMappedView, 0, sizeof(rF2MappedBufferVersionBlock) + sizeof(BuffT));
@@ -64,19 +71,19 @@ public:
     }
 
     // Fix up out of sync situation.
-    if (mpBuffVersionBlock->mVersionUpdateBegin != mpBuffVersionBlock->mVersionUpdateEnd) {
+    if (mpWriteBuffVersionBlock->mVersionUpdateBegin != mpWriteBuffVersionBlock->mVersionUpdateEnd) {
       if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::Synchronization) {
         char msg[512] = {};
 
         sprintf(msg, "BeginUpdate: versions out of sync.  Version Begin:%ld  End:%ld",
-          mpBuffVersionBlock->mVersionUpdateBegin, mpBuffVersionBlock->mVersionUpdateEnd);
+          mpWriteBuffVersionBlock->mVersionUpdateBegin, mpWriteBuffVersionBlock->mVersionUpdateEnd);
 
         DEBUG_MSG(DebugLevel::Synchronization, msg);
       }
-      ::InterlockedExchange(&mpBuffVersionBlock->mVersionUpdateEnd, mpBuffVersionBlock->mVersionUpdateBegin);
+      ::InterlockedExchange(&mpWriteBuffVersionBlock->mVersionUpdateEnd, mpWriteBuffVersionBlock->mVersionUpdateBegin);
     }
 
-    ::InterlockedIncrement(&mpBuffVersionBlock->mVersionUpdateBegin);
+    ::InterlockedIncrement(&mpWriteBuffVersionBlock->mVersionUpdateBegin);
   }
 
   void EndUpdate()
@@ -86,19 +93,19 @@ public:
       return;
     }
 
-    ::InterlockedIncrement(&mpBuffVersionBlock->mVersionUpdateEnd);
+    ::InterlockedIncrement(&mpWriteBuffVersionBlock->mVersionUpdateEnd);
 
     // Fix up out of sync situation.
-    if (mpBuffVersionBlock->mVersionUpdateBegin != mpBuffVersionBlock->mVersionUpdateEnd) {
+    if (mpWriteBuffVersionBlock->mVersionUpdateBegin != mpWriteBuffVersionBlock->mVersionUpdateEnd) {
       if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::Synchronization) {
         char msg[512] = {};
 
         sprintf(msg, "EndUpdate: versions out of sync.  Version Begin:%ld  End:%ld",
-          mpBuffVersionBlock->mVersionUpdateBegin, mpBuffVersionBlock->mVersionUpdateEnd);
+          mpWriteBuffVersionBlock->mVersionUpdateBegin, mpWriteBuffVersionBlock->mVersionUpdateEnd);
 
         DEBUG_MSG(DebugLevel::Synchronization, msg);
       }
-      ::InterlockedExchange(&mpBuffVersionBlock->mVersionUpdateBegin, mpBuffVersionBlock->mVersionUpdateEnd);
+      ::InterlockedExchange(&mpWriteBuffVersionBlock->mVersionUpdateBegin, mpWriteBuffVersionBlock->mVersionUpdateEnd);
     }
   }
 
@@ -110,37 +117,55 @@ public:
     BeginUpdate();
 
     if (pInitialContents != nullptr)
-      memcpy(mpBuff, pInitialContents, sizeof(BuffT));
+      memcpy(mpWriteBuff, pInitialContents, sizeof(BuffT));
     else
-      memset(mpBuff, 0, sizeof(BuffT));
+      memset(mpWriteBuff, 0, sizeof(BuffT));
 
     EndUpdate();
+
+    if (mReadBufferSupportedLayoutVersion != 0L) {
+      memset(&mReadBuff, 0, sizeof(BuffT));
+
+      mReadLastVersionUpdateBegin = 0uL;
+    }
   }
 
-  bool CheckReadBuffer()
-  { // Return true if buffer valid and it is new
-    static unsigned long mVersionUpdateBegin = -1;
+  /////////////////////////////////////////////////////////////////
+  // Read buffer support
+
+  // Returns true if buffer is valid is new.
+  bool ReadUpdate()
+  {
     if (!mMapped) {
       DEBUG_MSG(DebugLevel::Errors, "Accessing unmapped buffer.");
       return false;
     }
 
+    rF2MappedBufferVersionBlock versionBegin;
+    memcpy(&versionBegin, mpWriteBuffVersionBlock, sizeof(rF2MappedBufferVersionBlock));
+
+    memcpy(&mReadBuff, mpWriteBuff, sizeof(BuffT));
+
+    rF2MappedBufferVersionBlock versionEnd;
+    memcpy(&versionEnd, mpWriteBuffVersionBlock, sizeof(rF2MappedBufferVersionBlock));
+
     // Check out of sync situation.
-    if (mpBuffVersionBlock->mVersionUpdateBegin != mpBuffVersionBlock->mVersionUpdateEnd) {
+    if (versionBegin.mVersionUpdateBegin != versionEnd.mVersionUpdateEnd) {
       if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::Synchronization) {
         char msg[512] = {};
 
-        sprintf(msg, "BeginUpdate: versions out of sync.  Version Begin:%ld  End:%ld",
-          mpBuffVersionBlock->mVersionUpdateBegin, mpBuffVersionBlock->mVersionUpdateEnd);
+        sprintf(msg, "ReadUpdate: versions out of sync.  Version Begin:%ld  End:%ld",
+          versionBegin.mVersionUpdateBegin, versionEnd.mVersionUpdateEnd);
 
         DEBUG_MSG(DebugLevel::Synchronization, msg);
       }
       return false;
     }
-    // It's valid, is it new?
-    if (mVersionUpdateBegin != mpBuffVersionBlock->mVersionUpdateBegin)
+   
+    // Is it new?
+    if (mReadLastVersionUpdateBegin != versionBegin.mVersionUpdateBegin)
     {
-      mVersionUpdateBegin = mpBuffVersionBlock->mVersionUpdateBegin;
+      mReadLastVersionUpdateBegin = versionBegin.mVersionUpdateBegin;
       return true;
     }
     return false;
@@ -158,8 +183,8 @@ public:
     }
 
     mpMappedView = nullptr;
-    mpBuff = nullptr;
-    mpBuffVersionBlock = nullptr;
+    mpWriteBuff = nullptr;
+    mpWriteBuffVersionBlock = nullptr;
 
     // Note: we didn't ever close this apparently before V3, oops.
     if (mhMap != nullptr
@@ -277,12 +302,22 @@ private:
   }
 
   public:
-    rF2MappedBufferVersionBlock* mpBuffVersionBlock = nullptr;
-    BuffT* mpBuff = nullptr;
+    rF2MappedBufferVersionBlock* mpWriteBuffVersionBlock = nullptr;
+    BuffT* mpWriteBuff = nullptr;
+
+    // TODO: re-think.
+    // Read buffer support.  Read buffer support is hacked up incorrectly, I will revisit it at some point.
+
+    // Local read buffer copy:
+    BuffT mReadBuff;
 
   private:
     LPVOID mpMappedView = nullptr;
     char const* const MM_FILE_NAME = nullptr;
     HANDLE mhMap = nullptr;
     bool mMapped = false;
+
+    // If 0, it means this is write mode buffer.
+    long const mReadBufferSupportedLayoutVersion;
+    unsigned long mReadLastVersionUpdateBegin = 0;
 };

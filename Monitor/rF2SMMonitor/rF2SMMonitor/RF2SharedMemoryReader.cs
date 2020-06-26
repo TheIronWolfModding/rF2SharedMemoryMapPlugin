@@ -33,6 +33,13 @@ namespace rF2SMMonitor
       this.skipUnchanged = skipUnchanged;
     }
 
+    // Write buffer ctor.
+    public MappedBuffer(string buffName)
+    {
+      this.BUFFER_SIZE_BYTES = Marshal.SizeOf(typeof(MappedBufferT));
+      this.BUFFER_NAME = buffName;
+    }
+
     public void Connect()
     {
       this.memoryMappedFile = MemoryMappedFile.OpenExisting(this.BUFFER_NAME);
@@ -270,250 +277,23 @@ namespace rF2SMMonitor
       }
     }
 
-    // Sending data
-#if false
-    private void BeginUpdate()
-    {
-      if (!mMapped)
-      {
-        DEBUG_MSG(DebugLevel::Errors, "Accessing unmapped buffer.");
-        return;
-      }
-
-      // Fix up out of sync situation.
-      if (mpBuffVersionBlock->mVersionUpdateBegin != mpBuffVersionBlock->mVersionUpdateEnd)
-      {
-        if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::Synchronization)
-        {
-          char msg[512] = { };
-
-          sprintf(msg, "BeginUpdate: versions out of sync.  Version Begin:%ld  End:%ld",
-            mpBuffVersionBlock->mVersionUpdateBegin, mpBuffVersionBlock->mVersionUpdateEnd);
-
-          DEBUG_MSG(DebugLevel::Synchronization, msg);
-        }
-      ::InterlockedExchange(&mpBuffVersionBlock->mVersionUpdateEnd, mpBuffVersionBlock->mVersionUpdateBegin);
-      }
-
-    ::InterlockedIncrement(&mpBuffVersionBlock->mVersionUpdateBegin);
-    }
-
-    private void EndUpdate()
-    {
-      if (!mMapped)
-      {
-        DEBUG_MSG(DebugLevel::Errors, "Accessing unmapped buffer.");
-        return;
-      }
-
-    ::InterlockedIncrement(&mpBuffVersionBlock->mVersionUpdateEnd);
-
-      // Fix up out of sync situation.
-      if (mpBuffVersionBlock->mVersionUpdateBegin != mpBuffVersionBlock->mVersionUpdateEnd)
-      {
-        if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::Synchronization)
-        {
-          char msg[512] = { };
-
-          sprintf(msg, "EndUpdate: versions out of sync.  Version Begin:%ld  End:%ld",
-            mpBuffVersionBlock->mVersionUpdateBegin, mpBuffVersionBlock->mVersionUpdateEnd);
-
-          DEBUG_MSG(DebugLevel::Synchronization, msg);
-        }
-      ::InterlockedExchange(&mpBuffVersionBlock->mVersionUpdateBegin, mpBuffVersionBlock->mVersionUpdateEnd);
-      }
-    }
-
-    private void ClearState(BuffT const* pInitialContents)
-  {
-    if (!mMapped)
-      return;
-
-    BeginUpdate();
-
-    if (pInitialContents != nullptr)
-      memcpy(mpBuff, pInitialContents, sizeof(BuffT));
-    else
-      memset(mpBuff, 0, sizeof(BuffT));
-
-    EndUpdate();
-  }
-
-#endif
-  public void SendMappedDataUnsynchronized(ref MappedBufferT mappedData)
+    // Write buffer stuff
+    public void PutMappedData(ref MappedBufferT mappedData)
     {
       using (var sharedMemoryStreamView = this.memoryMappedFile.CreateViewStream())
       {
-#if false
-        // something like this!
-        var handleBuffer = GCHandle.Alloc(sharedMemoryReadBuffer, GCHandleType.Pinned);
-        mappedData = (MappedBufferT)Marshal.PtrToStructure(handleBuffer.AddrOfPinnedObject(), typeof(MappedBufferT));
-
         var sharedMemoryStream = new BinaryWriter(sharedMemoryStreamView);
-        var sharedMemoryReadBuffer = sharedMemoryStream.Write  .WriteBytes(this.BUFFER_SIZE_BYTES);
-        handleBuffer.Free();
-#endif
-      }
-    }
-    private void SetHeaderBlock<HeaderBlockT>(BinaryReader sharedMemoryStream, int headerBlockBytes, ref HeaderBlockT headerBlock)
-    {
-#if false
-      sharedMemoryStream.BaseStream.Position = 0;
-      var sharedMemoryReadBufferHeader = sharedMemoryStream.ReadBytes(headerBlockBytes);
 
-      var handleBufferHeader = GCHandle.Alloc(sharedMemoryReadBufferHeader, GCHandleType.Pinned);
-      headerBlock = (HeaderBlockT)Marshal.PtrToStructure(handleBufferHeader.AddrOfPinnedObject(), typeof(HeaderBlockT));
-      handleBufferHeader.Free();
-#endif
-    }
-    public void SendMappedData(ref MappedBufferT mappedData)
-    { // Don't think we need this AND SendMappedDataUnsynchronized, just need
-      // to add version block to that
+        var size = Marshal.SizeOf(mappedData);
+        var byteArray = new byte[size];
 
+        var ptr = Marshal.AllocHGlobal(size);
+        Marshal.StructureToPtr(mappedData, ptr, true);
+        Marshal.Copy(ptr, byteArray, 0, size);
 
+        sharedMemoryStream.Write(byteArray);
 
-      // This method tries to ensure we read consistent buffer view in three steps.
-      // 1. Pre-Check:
-      //       - read version header and retry reading this buffer if begin/end versions don't match.  This reduces a chance of
-      //         reading torn frame during full buffer read.  This saves CPU time.
-      //       - return if version matches last failed read version (stuck frame).
-      //       - return if version matches previously successfully read buffer.  This saves CPU time by avoiding the full read of most likely identical data.
-      //
-      // 2. Main Read: reads the main buffer + version block.  If versions don't match, retry.
-      //
-      // 3. Post-Check: read version header again and retry reading this buffer if begin/end versions don't match.  This covers corner case
-      //                where buffer is being written to during the Main Read.
-      //
-      // While retrying, this method tries to avoid running CPU at 100%.
-      //
-      // There are multiple alternatives on what to do here:
-      // * keep retrying - drawback is CPU being kept busy, but absolute minimum latency.
-      // * Thread.Sleep(0)/Yield - drawback is CPU being kept busy, but almost minimum latency.  Compared to first option, gives other threads a chance to execute.
-      // * Thread.Sleep(N) - relaxed approach, less CPU saturation but adds a bit of latency.
-      // there are other options too.  Bearing in mind that minimum sleep on windows is ~16ms, which is around 66FPS, I doubt delay added matters much for Crew Chief at least.
-      using (var sharedMemoryStreamView = this.memoryMappedFile.CreateViewStream())
-      {
-#if false
-        uint currVersionBegin = 0;
-        uint currVersionEnd = 0;
-
-        var retry = 0;
-        var sharedMemoryStream = new BinaryReader(sharedMemoryStreamView);
-        byte[] sharedMemoryReadBuffer = null;
-        var versionHeaderWithSize = new rF2MappedBufferVersionBlockWithSize();
-        var versionHeader = new rF2MappedBufferVersionBlock();
-
-        for (retry = 0; retry < MappedBuffer<MappedBufferT>.NUM_MAX_RETRIEES; ++retry)
-        {
-          var bufferSizeBytes = this.BUFFER_SIZE_BYTES;
-          // Read current buffer versions.
-          if (this.partial)
-          {
-            this.GetHeaderBlock<rF2MappedBufferVersionBlockWithSize>(sharedMemoryStream, this.RF2_BUFFER_VERSION_BLOCK_WITH_SIZE_SIZE_BYTES, ref versionHeaderWithSize);
-            currVersionBegin = versionHeaderWithSize.mVersionUpdateBegin;
-            currVersionEnd = versionHeaderWithSize.mVersionUpdateEnd;
-
-            bufferSizeBytes = versionHeaderWithSize.mBytesUpdatedHint != 0 ? versionHeaderWithSize.mBytesUpdatedHint : bufferSizeBytes;
-          }
-          else
-          {
-            this.GetHeaderBlock<rF2MappedBufferVersionBlock>(sharedMemoryStream, this.RF2_BUFFER_VERSION_BLOCK_SIZE_BYTES, ref versionHeader);
-            currVersionBegin = versionHeader.mVersionUpdateBegin;
-            currVersionEnd = versionHeader.mVersionUpdateEnd;
-          }
-
-          // If this is stale "out of sync" situation, that is, we're stuck in, no point in retrying here.
-          // Could be a bug in a game, plugin or a game crash.
-          if (currVersionBegin == this.stuckVersionBegin
-            && currVersionEnd == this.stuckVersionEnd)
-          {
-            ++this.numStuckFrames;
-            return;  // Failed.
-          }
-
-          // If version is the same as previously successfully read, do nothing.
-          if (this.skipUnchanged
-            && currVersionBegin == this.lastSuccessVersionBegin
-            && currVersionEnd == this.lastSuccessVersionEnd)
-          {
-            ++this.numSkippedNoChange;
-            return;
-          }
-
-          // Buffer version pre-check.  Verify if Begin/End versions match.
-          if (currVersionBegin != currVersionEnd)
-          {
-            Thread.Sleep(1);
-            ++numReadRetriesPreCheck;
-            continue;
-          }
-
-          // Read the mapped data.
-          sharedMemoryStream.BaseStream.Position = 0;
-          sharedMemoryReadBuffer = sharedMemoryStream.ReadBytes(bufferSizeBytes);
-
-          // Marshal version block.
-          var handleVersionBlock = GCHandle.Alloc(sharedMemoryReadBuffer, GCHandleType.Pinned);
-          versionHeader = (rF2MappedBufferVersionBlock)Marshal.PtrToStructure(handleVersionBlock.AddrOfPinnedObject(), typeof(rF2MappedBufferVersionBlock));
-          handleVersionBlock.Free();
-
-          currVersionBegin = versionHeader.mVersionUpdateBegin;
-          currVersionEnd = versionHeader.mVersionUpdateEnd;
-
-          // Verify if Begin/End versions match:
-          if (versionHeader.mVersionUpdateBegin != versionHeader.mVersionUpdateEnd)
-          {
-            Thread.Sleep(1);
-            ++numReadRetries;
-            continue;
-          }
-
-          // Read the version header one last time.  This is for the case, that might not be even possible in reality,
-          // but it is possible in my head.  Since it is cheap, no harm reading again really, aside from retry that
-          // sometimes will be required if buffer is updated between checks.
-          //
-          // Anyway, the case is
-          // * Reader thread reads updateBegin version and continues to read buffer.
-          // * Simultaneously, Writer thread begins overwriting the buffer.
-          // * If Reader thread reads updateEnd before Writer thread finishes, it will look
-          //   like updateBegin == updateEnd.But we actually just read a partially overwritten buffer.
-          //
-          // Hence, this second check is needed here.  Even if writer thread still hasn't finished writing,
-          // we still will be able to detect this case because now updateBegin version changed, so we
-          // know Writer is updating the buffer.
-
-          this.GetHeaderBlock<rF2MappedBufferVersionBlock>(sharedMemoryStream, this.RF2_BUFFER_VERSION_BLOCK_SIZE_BYTES, ref versionHeader);
-
-          if (currVersionBegin != versionHeader.mVersionUpdateBegin
-            || currVersionEnd != versionHeader.mVersionUpdateEnd)
-          {
-            Thread.Sleep(1);
-            ++this.numReadRetriesOnCheck;
-            continue;
-          }
-
-          // Marshal rF2 State buffer
-          this.MarshalDataBuffer(this.partial, sharedMemoryReadBuffer, ref mappedData);
-
-          // Success.
-          this.maxRetries = Math.Max(this.maxRetries, retry);
-          ++this.numReadsSucceeded;
-          this.stuckVersionBegin = this.stuckVersionEnd = 0;
-
-          // Save succeessfully read version to avoid re-reading.
-          this.lastSuccessVersionBegin = currVersionBegin;
-          this.lastSuccessVersionEnd = currVersionEnd;
-
-          return;
-        }
-
-        // Failure.  Save the frame version.
-        this.stuckVersionBegin = currVersionBegin;
-        this.stuckVersionEnd = currVersionEnd;
-
-        this.maxRetries = Math.Max(this.maxRetries, retry);
-        ++this.numReadFailures;
-#endif
+        Marshal.FreeHGlobal(ptr);
       }
     }
   }
