@@ -36,6 +36,7 @@ namespace rF2SMMonitor
     // Write buffer ctor.
     public MappedBuffer(string buffName)
     {
+      // TODO: verify if matches SM
       this.BUFFER_SIZE_BYTES = Marshal.SizeOf(typeof(MappedBufferT));
       this.BUFFER_NAME = buffName;
     }
