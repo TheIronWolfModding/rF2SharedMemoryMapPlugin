@@ -1,3 +1,12 @@
+/*
+rF2SMMonitor is visual debugger for rF2 Shared Memory Plugin.
+
+MappedBuffer implementation.  Implements writing and reading to/from rF2 shared memory.
+
+Author: The Iron Wolf (vleonavicius@hotmail.com)
+Website: thecrewchief.org
+*/
+
 using System;
 using System.IO;
 using System.IO.MemoryMappedFiles;
