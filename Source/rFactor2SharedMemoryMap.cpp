@@ -1177,7 +1177,7 @@ bool SharedMemoryPlugin::AccessPitMenu(PitMenuV01& info)
 ///////////////////////////////////////////////////////////
 // Hardware Control
 
-// Invoked at 100FPS for each control (836 times per frame in my test)
+// Invoked at 100FPS twice for each control (836 times per frame in my test)
 bool SharedMemoryPlugin::CheckHWControl(char const* const controlName, double& fRetVal)
 {
   if (false) // TODO: process to disable HW control
