@@ -18,11 +18,9 @@ namespace PitMenuSampleApp
       {Keys.S,  "PitMenuDown"}
     };
 
-    MappedBuffer<rF2PitInfo> pitInfoBuffer = new MappedBuffer<rF2PitInfo>(rFactor2Constants.MM_PITINFO_FILE_NAME, false /*partial*/, true /*skipUnchanged*/);
-    rF2PitInfo pitInfo;
     string LastControl;
     bool Connected = false;
-
+    PitMenuController Pmc = new PitMenuController();
     public MainForm()
     {
       InitializeComponent();
@@ -30,8 +28,9 @@ namespace PitMenuSampleApp
       this.checkBox1.Checked = this.Connected;
       if (this.Connected)
       {
-        this.pitInfoBuffer.Connect();
+        this.Pmc.Connect();
       }
+      this.timer1.Start();
     }
 
     private void MainForm_KeyDown(object sender, KeyEventArgs e)
@@ -51,35 +50,34 @@ namespace PitMenuSampleApp
         this.SendControl.SendHWControl(this.KeysToPitControls[e.KeyCode], false);
       }
     }
-    private static string GetStringFromBytes(byte[] bytes)
-    {
-      if (bytes == null)
-        return "";
-
-      var nullIdx = Array.IndexOf(bytes, (byte)0);
-
-      return nullIdx >= 0
-        ? Encoding.Default.GetString(bytes, 0, nullIdx)
-        : Encoding.Default.GetString(bytes);
-    }
-
     private void timer1_Tick(object sender, EventArgs e)
     {
       if (this.Connected)
       {
-        this.SendControl.SendHWControl(this.LastControl, false);
+        //this.SendControl.SendHWControl(this.LastControl, false);
 
-        pitInfoBuffer.GetMappedData(ref pitInfo);
-        var catName = GetStringFromBytes(this.pitInfo.mPitMneu.mCategoryName);
-        var choiceStr = GetStringFromBytes(this.pitInfo.mPitMneu.mChoiceString);
-        this.textBox1.Text = catName + choiceStr;
+        var catName = this.Pmc.ReadPitMenuCategory();
+        var choiceStr = this.Pmc.ReadPitMenuChoice();
+        this.textBox1.Text = catName + " " + choiceStr;
       }
       this.timer1.Stop();
     }
 
     private void comboBox1_ChangeCommitted(object sender, EventArgs e)
     {
-      this.SendControl.SendHWControl(this.comboBox1.SelectedItem.ToString(), true);
+      this.SendControl.SendHWControl(this.cbCategory.SelectedItem.ToString(), true);
+      this.timer1.Start();
+    }
+
+    private void cbCategory_ChangeCommitted(object sender, EventArgs e)
+    {
+      this.Pmc.SelectCategory(this.cbCategory.SelectedItem.ToString());
+      this.timer1.Start();
+    }
+
+    private void cbChoices_SelectionChangeCommitted(object sender, EventArgs e)
+    {
+      this.Pmc.SelectChoice(this.cbChoices.SelectedItem.ToString());
       this.timer1.Start();
     }
   }
