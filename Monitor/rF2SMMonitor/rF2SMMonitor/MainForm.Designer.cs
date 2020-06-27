@@ -40,6 +40,8 @@ namespace rF2SMMonitor
       this.checkBoxLogDamage = new System.Windows.Forms.CheckBox();
       this.checkBoxLogPhaseAndState = new System.Windows.Forms.CheckBox();
       this.checkBoxLightMode = new System.Windows.Forms.CheckBox();
+      this.groupBoxInputs = new System.Windows.Forms.GroupBox();
+      this.checkBoxEnablePitInputs = new System.Windows.Forms.CheckBox();
       ((System.ComponentModel.ISupportInitialize)(this.view)).BeginInit();
       this.groupBoxFocus.SuspendLayout();
       this.globalGroupBox.SuspendLayout();
@@ -230,6 +232,28 @@ namespace rF2SMMonitor
       this.checkBoxLightMode.Text = "Light mode";
       this.checkBoxLightMode.UseVisualStyleBackColor = true;
       // 
+      // groupBoxInputs
+      // 
+      this.groupBoxInputs.Controls.Add(this.checkBoxEnablePitInputs);
+      this.groupBoxInputs.Location = new System.Drawing.Point(972, -1);
+      this.groupBoxInputs.Name = "groupBoxInputs";
+      this.groupBoxInputs.Size = new System.Drawing.Size(256, 54);
+      this.groupBoxInputs.TabIndex = 15;
+      this.groupBoxInputs.TabStop = false;
+      this.groupBoxInputs.Text = "Inputs";
+      // 
+      // checkBoxEnablePitInputs
+      // 
+      this.checkBoxEnablePitInputs.AutoSize = true;
+      this.checkBoxEnablePitInputs.Location = new System.Drawing.Point(7, 13);
+      this.checkBoxEnablePitInputs.Name = "checkBoxEnablePitInputs";
+      this.checkBoxEnablePitInputs.Size = new System.Drawing.Size(53, 17);
+      this.checkBoxEnablePitInputs.TabIndex = 20;
+      this.checkBoxEnablePitInputs.Text = "Enable Pit Inputs";
+      this.checkBoxEnablePitInputs.UseVisualStyleBackColor = true;
+      this.checkBoxEnablePitInputs.Checked = false;
+      // TODO: tooltip
+      // 
       // MainForm
       // 
       this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -239,6 +263,7 @@ namespace rF2SMMonitor
       this.Controls.Add(this.groupBoxLogging);
       this.Controls.Add(this.globalGroupBox);
       this.Controls.Add(this.groupBoxFocus);
+      this.Controls.Add(this.groupBoxInputs);
       this.Controls.Add(this.view);
       this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.Fixed3D;
       this.MaximizeBox = false;
@@ -278,6 +303,8 @@ namespace rF2SMMonitor
     private System.Windows.Forms.CheckBox checkBoxLogDamage;
     private System.Windows.Forms.CheckBox checkBoxLogTiming;
     private System.Windows.Forms.CheckBox checkBoxLogRules;
+    private System.Windows.Forms.GroupBox groupBoxInputs;
+    private System.Windows.Forms.CheckBox checkBoxEnablePitInputs;
   }
 }
 
