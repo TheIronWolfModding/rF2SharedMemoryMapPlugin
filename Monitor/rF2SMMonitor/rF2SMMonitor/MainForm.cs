@@ -147,13 +147,13 @@ namespace rF2SMMonitor
       //if (msg.Msg != 0x100)
        // fRetVal = 0.0;
 
-      if (MainForm.GetAsyncKeyState(Keys.Y) < 0)
+      if (MainForm.GetAsyncKeyState(Keys.Y) != 0)
         commandStr = Encoding.Default.GetBytes("PitMenuDecrementValue");
-      else if (MainForm.GetAsyncKeyState(Keys.U) < 0)
+      else if (MainForm.GetAsyncKeyState(Keys.U) != 0)
         commandStr = Encoding.Default.GetBytes("PitMenuIncrementValue");
-      else if (MainForm.GetAsyncKeyState(Keys.O) < 0)
+      else if (MainForm.GetAsyncKeyState(Keys.O) != 0)
         commandStr = Encoding.Default.GetBytes("PitMenuDown");
-      else if (MainForm.GetAsyncKeyState(Keys.P) < 0)
+      else if (MainForm.GetAsyncKeyState(Keys.P) != 0)
         commandStr = Encoding.Default.GetBytes("PitMenuUp");
 
       this.SendPitMenuCmd(commandStr, fRetVal);
