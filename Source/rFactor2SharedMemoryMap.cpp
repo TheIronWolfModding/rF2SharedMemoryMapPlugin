@@ -118,6 +118,7 @@ bool SharedMemoryPlugin::msDebugISIInternals = false;
 bool SharedMemoryPlugin::msDedicatedServerMapGlobally = false;
 bool SharedMemoryPlugin::msDirectMemoryAccessRequested = false;
 long SharedMemoryPlugin::msUnsubscribedBuffersMask = 0L;
+bool SharedMemoryPlugin::msHWControlInputRequested = false;
 
 FILE* SharedMemoryPlugin::msDebugFile;
 FILE* SharedMemoryPlugin::msIsiTelemetryFile;
@@ -194,12 +195,7 @@ void SharedMemoryPlugin::Startup(long version)
   DEBUG_INT2(DebugLevel::CriticalInfo, "DedicatedServerMapGlobally:", SharedMemoryPlugin::msDedicatedServerMapGlobally);
   DEBUG_INT2(DebugLevel::CriticalInfo, "EnableDirectMemoryAccess:", SharedMemoryPlugin::msDirectMemoryAccessRequested);
   DEBUG_INT2(DebugLevel::CriticalInfo, "UnsubscribedBuffersMask:", SharedMemoryPlugin::msUnsubscribedBuffersMask);
-
-  // TODO:
-  if (HasHardwareInputs())
-  {
-    DEBUG_MSG(DebugLevel::CriticalInfo, "CheckHWControl ACTIVE");
-  }
+  DEBUG_INT2(DebugLevel::CriticalInfo, "EnableHWControlInput:", SharedMemoryPlugin::msHWControlInputRequested);
 
   if (SharedMemoryPlugin::msUnsubscribedBuffersMask != 0L) {
     if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Telemetry))
@@ -325,6 +321,12 @@ void SharedMemoryPlugin::Startup(long version)
     size = static_cast<int>(sizeof(rF2Extended) + sizeof(rF2MappedBufferVersionBlock));
     _itoa_s(size, sizeSz, 10);
     DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the Extended buffer:", sizeSz, "bytes.");
+
+    sizeSz[0] = '\0';
+    size = static_cast<int>(sizeof(rF2HWControl) + sizeof(rF2MappedBufferVersionBlock));
+    _itoa_s(size, sizeSz, 10);
+    DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the HWControl input buffer:", sizeSz, "bytes.");
+    DEBUG_INT2(DebugLevel::CriticalInfo, "HWControl input buffer supported layout version:", rF2MappedBufferHeader::MAX_HWCONTROL_LAYOUT_VERSION);
   }
 
   mExtStateTracker.mExtended.mUnsubscribedBuffersMask = SharedMemoryPlugin::msUnsubscribedBuffersMask;
@@ -334,7 +336,6 @@ void SharedMemoryPlugin::Startup(long version)
 
       // Disable DMA on failure.
       SharedMemoryPlugin::msDirectMemoryAccessRequested = false;
-      // TODO: track HWControl state.
       mExtStateTracker.mExtended.mDirectMemoryAccessEnabled = false;
     }
     else {
@@ -342,6 +343,8 @@ void SharedMemoryPlugin::Startup(long version)
       mExtStateTracker.mExtended.mSCRPluginEnabled = mDMR.IsSCRPluginEnabled();
       mExtStateTracker.mExtended.mSCRPluginDoubleFileType = mDMR.GetSCRPluginDoubleFileType();
     }
+
+    mExtStateTracker.mExtended.mHWControlInputEnabled = SharedMemoryPlugin::msHWControlInputRequested;
 
     mExtended.BeginUpdate();
     memcpy(mExtended.mpWriteBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
@@ -399,6 +402,7 @@ void SharedMemoryPlugin::Shutdown()
   mPitInfo.ClearState(nullptr /*pInitialContents*/);
   mPitInfo.ReleaseResources();
 
+  mHWControl.ReleaseResources();
 }
 
 void SharedMemoryPlugin::ClearTimingsAndCounters()
@@ -885,14 +889,18 @@ void SharedMemoryPlugin::ReadDMROnScoringUpdate(ScoringInfoV01 const& info)
 
 void SharedMemoryPlugin::ReadHWControl()
 {
-  // TODO: only if enabled!
+  if (!mIsMapped
+    || !SharedMemoryPlugin::msHWControlInputRequested
+    || !mExtStateTracker.mExtended.mHWControlInputEnabled)
+    return;
+
   // Read input buffers.
   if (mHWControl.ReadUpdate()) {
-    // TODO: Not the right way to do this, revisit (needs to be done in MappedBuffer).
     if (mHWControl.mReadBuff.mLayoutVersion != rF2MappedBufferHeader::MAX_HWCONTROL_LAYOUT_VERSION) {
       DEBUG_INT2(DebugLevel::Errors, "HWControl: unsupported input buffer layout version  ", mHWControl.mReadBuff.mLayoutVersion);
       DEBUG_MSG(DebugLevel::Errors, "HWControl: disabling HWControl.");
-      // TODO: Disable
+
+      mExtStateTracker.mExtended.mHWControlInputEnabled = false;
     }
 
     strcpy_s(mHWControlRequest_mControlName, mHWControl.mReadBuff.mControlName);
@@ -1032,6 +1040,85 @@ bool SharedMemoryPlugin::AccessMultiSessionRules(MultiSessionRulesV01& info)
 }
 
 
+
+void SharedMemoryPlugin::UpdateGraphics(GraphicsInfoV02 const& info)
+{
+  if (!mIsMapped)
+    return;
+
+  DEBUG_MSG(DebugLevel::Timing, "GRAPHICS - updated.");
+
+  // Do not version Graphics buffer, as it is asynchronous by the nature anyway.
+  memcpy(&(mGraphics.mpWriteBuff->mGraphicsInfo), &info, sizeof(rF2GraphicsInfo));
+}
+
+
+// Invoked at 100FPS.
+bool SharedMemoryPlugin::AccessPitMenu(PitMenuV01& info)
+{
+  if (!mIsMapped)
+    return false;
+
+  if (mPitMenuLastCategoryIndex == info.mCategoryIndex
+    && mPitMenuLastChoiceIndex == info.mChoiceIndex
+    && mPitMenuLastNumChoices == info.mNumChoices) {
+    DEBUG_MSG(DebugLevel::Timing, "PIT MENU - no changes.");
+    return false;
+  }
+
+  if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::DevInfo)
+  {
+    char charBuff[80] = {};
+    sprintf(charBuff, "PIT MENU - Updated.  Category: '%s'  Value: '%s'", info.mCategoryName, info.mChoiceString);
+    DEBUG_MSG(DebugLevel::DevInfo, charBuff);
+  }
+
+  mPitInfo.BeginUpdate();
+
+  memcpy(&(mPitInfo.mpWriteBuff->mPitMenu), &info, sizeof(rF2PitMenu));
+
+  mPitInfo.EndUpdate();
+
+  // Avoid unnecessary interlocked operations unless pit menu state actually changed.
+  mPitMenuLastCategoryIndex = info.mCategoryIndex;
+  mPitMenuLastChoiceIndex = info.mChoiceIndex;
+  mPitMenuLastNumChoices = info.mNumChoices;
+
+  return false;
+}
+
+
+// Invoked at 100FPS twice for each control (836 times per frame in my test)
+bool SharedMemoryPlugin::CheckHWControl(char const* const controlName, double& fRetVal)
+{
+  if (!mIsMapped
+    || !SharedMemoryPlugin::msHWControlInputRequested
+    || !mExtStateTracker.mExtended.mHWControlInputEnabled)
+    return false;
+ 
+  DEBUG_MSG2(DebugLevel::Timing, "CheckHWControl - invoked for:", controlName);
+
+  if (mHWControlRequest_mControlName[0] != '\0'
+    && _stricmp(controlName, mHWControlRequest_mControlName) == 0) {
+    if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::DevInfo) {
+      char charBuff[200] = {};
+      sprintf_s(charBuff, "CheckHWControl matched:  '%s'  %1.1f", mHWControlRequest_mControlName, mHWControlRequest_mfRetVal);
+
+      DEBUG_MSG(DebugLevel::DevInfo, charBuff);
+    }
+
+    fRetVal = mHWControlRequest_mfRetVal;
+
+    // Mark cached vars as handled.
+    mHWControlRequest_mControlName[0] ='\0';
+    mHWControlRequest_mfRetVal = 0.0;
+
+    return true;
+  }
+
+  return false;
+}
+
 bool SharedMemoryPlugin::GetCustomVariable(long i, CustomVariableV01& var)
 {
   DEBUG_MSG2(DebugLevel::Timing, "GetCustomVariable - Invoked:  mCaption - ", var.mCaption);
@@ -1077,6 +1164,12 @@ bool SharedMemoryPlugin::GetCustomVariable(long i, CustomVariableV01& var)
     var.mCurrentSetting = 32;
     return true;
   }
+  else if (i == 6) {
+    strcpy_s(var.mCaption, "EnableHWControlInput");
+    var.mNumSettings = 2;
+    var.mCurrentSetting = 1;
+    return true;
+  }
 
   return false;
 }
@@ -1106,6 +1199,8 @@ void SharedMemoryPlugin::AccessCustomVariable(CustomVariableV01& var)
     auto sanitized = min(max(var.mCurrentSetting, 0L), static_cast<long>(SubscribedBuffer::All));
     SharedMemoryPlugin::msUnsubscribedBuffersMask = sanitized;
   }
+  else if (_stricmp(var.mCaption, "EnableHWControlInput") == 0)
+    SharedMemoryPlugin::msHWControlInputRequested = var.mCurrentSetting != 0;
 }
 
 
@@ -1139,88 +1234,14 @@ void SharedMemoryPlugin::GetCustomVariableSetting(CustomVariableV01& var, long i
     else
       strcpy_s(setting.mName, "True");
   }
-}
-
-void SharedMemoryPlugin::UpdateGraphics(GraphicsInfoV02 const& info)
-{
-  if (!mIsMapped)
-    return;
-
-  DEBUG_MSG(DebugLevel::Timing, "GRAPHICS - updated.");
-
-  // Do not version Graphics buffer, as it is asynchronous by the nature anyway.
-  memcpy(&(mGraphics.mpWriteBuff->mGraphicsInfo), &info, sizeof(rF2GraphicsInfo));
-}
-
-
-///////////////////////////////////////////////////////////
-// Access the Pit Menu
-
-// Invoked at 100FPS.
-bool SharedMemoryPlugin::AccessPitMenu(PitMenuV01& info)
-{
-  if (!mIsMapped)
-    return false;
-
-  if (mPitMenuLastCategoryIndex == info.mCategoryIndex
-    && mPitMenuLastChoiceIndex == info.mChoiceIndex
-    && mPitMenuLastNumChoices == info.mNumChoices) {
-    DEBUG_MSG(DebugLevel::Timing, "PIT MENU - no changes.");
-    return false;
+  else if (_stricmp(var.mCaption, "EnableHWControlInput") == 0) {
+    if (i == 0)
+      strcpy_s(setting.mName, "False");
+    else
+      strcpy_s(setting.mName, "True");
   }
-
-  if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::DevInfo)
-  {
-    char charBuff[80] = {};
-    sprintf(charBuff, "PIT MENU - Updated.  Category: '%s'  Value: '%s'", info.mCategoryName, info.mChoiceString);
-    DEBUG_MSG(DebugLevel::DevInfo, charBuff);
-  }
-
-  mPitInfo.BeginUpdate();
-
-  memcpy(&(mPitInfo.mpWriteBuff->mPitMenu), &info, sizeof(rF2PitMenu));
-
-  mPitInfo.EndUpdate();
-
-  // Avoid unnecessary interlocked operations unless pit menu state actually changed.
-  mPitMenuLastCategoryIndex = info.mCategoryIndex;
-  mPitMenuLastChoiceIndex = info.mChoiceIndex;
-  mPitMenuLastNumChoices = info.mNumChoices;
-
-  return false;
 }
 
-///////////////////////////////////////////////////////////
-// Hardware Control
-
-// Invoked at 100FPS twice for each control (836 times per frame in my test)
-bool SharedMemoryPlugin::CheckHWControl(char const* const controlName, double& fRetVal)
-{
-  if (false) // TODO: process to disable HW control
-    return(false);
- 
-  DEBUG_MSG2(DebugLevel::Timing, "CheckHWControl - invoked for:", controlName);
-
-  if (mHWControlRequest_mControlName[0] != '\0'
-    && _stricmp(controlName, mHWControlRequest_mControlName) == 0) {
-    if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::DevInfo) {
-      char charBuff[200] = {};
-      sprintf_s(charBuff, "CheckHWControl matched:  '%s'  %1.1f", mHWControlRequest_mControlName, mHWControlRequest_mfRetVal);
-
-      DEBUG_MSG(DebugLevel::DevInfo, charBuff);
-    }
-
-    fRetVal = mHWControlRequest_mfRetVal;
-
-    // Mark cached vars as handled.
-    mHWControlRequest_mControlName[0] ='\0';
-    mHWControlRequest_mfRetVal = 0.0;
-
-    return true;
-  }
-
-  return false;
-}
 
 ////////////////////////////////////////////
 // Debug output helpers.

@@ -42,7 +42,8 @@ namespace rF2SMMonitor
       this.checkBoxLightMode = new System.Windows.Forms.CheckBox();
       this.groupBoxInputs = new System.Windows.Forms.GroupBox();
       this.checkBoxEnablePitInputs = new System.Windows.Forms.CheckBox();
-      ((System.ComponentModel.ISupportInitialize)(this.view)).BeginInit();
+      this.toolTipEnablePitInputs = new System.Windows.Forms.ToolTip();
+    ((System.ComponentModel.ISupportInitialize)(this.view)).BeginInit();
       this.groupBoxFocus.SuspendLayout();
       this.globalGroupBox.SuspendLayout();
       this.groupBoxLogging.SuspendLayout();
@@ -252,7 +253,8 @@ namespace rF2SMMonitor
       this.checkBoxEnablePitInputs.Text = "Enable Pit Inputs";
       this.checkBoxEnablePitInputs.UseVisualStyleBackColor = true;
       this.checkBoxEnablePitInputs.Checked = false;
-      // TODO: tooltip
+      this.toolTipEnablePitInputs.SetToolTip(this.checkBoxEnablePitInputs, "Control rF2 Pit menu using Y, U, O and P keys.  Note that Pit Menu buffer and EnableHWControlInput should be enabled.");
+      //this.toolTipEnablePitInputs.Active = true;
       // 
       // MainForm
       // 
@@ -305,6 +307,7 @@ namespace rF2SMMonitor
     private System.Windows.Forms.CheckBox checkBoxLogRules;
     private System.Windows.Forms.GroupBox groupBoxInputs;
     private System.Windows.Forms.CheckBox checkBoxEnablePitInputs;
+    private System.Windows.Forms.ToolTip toolTipEnablePitInputs;
   }
 }
 

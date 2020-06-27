@@ -972,6 +972,8 @@ struct rF2Extended : public rF2MappedBufferHeader
   char mLSIRulesInstructionMessage[rF2MappedBufferHeader::MAX_RULES_INSTRUCTION_MSG_LEN];
 
   long mUnsubscribedBuffersMask;                  // Currently active UnsbscribedBuffersMask value.  This will be allowed for clients to write to in the future, but not yet.
+
+  bool mHWControlInputEnabled;                    // HWControl input buffer is enabled.
 };
 
 struct rF2HWControl : public rF2MappedBufferHeader

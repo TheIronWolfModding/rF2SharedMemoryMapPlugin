@@ -112,7 +112,9 @@ public:
   static DebugLevel msDebugOutputLevel;
   static bool msDebugISIInternals;
   static bool msDedicatedServerMapGlobally;
+  static bool msDirectMemoryAccessRequested;
   static long msUnsubscribedBuffersMask;
+  static bool msHWControlInputRequested;
 
   // Ouptut files:
   static FILE* msDebugFile;
@@ -288,7 +290,7 @@ public:
   bool AccessPitMenu(PitMenuV01& info) override; // currently, the return code should always be false (because we may allow more direct editing in the future)
 
   // HW Control- action a control within the game
-  bool HasHardwareInputs() override { return true; }
+  bool HasHardwareInputs() override { return SharedMemoryPlugin::msHWControlInputRequested && mExtStateTracker.mExtended.mHWControlInputEnabled; }
   bool CheckHWControl(const char* const controlName, double& fRetVal) override;
 
 private:
@@ -370,8 +372,6 @@ private:
   //////////////////////////////////////////
   // Direct Memory Access hackery
   //////////////////////////////////////////
-  static bool msDirectMemoryAccessRequested;
-
   DirectMemoryReader mDMR;
   bool mLastUpdateLSIWasVisible = false;
 };

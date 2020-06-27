@@ -987,6 +987,8 @@ namespace rF2SMMonitor
       public byte[] mLSIRulesInstructionMessage;
 
       public long mUnsubscribedBuffersMask;                     // Currently active UnsbscribedBuffersMask value.  This will be allowed for clients to write to in the future, but not yet.
+
+      public byte mHWControlInputEnabled;                       // HWControl input buffer is enabled.
     }
 
 

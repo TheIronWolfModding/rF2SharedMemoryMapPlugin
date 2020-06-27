@@ -158,8 +158,6 @@ namespace rF2SMMonitor
 
       byte[] commandStr = null;
       var fRetVal = 1.0;
-      //if (msg.Msg != 0x100)
-       // fRetVal = 0.0;
 
       if (MainForm.GetAsyncKeyState(Keys.U) != 0)
           commandStr = Encoding.Default.GetBytes("PitMenuIncrementValue");
@@ -996,7 +994,6 @@ namespace rF2SMMonitor
         this.rotateAroundCheckBox.Enabled = this.setAsOriginCheckBox.Checked;
         this.globalGroupBox.Enabled = !this.logLightMode;
         this.groupBoxFocus.Enabled = !this.logLightMode;
-        // TODO: enable if pit info inputs are on and buffer is subscribed
       }
     }
 
