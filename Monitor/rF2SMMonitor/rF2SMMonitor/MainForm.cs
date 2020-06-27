@@ -142,6 +142,8 @@ namespace rF2SMMonitor
       if (!this.connected)
         return false;
 
+      // This may run way too frequently - so it needs a check (elapsed time) to slow it down - not sleep
+
       byte[] commandStr = null;
       var fRetVal = 1.0;
       //if (msg.Msg != 0x100)
