@@ -6,7 +6,7 @@ MainForm implementation, contains main loop and render calls.
 Author: The Iron Wolf (vleonavicius@hotmail.com)
 Website: thecrewchief.org
 */
-using rF2SMMonitor.rFactor2Data;
+using rF2SharedMemory.rFactor2Data;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -15,7 +15,8 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Windows.Forms;
-using static rF2SMMonitor.rFactor2Constants;
+using static rF2SharedMemory.rFactor2Constants;
+using rF2SharedMemory;
 
 namespace rF2SMMonitor
 {
@@ -932,7 +933,7 @@ namespace rF2SMMonitor
       try
       {
         // Alternatively, I could release resources and try re-acquiring them immidiately.
-        var processes = Process.GetProcessesByName(rF2SMMonitor.rFactor2Constants.RFACTOR2_PROCESS_NAME);
+        var processes = Process.GetProcessesByName(rF2SharedMemory.rFactor2Constants.RFACTOR2_PROCESS_NAME);
         if (processes.Length == 0)
           Disconnect();
       }

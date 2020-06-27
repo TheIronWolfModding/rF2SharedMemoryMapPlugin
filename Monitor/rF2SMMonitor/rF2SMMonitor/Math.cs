@@ -4,10 +4,10 @@ Implementation of MathHelper and related classes.
 Author: The Iron Wolf (vleonavicius@hotmail.com)
 Website: thecrewchief.org
 */
-using rF2SMMonitor.rFactor2Data;
+using rF2SharedMemory.rFactor2Data;
 using System;
 using System.Diagnostics;
-using static rF2SMMonitor.rFactor2Constants;
+using static rF2SharedMemory.rFactor2Constants;
 
 namespace rF2SMMonitor
 {

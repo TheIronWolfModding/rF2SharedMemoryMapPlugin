@@ -4,7 +4,7 @@ TransitionTracker class various state transitions in rF2 state and optionally lo
 Author: The Iron Wolf (vleonavicius@hotmail.com)
 Website: thecrewchief.org
 */
-using rF2SMMonitor.rFactor2Data;
+using rF2SharedMemory.rFactor2Data;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -13,7 +13,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using static rF2SMMonitor.rFactor2Constants;
+using static rF2SharedMemory.rFactor2Constants;
 
 namespace rF2SMMonitor
 {
@@ -145,7 +145,7 @@ namespace rF2SMMonitor
         if ((this.lastPhaseTrackingGamePhase == rF2GamePhase.Garage
               || this.lastPhaseTrackingGamePhase == rF2GamePhase.SessionOver
               || this.lastPhaseTrackingGamePhase == rF2GamePhase.SessionStopped
-              || (int)this.lastPhaseTrackingGamePhase == 9)  // What is 9? 
+              || (int)this.lastPhaseTrackingGamePhase == 9)  // What is 9?
             && ((rF2GamePhase)scoring.mScoringInfo.mGamePhase == rF2GamePhase.Countdown
               || (rF2GamePhase)scoring.mScoringInfo.mGamePhase == rF2GamePhase.Formation
               || (rF2GamePhase)scoring.mScoringInfo.mGamePhase == rF2GamePhase.GridWalk
@@ -166,7 +166,7 @@ namespace rF2SMMonitor
       if (scoring.mScoringInfo.mNumVehicles == 0)
         return;
 
-      // Build map of mID -> telemetry.mVehicles[i]. 
+      // Build map of mID -> telemetry.mVehicles[i].
       // They are typically matching values, however, we need to handle online cases and dropped vehicles (mID can be reused).
       var idsToTelIndices = new Dictionary<long, int>();
       for (int i = 0; i < telemetry.mNumVehicles; ++i)
@@ -549,7 +549,7 @@ namespace rF2SMMonitor
         if ((this.lastDamageTrackingGamePhase == rF2GamePhase.Garage
               || this.lastDamageTrackingGamePhase == rF2GamePhase.SessionOver
               || this.lastDamageTrackingGamePhase == rF2GamePhase.SessionStopped
-              || (int)this.lastDamageTrackingGamePhase == 9)  // What is 9? 
+              || (int)this.lastDamageTrackingGamePhase == 9)  // What is 9?
             && ((rF2GamePhase)scoring.mScoringInfo.mGamePhase == rF2GamePhase.Countdown
               || (rF2GamePhase)scoring.mScoringInfo.mGamePhase == rF2GamePhase.Formation
               || (rF2GamePhase)scoring.mScoringInfo.mGamePhase == rF2GamePhase.GridWalk
@@ -570,7 +570,7 @@ namespace rF2SMMonitor
       if (scoring.mScoringInfo.mNumVehicles == 0)
         return;
 
-      // Build map of mID -> telemetry.mVehicles[i]. 
+      // Build map of mID -> telemetry.mVehicles[i].
       // They are typically matching values, however, we need to handle online cases and dropped vehicles (mID can be reused).
       var idsToTelIndices = new Dictionary<long, int>();
       for (int i = 0; i < telemetry.mNumVehicles; ++i)
@@ -594,8 +594,8 @@ namespace rF2SMMonitor
       var di = new DamageInfo();
       di.mDentSeverity = playerVehTelemetry.mDentSeverity;
       di.mLastImpactMagnitude = playerVehTelemetry.mLastImpactMagnitude;
-      di.mAccumulatedImpactMagnitude = extended.mTrackedDamages[playerVehTelemetry.mID % rFactor2Constants.MAX_MAPPED_IDS].mAccumulatedImpactMagnitude;
-      di.mMaxImpactMagnitude = extended.mTrackedDamages[playerVehTelemetry.mID % rFactor2Constants.MAX_MAPPED_IDS].mMaxImpactMagnitude;
+      di.mAccumulatedImpactMagnitude = extended.mTrackedDamages[playerVehTelemetry.mID % rF2SharedMemory.rFactor2Constants.MAX_MAPPED_IDS].mAccumulatedImpactMagnitude;
+      di.mMaxImpactMagnitude = extended.mTrackedDamages[playerVehTelemetry.mID % rF2SharedMemory.rFactor2Constants.MAX_MAPPED_IDS].mMaxImpactMagnitude;
       di.mLastImpactPos = playerVehTelemetry.mLastImpactPos;
       di.mLastImpactET = playerVehTelemetry.mLastImpactET;
       di.mOverheating = playerVehTelemetry.mOverheating;
@@ -809,7 +809,7 @@ namespace rF2SMMonitor
       if ((this.lastTimingTrackingGamePhase == rF2GamePhase.Garage
             || this.lastTimingTrackingGamePhase == rF2GamePhase.SessionOver
             || this.lastTimingTrackingGamePhase == rF2GamePhase.SessionStopped
-            || (int)this.lastTimingTrackingGamePhase == 9)  // What is 9? 
+            || (int)this.lastTimingTrackingGamePhase == 9)  // What is 9?
           && ((rF2GamePhase)scoring.mScoringInfo.mGamePhase == rF2GamePhase.Countdown
             || (rF2GamePhase)scoring.mScoringInfo.mGamePhase == rF2GamePhase.Formation
             || (rF2GamePhase)scoring.mScoringInfo.mGamePhase == rF2GamePhase.GridWalk
@@ -830,7 +830,7 @@ namespace rF2SMMonitor
 
       this.lastTimingTrackingGamePhase = (rF2GamePhase)scoring.mScoringInfo.mGamePhase;
 
-      if (scoring.mScoringInfo.mNumVehicles == 0 
+      if (scoring.mScoringInfo.mNumVehicles == 0
         || extended.mSessionStarted == 0)
       {
         this.lastTimingSector = -1;
@@ -843,7 +843,7 @@ namespace rF2SMMonitor
       if (this.lapDataMap == null)
         this.lapDataMap = new Dictionary<string, LapData>();
 
-      // Build map of mID -> telemetry.mVehicles[i]. 
+      // Build map of mID -> telemetry.mVehicles[i].
       // They are typically matching values, however, we need to handle online cases and dropped vehicles (mID can be reused).
       var idsToTelIndices = new Dictionary<long, int>();
       for (int i = 0; i < telemetry.mNumVehicles; ++i)
@@ -1001,7 +1001,7 @@ namespace rF2SMMonitor
         if (blsCandidate.lapTime < 0.0)
           continue;
 
-        if (blsFastest.lapTime < 0.0 
+        if (blsFastest.lapTime < 0.0
           || blsCandidate.lapTime < blsFastest.lapTime)
         {
           fastestName = lapData.Key;
@@ -1209,7 +1209,7 @@ namespace rF2SMMonitor
       pti.currLapET = vehicle.mLapStartET;
       pti.lastLapTime = vehicle.mLastLapTime;
       pti.currLapTime = scoring.mScoringInfo.mCurrentET - vehicle.mLapStartET;
-      
+
       pti.currLap = vehicle.mTotalLaps;
 
       sbDetails = new StringBuilder();
@@ -1336,7 +1336,7 @@ namespace rF2SMMonitor
         if ((this.lastRulesTrackingGamePhase == rF2GamePhase.Garage
               || this.lastRulesTrackingGamePhase == rF2GamePhase.SessionOver
               || this.lastRulesTrackingGamePhase == rF2GamePhase.SessionStopped
-              || (int)this.lastRulesTrackingGamePhase == 9)  // What is 9? 
+              || (int)this.lastRulesTrackingGamePhase == 9)  // What is 9?
             && ((rF2GamePhase)scoring.mScoringInfo.mGamePhase == rF2GamePhase.Countdown
               || (rF2GamePhase)scoring.mScoringInfo.mGamePhase == rF2GamePhase.Formation
               || (rF2GamePhase)scoring.mScoringInfo.mGamePhase == rF2GamePhase.GridWalk
@@ -1357,7 +1357,7 @@ namespace rF2SMMonitor
       if (scoring.mScoringInfo.mNumVehicles == 0)
         return;
 
-      // Build map of mID -> telemetry.mVehicles[i]. 
+      // Build map of mID -> telemetry.mVehicles[i].
       // They are typically matching values, however, we need to handle online cases and dropped vehicles (mID can be reused).
       var idsToTelIndices = new Dictionary<long, int>();
       for (int i = 0; i < telemetry.mNumVehicles; ++i)
@@ -1788,7 +1788,7 @@ namespace rF2SMMonitor
           && (extended.mSCRPluginDoubleFileType == 1 || extended.mSCRPluginDoubleFileType == 2)
           && scoring.mScoringInfo.mYellowFlagState == (sbyte)rF2YellowFlagState.LastLap;
 
-        if (fod.Phase == FrozenOrderPhase.FullCourseYellow  // Core FCY does not use grid order. 
+        if (fod.Phase == FrozenOrderPhase.FullCourseYellow  // Core FCY does not use grid order.
           && !scrLastLapDoubleFile)  // With SCR rules, however, last lap might be double file depending on DoubleFileType configuration var value.
         {
           gridOrder = false;
@@ -1863,7 +1863,7 @@ namespace rF2SMMonitor
           : -1.0;
 
         if (fod.Phase == FrozenOrderPhase.Rolling
-          && followSC 
+          && followSC
           && rules.mTrackRules.mSafetyCarExists == 0)
         {
           // Find distance to car next to us if we're in pole.
@@ -1977,7 +1977,7 @@ namespace rF2SMMonitor
           var followPrefix = @"Please Follow ";
           var catchUpToPrefix = @"Please Catch Up To ";
           var allowToPassPrefix = @"Please Allow ";
-          
+
           var action = FrozenOrderAction.None;
 
           string prefix = null;
@@ -2101,8 +2101,8 @@ namespace rF2SMMonitor
 
         if (fod.AssignedColumn == FrozenOrderColumn.Left)
         {
-          fod.AssignedGridPosition = leaderCol == FrozenOrderColumn.Left 
-            ? (vehicle.mPlace / 2) + 1 
+          fod.AssignedGridPosition = leaderCol == FrozenOrderColumn.Left
+            ? (vehicle.mPlace / 2) + 1
             : vehicle.mPlace / 2;
         }
         else if (fod.AssignedColumn == FrozenOrderColumn.Right)
