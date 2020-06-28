@@ -120,6 +120,8 @@ public:
   static bool msDirectMemoryAccessRequested;
   static long msUnsubscribedBuffersMask;
   static bool msHWControlInputRequested;
+  static bool msWeatherControlInputRequested;
+  static bool msRulesControlInputRequested;
 
   // Ouptut files:
   static FILE* msDebugFile;

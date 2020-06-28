@@ -119,6 +119,8 @@ bool SharedMemoryPlugin::msDedicatedServerMapGlobally = false;
 bool SharedMemoryPlugin::msDirectMemoryAccessRequested = false;
 long SharedMemoryPlugin::msUnsubscribedBuffersMask = 0L;
 bool SharedMemoryPlugin::msHWControlInputRequested = false;
+bool SharedMemoryPlugin::msWeatherControlInputRequested = false;
+bool SharedMemoryPlugin::msRulesControlInputRequested = false;
 
 FILE* SharedMemoryPlugin::msDebugFile;
 FILE* SharedMemoryPlugin::msIsiTelemetryFile;
@@ -223,6 +225,9 @@ void SharedMemoryPlugin::Startup(long version)
 
     if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::PitInfo))
       DEBUG_MSG(DebugLevel::CriticalInfo, "Unsubscribed from the Pit Info updates");
+
+    if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Weather))
+      DEBUG_MSG(DebugLevel::CriticalInfo, "Unsubscribed from the Weather updates");
   }
 
   char charBuff[80] = {};
@@ -277,10 +282,56 @@ void SharedMemoryPlugin::Startup(long version)
     return;
   }
 
-  if (SharedMemoryPlugin::msHWControlInputRequested
-    && !mHWControl.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
-    DEBUG_MSG(DebugLevel::Errors, "Failed to initialize HWControl mapping");
+  if (Utils::IsFlagOff(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Weather)
+    && !mWeather.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
+    DEBUG_MSG(DebugLevel::Errors, "Failed to initialize Weather mapping");
     return;
+  }
+
+  if (SharedMemoryPlugin::msHWControlInputRequested) {
+    if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Scoring)) {
+      DEBUG_MSG(DebugLevel::Errors, "HWControl input is disabled because Scoring update is turned off.");
+
+      SharedMemoryPlugin::msHWControlInputRequested = false;
+    }
+    else if (!mHWControl.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
+      DEBUG_MSG(DebugLevel::Errors, "Failed to initialize HWControl input mapping");
+      return;
+    }
+  }
+
+  if (SharedMemoryPlugin::msWeatherControlInputRequested) {
+    if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Scoring)) {
+      DEBUG_MSG(DebugLevel::Errors, "Weather Control input is disabled because Scoring update is turned off.");
+
+      SharedMemoryPlugin::msWeatherControlInputRequested = false;
+    }
+    else if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Weather)) {
+      DEBUG_MSG(DebugLevel::Errors, "Weather Control input is disabled because Weather update is turned off.");
+
+      SharedMemoryPlugin::msWeatherControlInputRequested = false;
+    }
+    else if (!mWeatherControl.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
+      DEBUG_MSG(DebugLevel::Errors, "Failed to initialize Weather control input mapping");
+      return;
+    }
+  }
+
+  if (SharedMemoryPlugin::msRulesControlInputRequested) {
+    if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Scoring)) {
+      DEBUG_MSG(DebugLevel::Errors, "Rules Control input is disabled because Scoring update is turned off.");
+
+      SharedMemoryPlugin::msRulesControlInputRequested = false;
+    }
+    else if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Rules)) {
+      DEBUG_MSG(DebugLevel::Errors, "Rules Control input is disabled because Rules update is turned off.");
+
+      SharedMemoryPlugin::msRulesControlInputRequested = false;
+    }
+    else if (!mRulesControl.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
+      DEBUG_MSG(DebugLevel::Errors, "Failed to initialize Rules control input mapping");
+      return;
+    }
   }
 
   mIsMapped = true;
@@ -292,8 +343,6 @@ void SharedMemoryPlugin::Startup(long version)
 
   DEBUG_MSG(DebugLevel::CriticalInfo, "Files mapped successfully");
   if (SharedMemoryPlugin::msDebugOutputLevel != DebugLevel::Off) {
-    
-
     if (Utils::IsFlagOff(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Telemetry)) {
       char sizeSz[20] = {};
       auto size = static_cast<int>(sizeof(rF2Telemetry) + sizeof(rF2MappedBufferVersionBlock));
