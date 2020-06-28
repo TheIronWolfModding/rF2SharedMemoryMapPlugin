@@ -203,6 +203,8 @@ void SharedMemoryPlugin::Startup(long version)
   DEBUG_INT2(DebugLevel::CriticalInfo, "EnableDirectMemoryAccess:", SharedMemoryPlugin::msDirectMemoryAccessRequested);
   DEBUG_INT2(DebugLevel::CriticalInfo, "UnsubscribedBuffersMask:", SharedMemoryPlugin::msUnsubscribedBuffersMask);
   DEBUG_INT2(DebugLevel::CriticalInfo, "EnableHWControlInput:", SharedMemoryPlugin::msHWControlInputRequested);
+  DEBUG_INT2(DebugLevel::CriticalInfo, "EnableWeatherControlInput:", SharedMemoryPlugin::msWeatherControlInputRequested);
+  DEBUG_INT2(DebugLevel::CriticalInfo, "EnableRulesControlInput:", SharedMemoryPlugin::msRulesControlInputRequested);
 
   if (SharedMemoryPlugin::msUnsubscribedBuffersMask != 0L) {
     if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Telemetry))
@@ -396,6 +398,13 @@ void SharedMemoryPlugin::Startup(long version)
       DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the Pit Info buffer:", sizeSz, "bytes.");
     }
 
+    if (Utils::IsFlagOff(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Weather)) {
+      char sizeSz[20] = {};
+      auto const size = static_cast<int>(sizeof(rF2Weather) + sizeof(rF2MappedBufferVersionBlock));
+      _itoa_s(size, sizeSz, 10);
+      DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the Weather buffer:", sizeSz, "bytes.");
+    }
+
     char sizeSz[20] = {};
     auto const size = static_cast<int>(sizeof(rF2Extended) + sizeof(rF2MappedBufferVersionBlock));
     _itoa_s(size, sizeSz, 10);
@@ -407,6 +416,22 @@ void SharedMemoryPlugin::Startup(long version)
       _itoa_s(size, sizeSz, 10);
       DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the HWControl input buffer:", sizeSz, "bytes.");
       DEBUG_INT2(DebugLevel::CriticalInfo, "HWControl input buffer supported layout version:", rF2HWControl::SUPPORTED_LAYOUT_VERSION);
+    }
+
+    if (SharedMemoryPlugin::msWeatherControlInputRequested) {
+      char sizeSz[20] = {};
+      auto const size = static_cast<int>(sizeof(rF2WeatherControl) + sizeof(rF2MappedBufferVersionBlock));
+      _itoa_s(size, sizeSz, 10);
+      DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the Weather control input buffer:", sizeSz, "bytes.");
+      DEBUG_INT2(DebugLevel::CriticalInfo, "Weather control input buffer supported layout version:", rF2WeatherControl::SUPPORTED_LAYOUT_VERSION);
+    }
+
+    if (SharedMemoryPlugin::msRulesControlInputRequested) {
+      char sizeSz[20] = {};
+      auto const size = static_cast<int>(sizeof(rF2RulesControl) + sizeof(rF2MappedBufferVersionBlock));
+      _itoa_s(size, sizeSz, 10);
+      DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the Rules control input buffer:", sizeSz, "bytes.");
+      DEBUG_INT2(DebugLevel::CriticalInfo, "Rules control input buffer supported layout version:", rF2RulesControl::SUPPORTED_LAYOUT_VERSION);
     }
   }
 
@@ -426,6 +451,8 @@ void SharedMemoryPlugin::Startup(long version)
     }
 
     mExtStateTracker.mExtended.mHWControlInputEnabled = SharedMemoryPlugin::msHWControlInputRequested;
+    mExtStateTracker.mExtended.mWeatherControlInputEnabled = SharedMemoryPlugin::msWeatherControlInputRequested;
+    mExtStateTracker.mExtended.mRulesControlInputEnabled = SharedMemoryPlugin::msRulesControlInputRequested;
 
     mExtended.BeginUpdate();
     memcpy(mExtended.mpWriteBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
@@ -483,7 +510,12 @@ void SharedMemoryPlugin::Shutdown()
   mPitInfo.ClearState(nullptr /*pInitialContents*/);
   mPitInfo.ReleaseResources();
 
+  mWeather.ClearState(nullptr /*pInitialContents*/);
+  mWeather.ReleaseResources();
+
   mHWControl.ReleaseResources();
+  mWeatherControl.ReleaseResources();
+  mRulesControl.ReleaseResources();
 }
 
 void SharedMemoryPlugin::ClearTimingsAndCounters()
@@ -530,7 +562,9 @@ void SharedMemoryPlugin::ClearState()
   // So, clear the state but pass persisting state as initial state.
   mExtStateTracker.ClearState();
   mExtended.ClearState(&(mExtStateTracker.mExtended));
+
   mPitInfo.ClearState(nullptr /*pInitialContents*/);
+  mWeather.ClearState(nullptr /*pInitialContents*/);
 
   ClearTimingsAndCounters();
 }
@@ -1200,10 +1234,23 @@ bool SharedMemoryPlugin::CheckHWControl(char const* const controlName, double& f
   return false;
 }
 
-// TODO: how often refreshed?
-bool SharedMemoryPlugin::AccessWeather(double trackNodeSize, WeatherControlInfoV01 & info)
+
+// Invoked at 1FPS.
+bool SharedMemoryPlugin::AccessWeather(double trackNodeSize, WeatherControlInfoV01& info)
 {
-  static int counter = 0;
+  if (!mIsMapped)
+    return false;
+ 
+  DEBUG_MSG(DebugLevel::Timing, "WEATHER - invoked.");
+
+  mWeather.BeginUpdate();
+
+  mWeather.mpWriteBuff->mTrackNodeSize = trackNodeSize;
+  memcpy(&(mWeather.mpWriteBuff->mWeatherInfo), &info, sizeof(rF2WeatherControlInfo));
+
+  mWeather.EndUpdate();
+
+  /*static int counter = 0;
   if (counter < 1)
   {
     info.mET += 20;
@@ -1213,7 +1260,7 @@ bool SharedMemoryPlugin::AccessWeather(double trackNodeSize, WeatherControlInfoV
     ++counter;
     return true;
   }
-
+  */
   return false;
 }
 
@@ -1257,16 +1304,28 @@ bool SharedMemoryPlugin::GetCustomVariable(long i, CustomVariableV01& var)
     strcpy_s(var.mCaption, "UnsubscribedBuffersMask");
     var.mNumSettings = 1;
 
-    // By default, unsubscribe from the Graphics buffer updates.
+    // By default, unsubscribe from the Graphics and Weather buffer updates.
     // CC does not need some other buffers either, however it is going to be a headache
     // to explain SH users who rely on them how to configure plugin, so let it be.
-    var.mCurrentSetting = 32;
+    var.mCurrentSetting = 160;
     return true;
   }
   else if (i == 6) {
     strcpy_s(var.mCaption, "EnableHWControlInput");
     var.mNumSettings = 2;
     var.mCurrentSetting = 1;
+    return true;
+  }
+  else if (i == 7) {
+    strcpy_s(var.mCaption, "EnableWeatherControlInput");
+    var.mNumSettings = 2;
+    var.mCurrentSetting = 0;
+    return true;
+  }
+  else if (i == 8) {
+    strcpy_s(var.mCaption, "EnableRulesControlInput");
+    var.mNumSettings = 2;
+    var.mCurrentSetting = 0;
     return true;
   }
 
@@ -1300,6 +1359,10 @@ void SharedMemoryPlugin::AccessCustomVariable(CustomVariableV01& var)
   }
   else if (_stricmp(var.mCaption, "EnableHWControlInput") == 0)
     SharedMemoryPlugin::msHWControlInputRequested = var.mCurrentSetting != 0;
+  else if (_stricmp(var.mCaption, "EnableWeatherControlInput") == 0)
+    SharedMemoryPlugin::msWeatherControlInputRequested = var.mCurrentSetting != 0;
+  else if (_stricmp(var.mCaption, "EnableRulesControlInput") == 0)
+    SharedMemoryPlugin::msRulesControlInputRequested = var.mCurrentSetting != 0;
 }
 
 
@@ -1334,6 +1397,18 @@ void SharedMemoryPlugin::GetCustomVariableSetting(CustomVariableV01& var, long i
       strcpy_s(setting.mName, "True");
   }
   else if (_stricmp(var.mCaption, "EnableHWControlInput") == 0) {
+    if (i == 0)
+      strcpy_s(setting.mName, "False");
+    else
+      strcpy_s(setting.mName, "True");
+  }
+  else if (_stricmp(var.mCaption, "EnableWeatherControlInput") == 0) {
+    if (i == 0)
+      strcpy_s(setting.mName, "False");
+    else
+      strcpy_s(setting.mName, "True");
+  }
+  else if (_stricmp(var.mCaption, "EnableRulesControlInput") == 0) {
     if (i == 0)
       strcpy_s(setting.mName, "False");
     else

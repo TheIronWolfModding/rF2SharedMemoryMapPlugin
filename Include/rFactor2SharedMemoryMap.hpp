@@ -27,8 +27,8 @@ Website: thecrewchief.org
 
 // Each component can be in [0:99] range.
 // Note: each time major version changes, that means layout has changed, and clients might need an update.
-#define PLUGIN_VERSION_MAJOR "3.7"
-#define PLUGIN_VERSION_MINOR "3.0"
+#define PLUGIN_VERSION_MAJOR "3.8"
+#define PLUGIN_VERSION_MINOR "0.0"
 
 #ifdef VERSION_AVX2
 #ifdef VERSION_MT
@@ -108,7 +108,6 @@ public:
 
   static char const* const INTERNALS_TELEMETRY_FILENAME;
   static char const* const INTERNALS_SCORING_FILENAME;
-  static char const* const INTERNALS_PITMENU_FILENAME;
   static char const* const DEBUG_OUTPUT_FILENAME;
 
   static int const BUFFER_IO_BYTES = 2048;

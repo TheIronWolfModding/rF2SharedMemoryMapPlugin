@@ -989,6 +989,8 @@ namespace rF2SMMonitor
       public int mUnsubscribedBuffersMask;                     // Currently active UnsbscribedBuffersMask value.  This will be allowed for clients to write to in the future, but not yet.
 
       public byte mHWControlInputEnabled;                       // HWControl input buffer is enabled.
+      public byte mWeatherControlInputEnabled;                  // WeatherControl input buffer is enabled.
+      public byte mRulesControlInputEnabled;                    // RulesControl input buffer is enabled.
     }
 
 

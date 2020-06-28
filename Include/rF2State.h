@@ -951,6 +951,7 @@ struct rF2SessionTransitionCapture
 
 struct rF2Weather : public rF2MappedBufferHeader
 {
+  double mTrackNodeSize;
   rF2WeatherControlInfo mWeatherInfo;
 };
 
@@ -1043,6 +1044,7 @@ struct rF2RulesControl : public rF2MappedBufferHeader
   // Version supported by the _current_ plugin.
   static int const SUPPORTED_LAYOUT_VERSION = 1;
 
+  // TODO: Move to separate class.
   long mLayoutVersion;
 
   rF2TrackRules mTrackRules;

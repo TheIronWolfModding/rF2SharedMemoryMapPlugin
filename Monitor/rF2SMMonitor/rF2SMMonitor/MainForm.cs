@@ -147,7 +147,9 @@ namespace rF2SMMonitor
     private DateTime nextKeyHandlingTime = DateTime.MinValue;
     private void ProcessKeys()
     {
-      if (!this.connected || !this.enablePitInputs)
+      if (!this.connected 
+        || !this.enablePitInputs
+        || this.extended.mHWControlInputEnabled == 0)
         return;
 
       var now = DateTime.Now;
@@ -468,14 +470,13 @@ namespace rF2SMMonitor
       this.tracker.TrackDamage(ref this.scoring, ref this.telemetry, ref this.extended, g, this.logDamage);
       this.tracker.TrackTimings(ref this.scoring, ref this.telemetry, ref this.rules, ref this.extended, g, this.logTiming);
       this.tracker.TrackRules(ref this.scoring, ref this.telemetry, ref this.rules, ref this.extended, g, this.logRules);
-      //pitmenu
 
       this.UpdateFPS();
 
       if (!this.connected)
       {
         var brush = new SolidBrush(System.Drawing.Color.Black);
-        g.DrawString("Not connected", SystemFonts.DefaultFont, brush, 3.0f, 3.0f);
+        g.DrawString("Not connected.\n\nRequired inputs: Telemetry, Scoring, Rules, ForceFeedback, Graphics, PitInfo, Weather and Extended.\nRequired controls: HWControl and Weather.", SystemFonts.DefaultFont, brush, 3.0f, 3.0f);
 
         if (this.logLightMode)
           return;
@@ -493,7 +494,16 @@ namespace rF2SMMonitor
         this.maxFFBValue = Math.Max(Math.Abs(this.forceFeedback.mForceValue), this.maxFFBValue);
 
         gameStateText.Append(
-          $"Plugin Version:    Expected: 3.7.2.0 64bit   Actual: {MainForm.GetStringFromBytes(this.extended.mVersion)} {(this.extended.is64bit == 1 ? "64bit" : "32bit")}{(this.extended.mSCRPluginEnabled == 1 ? "    SCR Plugin enabled" : "")}{(this.extended.mDirectMemoryAccessEnabled == 1 ? "    DMA enabled" : "")}{(this.extended.mHWControlInputEnabled == 1 ? "    HWCI enabled" : "")}    UBM: {this.extended.mUnsubscribedBuffersMask}    FPS: {this.fps}    FFB Curr: {this.forceFeedback.mForceValue:N3}  Max: {this.maxFFBValue:N3}");
+          $"Plugin Version:    Expected: 3.8.0.0 64bit   Actual: {MainForm.GetStringFromBytes(this.extended.mVersion)}"
+          + $"{(this.extended.is64bit == 1 ? "64bit" : "32bit")}"
+          + $"{(this.extended.mSCRPluginEnabled == 1 ? "    SCR Plugin enabled" : "")}"
+          + $"{(this.extended.mDirectMemoryAccessEnabled == 1 ? "    DMA enabled" : "")}"
+          + $"{(this.extended.mHWControlInputEnabled == 1 ? "    HWCI enabled" : "")}"
+          + $"{(this.extended.mWeatherControlInputEnabled == 1 ? "    WCI enabled" : "")}"
+          + $"{(this.extended.mRulesControlInputEnabled == 1 ? "    RCI enabled" : "")}"
+          + $"    UBM: {this.extended.mUnsubscribedBuffersMask}"
+          + $"    FPS: {this.fps}"
+          + $"    FFB Curr: {this.forceFeedback.mForceValue:N3} Max: {this.maxFFBValue:N3}");
 
         // Draw header
         g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, brush, currX, currY);
