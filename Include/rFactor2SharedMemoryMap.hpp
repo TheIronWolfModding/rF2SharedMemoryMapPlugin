@@ -322,6 +322,8 @@ private:
   void ScoringTraceBeginUpdate();
   void ReadDMROnScoringUpdate(ScoringInfoV01 const& info);
   void ReadHWControl();
+  void ReadWeatherControl();
+  void ReadRulesControl();
 
   template <typename BuffT>
   void TraceBeginUpdate(BuffT const& buffer, double& lastUpdateMillis, char const msgPrefix[]) const;
@@ -367,6 +369,9 @@ private:
   // HWControl request tracking variables.  Empty indicates initial state or the fact that request passed to rF2.
   char mHWControlRequest_mControlName[rF2MappedBufferHeader::MAX_HWCONTROL_NAME_LEN];
   double mHWControlRequest_mfRetVal = 0.0;
+
+  bool mWeatherControlInputRequestReceived = true;
+  bool mRulesControlInputRequestReceived = true;
 
   MappedBuffer<rF2Telemetry> mTelemetry;
   MappedBuffer<rF2Scoring> mScoring;

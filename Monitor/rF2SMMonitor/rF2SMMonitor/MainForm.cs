@@ -40,10 +40,12 @@ namespace rF2SMMonitor
     MappedBuffer<rF2ForceFeedback> forceFeedbackBuffer = new MappedBuffer<rF2ForceFeedback>(rFactor2Constants.MM_FORCE_FEEDBACK_FILE_NAME, false /*partial*/, false /*skipUnchanged*/);
     MappedBuffer<rF2Graphics> graphicsBuffer = new MappedBuffer<rF2Graphics>(rFactor2Constants.MM_GRAPHICS_FILE_NAME, false /*partial*/, false /*skipUnchanged*/);
     MappedBuffer<rF2PitInfo> pitInfoBuffer = new MappedBuffer<rF2PitInfo>(rFactor2Constants.MM_PITINFO_FILE_NAME, false /*partial*/, true /*skipUnchanged*/);
+    MappedBuffer<rF2Weather> weatherBuffer = new MappedBuffer<rF2Weather>(rFactor2Constants.MM_WEATHER_FILE_NAME, false /*partial*/, true /*skipUnchanged*/);
     MappedBuffer<rF2Extended> extendedBuffer = new MappedBuffer<rF2Extended>(rFactor2Constants.MM_EXTENDED_FILE_NAME, false /*partial*/, true /*skipUnchanged*/);
 
     // Write buffers:
-    MappedBuffer<rF2HWControl> hwcontrolBuffer = new MappedBuffer<rF2HWControl>(rFactor2Constants.MM_HWCONTROL_FILE_NAME);
+    MappedBuffer<rF2HWControl> hwControlBuffer = new MappedBuffer<rF2HWControl>(rFactor2Constants.MM_HWCONTROL_FILE_NAME);
+    MappedBuffer<rF2WeatherControl> weatherControlBuffer = new MappedBuffer<rF2WeatherControl>(rFactor2Constants.MM_WEATHER_CONTROL_FILE_NAME);
 
     // Marshalled views:
     rF2Telemetry telemetry;
@@ -52,10 +54,12 @@ namespace rF2SMMonitor
     rF2ForceFeedback forceFeedback;
     rF2Graphics graphics;
     rF2PitInfo pitInfo;
+    rF2Weather weather;
     rF2Extended extended;
 
     // Marashalled output views:
-    rF2HWControl hwcontrol;
+    rF2HWControl hwControl;
+    rF2WeatherControl weatherControl;
 
     // Track rF2 transitions.
     TransitionTracker tracker = new TransitionTracker();
@@ -77,6 +81,9 @@ namespace rF2SMMonitor
 
     // Capture of the max FFB force.
     double maxFFBValue = 0.0;
+
+    // Last applied value for the rain intensity.
+    double rainIntensityRequested = 0.0;
 
     [StructLayout(LayoutKind.Sequential)]
     public struct NativeMessage
@@ -101,29 +108,33 @@ namespace rF2SMMonitor
       this.Location = new Point(0, 0);
 
       this.EnableControls(false);
-      this.scaleTextBox.KeyDown += TextBox_KeyDown;
-      this.scaleTextBox.LostFocus += ScaleTextBox_LostFocus;
-      this.xOffsetTextBox.KeyDown += TextBox_KeyDown;
-      this.xOffsetTextBox.LostFocus += XOffsetTextBox_LostFocus;
-      this.yOffsetTextBox.KeyDown += TextBox_KeyDown;
-      this.yOffsetTextBox.LostFocus += YOffsetTextBox_LostFocus;
-      this.focusVehTextBox.KeyDown += TextBox_KeyDown;
-      this.focusVehTextBox.LostFocus += FocusVehTextBox_LostFocus;
-      this.setAsOriginCheckBox.CheckedChanged += SetAsOriginCheckBox_CheckedChanged;
-      this.rotateAroundCheckBox.CheckedChanged += RotateAroundCheckBox_CheckedChanged;
-      this.checkBoxLogPhaseAndState.CheckedChanged += CheckBoxLogPhaseAndState_CheckedChanged;
-      this.checkBoxLogDamage.CheckedChanged += CheckBoxLogDamage_CheckedChanged;
-      this.checkBoxLogTiming.CheckedChanged += CheckBoxLogTiming_CheckedChanged;
-      this.checkBoxLogRules.CheckedChanged += CheckBoxLogRules_CheckedChanged;
-      this.checkBoxLightMode.CheckedChanged += CheckBoxLightMode_CheckedChanged;
-      this.checkBoxEnablePitInputs.CheckedChanged += CheckBoxEnablePitInputs_CheckedChanged;
-      this.MouseWheel += MainForm_MouseWheel;
+      this.scaleTextBox.KeyDown += this.TextBox_KeyDown;
+      this.scaleTextBox.LostFocus += this.ScaleTextBox_LostFocus;
+      this.xOffsetTextBox.KeyDown += this.TextBox_KeyDown;
+      this.xOffsetTextBox.LostFocus += this.XOffsetTextBox_LostFocus;
+      this.yOffsetTextBox.KeyDown += this.TextBox_KeyDown;
+      this.yOffsetTextBox.LostFocus += this.YOffsetTextBox_LostFocus;
+      this.focusVehTextBox.KeyDown += this.TextBox_KeyDown;
+      this.focusVehTextBox.LostFocus += this.FocusVehTextBox_LostFocus;
+      this.setAsOriginCheckBox.CheckedChanged += this.SetAsOriginCheckBox_CheckedChanged;
+      this.rotateAroundCheckBox.CheckedChanged += this.RotateAroundCheckBox_CheckedChanged;
+      this.logPhaseAndStateCheckBox.CheckedChanged += this.CheckBoxLogPhaseAndState_CheckedChanged;
+      this.logDamageCheckBox.CheckedChanged += this.CheckBoxLogDamage_CheckedChanged;
+      this.logTimingCheckBox.CheckedChanged += this.CheckBoxLogTiming_CheckedChanged;
+      this.logRulesCheckBox.CheckedChanged += this.CheckBoxLogRules_CheckedChanged;
+      this.lightModeCheckBox.CheckedChanged += this.CheckBoxLightMode_CheckedChanged;
+      this.enablePitInputsCheckBox.CheckedChanged += this.CheckBoxEnablePitInputs_CheckedChanged;
+      this.MouseWheel += this.MainForm_MouseWheel;
+
+      this.rainIntensityTextBox.LostFocus += this.RainIntensityTextBox_LostFocus;
+      this.rainIntensityTextBox.Text = "0.0";
+      this.applyRainIntensityButton.Click += this.ApplyRainIntensityButton_Click;
 
       this.LoadConfig();
-      this.connectTimer.Interval = CONNECTION_RETRY_INTERVAL_MS;
-      this.connectTimer.Tick += ConnectTimer_Tick;
-      this.disconnectTimer.Interval = DISCONNECTED_CHECK_INTERVAL_MS;
-      this.disconnectTimer.Tick += DisconnectTimer_Tick;
+      this.connectTimer.Interval = MainForm.CONNECTION_RETRY_INTERVAL_MS;
+      this.connectTimer.Tick += this.ConnectTimer_Tick;
+      this.disconnectTimer.Interval = MainForm.DISCONNECTED_CHECK_INTERVAL_MS;
+      this.disconnectTimer.Tick += this.DisconnectTimer_Tick;
       this.connectTimer.Start();
       this.disconnectTimer.Start();
 
@@ -135,9 +146,27 @@ namespace rF2SMMonitor
       Application.Idle += this.HandleApplicationIdle;
     }
 
+    private void ApplyRainIntensityButton_Click(object sender, EventArgs e)
+    {
+      if (!this.connected
+        || this.extended.mWeatherControlInputEnabled == 0)
+        return;
+
+      this.weatherControl.mVersionUpdateBegin = this.weatherControl.mVersionUpdateEnd = this.weatherControl.mVersionUpdateBegin + 1;
+
+      // First, copy current state into control buffer.
+      // This is not a deep copy. Values in weather buffer wwill change.  If that is not desired, deep copy needs to be performed.
+      this.weatherControl.mWeatherInfo = this.weather.mWeatherInfo;
+
+      // Apply requested rain intensity.
+      this.weatherControl.mWeatherInfo.mRaining[4] = this.rainIntensityRequested;
+
+      this.weatherControlBuffer.PutMappedData(ref this.weatherControl);
+    }
+
     private void CheckBoxEnablePitInputs_CheckedChanged(object sender, EventArgs e)
     {
-      this.enablePitInputs = this.checkBoxEnablePitInputs.Checked;
+      this.enablePitInputs = this.enablePitInputsCheckBox.Checked;
       this.config.Write("enablePitInputs", this.enablePitInputs ? "1" : "0");
     }
 
@@ -177,26 +206,26 @@ namespace rF2SMMonitor
     {
       if (commandStr != null)
       {
-        this.hwcontrol.mVersionUpdateBegin = this.hwcontrol.mVersionUpdateEnd = this.hwcontrol.mVersionUpdateBegin + 1;
+        this.hwControl.mVersionUpdateBegin = this.hwControl.mVersionUpdateEnd = this.hwControl.mVersionUpdateBegin + 1;
 
-        this.hwcontrol.mControlName = new byte[rFactor2Constants.MAX_HWCONTROL_NAME_LEN];
+        this.hwControl.mControlName = new byte[rFactor2Constants.MAX_HWCONTROL_NAME_LEN];
         for (int i = 0; i < commandStr.Length; ++i)
-          this.hwcontrol.mControlName[i] = commandStr[i];
+          this.hwControl.mControlName[i] = commandStr[i];
 
-        this.hwcontrol.mfRetVal = fRetVal;
+        this.hwControl.mfRetVal = fRetVal;
 
-        this.hwcontrolBuffer.PutMappedData(ref this.hwcontrol);
+        this.hwControlBuffer.PutMappedData(ref this.hwControl);
       }
     }
     private void CheckBoxLogRules_CheckedChanged(object sender, EventArgs e)
     {
-      this.logRules = this.checkBoxLogRules.Checked;
+      this.logRules = this.logRulesCheckBox.Checked;
       this.config.Write("logRules", this.logRules ? "1" : "0");
     }
 
     private void CheckBoxLightMode_CheckedChanged(object sender, EventArgs e)
     {
-      this.logLightMode = this.checkBoxLightMode.Checked;
+      this.logLightMode = this.lightModeCheckBox.Checked;
 
       // Disable/enable rendering options
       this.globalGroupBox.Enabled = !this.logLightMode;
@@ -207,19 +236,19 @@ namespace rF2SMMonitor
 
     private void CheckBoxLogDamage_CheckedChanged(object sender, EventArgs e)
     {
-      this.logDamage = this.checkBoxLogDamage.Checked;
+      this.logDamage = this.logDamageCheckBox.Checked;
       this.config.Write("logDamage", this.logDamage ? "1" : "0");
     }
 
     private void CheckBoxLogTiming_CheckedChanged(object sender, EventArgs e)
     {
-      this.logTiming = this.checkBoxLogTiming.Checked;
+      this.logTiming = this.logTimingCheckBox.Checked;
       this.config.Write("logTiming", this.logTiming ? "1" : "0");
     }
 
     private void CheckBoxLogPhaseAndState_CheckedChanged(object sender, EventArgs e)
     {
-      this.logPhaseAndState = this.checkBoxLogPhaseAndState.Checked;
+      this.logPhaseAndState = this.logPhaseAndStateCheckBox.Checked;
       this.config.Write("logPhaseAndState", this.logPhaseAndState ? "1" : "0");
     }
 
@@ -241,6 +270,21 @@ namespace rF2SMMonitor
       }
     }
 
+    private void RainIntensityTextBox_LostFocus(object sender, EventArgs e)
+    {
+      var result = 0.0;
+      if (double.TryParse(this.rainIntensityTextBox.Text, out result)
+        && result >= 0.0 && result <= 1.0)
+      {
+        if (this.rainIntensityRequested != result)
+          this.applyRainIntensityButton.Enabled = true;
+
+        this.rainIntensityRequested = result;
+      }
+
+      this.rainIntensityTextBox.Text = this.rainIntensityRequested.ToString("0.0");
+    }
+
     private void YOffsetTextBox_LostFocus(object sender, EventArgs e)
     {
       float result = 0.0f;
@@ -251,7 +295,6 @@ namespace rF2SMMonitor
       }
       else
         this.yOffsetTextBox.Text = this.yOffset.ToString();
-
     }
 
     private void XOffsetTextBox_LostFocus(object sender, EventArgs e)
@@ -402,6 +445,7 @@ namespace rF2SMMonitor
         forceFeedbackBuffer.GetMappedDataUnsynchronized(ref forceFeedback);
         graphicsBuffer.GetMappedDataUnsynchronized(ref graphics);
         pitInfoBuffer.GetMappedData(ref pitInfo);
+        weatherBuffer.GetMappedData(ref weather);
 
         watch.Stop();
         var microseconds = watch.ElapsedTicks * 1000000 / System.Diagnostics.Stopwatch.Frequency;
@@ -596,7 +640,8 @@ namespace rF2SMMonitor
           + "Scoring:\n"
           + "Rules:\n"
           + "Extended:\n"
-          + "Pit menu:\n"
+          + "Pit Info:\n"
+          + "Weather:\n"
           + "Avg read:");
 
         g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Black, 1500, 570);
@@ -607,6 +652,7 @@ namespace rF2SMMonitor
           + this.scoringBuffer.GetStats() + '\n'
           + this.rulesBuffer.GetStats() + '\n'
           + this.pitInfoBuffer.GetStats() + '\n'
+          + this.weatherBuffer.GetStats() + '\n'
           + this.extendedBuffer.GetStats() + '\n'
           + this.avgDelayMicroseconds.ToString("0.000") + " microseconds");
 
@@ -625,7 +671,7 @@ namespace rF2SMMonitor
             + "Last SCR Instr.:\n"
             );
 
-          g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Purple, 1500, 650);
+          g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Purple, 1500, 660);
 
           gameStateText.Clear();
           gameStateText.Append(
@@ -638,7 +684,7 @@ namespace rF2SMMonitor
             + MainForm.GetStringFromBytes(this.extended.mLSIRulesInstructionMessage) + '\n'
             );
 
-          g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Purple, 1580, 650);
+          g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Purple, 1580, 660);
 
           gameStateText.Clear();
           gameStateText.Append(
@@ -650,7 +696,7 @@ namespace rF2SMMonitor
             + "updated: " + this.extended.mTicksLSIOrderInstructionMessageUpdated + '\n'
             + "updated: " + this.extended.mTicksLSIRulesInstructionMessageUpdated + '\n');
 
-          g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Purple, 1800, 650);
+          g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Purple, 1800, 660);
         }
 
         if ((this.extended.mUnsubscribedBuffersMask & (long)SubscribedBuffer.PitInfo) == 0)
@@ -932,12 +978,16 @@ namespace rF2SMMonitor
           this.forceFeedbackBuffer.Connect();
           this.graphicsBuffer.Connect();
           this.pitInfoBuffer.Connect();
+          this.weatherBuffer.Connect();
           this.extendedBuffer.Connect();
 
-          this.hwcontrolBuffer.Connect();
+          this.hwControlBuffer.Connect();
+          this.hwControl.mLayoutVersion = rFactor2Constants.MM_HWCONTROL_LAYOUT_VERSION;
+          this.hwControl.mVersionUpdateBegin = this.hwControl.mVersionUpdateEnd = 0;
 
-          this.hwcontrol.mLayoutVersion = rFactor2Constants.MM_HWCONTROL_LAYOUT_VERSION;
-          this.hwcontrol.mVersionUpdateBegin = this.hwcontrol.mVersionUpdateEnd = 0;
+          this.weatherControlBuffer.Connect();
+          this.weatherControl.mLayoutVersion = rFactor2Constants.MM_WEATHER_CONTROL_LAYOUT_VERSION;
+          this.weatherControl.mVersionUpdateBegin = this.weatherControl.mVersionUpdateEnd = 0;
 
           this.connected = true;
 
@@ -976,9 +1026,11 @@ namespace rF2SMMonitor
       this.telemetryBuffer.Disconnect();
       this.forceFeedbackBuffer.Disconnect();
       this.pitInfoBuffer.Disconnect();
+      this.weatherBuffer.Disconnect();
       this.graphicsBuffer.Disconnect();
 
-      this.hwcontrolBuffer.Disconnect();
+      this.hwControlBuffer.Disconnect();
+      this.weatherControlBuffer.Disconnect();
 
       this.connected = false;
 
@@ -989,8 +1041,8 @@ namespace rF2SMMonitor
     {
       this.globalGroupBox.Enabled = enable;
       this.groupBoxFocus.Enabled = enable;
-      this.groupBoxLogging.Enabled = enable;
-      this.groupBoxInputs.Enabled = enable;
+      this.loggingGroupBox.Enabled = enable;
+      this.inputsGroupBox.Enabled = enable;
 
       this.focusVehLabel.Enabled = false;
       this.focusVehTextBox.Enabled = false;
@@ -1059,42 +1111,42 @@ namespace rF2SMMonitor
       if (int.TryParse(this.config.Read("logLightMode"), out intResult) && intResult == 1)
         this.logLightMode = true;
 
-      this.checkBoxLightMode.Checked = this.logLightMode;
+      this.lightModeCheckBox.Checked = this.logLightMode;
 
       intResult = 0;
       this.logPhaseAndState = true;
       if (int.TryParse(this.config.Read("logPhaseAndState"), out intResult) && intResult == 0)
         this.logPhaseAndState = false;
 
-      this.checkBoxLogPhaseAndState.Checked = this.logPhaseAndState;
+      this.logPhaseAndStateCheckBox.Checked = this.logPhaseAndState;
 
       intResult = 0;
       this.logDamage = true;
       if (int.TryParse(this.config.Read("logDamage"), out intResult) && intResult == 0)
         this.logDamage = false;
 
-      this.checkBoxLogDamage.Checked = this.logDamage;
+      this.logDamageCheckBox.Checked = this.logDamage;
 
       intResult = 0;
       this.logTiming = true;
       if (int.TryParse(this.config.Read("logTiming"), out intResult) && intResult == 0)
         this.logTiming = false;
 
-      this.checkBoxLogTiming.Checked = this.logTiming;
+      this.logTimingCheckBox.Checked = this.logTiming;
 
       intResult = 0;
       this.logRules = true;
       if (int.TryParse(this.config.Read("logRules"), out intResult) && intResult == 0)
         this.logRules = false;
 
-      this.checkBoxLogRules.Checked = this.logRules;
+      this.logRulesCheckBox.Checked = this.logRules;
 
       intResult = 0;
       this.enablePitInputs = true;
       if (int.TryParse(this.config.Read("enablePitInputs"), out intResult) && intResult == 0)
         this.enablePitInputs = false;
 
-      this.checkBoxEnablePitInputs.Checked = this.enablePitInputs;
+      this.enablePitInputsCheckBox.Checked = this.enablePitInputs;
 
       MainForm.useStockCarRulesPlugin = false;
     }

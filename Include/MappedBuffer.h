@@ -311,6 +311,8 @@ private:
     // Local read buffer copy:
     BuffT mReadBuff;
 
+    unsigned long mReadLastVersionUpdateBegin = 0uL;
+
   private:
     LPVOID mpMappedView = nullptr;
     char const* const MM_FILE_NAME = nullptr;
@@ -319,5 +321,4 @@ private:
 
     // If 0, it means this is write mode buffer.
     long const READ_BUFFER_SUPPORTED_LAYOUT_VERSION;
-    unsigned long mReadLastVersionUpdateBegin = 0;
 };

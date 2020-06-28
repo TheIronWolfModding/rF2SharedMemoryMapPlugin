@@ -174,7 +174,7 @@ SharedMemoryPlugin::SharedMemoryPlugin()
     , mGraphics(SharedMemoryPlugin::MM_GRAPHICS_FILE_NAME)
     , mExtended(SharedMemoryPlugin::MM_EXTENDED_FILE_NAME)
     , mPitInfo(SharedMemoryPlugin::MM_PIT_INFO_FILE_NAME)
-    , mWeather(SharedMemoryPlugin::MM_PIT_INFO_FILE_NAME)
+    , mWeather(SharedMemoryPlugin::MM_WEATHER_FILE_NAME)
     , mHWControl(SharedMemoryPlugin::MM_HWCONTROL_FILE_NAME, rF2HWControl::SUPPORTED_LAYOUT_VERSION)
     , mWeatherControl(SharedMemoryPlugin::MM_WEATHER_CONTROL_FILE_NAME, rF2WeatherControl::SUPPORTED_LAYOUT_VERSION)
     , mRulesControl(SharedMemoryPlugin::MM_RULES_CONTROL_FILE_NAME, rF2HWControl::SUPPORTED_LAYOUT_VERSION)
@@ -543,6 +543,9 @@ void SharedMemoryPlugin::ClearTimingsAndCounters()
 
   memset(mHWControlRequest_mControlName, 0, sizeof(mHWControlRequest_mControlName));
   mHWControlRequest_mfRetVal = 0.0;
+
+  mWeatherControlInputRequestReceived = false;
+  mRulesControlInputRequestReceived = false;
 }
 
 
@@ -1016,6 +1019,7 @@ void SharedMemoryPlugin::ReadHWControl()
       DEBUG_MSG(DebugLevel::Errors, "HWControl: disabling HWControl.");
 
       mExtStateTracker.mExtended.mHWControlInputEnabled = false;
+      return;
     }
 
     strcpy_s(mHWControlRequest_mControlName, mHWControl.mReadBuff.mControlName);
@@ -1026,6 +1030,52 @@ void SharedMemoryPlugin::ReadHWControl()
       sprintf_s(charBuff, "HWControl: received:  '%s'  %1.1f", mHWControlRequest_mControlName, mHWControlRequest_mfRetVal);
       DEBUG_MSG(DebugLevel::DevInfo, charBuff);
     }
+  }
+}
+
+
+void SharedMemoryPlugin::ReadWeatherControl()
+{
+  if (!mIsMapped
+    || !SharedMemoryPlugin::msWeatherControlInputRequested
+    || !mExtStateTracker.mExtended.mWeatherControlInputEnabled)
+    return;
+
+  // Read input buffers.
+  if (mWeatherControl.ReadUpdate()) {
+    if (mWeatherControl.mReadBuff.mLayoutVersion != rF2WeatherControl::SUPPORTED_LAYOUT_VERSION) {
+      DEBUG_INT2(DebugLevel::Errors, "Weather control: unsupported input buffer layout version  ", mHWControl.mReadBuff.mLayoutVersion);
+      DEBUG_MSG(DebugLevel::Errors, "Weather control: disabling HWControl.");
+
+      mExtStateTracker.mExtended.mWeatherControlInputEnabled = false;
+      return;
+    }
+
+    DEBUG_MSG(DebugLevel::DevInfo, "Weather control input received.");
+    mWeatherControlInputRequestReceived = true;
+  }
+}
+
+
+void SharedMemoryPlugin::ReadRulesControl()
+{
+  if (!mIsMapped
+    || !SharedMemoryPlugin::msRulesControlInputRequested
+    || !mExtStateTracker.mExtended.mRulesControlInputEnabled)
+    return;
+
+  // Read input buffers.
+  if (mRulesControl.ReadUpdate()) {
+    if (mRulesControl.mReadBuff.mLayoutVersion != rF2RulesControl::SUPPORTED_LAYOUT_VERSION) {
+      DEBUG_INT2(DebugLevel::Errors, "Rules control: unsupported input buffer layout version  ", mHWControl.mReadBuff.mLayoutVersion);
+      DEBUG_MSG(DebugLevel::Errors, "Rules control: disabling HWControl.");
+
+      mExtStateTracker.mExtended.mRulesControlInputEnabled = false;
+      return;
+    }
+
+    DEBUG_MSG(DebugLevel::DevInfo, "Rules control input received.");
+    mRulesControlInputRequestReceived = true;
   }
 }
 
@@ -1064,6 +1114,7 @@ void SharedMemoryPlugin::ThreadStarted(long type)
   DEBUG_MSG(DebugLevel::Synchronization, type == 0 ? "Multimedia thread started" : "Simulation thread started");
   UpdateThreadState(type, true /*starting*/);
 }
+
 
 void SharedMemoryPlugin::ThreadStopping(long type)
 {
@@ -1249,6 +1300,14 @@ bool SharedMemoryPlugin::AccessWeather(double trackNodeSize, WeatherControlInfoV
   memcpy(&(mWeather.mpWriteBuff->mWeatherInfo), &info, sizeof(rF2WeatherControlInfo));
 
   mWeather.EndUpdate();
+
+  if (mWeatherControlInputRequestReceived) {
+    memcpy(&info, &(mWeatherControl.mReadBuff.mWeatherInfo), sizeof(WeatherControlInfoV01));
+    mWeatherControlInputRequestReceived = false;
+
+    DEBUG_INT2(DebugLevel::DevInfo, "Weather control input applied.  Update version:", mWeatherControl.mReadLastVersionUpdateBegin);
+    return true;
+  }
 
   /*static int counter = 0;
   if (counter < 1)
