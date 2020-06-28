@@ -21,7 +21,9 @@ namespace rF2SharedMemoryAPI
     string LastControl;
     bool Connected = false;
 
-    int delay = 40; // 20 works for category selection and tyres but fuel needs it slower
+    // Delay in mS after sending a HW control to rFactor before sending another, set by experiment
+    // 20 works for category selection and tyres but fuel needs it slower
+    int delay = 40;
 
     /// <summary>
     /// Connect to the Shared Memory running in rFactor
@@ -35,6 +37,9 @@ namespace rF2SharedMemoryAPI
       if (this.Connected)
       {
         this.pitInfoBuffer.Connect();
+        this.SendControl.SendHWControl("ToggleMFDB", true); // Select rFactor Pit Menu
+        System.Threading.Thread.Sleep(delay);
+        this.SendControl.SendHWControl("ToggleMFDB", false); // Select rFactor Pit Menu
       }
       return this.Connected;
     }

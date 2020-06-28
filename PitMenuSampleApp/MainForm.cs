@@ -28,7 +28,6 @@ namespace PitMenuSampleApp
       if (this.Connected)
       {
         this.Pmc.Connect();
-        this.SendControl.SendHWControl("ToggleMFDB", true); // Select rFactor Pit Menu
       }
       this.timer1.Start();
     }
