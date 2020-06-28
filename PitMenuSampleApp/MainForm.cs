@@ -1,9 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
 using System.Windows.Forms;
 using rF2SharedMemory;
-using rF2SharedMemory.rFactor2Data;
+using rF2SharedMemoryAPI;
 
 namespace PitMenuSampleApp
 {
@@ -29,6 +28,7 @@ namespace PitMenuSampleApp
       if (this.Connected)
       {
         this.Pmc.Connect();
+        this.SendControl.SendHWControl("ToggleMFDB", true); // Select rFactor Pit Menu
       }
       this.timer1.Start();
     }
@@ -56,28 +56,52 @@ namespace PitMenuSampleApp
       {
         //this.SendControl.SendHWControl(this.LastControl, false);
 
-        var catName = this.Pmc.ReadPitMenuCategory();
-        var choiceStr = this.Pmc.ReadPitMenuChoice();
+        var catName = this.Pmc.GetCategory();
+        this.cbCategory.SelectedItem = catName;
+        var choiceStr = this.Pmc.GetChoice();
         this.textBox1.Text = catName + " " + choiceStr;
+        int fuel = this.Pmc.GetFuelLevel();
+        if (fuel >= 0)
+          this.tbCurrentFuelLevel.Text = fuel.ToString();
       }
       this.timer1.Stop();
     }
 
-    private void comboBox1_ChangeCommitted(object sender, EventArgs e)
-    {
-      this.SendControl.SendHWControl(this.cbCategory.SelectedItem.ToString(), true);
-      this.timer1.Start();
-    }
-
     private void cbCategory_ChangeCommitted(object sender, EventArgs e)
     {
-      this.Pmc.SelectCategory(this.cbCategory.SelectedItem.ToString());
+      this.Pmc.SetCategory(this.cbCategory.SelectedItem.ToString());
       this.timer1.Start();
     }
 
     private void cbChoices_SelectionChangeCommitted(object sender, EventArgs e)
     {
-      this.Pmc.SelectChoice(this.cbChoices.SelectedItem.ToString());
+      this.Pmc.SetChoice(this.cbChoices.SelectedItem.ToString());
+      this.timer1.Start();
+    }
+
+    private void tbSetFuel_TextChanged(object sender, KeyPressEventArgs e)
+    {
+      if (e.KeyChar == '\r')
+      {
+        Int16 level;
+        bool parsed = Int16.TryParse(tbSetFuel.Text, out level);
+        if (parsed && level >= 0)
+        {
+          this.Pmc.SetFuelLevel(level);
+          this.timer1.Start();
+        }
+      }
+    }
+
+    private void cbTyreChoice_SelectionChangeCommitted(object sender, EventArgs e)
+    {
+      this.Pmc.SetTyreType(this.cbTyreChoice.SelectedItem.ToString());
+      this.timer1.Start();
+    }
+
+    private void cbAllControls_SelectionChangeCommitted(object sender, EventArgs e)
+    {
+      this.SendControl.SendHWControl(this.cbAllControls.SelectedItem.ToString(), true);
       this.timer1.Start();
     }
   }
