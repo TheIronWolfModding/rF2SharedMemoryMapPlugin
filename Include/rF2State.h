@@ -810,6 +810,37 @@ struct rF2PitMenu
 };
 static_assert(sizeof(rF2PitMenu) == sizeof(PitMenuV01), "rF2PitMenu and PitMenuV0 structs are out of sync");
 
+
+//////////////////////////////////////////////////////////////////////////////////////////
+// Identical to WeatherControlInfoV01, except where noted by MM_NEW/MM_NOT_USED comments.
+//////////////////////////////////////////////////////////////////////////////////////////
+struct rF2WeatherControlInfo
+{
+  // The current conditions are passed in with the API call. The following ET (Elapsed Time) value should typically be far
+  // enough in the future that it can be interpolated smoothly, and allow clouds time to roll in before rain starts. In
+  // other words you probably shouldn't have mCloudiness and mRaining suddenly change from 0.0 to 1.0 and expect that
+  // to happen in a few seconds without looking crazy.
+  double mET;                           // when you want this weather to take effect
+
+  // mRaining[1][1] is at the origin (2013.12.19 - and currently the only implemented node), while the others
+  // are spaced at <trackNodeSize> meters where <trackNodeSize> is the maximum absolute value of a track vertex
+  // coordinate (and is passed into the API call).
+  double mRaining[3][3];            // rain (0.0-1.0) at different nodes
+
+  double mCloudiness;                   // general cloudiness (0.0=clear to 1.0=dark), will be automatically overridden to help ensure clouds exist over rainy areas
+  double mAmbientTempK;                 // ambient temperature (Kelvin)
+  double mWindMaxSpeed;                 // maximum speed of wind (ground speed, but it affects how fast the clouds move, too)
+
+  bool mApplyCloudinessInstantly;       // preferably we roll the new clouds in, but you can instantly change them now
+  bool mUnused1;                        //
+  bool mUnused2;                        //
+  bool mUnused3;                        //
+
+  unsigned char mExpansion[508];      // future use (humidity, pressure, air density, etc.)
+};
+static_assert(sizeof(rF2WeatherControlInfo) == sizeof(WeatherControlInfoV01), "rF2WeatherControlInfo and WeatherControlInfoV01 structs are out of sync");
+
+
 ///////////////////////////////////////////
 // Mapped wrapper structures
 ///////////////////////////////////////////
@@ -828,7 +859,6 @@ struct rF2MappedBufferHeader
   static int const MAX_STATUS_MSG_LEN = 128;
   static int const MAX_RULES_INSTRUCTION_MSG_LEN = 96;
   static int const MAX_HWCONTROL_NAME_LEN = 96;
-  static int const MAX_HWCONTROL_LAYOUT_VERSION = 1;
 };
 
 
@@ -919,6 +949,12 @@ struct rF2SessionTransitionCapture
 };
 
 
+struct rF2Weather : public rF2MappedBufferHeader
+{
+  rF2WeatherControlInfo mWeatherInfo;
+};
+
+
 struct rF2Extended : public rF2MappedBufferHeader
 {
   char mVersion[12];                           // API version
@@ -974,13 +1010,46 @@ struct rF2Extended : public rF2MappedBufferHeader
   long mUnsubscribedBuffersMask;                  // Currently active UnsbscribedBuffersMask value.  This will be allowed for clients to write to in the future, but not yet.
 
   bool mHWControlInputEnabled;                    // HWControl input buffer is enabled.
+  bool mWeatherControlInputEnabled;               // Weather Control input buffer is enabled.
+  bool mRulesControlInputEnabled;                 // Rules Control input buffer is enabled.
 };
+
 
 struct rF2HWControl : public rF2MappedBufferHeader
 {
+  // Version supported by the _current_ plugin.
+  static int const SUPPORTED_LAYOUT_VERSION = 1;
+
   long mLayoutVersion;
 
   char mControlName[rF2MappedBufferHeader::MAX_HWCONTROL_NAME_LEN];
   double mfRetVal;
 };
+
+
+struct rF2WeatherControl : public rF2MappedBufferHeader
+{
+  // Version supported by the _current_ plugin.
+  static int const SUPPORTED_LAYOUT_VERSION = 1;
+
+  long mLayoutVersion;
+
+  rF2WeatherControlInfo mWeatherInfo;
+};
+
+
+struct rF2RulesControl : public rF2MappedBufferHeader
+{
+  // Version supported by the _current_ plugin.
+  static int const SUPPORTED_LAYOUT_VERSION = 1;
+
+  long mLayoutVersion;
+
+  rF2TrackRules mTrackRules;
+
+  rF2TrackRulesAction mActions[rF2MappedBufferHeader::MAX_MAPPED_VEHICLES];
+  rF2TrackRulesParticipant mParticipants[rF2MappedBufferHeader::MAX_MAPPED_VEHICLES];
+};
+
+
 #pragma pack(pop)
