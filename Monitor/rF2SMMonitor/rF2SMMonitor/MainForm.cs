@@ -974,6 +974,9 @@ namespace rF2SMMonitor
       {
         try
         {
+          // Extended buffer is the last one constructed, so it is an indicator RF2SM is ready.
+          this.extendedBuffer.Connect();
+
           this.telemetryBuffer.Connect();
           this.scoringBuffer.Connect();
           this.rulesBuffer.Connect();
@@ -981,15 +984,14 @@ namespace rF2SMMonitor
           this.graphicsBuffer.Connect();
           this.pitInfoBuffer.Connect();
           this.weatherBuffer.Connect();
-          this.extendedBuffer.Connect();
 
           this.hwControlBuffer.Connect();
+          this.hwControlBuffer.GetMappedData(ref this.hwControl);
           this.hwControl.mLayoutVersion = rFactor2Constants.MM_HWCONTROL_LAYOUT_VERSION;
-          this.hwControl.mVersionUpdateBegin = this.hwControl.mVersionUpdateEnd = 0;
 
           this.weatherControlBuffer.Connect();
+          this.weatherControlBuffer.GetMappedData(ref this.weatherControl);
           this.weatherControl.mLayoutVersion = rFactor2Constants.MM_WEATHER_CONTROL_LAYOUT_VERSION;
-          this.weatherControl.mVersionUpdateBegin = this.weatherControl.mVersionUpdateEnd = 0;
 
           this.connected = true;
 

@@ -1244,7 +1244,8 @@ bool SharedMemoryPlugin::CheckHWControl(char const* const controlName, double& f
     && _stricmp(controlName, mHWControlRequest_mControlName) == 0) {
     if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::DevInfo) {
       char charBuff[200] = {};
-      sprintf_s(charBuff, "CheckHWControl matched:  '%s'  %1.1f", mHWControlRequest_mControlName, mHWControlRequest_mfRetVal);
+      sprintf_s(charBuff, "CheckHWControl input applied:  '%s'  %1.1f .  Update version: %ld",
+        mHWControlRequest_mControlName, mHWControlRequest_mfRetVal, mHWControl.mReadLastVersionUpdateBegin);
 
       DEBUG_MSG(DebugLevel::DevInfo, charBuff);
     }
