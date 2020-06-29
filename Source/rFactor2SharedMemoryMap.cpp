@@ -236,70 +236,58 @@ void SharedMemoryPlugin::Startup(long version)
   sprintf(charBuff, "-STARTUP- (version %.3f)", (float)version / 1000.0f);
   WriteToAllExampleOutputFiles("w", charBuff);
 
-  if (Utils::IsFlagOff(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Telemetry)
-    && !mTelemetry.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
+  // Even if some buffers are unsubscribed from, create them all.  Unsubscribe simply
+  // means buffer won't get updated.  This simplifies client code a bit.
+  if (!mTelemetry.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
     DEBUG_MSG(DebugLevel::Errors, "Failed to initialize Telemetry mapping");
     return;
   }
 
-  if (Utils::IsFlagOff(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Scoring)
-    && !mScoring.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
+  if (!mScoring.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
     DEBUG_MSG(DebugLevel::Errors, "Failed to initialize Scoring mapping");
     return;
   }
 
-  if (Utils::IsFlagOff(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Rules)
-    && !mRules.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
+  if (!mRules.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
     DEBUG_MSG(DebugLevel::Errors, "Failed to initialize Rules mapping");
     return;
   }
 
-  if (Utils::IsFlagOff(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::MultiRules)
-    && !mMultiRules.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
+  if (!mMultiRules.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
     DEBUG_MSG(DebugLevel::Errors, "Failed to initialize Multi Rules mapping");
     return;
   }
 
-  if (Utils::IsFlagOff(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::ForceFeedback)
-    && !mForceFeedback.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
+  if (!mForceFeedback.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
     DEBUG_MSG(DebugLevel::Errors, "Failed to initialize Force Feedback mapping");
     return;
   }
 
-  if (Utils::IsFlagOff(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Graphics)
-    && !mGraphics.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
+  if (!mGraphics.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
     DEBUG_MSG(DebugLevel::Errors, "Failed to initialize Graphics mapping");
     return;
   }
 
-  // Extended buffer cannot be unsubscribed from because it is not originating from the game callbacks.
-  if (!mExtended.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
-    DEBUG_MSG(DebugLevel::Errors, "Failed to initialize Extended mapping");
-    return;
-  }
-
-  if (Utils::IsFlagOff(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::PitInfo)
-    && !mPitInfo.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
+  if (!mPitInfo.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
     DEBUG_MSG(DebugLevel::Errors, "Failed to initialize Pit Info mapping");
     return;
   }
 
-  if (Utils::IsFlagOff(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Weather)
-    && !mWeather.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
+  if (!mWeather.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
     DEBUG_MSG(DebugLevel::Errors, "Failed to initialize Weather mapping");
     return;
   }
 
-  if (SharedMemoryPlugin::msHWControlInputRequested) {
-    if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Scoring)) {
-      DEBUG_MSG(DebugLevel::Errors, "HWControl input is disabled because Scoring update is turned off.");
+  if (SharedMemoryPlugin::msHWControlInputRequested 
+    && Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Scoring)) {
+    DEBUG_MSG(DebugLevel::Errors, "HWControl input is disabled because Scoring update is turned off.");
 
-      SharedMemoryPlugin::msHWControlInputRequested = false;
-    }
-    else if (!mHWControl.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
-      DEBUG_MSG(DebugLevel::Errors, "Failed to initialize HWControl input mapping");
-      return;
-    }
+    SharedMemoryPlugin::msHWControlInputRequested = false;
+  }
+    
+  if (!mHWControl.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
+    DEBUG_MSG(DebugLevel::Errors, "Failed to initialize HWControl input mapping");
+    return;
   }
 
   if (SharedMemoryPlugin::msWeatherControlInputRequested) {
@@ -313,10 +301,11 @@ void SharedMemoryPlugin::Startup(long version)
 
       SharedMemoryPlugin::msWeatherControlInputRequested = false;
     }
-    else if (!mWeatherControl.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
-      DEBUG_MSG(DebugLevel::Errors, "Failed to initialize Weather control input mapping");
-      return;
-    }
+  }
+  
+  if (!mWeatherControl.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
+    DEBUG_MSG(DebugLevel::Errors, "Failed to initialize Weather control input mapping");
+    return;
   }
 
   if (SharedMemoryPlugin::msRulesControlInputRequested) {
@@ -330,10 +319,17 @@ void SharedMemoryPlugin::Startup(long version)
 
       SharedMemoryPlugin::msRulesControlInputRequested = false;
     }
-    else if (!mRulesControl.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
-      DEBUG_MSG(DebugLevel::Errors, "Failed to initialize Rules control input mapping");
-      return;
-    }
+  }
+
+  if (!mRulesControl.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
+    DEBUG_MSG(DebugLevel::Errors, "Failed to initialize Rules control input mapping");
+    return;
+  }
+
+  // Extended buffer is initialized last and is an indicator of initialization completed.
+  if (!mExtended.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
+    DEBUG_MSG(DebugLevel::Errors, "Failed to initialize Extended mapping");
+    return;
   }
 
   mIsMapped = true;
@@ -345,94 +341,72 @@ void SharedMemoryPlugin::Startup(long version)
 
   DEBUG_MSG(DebugLevel::CriticalInfo, "Files mapped successfully");
   if (SharedMemoryPlugin::msDebugOutputLevel != DebugLevel::Off) {
-    if (Utils::IsFlagOff(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Telemetry)) {
-      char sizeSz[20] = {};
-      auto size = static_cast<int>(sizeof(rF2Telemetry) + sizeof(rF2MappedBufferVersionBlock));
-      _itoa_s(size, sizeSz, 10);
-      DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the Telemetry buffer:", sizeSz, "bytes.");
-    }
+    char sizeSz[20] = {};
+    auto size = static_cast<int>(sizeof(rF2Telemetry) + sizeof(rF2MappedBufferVersionBlock));
+    _itoa_s(size, sizeSz, 10);
+    DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the Telemetry buffer:", sizeSz, "bytes.");
     assert(sizeof(rF2Telemetry) == offsetof(rF2Telemetry, mVehicles[rF2MappedBufferHeader::MAX_MAPPED_VEHICLES]));
 
-    if (Utils::IsFlagOff(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Scoring)) {
-      char sizeSz[20] = {};
-      auto const size = static_cast<int>(sizeof(rF2Scoring) + sizeof(rF2MappedBufferVersionBlock));
-      _itoa_s(size, sizeSz, 10);
-      DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the Scoring buffer:", sizeSz, "bytes.");
-    }
+    sizeSz[0] = '\0';
+    size = static_cast<int>(sizeof(rF2Scoring) + sizeof(rF2MappedBufferVersionBlock));
+    _itoa_s(size, sizeSz, 10);
+    DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the Scoring buffer:", sizeSz, "bytes.");
     assert(sizeof(rF2Scoring) == offsetof(rF2Scoring, mVehicles[rF2MappedBufferHeader::MAX_MAPPED_VEHICLES]));
 
-    if (Utils::IsFlagOff(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Rules)) {
-      char sizeSz[20] = {};
-      auto const size = static_cast<int>(sizeof(rF2Rules) + sizeof(rF2MappedBufferVersionBlock));
-      _itoa_s(size, sizeSz, 10);
-      DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the Rules buffer:", sizeSz, "bytes.");
-    }
+    sizeSz[0] = '\0';
+    size = static_cast<int>(sizeof(rF2Rules) + sizeof(rF2MappedBufferVersionBlock));
+    _itoa_s(size, sizeSz, 10);
+    DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the Rules buffer:", sizeSz, "bytes.");
     assert(sizeof(rF2Rules) == offsetof(rF2Rules, mParticipants[rF2MappedBufferHeader::MAX_MAPPED_VEHICLES]));
 
-    if (Utils::IsFlagOff(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::MultiRules)) {
-      char sizeSz[20] = {};
-      auto const size = static_cast<int>(sizeof(rF2MultiRules) + sizeof(rF2MappedBufferVersionBlock));
-      _itoa_s(size, sizeSz, 10);
-      DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the Multi Rules buffer:", sizeSz, "bytes.");
-    }
+    sizeSz[0] = '\0';
+    size = static_cast<int>(sizeof(rF2MultiRules) + sizeof(rF2MappedBufferVersionBlock));
+    _itoa_s(size, sizeSz, 10);
+    DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the Multi Rules buffer:", sizeSz, "bytes.");
     assert(sizeof(rF2MultiRules) == offsetof(rF2MultiRules, mParticipants[rF2MappedBufferHeader::MAX_MAPPED_VEHICLES]));
 
-    if (Utils::IsFlagOff(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::ForceFeedback)) {
-      char sizeSz[20] = {};
-      auto const size = static_cast<int>(sizeof(rF2ForceFeedback) + sizeof(rF2MappedBufferVersionBlock));
-      _itoa_s(size, sizeSz, 10);
-      DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the Force Feedback buffer:", sizeSz, "bytes.");
-    }
+    sizeSz[0] = '\0';
+    size = static_cast<int>(sizeof(rF2ForceFeedback) + sizeof(rF2MappedBufferVersionBlock));
+    _itoa_s(size, sizeSz, 10);
+    DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the Force Feedback buffer:", sizeSz, "bytes.");
 
-    if (Utils::IsFlagOff(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Graphics)) {
-      char sizeSz[20] = {};
-      auto const size = static_cast<int>(sizeof(rF2GraphicsInfo) + sizeof(rF2MappedBufferVersionBlock));
-      _itoa_s(size, sizeSz, 10);
-      DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the Graphics buffer:", sizeSz, "bytes.");
-    }
+    sizeSz[0] = '\0';
+    size = static_cast<int>(sizeof(rF2GraphicsInfo) + sizeof(rF2MappedBufferVersionBlock));
+    _itoa_s(size, sizeSz, 10);
+    DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the Graphics buffer:", sizeSz, "bytes.");
 
-    if (Utils::IsFlagOff(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::PitInfo)) {
-      char sizeSz[20] = {};
-      auto const size = static_cast<int>(sizeof(rF2PitInfo) + sizeof(rF2MappedBufferVersionBlock));
-      _itoa_s(size, sizeSz, 10);
-      DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the Pit Info buffer:", sizeSz, "bytes.");
-    }
+    sizeSz[0] = '\0';
+    size = static_cast<int>(sizeof(rF2PitInfo) + sizeof(rF2MappedBufferVersionBlock));
+    _itoa_s(size, sizeSz, 10);
+    DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the Pit Info buffer:", sizeSz, "bytes.");
 
-    if (Utils::IsFlagOff(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Weather)) {
-      char sizeSz[20] = {};
-      auto const size = static_cast<int>(sizeof(rF2Weather) + sizeof(rF2MappedBufferVersionBlock));
-      _itoa_s(size, sizeSz, 10);
-      DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the Weather buffer:", sizeSz, "bytes.");
-    }
+    sizeSz[0] = '\0';
+    size = static_cast<int>(sizeof(rF2Weather) + sizeof(rF2MappedBufferVersionBlock));
+    _itoa_s(size, sizeSz, 10);
+    DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the Weather buffer:", sizeSz, "bytes.");
 
-    char sizeSz[20] = {};
-    auto const size = static_cast<int>(sizeof(rF2Extended) + sizeof(rF2MappedBufferVersionBlock));
+    sizeSz[0] = '\0';
+    size = static_cast<int>(sizeof(rF2HWControl) + sizeof(rF2MappedBufferVersionBlock));
+    _itoa_s(size, sizeSz, 10);
+    DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the HWControl input buffer:", sizeSz, "bytes.");
+    DEBUG_INT2(DebugLevel::CriticalInfo, "HWControl input buffer supported layout version:", rF2HWControl::SUPPORTED_LAYOUT_VERSION);
+
+    sizeSz[0] = '\0';
+    size = static_cast<int>(sizeof(rF2WeatherControl) + sizeof(rF2MappedBufferVersionBlock));
+    _itoa_s(size, sizeSz, 10);
+    DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the Weather control input buffer:", sizeSz, "bytes.");
+    DEBUG_INT2(DebugLevel::CriticalInfo, "Weather control input buffer supported layout version:", rF2WeatherControl::SUPPORTED_LAYOUT_VERSION);
+
+    sizeSz[0] = '\0';
+    size = static_cast<int>(sizeof(rF2RulesControl) + sizeof(rF2MappedBufferVersionBlock));
+    _itoa_s(size, sizeSz, 10);
+    DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the Rules control input buffer:", sizeSz, "bytes.");
+    DEBUG_INT2(DebugLevel::CriticalInfo, "Rules control input buffer supported layout version:", rF2RulesControl::SUPPORTED_LAYOUT_VERSION);
+
+    sizeSz[0] = '\0';
+    size = static_cast<int>(sizeof(rF2Extended) + sizeof(rF2MappedBufferVersionBlock));
     _itoa_s(size, sizeSz, 10);
     DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the Extended buffer:", sizeSz, "bytes.");
-
-    if (SharedMemoryPlugin::msHWControlInputRequested) {
-      char sizeSz[20] = {};
-      auto const size = static_cast<int>(sizeof(rF2HWControl) + sizeof(rF2MappedBufferVersionBlock));
-      _itoa_s(size, sizeSz, 10);
-      DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the HWControl input buffer:", sizeSz, "bytes.");
-      DEBUG_INT2(DebugLevel::CriticalInfo, "HWControl input buffer supported layout version:", rF2HWControl::SUPPORTED_LAYOUT_VERSION);
-    }
-
-    if (SharedMemoryPlugin::msWeatherControlInputRequested) {
-      char sizeSz[20] = {};
-      auto const size = static_cast<int>(sizeof(rF2WeatherControl) + sizeof(rF2MappedBufferVersionBlock));
-      _itoa_s(size, sizeSz, 10);
-      DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the Weather control input buffer:", sizeSz, "bytes.");
-      DEBUG_INT2(DebugLevel::CriticalInfo, "Weather control input buffer supported layout version:", rF2WeatherControl::SUPPORTED_LAYOUT_VERSION);
-    }
-
-    if (SharedMemoryPlugin::msRulesControlInputRequested) {
-      char sizeSz[20] = {};
-      auto const size = static_cast<int>(sizeof(rF2RulesControl) + sizeof(rF2MappedBufferVersionBlock));
-      _itoa_s(size, sizeSz, 10);
-      DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the Rules control input buffer:", sizeSz, "bytes.");
-      DEBUG_INT2(DebugLevel::CriticalInfo, "Rules control input buffer supported layout version:", rF2RulesControl::SUPPORTED_LAYOUT_VERSION);
-    }
   }
 
   mExtStateTracker.mExtended.mUnsubscribedBuffersMask = SharedMemoryPlugin::msUnsubscribedBuffersMask;
@@ -980,6 +954,8 @@ void SharedMemoryPlugin::UpdateScoring(ScoringInfoV01 const& info)
   mExtended.EndUpdate();
 
   ReadHWControl();
+  ReadWeatherControl();
+  ReadRulesControl();
 }
 
 

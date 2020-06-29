@@ -158,10 +158,12 @@ namespace rF2SMMonitor
       // This is not a deep copy. Values in weather buffer wwill change.  If that is not desired, deep copy needs to be performed.
       this.weatherControl.mWeatherInfo = this.weather.mWeatherInfo;
 
+      this.weatherControl.mWeatherInfo.mET += 5.0;  // Apply in 5 seconds.
       // Apply requested rain intensity.
       this.weatherControl.mWeatherInfo.mRaining[4] = this.rainIntensityRequested;
 
       this.weatherControlBuffer.PutMappedData(ref this.weatherControl);
+      this.applyRainIntensityButton.Enabled = false;
     }
 
     private void CheckBoxEnablePitInputs_CheckedChanged(object sender, EventArgs e)
@@ -520,7 +522,7 @@ namespace rF2SMMonitor
       if (!this.connected)
       {
         var brush = new SolidBrush(System.Drawing.Color.Black);
-        g.DrawString("Not connected.\n\nRequired inputs: Telemetry, Scoring, Rules, ForceFeedback, Graphics, PitInfo, Weather and Extended.\nRequired controls: HWControl and Weather.", SystemFonts.DefaultFont, brush, 3.0f, 3.0f);
+        g.DrawString("Not connected.", SystemFonts.DefaultFont, brush, 3.0f, 3.0f);
 
         if (this.logLightMode)
           return;
@@ -538,7 +540,7 @@ namespace rF2SMMonitor
         this.maxFFBValue = Math.Max(Math.Abs(this.forceFeedback.mForceValue), this.maxFFBValue);
 
         gameStateText.Append(
-          $"Plugin Version:    Expected: 3.8.0.0 64bit   Actual: {MainForm.GetStringFromBytes(this.extended.mVersion)}"
+          $"Plugin Version:    Expected: 3.7.4.0 64bit   Actual: {MainForm.GetStringFromBytes(this.extended.mVersion)}"
           + $"{(this.extended.is64bit == 1 ? "64bit" : "32bit")}"
           + $"{(this.extended.mSCRPluginEnabled == 1 ? "    SCR Plugin enabled" : "")}"
           + $"{(this.extended.mDirectMemoryAccessEnabled == 1 ? "    DMA enabled" : "")}"
