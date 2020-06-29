@@ -194,6 +194,8 @@ void SharedMemoryPlugin::Startup(long version)
   DEBUG_INT2(DebugLevel::CriticalInfo, "DedicatedServerMapGlobally:", SharedMemoryPlugin::msDedicatedServerMapGlobally);
   DEBUG_INT2(DebugLevel::CriticalInfo, "EnableDirectMemoryAccess:", SharedMemoryPlugin::msDirectMemoryAccessRequested);
   DEBUG_INT2(DebugLevel::CriticalInfo, "UnsubscribedBuffersMask:", SharedMemoryPlugin::msUnsubscribedBuffersMask);
+
+  // TODO:
   if (HasHardwareInputs())
   {
     DEBUG_MSG(DebugLevel::CriticalInfo, "CheckHWControl ACTIVE");
@@ -332,6 +334,7 @@ void SharedMemoryPlugin::Startup(long version)
 
       // Disable DMA on failure.
       SharedMemoryPlugin::msDirectMemoryAccessRequested = false;
+      // TODO: track HWControl state.
       mExtStateTracker.mExtended.mDirectMemoryAccessEnabled = false;
     }
     else {
@@ -840,6 +843,26 @@ void SharedMemoryPlugin::UpdateScoring(ScoringInfoV01 const& info)
 
   mScoring.EndUpdate();
 
+  //
+  // Piggyback on the ::UpdateScoring callback to perform operations that depend on scoring updates
+  // or do not have appropriate callbacks, and 5FPS is fine.
+  //
+
+  ReadDMROnScoringUpdate(info);
+
+  // Update extended state.
+  mExtStateTracker.ProcessScoringUpdate(info);
+
+  mExtended.BeginUpdate();
+  memcpy(mExtended.mpWriteBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
+  mExtended.EndUpdate();
+
+  ReadHWControl();
+}
+
+
+void SharedMemoryPlugin::ReadDMROnScoringUpdate(ScoringInfoV01 const& info)
+{
   if (SharedMemoryPlugin::msDirectMemoryAccessRequested) {
     auto const LSIVisible = info.mYellowFlagState != 0 || info.mGamePhase == static_cast<unsigned char>(rF2GamePhase::Formation);
     if (!mDMR.Read(mExtStateTracker.mExtended)
@@ -857,15 +880,32 @@ void SharedMemoryPlugin::UpdateScoring(ScoringInfoV01 const& info)
       mLastUpdateLSIWasVisible = LSIVisible;
     }
   }
-
-  // Update extended state.
-  mExtStateTracker.ProcessScoringUpdate(info);
-
-  // FUTURE: Minor optimization would be track if mExtended has been updated in Telemetry/Scoring and flip only if that is the case.
-  mExtended.BeginUpdate();
-  memcpy(mExtended.mpWriteBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
-  mExtended.EndUpdate();
 }
+
+
+void SharedMemoryPlugin::ReadHWControl()
+{
+  // TODO: only if enabled!
+  // Read input buffers.
+  if (mHWControl.ReadUpdate()) {
+    // TODO: Not the right way to do this, revisit (needs to be done in MappedBuffer).
+    if (mHWControl.mReadBuff.mLayoutVersion != rF2MappedBufferHeader::MAX_HWCONTROL_LAYOUT_VERSION) {
+      DEBUG_INT2(DebugLevel::Errors, "HWControl: unsupported input buffer layout version  ", mHWControl.mReadBuff.mLayoutVersion);
+      DEBUG_MSG(DebugLevel::Errors, "HWControl: disabling HWControl.");
+      // TODO: Disable
+    }
+
+    strcpy_s(mHWControlRequest_mControlName, mHWControl.mReadBuff.mControlName);
+    mHWControlRequest_mfRetVal = mHWControl.mReadBuff.mfRetVal;
+    
+    if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::DevInfo) {
+      char charBuff[200] = {};
+      sprintf_s(charBuff, "HWControl: received:  '%s'  %1.1f", mHWControlRequest_mControlName, mHWControlRequest_mfRetVal);
+      DEBUG_MSG(DebugLevel::DevInfo, charBuff);
+    }
+  }
+}
+
 
 // Invoked at ~400FPS.
 bool SharedMemoryPlugin::ForceFeedback(double& forceValue)
@@ -1116,6 +1156,7 @@ void SharedMemoryPlugin::UpdateGraphics(GraphicsInfoV02 const& info)
 ///////////////////////////////////////////////////////////
 // Access the Pit Menu
 
+// Invoked at 100FPS.
 bool SharedMemoryPlugin::AccessPitMenu(PitMenuV01& info)
 {
   if (!mIsMapped)
@@ -1152,31 +1193,13 @@ bool SharedMemoryPlugin::AccessPitMenu(PitMenuV01& info)
 ///////////////////////////////////////////////////////////
 // Hardware Control
 
+// Invoked at 100FPS twice for each control (836 times per frame in my test)
 bool SharedMemoryPlugin::CheckHWControl(char const* const controlName, double& fRetVal)
 {
-  DEBUG_MSG(DebugLevel::Timing, "CheckHWControl - invoked.");
-
   if (false) // TODO: process to disable HW control
     return(false);
-
-  if (mHWControl.ReadUpdate()) {
-    // TODO: Not the right way to do this, revisit.
-    if (mHWControl.mReadBuff.mLayoutVersion != rF2MappedBufferHeader::MAX_HWCONTROL_LAYOUT_VERSION) {
-      DEBUG_INT2(DebugLevel::Errors, "CheckHWControl: unsupported input buffer layout version  ", mHWControl.mReadBuff.mLayoutVersion);
-      DEBUG_MSG(DebugLevel::Errors, "CheckHWControl: disabling HWControl.");
-      // TODO: Disable
-    }
-
-    strcpy_s(mHWControlRequest_mControlName, mHWControl.mReadBuff.mControlName);
-    mHWControlRequest_mfRetVal = mHWControl.mReadBuff.mfRetVal;
-    
-    if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::DevInfo) {
-      char charBuff[200] = {};
-      sprintf_s(charBuff, "CheckHWControl received:  '%s'  %1.1f", mHWControlRequest_mControlName, mHWControlRequest_mfRetVal);
-
-      DEBUG_MSG(DebugLevel::DevInfo, charBuff);
-    }
-  }
+ 
+  DEBUG_MSG2(DebugLevel::Timing, "CheckHWControl - invoked for:", controlName);
 
   if (mHWControlRequest_mControlName[0] != '\0'
     && _stricmp(controlName, mHWControlRequest_mControlName) == 0) {

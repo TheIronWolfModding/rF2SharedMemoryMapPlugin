@@ -1,3 +1,12 @@
+/*
+rF2SMMonitor is visual debugger for rF2 Shared Memory Plugin.
+
+MappedBuffer implementation.  Implements writing and reading to/from rF2 shared memory.
+
+Author: The Iron Wolf (vleonavicius@hotmail.com)
+Website: thecrewchief.org
+*/
+
 using System;
 using System.IO;
 using System.IO.MemoryMappedFiles;
@@ -36,6 +45,7 @@ namespace rF2SharedMemory
     // Write buffer ctor.
     public MappedBuffer(string buffName)
     {
+      // TODO: verify if matches SM
       this.BUFFER_SIZE_BYTES = Marshal.SizeOf(typeof(MappedBufferT));
       this.BUFFER_NAME = buffName;
     }
@@ -145,7 +155,7 @@ namespace rF2SharedMemory
         var versionHeaderWithSize = new rF2MappedBufferVersionBlockWithSize();
         var versionHeader = new rF2MappedBufferVersionBlock();
 
-        for (retry = 0; retry < NUM_MAX_RETRIEES; ++retry)
+        for (retry = 0; retry < MappedBuffer<MappedBufferT>.NUM_MAX_RETRIEES; ++retry)
         {
           var bufferSizeBytes = this.BUFFER_SIZE_BYTES;
           // Read current buffer versions.

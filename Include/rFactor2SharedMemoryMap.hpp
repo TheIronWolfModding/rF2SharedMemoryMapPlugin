@@ -308,6 +308,8 @@ private:
   void TelemetryCompleteFrame();
 
   void ScoringTraceBeginUpdate();
+  void ReadDMROnScoringUpdate(ScoringInfoV01 const& info);
+  void ReadHWControl();
 
   template <typename BuffT>
   void TraceBeginUpdate(BuffT const& buffer, double& lastUpdateMillis, char const msgPrefix[]) const;

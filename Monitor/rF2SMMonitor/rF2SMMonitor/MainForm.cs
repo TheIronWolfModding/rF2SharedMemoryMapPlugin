@@ -74,6 +74,7 @@ namespace rF2SMMonitor
     bool logTiming = true;
     bool logRules = true;
     bool logLightMode = false;
+    bool enablePitInputs = false;
 
     // Capture of the max FFB force.
     double maxFFBValue = 0.0;
@@ -116,6 +117,7 @@ namespace rF2SMMonitor
       this.checkBoxLogTiming.CheckedChanged += CheckBoxLogTiming_CheckedChanged;
       this.checkBoxLogRules.CheckedChanged += CheckBoxLogRules_CheckedChanged;
       this.checkBoxLightMode.CheckedChanged += CheckBoxLightMode_CheckedChanged;
+      this.checkBoxEnablePitInputs.CheckedChanged += CheckBoxEnablePitInputs_CheckedChanged;
       this.MouseWheel += MainForm_MouseWheel;
 
       this.LoadConfig();
@@ -134,28 +136,42 @@ namespace rF2SMMonitor
       Application.Idle += this.HandleApplicationIdle;
     }
 
-    protected override bool ProcessKeyPreview(ref Message msg)
+    private void CheckBoxEnablePitInputs_CheckedChanged(object sender, EventArgs e)
     {
-      // TODO: add checkbox.
-      if (!this.connected)
-        return false;
+      this.enablePitInputs = this.checkBoxEnablePitInputs.Checked;
+      this.config.Write("enablePitInputs", this.enablePitInputs ? "1" : "0");
+    }
+
+    [DllImport("user32.dll")]
+    static extern short GetAsyncKeyState(System.Windows.Forms.Keys vKey);
+
+    private DateTime nextKeyHandlingTime = DateTime.MinValue;
+    private void ProcessKeys()
+    {
+      if (!this.connected || !this.enablePitInputs)
+        return;
+
+      var now = DateTime.Now;
+      if (now < this.nextKeyHandlingTime)
+        return;
+
+      this.nextKeyHandlingTime = now + TimeSpan.FromMilliseconds(100);
 
       byte[] commandStr = null;
       var fRetVal = 1.0;
-      if (msg.Msg != 0x100)
-        fRetVal = 0.0;
+      //if (msg.Msg != 0x100)
+       // fRetVal = 0.0;
 
-      if ((int)msg.WParam == (int)Keys.Y)
+      if (MainForm.GetAsyncKeyState(Keys.U) != 0)
+          commandStr = Encoding.Default.GetBytes("PitMenuIncrementValue");
+      else if (MainForm.GetAsyncKeyState(Keys.Y) != 0)
         commandStr = Encoding.Default.GetBytes("PitMenuDecrementValue");
-      else if ((int)msg.WParam == (int)Keys.U)
-        commandStr = Encoding.Default.GetBytes("PitMenuIncrementValue");
-      else if ((int)msg.WParam == (int)Keys.O)
-        commandStr = Encoding.Default.GetBytes("PitMenuDown");
-      else if ((int)msg.WParam == (int)Keys.P)
+      else if (MainForm.GetAsyncKeyState(Keys.P) != 0)
         commandStr = Encoding.Default.GetBytes("PitMenuUp");
+      else if (MainForm.GetAsyncKeyState(Keys.O) != 0)
+        commandStr = Encoding.Default.GetBytes("PitMenuDown");
 
       this.SendPitMenuCmd(commandStr, fRetVal);
-      return false;
     }
 
     private void SendPitMenuCmd(byte[] commandStr, double fRetVal)
@@ -355,6 +371,8 @@ namespace rF2SMMonitor
           {
             this.MainRender();
           }
+
+          this.ProcessKeys();
 
           if (this.logLightMode)
             Thread.Sleep(LIGHT_MODE_REFRESH_MS);
@@ -965,6 +983,7 @@ namespace rF2SMMonitor
       this.globalGroupBox.Enabled = enable;
       this.groupBoxFocus.Enabled = enable;
       this.groupBoxLogging.Enabled = enable;
+      this.groupBoxInputs.Enabled = enable;
 
       this.focusVehLabel.Enabled = false;
       this.focusVehTextBox.Enabled = false;
@@ -978,6 +997,7 @@ namespace rF2SMMonitor
         this.rotateAroundCheckBox.Enabled = this.setAsOriginCheckBox.Checked;
         this.globalGroupBox.Enabled = !this.logLightMode;
         this.groupBoxFocus.Enabled = !this.logLightMode;
+        // TODO: enable if pit info inputs are on and buffer is subscribed
       }
     }
 
@@ -1064,6 +1084,12 @@ namespace rF2SMMonitor
       this.checkBoxLogRules.Checked = this.logRules;
 
       intResult = 0;
+      this.enablePitInputs = true;
+      if (int.TryParse(this.config.Read("enablePitInputs"), out intResult) && intResult == 0)
+        this.enablePitInputs = false;
+
+      this.checkBoxEnablePitInputs.Checked = this.enablePitInputs;
+
       MainForm.useStockCarRulesPlugin = false;
     }
   }
