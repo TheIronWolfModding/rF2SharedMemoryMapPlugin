@@ -10,7 +10,7 @@ Website: thecrewchief.org
 using System;
 using System.Runtime.InteropServices;
 
-namespace rF2SMMonitor
+namespace rF2SharedMemory
 {
   // Marshalled types:
   // C++                 C#
