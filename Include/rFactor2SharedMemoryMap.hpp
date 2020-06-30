@@ -28,7 +28,7 @@ Website: thecrewchief.org
 // Each component can be in [0:99] range.
 // Note: each time major version changes, that means layout has changed, and clients might need an update.
 #define PLUGIN_VERSION_MAJOR "3.7"
-#define PLUGIN_VERSION_MINOR "2.0"
+#define PLUGIN_VERSION_MINOR "4.0"
 
 #ifdef VERSION_AVX2
 #ifdef VERSION_MT
@@ -77,7 +77,8 @@ enum class SubscribedBuffer
   ForceFeedback = 16,
   Graphics = 32,
   PitInfo = 64,
-  All = 127
+  Weather = 128,
+  All = 255
 };
 
 double TicksNow();
@@ -98,12 +99,15 @@ public:
   static char const* const MM_GRAPHICS_FILE_NAME;
   static char const* const MM_EXTENDED_FILE_NAME;
   static char const* const MM_PIT_INFO_FILE_NAME;
+  static char const* const MM_WEATHER_FILE_NAME;
 
-  static char const* const MM_HWCONTROL_FILE_NAME;  // Shared memory to input
+  // Input buffers:
+  static char const* const MM_HWCONTROL_FILE_NAME; 
+  static char const* const MM_WEATHER_CONTROL_FILE_NAME;
+  static char const* const MM_RULES_CONTROL_FILE_NAME;
 
   static char const* const INTERNALS_TELEMETRY_FILENAME;
   static char const* const INTERNALS_SCORING_FILENAME;
-  static char const* const INTERNALS_PITMENU_FILENAME;
   static char const* const DEBUG_OUTPUT_FILENAME;
 
   static int const BUFFER_IO_BYTES = 2048;
@@ -112,7 +116,11 @@ public:
   static DebugLevel msDebugOutputLevel;
   static bool msDebugISIInternals;
   static bool msDedicatedServerMapGlobally;
+  static bool msDirectMemoryAccessRequested;
   static long msUnsubscribedBuffersMask;
+  static bool msHWControlInputRequested;
+  static bool msWeatherControlInputRequested;
+  static bool msRulesControlInputRequested;
 
   // Ouptut files:
   static FILE* msDebugFile;
@@ -288,8 +296,12 @@ public:
   bool AccessPitMenu(PitMenuV01& info) override; // currently, the return code should always be false (because we may allow more direct editing in the future)
 
   // HW Control- action a control within the game
-  bool HasHardwareInputs() override { return true; }
+  bool HasHardwareInputs() override { return SharedMemoryPlugin::msHWControlInputRequested && mExtStateTracker.mExtended.mHWControlInputEnabled; }
   bool CheckHWControl(const char* const controlName, double& fRetVal) override;
+
+  // CONDITIONS CONTROL
+  bool WantsWeatherAccess() override { return Utils::IsFlagOff(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Weather); } // change to true in order to read or write weather with AccessWeather() call:
+  bool AccessWeather(double trackNodeSize, WeatherControlInfoV01& info) override;
 
 private:
   SharedMemoryPlugin(SharedMemoryPlugin const& rhs) = delete;
@@ -310,6 +322,8 @@ private:
   void ScoringTraceBeginUpdate();
   void ReadDMROnScoringUpdate(ScoringInfoV01 const& info);
   void ReadHWControl();
+  void ReadWeatherControl();
+  void ReadRulesControl();
 
   template <typename BuffT>
   void TraceBeginUpdate(BuffT const& buffer, double& lastUpdateMillis, char const msgPrefix[]) const;
@@ -350,9 +364,14 @@ private:
   long mPitMenuLastChoiceIndex = -1L;
   long mPitMenuLastNumChoices = -1L;
 
+  // Input buffer logic members:
+
   // HWControl request tracking variables.  Empty indicates initial state or the fact that request passed to rF2.
   char mHWControlRequest_mControlName[rF2MappedBufferHeader::MAX_HWCONTROL_NAME_LEN];
   double mHWControlRequest_mfRetVal = 0.0;
+
+  bool mWeatherControlInputRequestReceived = true;
+  bool mRulesControlInputRequestReceived = true;
 
   MappedBuffer<rF2Telemetry> mTelemetry;
   MappedBuffer<rF2Scoring> mScoring;
@@ -362,16 +381,19 @@ private:
   MappedBuffer<rF2Graphics> mGraphics;
   MappedBuffer<rF2Extended> mExtended;
   MappedBuffer<rF2PitInfo> mPitInfo;
-  MappedBuffer<rF2HWControl> mHWControl;
+  MappedBuffer<rF2Weather> mWeather;
 
-  // Buffers mapped successfully or not.
+  // Input buffers:
+  MappedBuffer<rF2HWControl> mHWControl;
+  MappedBuffer<rF2WeatherControl> mWeatherControl;
+  MappedBuffer<rF2RulesControl> mRulesControl;
+
+  // All requested buffers mapped successfully or not.
   bool mIsMapped = false;
 
   //////////////////////////////////////////
   // Direct Memory Access hackery
   //////////////////////////////////////////
-  static bool msDirectMemoryAccessRequested;
-
   DirectMemoryReader mDMR;
   bool mLastUpdateLSIWasVisible = false;
 };

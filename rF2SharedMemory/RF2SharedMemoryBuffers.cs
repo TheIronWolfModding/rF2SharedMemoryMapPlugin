@@ -28,8 +28,7 @@ namespace rF2SharedMemory
     // Holds the entire byte array that can be marshalled to a MappedBufferT.  Partial updates
     // only read changed part of buffer, ignoring trailing uninteresting bytes.  However,
     // to marshal we still need to supply entire structure size.  So, on update new bytes are copied.
-    byte[] fullSizeBuffer = null;
-
+    private byte[] fullSizeBuffer = null;
     MemoryMappedFile memoryMappedFile = null;
 
     bool partial = false;
@@ -45,7 +44,6 @@ namespace rF2SharedMemory
     // Write buffer ctor.
     public MappedBuffer(string buffName)
     {
-      // TODO: verify if matches SM
       this.BUFFER_SIZE_BYTES = Marshal.SizeOf(typeof(MappedBufferT));
       this.BUFFER_NAME = buffName;
     }

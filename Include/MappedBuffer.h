@@ -26,12 +26,12 @@ public:
 
   MappedBuffer(char const* mmFileName)
     : MM_FILE_NAME(mmFileName)
-    , mReadBufferSupportedLayoutVersion(0)
+    , READ_BUFFER_SUPPORTED_LAYOUT_VERSION(0)
   {}
 
   MappedBuffer(char const* mmFileName, long mLayoutVersion)
     : MM_FILE_NAME(mmFileName)
-    , mReadBufferSupportedLayoutVersion(mLayoutVersion)
+    , READ_BUFFER_SUPPORTED_LAYOUT_VERSION(mLayoutVersion)
   {}
 
 
@@ -123,7 +123,7 @@ public:
 
     EndUpdate();
 
-    if (mReadBufferSupportedLayoutVersion != 0L) {
+    if (READ_BUFFER_SUPPORTED_LAYOUT_VERSION != 0L) {
       memset(&mReadBuff, 0, sizeof(BuffT));
 
       mReadLastVersionUpdateBegin = 0uL;
@@ -311,6 +311,8 @@ private:
     // Local read buffer copy:
     BuffT mReadBuff;
 
+    unsigned long mReadLastVersionUpdateBegin = 0uL;
+
   private:
     LPVOID mpMappedView = nullptr;
     char const* const MM_FILE_NAME = nullptr;
@@ -318,6 +320,5 @@ private:
     bool mMapped = false;
 
     // If 0, it means this is write mode buffer.
-    long const mReadBufferSupportedLayoutVersion;
-    unsigned long mReadLastVersionUpdateBegin = 0;
+    long const READ_BUFFER_SUPPORTED_LAYOUT_VERSION;
 };
