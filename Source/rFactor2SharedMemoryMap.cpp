@@ -1135,15 +1135,111 @@ bool SharedMemoryPlugin::AccessTrackRules(TrackRulesV01& info)
     DEBUG_MSG(DebugLevel::Errors, "ERROR: Rules exceeded maximum of allowed mapped vehicles.");
 
   auto const numRulesVehicles = min(info.mNumParticipants, rF2MappedBufferHeader::MAX_MAPPED_VEHICLES);
-  for (int i = 0; i < numRulesVehicles; ++i) {
+  for (int i = 0; i < numRulesVehicles; ++i)
     memcpy(&(mRules.mpWriteBuff->mParticipants[i]), &(info.mParticipant[i]), sizeof(rF2TrackRulesParticipant));
-  }
 
   mRules.mpWriteBuff->mBytesUpdatedHint = static_cast<int>(offsetof(rF2Rules, mParticipants[numRulesVehicles]));
 
   mRules.EndUpdate();
 
-  // TODO: implement rule update
+  if (mRulesControlInputRequestReceived) {
+    //memcpy(&info, &(mWeatherControl.mReadBuff.mWeatherInfo), sizeof(WeatherControlInfoV01));
+    // Try to keep updated input safe and try to keep it close to current state.
+    auto const currentET = info.mCurrentET;
+    auto const numActions = info.mNumActions;
+    auto const pAction = info.mAction;
+    auto const numParticipants = info.mNumParticipants;
+    auto const safetyCarExists = info.mSafetyCarExists;
+    auto const safetyCarThreshold = info.mSafetyCarThreshold;
+    auto const safetyCarLapDist = info.mSafetyCarLapDist;
+    auto const safetyCarLapDistAtStart = info.mSafetyCarLapDistAtStart;
+    auto const pitLaneStartDist = info.mPitLaneStartDist;
+    auto const pParticipant = info.mParticipant;
+
+
+    /*
+    struct TrackRulesV01
+{
+  // input only
+  double mCurrentET;                    // current time
+  !!!TrackRulesStageV01 mStage;            // current stage
+  !!!TrackRulesColumnV01 mPoleColumn;      // column assignment where pole position seems to be located
+  long mNumActions;                     // number of recent actions
+  !??TrackRulesActionV01 *mAction;         // array of recent actions
+  long mNumParticipants;                // number of participants (vehicles)
+
+  !!!bool mYellowFlagDetected;             // whether yellow flag was requested or sum of participant mYellowSeverity's exceeds mSafetyCarThreshold
+  !!!unsigned char mYellowFlagLapsWasOverridden;     // whether mYellowFlagLaps (below) is an admin request (0=no 1=yes 2=clear yellow)
+
+  bool mSafetyCarExists;                // whether safety car even exists
+  !!!bool mSafetyCarActive;                // whether safety car is active
+  !!!long mSafetyCarLaps;                  // number of laps
+  float mSafetyCarThreshold;            // the threshold at which a safety car is called out (compared to the sum of TrackRulesParticipantV01::mYellowSeverity for each vehicle)
+  double mSafetyCarLapDist;             // safety car lap distance
+  float mSafetyCarLapDistAtStart;       // where the safety car starts from
+
+  float mPitLaneStartDist;              // where the waypoint branch to the pits breaks off (this may not be perfectly accurate)
+  !!!float mTeleportLapDist;               // the front of the teleport locations (a useful first guess as to where to throw the green flag)
+
+  // future input expansion
+  !!!unsigned char mInputExpansion[ 256 ];
+
+  // input/output
+  !!!signed char mYellowFlagState;         // see ScoringInfoV01 for values
+  !!!short mYellowFlagLaps;                // suggested number of laps to run under yellow (may be passed in with admin command)
+
+  !!!long mSafetyCarInstruction;           // 0=no change, 1=go active, 2=head for pits
+  !!!float mSafetyCarSpeed;                // maximum speed at which to drive
+  !!!float mSafetyCarMinimumSpacing;       // minimum spacing behind safety car (-1 to indicate no limit)
+  !!!float mSafetyCarMaximumSpacing;       // maximum spacing behind safety car (-1 to indicate no limit)
+
+  !!!float mMinimumColumnSpacing;          // minimum desired spacing between vehicles in a column (-1 to indicate indeterminate/unenforced)
+  !!!float mMaximumColumnSpacing;          // maximum desired spacing between vehicles in a column (-1 to indicate indeterminate/unenforced)
+
+  !!!float mMinimumSpeed;                  // minimum speed that anybody should be driving (-1 to indicate no limit)
+  !!!float mMaximumSpeed;                  // maximum speed that anybody should be driving (-1 to indicate no limit)
+
+  !!!char mMessage[ 96 ];                  // a message for everybody to explain what is going on (which will get run through translator on client machines)
+  !??TrackRulesParticipantV01 *mParticipant;         // array of partipants (vehicles)
+
+  // future input/output expansion
+  !!!unsigned char mInputOutputExpansion[ 256 ];
+};
+
+    */
+    /*
+    struct rF2TrackRulesParticipant
+{
+  // input only
+  long mID;                             // slot ID
+  short mFrozenOrder;                   // 0-based place when caution came out (not valid for formation laps)
+  short mPlace;                         // 1-based place (typically used for the initialization of the formation lap track order)
+  float mYellowSeverity;                // a rating of how much this vehicle is contributing to a yellow flag (the sum of all vehicles is compared to TrackRulesV01::mSafetyCarThreshold)
+  double mCurrentRelativeDistance;      // equal to ( ( ScoringInfoV01::mLapDist * this->mRelativeLaps ) + VehicleScoringInfoV01::mLapDist )
+
+  // input/output
+  long mRelativeLaps;                   // current formation/caution laps relative to safety car (should generally be zero except when safety car crosses s/f line); this can be decremented to implement 'wave around' or 'beneficiary rule' (a.k.a. 'lucky dog' or 'free pass')
+  rF2TrackRulesColumn mColumnAssignment;// which column (line/lane) that participant is supposed to be in
+  long mPositionAssignment;             // 0-based position within column (line/lane) that participant is supposed to be located at (-1 is invalid)
+  unsigned char mPitsOpen;              // whether the rules allow this particular vehicle to enter pits right now (input is 2=false or 3=true; if you want to edit it, set to 0=false or 1=true)
+  bool mUpToSpeed;                      // while in the frozen order, this flag indicates whether the vehicle can be followed (this should be false for somebody who has temporarily spun and hasn't gotten back up to speed yet)
+  bool mUnused[2];                      //
+  double mGoalRelativeDistance;         // calculated based on where the leader is, and adjusted by the desired column spacing and the column/position assignments
+  char mMessage[ 96 ];                  // a message for this participant to explain what is going on (untranslated; it will get run through translator on client machines)
+
+  // future expansion
+  unsigned char mExpansion[ 192 ];
+};
+
+    */
+
+    mRulesControlInputRequestReceived = false;
+
+    DEBUG_INT2(DebugLevel::DevInfo, "Rules control input applied.  Update version:", mRulesControl.mReadLastVersionUpdateBegin);
+    return true;
+  }
+
+
 
   return false;
 }
@@ -1295,17 +1391,6 @@ bool SharedMemoryPlugin::AccessWeather(double trackNodeSize, WeatherControlInfoV
     return true;
   }
 
-  /*static int counter = 0;
-  if (counter < 1)
-  {
-    info.mET += 20;
-    DEBUG_FLOAT2(DebugLevel::CriticalInfo, "et ", info.mET);
-    info.mRaining[1][1] = 0.5;
-    //memset(info.mRaining, 1.0, sizeof(info.mRaining));
-    ++counter;
-    return true;
-  }
-  */
   return false;
 }
 

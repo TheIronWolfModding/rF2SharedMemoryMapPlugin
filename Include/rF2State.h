@@ -1016,36 +1016,34 @@ struct rF2Extended : public rF2MappedBufferHeader
 };
 
 
-struct rF2HWControl : public rF2MappedBufferHeader
+struct rF2MappedInputBufferHeader : public rF2MappedBufferHeader
+{
+  long mLayoutVersion;
+};
+
+struct rF2HWControl : public rF2MappedInputBufferHeader
 {
   // Version supported by the _current_ plugin.
   static int const SUPPORTED_LAYOUT_VERSION = 1;
-
-  long mLayoutVersion;
 
   char mControlName[rF2MappedBufferHeader::MAX_HWCONTROL_NAME_LEN];
   double mfRetVal;
 };
 
 
-struct rF2WeatherControl : public rF2MappedBufferHeader
+struct rF2WeatherControl : public rF2MappedInputBufferHeader
 {
   // Version supported by the _current_ plugin.
   static int const SUPPORTED_LAYOUT_VERSION = 1;
-
-  long mLayoutVersion;
 
   rF2WeatherControlInfo mWeatherInfo;
 };
 
 
-struct rF2RulesControl : public rF2MappedBufferHeader
+struct rF2RulesControl : public rF2MappedInputBufferHeader
 {
   // Version supported by the _current_ plugin.
   static int const SUPPORTED_LAYOUT_VERSION = 1;
-
-  // TODO: Move to separate class.
-  long mLayoutVersion;
 
   rF2TrackRules mTrackRules;
 
