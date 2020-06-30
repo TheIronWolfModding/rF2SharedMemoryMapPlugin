@@ -24,6 +24,8 @@ namespace rF2SharedMemory
       try
       {
         this.hwcontrolBuffer.Connect();
+        this.hwcontrolBuffer.GetMappedData(ref this.hwcontrol);
+        this.hwcontrol.mLayoutVersion = rFactor2Constants.MM_HWCONTROL_LAYOUT_VERSION;
         this.Connected = true;
       }
       catch (Exception)
