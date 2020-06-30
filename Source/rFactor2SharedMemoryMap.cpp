@@ -423,15 +423,15 @@ void SharedMemoryPlugin::Startup(long version)
       mExtStateTracker.mExtended.mSCRPluginEnabled = mDMR.IsSCRPluginEnabled();
       mExtStateTracker.mExtended.mSCRPluginDoubleFileType = mDMR.GetSCRPluginDoubleFileType();
     }
-
-    mExtStateTracker.mExtended.mHWControlInputEnabled = SharedMemoryPlugin::msHWControlInputRequested;
-    mExtStateTracker.mExtended.mWeatherControlInputEnabled = SharedMemoryPlugin::msWeatherControlInputRequested;
-    mExtStateTracker.mExtended.mRulesControlInputEnabled = SharedMemoryPlugin::msRulesControlInputRequested;
-
-    mExtended.BeginUpdate();
-    memcpy(mExtended.mpWriteBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
-    mExtended.EndUpdate();
   }
+
+  mExtStateTracker.mExtended.mHWControlInputEnabled = SharedMemoryPlugin::msHWControlInputRequested;
+  mExtStateTracker.mExtended.mWeatherControlInputEnabled = SharedMemoryPlugin::msWeatherControlInputRequested;
+  mExtStateTracker.mExtended.mRulesControlInputEnabled = SharedMemoryPlugin::msRulesControlInputRequested;
+
+  mExtended.BeginUpdate();
+  memcpy(mExtended.mpWriteBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
+  mExtended.EndUpdate();
 }
 
 void SharedMemoryPlugin::Shutdown()
@@ -946,16 +946,16 @@ void SharedMemoryPlugin::UpdateScoring(ScoringInfoV01 const& info)
 
   ReadDMROnScoringUpdate(info);
 
+  ReadHWControl();
+  ReadWeatherControl();
+  ReadRulesControl();
+
   // Update extended state.
   mExtStateTracker.ProcessScoringUpdate(info);
 
   mExtended.BeginUpdate();
   memcpy(mExtended.mpWriteBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
   mExtended.EndUpdate();
-
-  ReadHWControl();
-  ReadWeatherControl();
-  ReadRulesControl();
 }
 
 
@@ -970,6 +970,7 @@ void SharedMemoryPlugin::ReadDMROnScoringUpdate(ScoringInfoV01 const& info)
       // Disable DMA on failure.
       SharedMemoryPlugin::msDirectMemoryAccessRequested = false;
       mExtStateTracker.mExtended.mDirectMemoryAccessEnabled = false;
+      // Extended flip will happen in ScoringUpdate.
     }
     else {  // Read succeeded.
       if (mLastUpdateLSIWasVisible && !LSIVisible)
@@ -994,7 +995,9 @@ void SharedMemoryPlugin::ReadHWControl()
       DEBUG_INT2(DebugLevel::Errors, "HWControl: unsupported input buffer layout version  ", mHWControl.mReadBuff.mLayoutVersion);
       DEBUG_MSG(DebugLevel::Errors, "HWControl: disabling HWControl.");
 
+      SharedMemoryPlugin::msHWControlInputRequested = false;
       mExtStateTracker.mExtended.mHWControlInputEnabled = false;
+      // Extended flip will happen in ScoringUpdate.
       return;
     }
 
@@ -1023,7 +1026,9 @@ void SharedMemoryPlugin::ReadWeatherControl()
       DEBUG_INT2(DebugLevel::Errors, "Weather control: unsupported input buffer layout version  ", mHWControl.mReadBuff.mLayoutVersion);
       DEBUG_MSG(DebugLevel::Errors, "Weather control: disabling HWControl.");
 
+      SharedMemoryPlugin::msWeatherControlInputRequested = false;
       mExtStateTracker.mExtended.mWeatherControlInputEnabled = false;
+      // Extended flip will happen in ScoringUpdate.
       return;
     }
 
@@ -1046,7 +1051,9 @@ void SharedMemoryPlugin::ReadRulesControl()
       DEBUG_INT2(DebugLevel::Errors, "Rules control: unsupported input buffer layout version  ", mHWControl.mReadBuff.mLayoutVersion);
       DEBUG_MSG(DebugLevel::Errors, "Rules control: disabling HWControl.");
 
+      SharedMemoryPlugin::msRulesControlInputRequested = false;
       mExtStateTracker.mExtended.mRulesControlInputEnabled = false;
+      // Extended flip will happen in ScoringUpdate.
       return;
     }
 
@@ -1135,6 +1142,8 @@ bool SharedMemoryPlugin::AccessTrackRules(TrackRulesV01& info)
   mRules.mpWriteBuff->mBytesUpdatedHint = static_cast<int>(offsetof(rF2Rules, mParticipants[numRulesVehicles]));
 
   mRules.EndUpdate();
+
+  // TODO: implement rule update
 
   return false;
 }
