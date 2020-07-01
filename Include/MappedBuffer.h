@@ -196,11 +196,7 @@ public:
     mhMap = nullptr;
   }
 
-#ifdef UNITTEST // Make private mpBuff available to unit test
-public:
-#else
 private:
-#endif
   MappedBuffer(MappedBuffer const&) = delete;
   MappedBuffer& operator=(MappedBuffer const&) = delete;
 

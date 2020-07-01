@@ -134,12 +134,7 @@ public:
   static void WriteScoringInternals(ScoringInfoV01 const& info);
   static void TraceLastWin32Error();
 
-#ifdef UNITTEST // Make private methods available to unit test
-public:
-#else
 private:
-#endif
-
   class ExtendedStateTracker
   {
   public:
@@ -328,12 +323,7 @@ private:
   template <typename BuffT>
   void TraceBeginUpdate(BuffT const& buffer, double& lastUpdateMillis, char const msgPrefix[]) const;
 
-#ifdef UNITTEST // Make private methods available to unit test
-public:
-#else
 private:
-#endif
-
   // Only used for debugging in Timing level
   double mLastTelemetryUpdateMillis = 0.0;
   double mLastTelemetryVehicleAddedMillis = 0.0;
