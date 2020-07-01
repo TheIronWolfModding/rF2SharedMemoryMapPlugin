@@ -1,3 +1,10 @@
+/*
+Original ISI V7 internals dump code, tweaked to use buffered output and to match overall
+code stlye of the rf2sm plugin.
+
+Author: ISI
+*/
+
 #include "rFactor2SharedMemoryMap.hpp"
 
 
