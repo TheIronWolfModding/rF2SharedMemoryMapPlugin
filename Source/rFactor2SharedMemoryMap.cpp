@@ -1143,8 +1143,8 @@ bool SharedMemoryPlugin::AccessTrackRules(TrackRulesV01& info)
   mRules.EndUpdate();
 
   if (mRulesControlInputRequestReceived) {
-    //memcpy(&info, &(mWeatherControl.mReadBuff.mWeatherInfo), sizeof(WeatherControlInfoV01));
-    // Try to keep updated input safe and try to keep it close to current state.
+    // Note: all experimental/WIP.
+    // Try to keep updated input safe and try to keep it close to the current state/frame.
     auto const currentET = info.mCurrentET;
     auto const numActions = info.mNumActions;
     auto const pAction = info.mAction;
@@ -1155,6 +1155,27 @@ bool SharedMemoryPlugin::AccessTrackRules(TrackRulesV01& info)
     auto const safetyCarLapDistAtStart = info.mSafetyCarLapDistAtStart;
     auto const pitLaneStartDist = info.mPitLaneStartDist;
     auto const pParticipant = info.mParticipant;
+
+    memcpy(&info, &(mRulesControl.mReadBuff.mTrackRules), sizeof(TrackRulesV01));
+
+    info.mCurrentET = currentET;
+    info.mNumActions = numActions;
+    info.mAction =  pAction;
+    info.mNumParticipants = numParticipants;
+    info.mSafetyCarExists = safetyCarExists;
+    info.mSafetyCarThreshold = safetyCarThreshold;
+    info.mSafetyCarLapDist = safetyCarLapDist;
+    info.mSafetyCarLapDistAtStart = safetyCarLapDistAtStart;
+    info.mPitLaneStartDist = pitLaneStartDist;
+    info.mParticipant = pParticipant;
+
+    // Safely update arrays:
+    auto const numActionsToUpdate = min(
+      min(info.mNumActions, rF2MappedBufferHeader::MAX_MAPPED_VEHICLES), 
+      mRulesControl.mReadBuff.mTrackRules.mNumActions);
+
+    for (int i = 0; i < numActionsToUpdate; ++i)
+      memcpy(&(info.mAction[i]), &(mRulesControl.mReadBuff.mActions[i]), sizeof(TrackRulesActionV01));  // Note: this overwrites mET, not sure if that's right.
 
 
     /*
