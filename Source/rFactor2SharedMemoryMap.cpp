@@ -834,7 +834,7 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
   }
 
   // See if we are in a cycle.
-  auto const participantIndex = max(info.mID, 0L) % rF2MappedBufferHeader::MAX_MAPPED_IDS;
+  auto const participantIndex = max(info.mID, 0L) % rF2Extended::MAX_MAPPED_IDS;
   auto const alreadyUpdated = mParticipantTelemetryUpdated[participantIndex];
 
   if (!alreadyUpdated) {

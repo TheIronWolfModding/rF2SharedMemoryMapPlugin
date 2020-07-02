@@ -157,7 +157,7 @@ private:
 
     void ProcessTelemetryUpdate(TelemInfoV01 const& info)
     {
-      auto const id = max(info.mID, 0L) % rF2MappedBufferHeader::MAX_MAPPED_IDS;
+      auto const id = max(info.mID, 0L) % rF2Extended::MAX_MAPPED_IDS;
 
       auto& dti = mDamageTrackingInfos[id];
       if (info.mLastImpactET > dti.mLastPitStopET  // Is this new impact since last pit stop?
@@ -177,7 +177,7 @@ private:
       for (int i = 0; i < info.mNumVehicles; ++i) {
         if (info.mVehicle[i].mPitState == static_cast<unsigned char>(rF2PitState::Stopped)) {
           // If this car is pitting, clear out any damage tracked.
-          auto const id = max(info.mVehicle[i].mID, 0L) % rF2MappedBufferHeader::MAX_MAPPED_IDS;
+          auto const id = max(info.mVehicle[i].mID, 0L) % rF2Extended::MAX_MAPPED_IDS;
 
           memset(&(mExtended.mTrackedDamages[id]), 0, sizeof(rF2TrackedDamage));
 
@@ -228,7 +228,7 @@ private:
       double mLastPitStopET = 0.0;
     };
 
-    DamageTracking mDamageTrackingInfos[rF2MappedBufferHeader::MAX_MAPPED_IDS];
+    DamageTracking mDamageTrackingInfos[rF2Extended::MAX_MAPPED_IDS];
   };
 
 public:
@@ -347,7 +347,7 @@ private:
   // If this becomes a problem (people complain), different mechanism will be necessary.
   // One way to handle this is to take first mID in a telemetry frame, and use it as a starting offset.
   // This might be fine, because game appears to be sending mIDs in an ascending order.
-  bool mParticipantTelemetryUpdated[rF2MappedBufferHeader::MAX_MAPPED_IDS];
+  bool mParticipantTelemetryUpdated[rF2Extended::MAX_MAPPED_IDS];
 
   // Pit menu update trackers.
   long mPitMenuLastCategoryIndex = -1L;
@@ -357,7 +357,7 @@ private:
   // Input buffer logic members:
 
   // HWControl request tracking variables.  Empty indicates initial state or the fact that request passed to rF2.
-  char mHWControlRequest_mControlName[rF2MappedBufferHeader::MAX_HWCONTROL_NAME_LEN];
+  char mHWControlRequest_mControlName[rF2HWControl::MAX_HWCONTROL_NAME_LEN];
   double mHWControlRequest_mfRetVal = 0.0;
 
   bool mWeatherControlInputRequestReceived = true;

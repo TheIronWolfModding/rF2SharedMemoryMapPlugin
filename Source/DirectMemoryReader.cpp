@@ -99,7 +99,7 @@ bool DirectMemoryReader::Read(rF2Extended& extended)
       return false;
     }
 
-    if (strncmp(mPrevStatusMessage, mpStatusMessage, rF2MappedBufferHeader::MAX_STATUS_MSG_LEN) != 0) {
+    if (strncmp(mPrevStatusMessage, mpStatusMessage, rF2Extended::MAX_STATUS_MSG_LEN) != 0) {
       strcpy_s(extended.mStatusMessage, mpStatusMessage);
       strcpy_s(mPrevStatusMessage, extended.mStatusMessage);
       extended.mTicksStatusMessageUpdated = ::GetTickCount64();
@@ -113,7 +113,7 @@ bool DirectMemoryReader::Read(rF2Extended& extended)
       return true;  // Retry next time or fail?  Have counter for N failures?
     }
 
-    char msgBuff[rF2MappedBufferHeader::MAX_STATUS_MSG_LEN];
+    char msgBuff[rF2Extended::MAX_STATUS_MSG_LEN];
 
     auto seenSplit = false;
     auto pCurr = pBegin + 0xC0 * 0x2F + 0x68;
@@ -153,7 +153,7 @@ bool DirectMemoryReader::Read(rF2Extended& extended)
 
         auto const pMsg = !seenSplit ? pCurr : msgBuff;
 
-        if (strncmp(mPrevLastHistoryMessage, pMsg, rF2MappedBufferHeader::MAX_STATUS_MSG_LEN) != 0) {
+        if (strncmp(mPrevLastHistoryMessage, pMsg, rF2Extended::MAX_STATUS_MSG_LEN) != 0) {
           strcpy_s(extended.mLastHistoryMessage, pMsg);
           strcpy_s(mPrevLastHistoryMessage, extended.mLastHistoryMessage);
           extended.mTicksLastHistoryMessageUpdated = ::GetTickCount64();
@@ -210,7 +210,7 @@ bool DirectMemoryReader::ReadOnLSIVisible(rF2Extended& extended)
 
     auto const pPhase = mpLSIMessages + 0x50uLL;
     if (pPhase[0] != '\0'
-      && strncmp(mPrevLSIPhaseMessage, pPhase, rF2MappedBufferHeader::MAX_RULES_INSTRUCTION_MSG_LEN) != 0) {
+      && strncmp(mPrevLSIPhaseMessage, pPhase, rF2Extended::MAX_RULES_INSTRUCTION_MSG_LEN) != 0) {
       strcpy_s(extended.mLSIPhaseMessage, pPhase);
       strcpy_s(mPrevLSIPhaseMessage, extended.mLSIPhaseMessage);
       extended.mTicksLSIPhaseMessageUpdated = ::GetTickCount64();
@@ -220,7 +220,7 @@ bool DirectMemoryReader::ReadOnLSIVisible(rF2Extended& extended)
 
     auto const pPitState = mpLSIMessages + 0xD0uLL;
     if (pPitState[0] != '\0'
-      && strncmp(mPrevLSIPitStateMessage, pPitState, rF2MappedBufferHeader::MAX_RULES_INSTRUCTION_MSG_LEN) != 0) {
+      && strncmp(mPrevLSIPitStateMessage, pPitState, rF2Extended::MAX_RULES_INSTRUCTION_MSG_LEN) != 0) {
       strcpy_s(extended.mLSIPitStateMessage, pPitState);
       strcpy_s(mPrevLSIPitStateMessage, extended.mLSIPitStateMessage);
       extended.mTicksLSIPitStateMessageUpdated = ::GetTickCount64();
@@ -230,7 +230,7 @@ bool DirectMemoryReader::ReadOnLSIVisible(rF2Extended& extended)
 
     auto const pOrderInstruction = mpLSIMessages + 0x150uLL;
     if (pOrderInstruction[0] != '\0'
-     && strncmp(mPrevLSIOrderInstructionMessage, pOrderInstruction, rF2MappedBufferHeader::MAX_RULES_INSTRUCTION_MSG_LEN) != 0) {
+     && strncmp(mPrevLSIOrderInstructionMessage, pOrderInstruction, rF2Extended::MAX_RULES_INSTRUCTION_MSG_LEN) != 0) {
       strcpy_s(extended.mLSIOrderInstructionMessage, pOrderInstruction);
       strcpy_s(mPrevLSIOrderInstructionMessage, extended.mLSIOrderInstructionMessage);
       extended.mTicksLSIOrderInstructionMessageUpdated = ::GetTickCount64();
@@ -241,7 +241,7 @@ bool DirectMemoryReader::ReadOnLSIVisible(rF2Extended& extended)
     auto const pRulesInstruction = mpLSIMessages + 0x1D0uLL;
     if (mSCRPluginEnabled
       && pRulesInstruction[0] != '\0'
-      && strncmp(mPrevLSIRulesInstructionMessage, pRulesInstruction, rF2MappedBufferHeader::MAX_RULES_INSTRUCTION_MSG_LEN) != 0) {
+      && strncmp(mPrevLSIRulesInstructionMessage, pRulesInstruction, rF2Extended::MAX_RULES_INSTRUCTION_MSG_LEN) != 0) {
       strcpy_s(extended.mLSIRulesInstructionMessage, pRulesInstruction);
       strcpy_s(mPrevLSIRulesInstructionMessage, extended.mLSIRulesInstructionMessage);
       extended.mTicksLSIRulesInstructionMessageUpdated = ::GetTickCount64();

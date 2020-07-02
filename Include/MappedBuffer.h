@@ -26,7 +26,7 @@ public:
 
   MappedBuffer(char const* mmFileName)
     : MM_FILE_NAME(mmFileName)
-    , READ_BUFFER_SUPPORTED_LAYOUT_VERSION(0)
+    , READ_BUFFER_SUPPORTED_LAYOUT_VERSION(0L)
   {}
 
   MappedBuffer(char const* mmFileName, long mLayoutVersion)
@@ -133,7 +133,7 @@ public:
   /////////////////////////////////////////////////////////////////
   // Read buffer support
 
-  // Returns true if buffer is valid is new.
+  // Returns true if buffer is valid and updated since last read.
   bool ReadUpdate()
   {
     if (!mMapped) {
@@ -149,11 +149,10 @@ public:
     rF2MappedBufferVersionBlock versionEnd;
     memcpy(&versionEnd, mpWriteBuffVersionBlock, sizeof(rF2MappedBufferVersionBlock));
 
-    // Check out of sync situation.
+    // Check busy or out of sync situation.
     if (versionBegin.mVersionUpdateBegin != versionEnd.mVersionUpdateEnd) {
       if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::Synchronization) {
         char msg[512] = {};
-
         sprintf(msg, "ReadUpdate: versions out of sync.  Version Begin:%ld  End:%ld",
           versionBegin.mVersionUpdateBegin, versionEnd.mVersionUpdateEnd);
 
