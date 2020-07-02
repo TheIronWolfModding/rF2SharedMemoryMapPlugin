@@ -52,7 +52,7 @@ bool DirectMemoryReader::Initialize()
 
     auto const endTicks = TicksNow();
 
-    if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::DevInfo) {
+    if (Utils::IsFlagOn(SharedMemoryPlugin::msDebugOutputLevel, DebugLevel::DevInfo)) {
       // Successful scan: ~20ms
       DEBUG_FLOAT2(DebugLevel::DevInfo, "Scan time seconds: ", (endTicks - startTicks) / MICROSECONDS_IN_SECOND);
 

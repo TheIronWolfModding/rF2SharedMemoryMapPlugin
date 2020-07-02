@@ -112,12 +112,16 @@ Sample consumption:
 #include <stdlib.h>
 #include <cstddef>                              // offsetof
 
-DebugLevel SharedMemoryPlugin::msDebugOutputLevel = DebugLevel::Off;
+long SharedMemoryPlugin::msDebugOutputLevel = static_cast<long>(DebugLevel::Off);
+static_assert(sizeof(long) <= sizeof(DebugLevel), "sizeof(long) <= sizeof(DebugLevel)");
 
 bool SharedMemoryPlugin::msDebugISIInternals = false;
 bool SharedMemoryPlugin::msDedicatedServerMapGlobally = false;
 bool SharedMemoryPlugin::msDirectMemoryAccessRequested = false;
+
 long SharedMemoryPlugin::msUnsubscribedBuffersMask = 0L;
+static_assert(sizeof(long) <= sizeof(SubscribedBuffer), "sizeof(long) <= sizeof(SubscribedBuffer)");
+
 bool SharedMemoryPlugin::msHWControlInputRequested = false;
 bool SharedMemoryPlugin::msWeatherControlInputRequested = false;
 bool SharedMemoryPlugin::msRulesControlInputRequested = false;
@@ -279,8 +283,8 @@ void SharedMemoryPlugin::Startup(long version)
   }
 
   if (SharedMemoryPlugin::msHWControlInputRequested 
-    && Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Scoring)) {
-    DEBUG_MSG(DebugLevel::Errors, "HWControl input is disabled because Scoring update is turned off.");
+    && Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Telemetry)) {
+    DEBUG_MSG(DebugLevel::Errors, "HWControl input is disabled because Telemetry updates are turned off.");
 
     SharedMemoryPlugin::msHWControlInputRequested = false;
   }
@@ -292,12 +296,12 @@ void SharedMemoryPlugin::Startup(long version)
 
   if (SharedMemoryPlugin::msWeatherControlInputRequested) {
     if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Scoring)) {
-      DEBUG_MSG(DebugLevel::Errors, "Weather Control input is disabled because Scoring update is turned off.");
+      DEBUG_MSG(DebugLevel::Errors, "Weather Control input is disabled because Scoring updates are turned off.");
 
       SharedMemoryPlugin::msWeatherControlInputRequested = false;
     }
     else if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Weather)) {
-      DEBUG_MSG(DebugLevel::Errors, "Weather Control input is disabled because Weather update is turned off.");
+      DEBUG_MSG(DebugLevel::Errors, "Weather Control input is disabled because Weather updates are turned off.");
 
       SharedMemoryPlugin::msWeatherControlInputRequested = false;
     }
@@ -340,7 +344,7 @@ void SharedMemoryPlugin::Startup(long version)
   mMultiRules.ClearState(nullptr /*pInitialContents*/);
 
   DEBUG_MSG(DebugLevel::CriticalInfo, "Files mapped successfully");
-  if (SharedMemoryPlugin::msDebugOutputLevel != DebugLevel::Off) {
+  if (SharedMemoryPlugin::msDebugOutputLevel != static_cast<long>(DebugLevel::Off)) {
     char sizeSz[20] = {};
     auto size = static_cast<int>(sizeof(rF2Telemetry) + sizeof(rF2MappedBufferVersionBlock));
     _itoa_s(size, sizeSz, 10);
@@ -517,6 +521,7 @@ void SharedMemoryPlugin::ClearTimingsAndCounters()
 
   memset(mHWControlRequest_mControlName, 0, sizeof(mHWControlRequest_mControlName));
   mHWControlRequest_mfRetVal = 0.0;
+  mHWControlRequestUpdateCounter = 0;
 
   mWeatherControlInputRequestReceived = false;
   mRulesControlInputRequestReceived = false;
@@ -670,7 +675,7 @@ double TicksNow() {
 
 void SharedMemoryPlugin::TelemetryTraceSkipUpdate(TelemInfoV01 const& info, double deltaET)
 {
-  if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::Timing
+  if (Utils::IsFlagOn(SharedMemoryPlugin::msDebugOutputLevel, DebugLevel::Timing)
     && !mTelemetrySkipFrameReported) {
     mTelemetrySkipFrameReported = true;
     char msg[512] = {};
@@ -701,7 +706,7 @@ void SharedMemoryPlugin::TelemetryTraceSkipUpdate(TelemInfoV01 const& info, doub
 void SharedMemoryPlugin::TelemetryTraceBeginUpdate(double telUpdateET, double deltaET)
 {
   auto ticksNow = 0.0;
-  if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::Timing) {
+  if (Utils::IsFlagOn(SharedMemoryPlugin::msDebugOutputLevel, DebugLevel::Timing)) {
     ticksNow = TicksNow();
     auto const delta = ticksNow - mLastTelemetryUpdateMillis;
 
@@ -718,7 +723,7 @@ void SharedMemoryPlugin::TelemetryTraceBeginUpdate(double telUpdateET, double de
 
 void SharedMemoryPlugin::TelemetryTraceVehicleAdded(TelemInfoV01 const& info)
 {
-  if (SharedMemoryPlugin::msDebugOutputLevel == DebugLevel::Verbose) {
+  if (Utils::IsFlagOn(SharedMemoryPlugin::msDebugOutputLevel, DebugLevel::Verbose)) {
     auto const prevBuff = mTelemetry.mpWriteBuff;
     bool const samePos = info.mPos.x == prevBuff->mVehicles[mCurrTelemetryVehicleIndex].mPos.x
       && info.mPos.y == prevBuff->mVehicles[mCurrTelemetryVehicleIndex].mPos.y
@@ -729,14 +734,16 @@ void SharedMemoryPlugin::TelemetryTraceVehicleAdded(TelemInfoV01 const& info)
     DEBUG_MSG(DebugLevel::Verbose, msg);
   }
 
-  if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::Timing)
+  if (Utils::IsFlagOn(SharedMemoryPlugin::msDebugOutputLevel, DebugLevel::Timing))
     mLastTelemetryVehicleAddedMillis = TicksNow();
 }
 
 
-void SharedMemoryPlugin::TelemetryTraceEndUpdate(int numVehiclesInChain) const
+void SharedMemoryPlugin::TelemetryTraceEndUpdate(int numVehiclesInChain)
 {
-  if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::Timing) {
+  ReadHWControl();
+
+  if (Utils::IsFlagOn(SharedMemoryPlugin::msDebugOutputLevel, DebugLevel::Timing)) {
     auto const deltaSysTimeMicroseconds = mLastTelemetryVehicleAddedMillis - mLastTelemetryUpdateMillis;
 
     char msg[512] = {};
@@ -878,7 +885,7 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
 
 void SharedMemoryPlugin::ScoringTraceBeginUpdate()
 {
-  if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::Timing) {
+  if (Utils::IsFlagOn(SharedMemoryPlugin::msDebugOutputLevel, DebugLevel::Timing)) {
     TraceBeginUpdate(mScoring, mLastScoringUpdateMillis, "SCORING");
 
     char msg[512] = {};
@@ -893,7 +900,7 @@ template <typename BuffT>
 void SharedMemoryPlugin::TraceBeginUpdate(BuffT const& buffer, double& lastUpdateMillis, char const msgPrefix[]) const
 {
   auto ticksNow = 0.0;
-  if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::Timing) {
+  if (Utils::IsFlagOn(SharedMemoryPlugin::msDebugOutputLevel, DebugLevel::Timing)) {
     ticksNow = TicksNow();
     auto const delta = ticksNow - lastUpdateMillis;
 
@@ -946,7 +953,6 @@ void SharedMemoryPlugin::UpdateScoring(ScoringInfoV01 const& info)
 
   ReadDMROnScoringUpdate(info);
 
-  ReadHWControl();
   ReadWeatherControl();
   ReadRulesControl();
 
@@ -986,7 +992,8 @@ void SharedMemoryPlugin::ReadHWControl()
 {
   if (!mIsMapped
     || !SharedMemoryPlugin::msHWControlInputRequested
-    || !mExtStateTracker.mExtended.mHWControlInputEnabled)
+    || !mExtStateTracker.mExtended.mHWControlInputEnabled
+    || (mHWControlRequestUpdateCounter++ % 3) != 0)
     return;
 
   // Read input buffers.
@@ -997,14 +1004,18 @@ void SharedMemoryPlugin::ReadHWControl()
 
       SharedMemoryPlugin::msHWControlInputRequested = false;
       mExtStateTracker.mExtended.mHWControlInputEnabled = false;
-      // Extended flip will happen in ScoringUpdate.
+      
+      mExtended.BeginUpdate();
+      memcpy(mExtended.mpWriteBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
+      mExtended.EndUpdate();
+
       return;
     }
 
     strcpy_s(mHWControlRequest_mControlName, mHWControl.mReadBuff.mControlName);
     mHWControlRequest_mfRetVal = mHWControl.mReadBuff.mfRetVal;
     
-    if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::DevInfo) {
+    if (Utils::IsFlagOn(SharedMemoryPlugin::msDebugOutputLevel, DebugLevel::DevInfo)) {
       char charBuff[200] = {};
       sprintf_s(charBuff, "HWControl: received:  '%s'  %1.1f", mHWControlRequest_mControlName, mHWControlRequest_mfRetVal);
       DEBUG_MSG(DebugLevel::DevInfo, charBuff);
@@ -1286,8 +1297,7 @@ bool SharedMemoryPlugin::AccessPitMenu(PitMenuV01& info)
     return false;
   }
 
-  if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::DevInfo)
-  {
+  if (Utils::IsFlagOn(SharedMemoryPlugin::msDebugOutputLevel, DebugLevel::DevInfo)) {
     char charBuff[80] = {};
     sprintf(charBuff, "PIT MENU - Updated.  Category: '%s'  Value: '%s'", info.mCategoryName, info.mChoiceString);
     DEBUG_MSG(DebugLevel::DevInfo, charBuff);
@@ -1320,7 +1330,7 @@ bool SharedMemoryPlugin::CheckHWControl(char const* const controlName, double& f
 
   if (mHWControlRequest_mControlName[0] != '\0'
     && _stricmp(controlName, mHWControlRequest_mControlName) == 0) {
-    if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::DevInfo) {
+    if (Utils::IsFlagOn(SharedMemoryPlugin::msDebugOutputLevel, DebugLevel::DevInfo)) {
       char charBuff[200] = {};
       sprintf_s(charBuff, "CheckHWControl input applied:  '%s'  %1.1f .  Update version: %ld",
         mHWControlRequest_mControlName, mHWControlRequest_mfRetVal, mHWControl.mReadLastVersionUpdateBegin);
@@ -1444,10 +1454,10 @@ void SharedMemoryPlugin::AccessCustomVariable(CustomVariableV01& var)
     ; // Do nothing; this variable is just for rF2 to know whether to keep the plugin loaded.
   else if (_stricmp(var.mCaption, "DebugOutputLevel") == 0) {
     auto sanitized = min(max(var.mCurrentSetting, 0L), static_cast<long>(DebugLevel::Verbose));
-    SharedMemoryPlugin::msDebugOutputLevel = static_cast<DebugLevel>(sanitized);
+    SharedMemoryPlugin::msDebugOutputLevel = static_cast<long>(sanitized);
 
     // Remove previous debug output.
-    if (SharedMemoryPlugin::msDebugOutputLevel != DebugLevel::Off)
+    if (SharedMemoryPlugin::msDebugOutputLevel != static_cast<long>(DebugLevel::Off))
       remove(SharedMemoryPlugin::DEBUG_OUTPUT_FILENAME);
   }
   else if (_stricmp(var.mCaption, "DebugISIInternals") == 0)
@@ -1545,7 +1555,7 @@ void SharedMemoryPlugin::WriteToAllExampleOutputFiles(const char * const openStr
 
 void SharedMemoryPlugin::WriteDebugMsg(DebugLevel lvl, const char* const format, ...)
 {
-  if (lvl > SharedMemoryPlugin::msDebugOutputLevel)
+  if (Utils::IsFlagOn(SharedMemoryPlugin::msDebugOutputLevel, lvl))
     return;
 
   va_list argList;
@@ -1576,7 +1586,7 @@ void SharedMemoryPlugin::WriteDebugMsg(DebugLevel lvl, const char* const format,
 
 void SharedMemoryPlugin::TraceLastWin32Error()
 {
-  if (SharedMemoryPlugin::msDebugOutputLevel < DebugLevel::Errors)
+  if (Utils::IsFlagOn(SharedMemoryPlugin::msDebugOutputLevel, DebugLevel::Errors))
     return;
 
   auto const lastError = ::GetLastError();

@@ -72,7 +72,7 @@ public:
 
     // Fix up out of sync situation.
     if (mpWriteBuffVersionBlock->mVersionUpdateBegin != mpWriteBuffVersionBlock->mVersionUpdateEnd) {
-      if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::Synchronization) {
+      if (Utils::IsFlagOn(SharedMemoryPlugin::msDebugOutputLevel, DebugLevel::Synchronization)) {
         char msg[512] = {};
 
         sprintf(msg, "BeginUpdate: versions out of sync.  Version Begin:%ld  End:%ld",
@@ -97,7 +97,7 @@ public:
 
     // Fix up out of sync situation.
     if (mpWriteBuffVersionBlock->mVersionUpdateBegin != mpWriteBuffVersionBlock->mVersionUpdateEnd) {
-      if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::Synchronization) {
+      if (Utils::IsFlagOn(SharedMemoryPlugin::msDebugOutputLevel, DebugLevel::Synchronization)) {
         char msg[512] = {};
 
         sprintf(msg, "EndUpdate: versions out of sync.  Version Begin:%ld  End:%ld",
@@ -133,6 +133,28 @@ public:
   /////////////////////////////////////////////////////////////////
   // Read buffer support
 
+  bool VerifyBusyOrUnchanged(unsigned long versionUpdateBegin, unsigned long versionUpdateEnd)
+  {
+    // Check busy or out of sync situation.
+    if (versionUpdateBegin != versionUpdateEnd) {
+      if (Utils::IsFlagOn(SharedMemoryPlugin::msDebugOutputLevel, DebugLevel::Synchronization)) {
+        char msg[512] = {};
+        sprintf(msg, "VerifyBusyOrUnchanged: versions out of sync.  Version Begin:%ld  End:%ld",
+          versionUpdateBegin, versionUpdateEnd);
+
+        DEBUG_MSG(DebugLevel::Synchronization, msg);
+      }
+      return true;
+    }
+    
+    // Is it new?
+    if (mReadLastVersionUpdateBegin != versionUpdateBegin)
+      return false;
+   
+    return true;
+  }
+
+
   // Returns true if buffer is valid and updated since last read.
   bool ReadUpdate()
   {
@@ -144,31 +166,23 @@ public:
     rF2MappedBufferVersionBlock versionBegin;
     memcpy(&versionBegin, mpWriteBuffVersionBlock, sizeof(rF2MappedBufferVersionBlock));
 
+    if (VerifyBusyOrUnchanged(versionBegin.mVersionUpdateBegin, versionBegin.mVersionUpdateEnd)) {
+      DEBUG_MSG(DebugLevel::Synchronization, "Skipping read buffer update.");
+      return false;
+    }
+
     memcpy(&mReadBuff, mpWriteBuff, sizeof(BuffT));
 
     rF2MappedBufferVersionBlock versionEnd;
     memcpy(&versionEnd, mpWriteBuffVersionBlock, sizeof(rF2MappedBufferVersionBlock));
 
-    // Check busy or out of sync situation.
-    if (versionBegin.mVersionUpdateBegin != versionEnd.mVersionUpdateEnd) {
-      if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::Synchronization) {
-        char msg[512] = {};
-        sprintf(msg, "ReadUpdate: versions out of sync.  Version Begin:%ld  End:%ld",
-          versionBegin.mVersionUpdateBegin, versionEnd.mVersionUpdateEnd);
-
-        DEBUG_MSG(DebugLevel::Synchronization, msg);
-      }
+    if (VerifyBusyOrUnchanged(versionBegin.mVersionUpdateBegin, versionEnd.mVersionUpdateEnd))
       return false;
-    }
-   
-    // Is it new?
-    if (mReadLastVersionUpdateBegin != versionBegin.mVersionUpdateBegin)
-    {
-      mReadLastVersionUpdateBegin = versionBegin.mVersionUpdateBegin;
-      return true;
-    }
-    return false;
+
+    mReadLastVersionUpdateBegin = versionBegin.mVersionUpdateBegin;
+    return true;
   }
+
 
   void ReleaseResources()
   {

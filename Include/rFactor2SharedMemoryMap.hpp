@@ -28,7 +28,7 @@ Website: thecrewchief.org
 // Each component can be in [0:99] range.
 // Note: each time major version changes, that means layout has changed, and clients might need an update.
 #define PLUGIN_VERSION_MAJOR "3.7"
-#define PLUGIN_VERSION_MINOR "4.1"
+#define PLUGIN_VERSION_MINOR "6.0"
 
 #ifdef VERSION_AVX2
 #ifdef VERSION_MT
@@ -59,13 +59,13 @@ enum class DebugLevel
 {
   Off = 0,
   Errors = 1,
-  CriticalInfo = 2,      // Errors + Critical Info
-  DevInfo = 3,           // Errors + Critical Info + Dev Info
-  Warnings = 4,          // Errors + Critical Info + Dev Info + Warnings
-  Synchronization = 5,   // Errors + Critical Info + Dev Info + Warnings + Sync messages
-  Perf = 6,              // Errors + Critical Info + Dev Info + Warnings + Sync messages + Perf
-  Timing = 7,            // Errors + Critical Info + Dev Info + Warnings + Sync messages + Perf + Timing deltas
-  Verbose = 8            // All
+  CriticalInfo = 2,
+  DevInfo = 4,
+  Warnings = 8,
+  Synchronization = 16,
+  Perf = 32,
+  Timing = 64,
+  Verbose = 127
 };
 
 enum class SubscribedBuffer
@@ -113,7 +113,7 @@ public:
   static int const BUFFER_IO_BYTES = 2048;
   static int const DEBUG_IO_FLUSH_PERIOD_SECS = 10;
 
-  static DebugLevel msDebugOutputLevel;
+  static long msDebugOutputLevel;
   static bool msDebugISIInternals;
   static bool msDedicatedServerMapGlobally;
   static bool msDirectMemoryAccessRequested;
@@ -310,7 +310,7 @@ private:
   void TelemetryTraceSkipUpdate(TelemInfoV01 const& info, double deltaET);
   void TelemetryTraceBeginUpdate(double telUpdateET, double deltaET);
   void TelemetryTraceVehicleAdded(TelemInfoV01 const& infos);
-  void TelemetryTraceEndUpdate(int numVehiclesInChain) const;
+  void TelemetryTraceEndUpdate(int numVehiclesInChain);
   void TelemetryBeginNewFrame(TelemInfoV01 const& info, double deltaET);
   void TelemetryCompleteFrame();
 
@@ -359,6 +359,7 @@ private:
   // HWControl request tracking variables.  Empty indicates initial state or the fact that request passed to rF2.
   char mHWControlRequest_mControlName[rF2HWControl::MAX_HWCONTROL_NAME_LEN];
   double mHWControlRequest_mfRetVal = 0.0;
+  int mHWControlRequestUpdateCounter = 0;
 
   bool mWeatherControlInputRequestReceived = true;
   bool mRulesControlInputRequestReceived = true;
