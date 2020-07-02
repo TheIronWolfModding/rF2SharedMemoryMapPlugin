@@ -23,7 +23,7 @@ namespace rF2SharedMemoryAPI
 
     // Delay in mS after sending a HW control to rFactor before sending another, set by experiment
     // 20 works for category selection and tyres but fuel needs it slower
-    int delay = 200;
+    int delay = 40;
 
     /// <summary>
     /// Connect to the Shared Memory running in rFactor

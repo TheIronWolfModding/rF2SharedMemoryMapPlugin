@@ -61,6 +61,8 @@
       this.numericUpDownErrors = new System.Windows.Forms.NumericUpDown();
       this.groupBox7 = new System.Windows.Forms.GroupBox();
       this.label6 = new System.Windows.Forms.Label();
+      this.label7 = new System.Windows.Forms.Label();
+      this.numericUpDownTests = new System.Windows.Forms.NumericUpDown();
       this.flowLayoutPanel1.SuspendLayout();
       this.tableLayoutPanel1.SuspendLayout();
       this.groupBox3.SuspendLayout();
@@ -73,6 +75,7 @@
       this.groupBox6.SuspendLayout();
       ((System.ComponentModel.ISupportInitialize)(this.numericUpDownErrors)).BeginInit();
       this.groupBox7.SuspendLayout();
+      ((System.ComponentModel.ISupportInitialize)(this.numericUpDownTests)).BeginInit();
       this.SuspendLayout();
       // 
       // flowLayoutPanel1
@@ -589,7 +592,7 @@
       this.trackBarDelay.TabIndex = 3;
       this.trackBarDelay.TickFrequency = 50;
       this.toolTip1.SetToolTip(this.trackBarDelay, "200 mS seems to be \r\nthe minimum reliable\r\nvalue");
-      this.trackBarDelay.Value = 200;
+      this.trackBarDelay.Value = 40;
       this.trackBarDelay.ValueChanged += new System.EventHandler(this.trackBarDelay_ValueChanged);
       // 
       // comboBoxAllTyres
@@ -625,9 +628,9 @@
       this.labelDelay.AutoSize = true;
       this.labelDelay.Location = new System.Drawing.Point(76, 75);
       this.labelDelay.Name = "labelDelay";
-      this.labelDelay.Size = new System.Drawing.Size(61, 20);
+      this.labelDelay.Size = new System.Drawing.Size(52, 20);
       this.labelDelay.TabIndex = 4;
-      this.labelDelay.Text = "200mS";
+      this.labelDelay.Text = "40mS";
       // 
       // label2
       // 
@@ -670,13 +673,21 @@
       // 
       // numericUpDownErrors
       // 
-      this.numericUpDownErrors.Location = new System.Drawing.Point(308, 20);
+      this.numericUpDownErrors.Location = new System.Drawing.Point(408, 18);
+      this.numericUpDownErrors.Maximum = new decimal(new int[] {
+            10000000,
+            0,
+            0,
+            0});
       this.numericUpDownErrors.Name = "numericUpDownErrors";
+      this.numericUpDownErrors.ReadOnly = true;
       this.numericUpDownErrors.Size = new System.Drawing.Size(116, 26);
       this.numericUpDownErrors.TabIndex = 3;
       // 
       // groupBox7
       // 
+      this.groupBox7.Controls.Add(this.label7);
+      this.groupBox7.Controls.Add(this.numericUpDownTests);
       this.groupBox7.Controls.Add(this.label6);
       this.groupBox7.Controls.Add(this.numericUpDownErrors);
       this.groupBox7.Controls.Add(this.checkBox2);
@@ -690,11 +701,33 @@
       // label6
       // 
       this.label6.AutoSize = true;
-      this.label6.Location = new System.Drawing.Point(246, 22);
+      this.label6.Location = new System.Drawing.Point(346, 20);
       this.label6.Name = "label6";
       this.label6.Size = new System.Drawing.Size(56, 20);
       this.label6.TabIndex = 4;
       this.label6.Text = "Errors";
+      // 
+      // label7
+      // 
+      this.label7.AutoSize = true;
+      this.label7.Location = new System.Drawing.Point(144, 20);
+      this.label7.Name = "label7";
+      this.label7.Size = new System.Drawing.Size(51, 20);
+      this.label7.TabIndex = 6;
+      this.label7.Text = "Tests";
+      // 
+      // numericUpDownTests
+      // 
+      this.numericUpDownTests.Location = new System.Drawing.Point(206, 18);
+      this.numericUpDownTests.Maximum = new decimal(new int[] {
+            10000000,
+            0,
+            0,
+            0});
+      this.numericUpDownTests.Name = "numericUpDownTests";
+      this.numericUpDownTests.ReadOnly = true;
+      this.numericUpDownTests.Size = new System.Drawing.Size(116, 26);
+      this.numericUpDownTests.TabIndex = 5;
       // 
       // MainForm
       // 
@@ -727,6 +760,7 @@
       ((System.ComponentModel.ISupportInitialize)(this.numericUpDownErrors)).EndInit();
       this.groupBox7.ResumeLayout(false);
       this.groupBox7.PerformLayout();
+      ((System.ComponentModel.ISupportInitialize)(this.numericUpDownTests)).EndInit();
       this.ResumeLayout(false);
 
         }
@@ -765,6 +799,8 @@
     private System.Windows.Forms.GroupBox groupBox7;
     private System.Windows.Forms.Label label6;
     private System.Windows.Forms.NumericUpDown numericUpDownErrors;
+    private System.Windows.Forms.Label label7;
+    private System.Windows.Forms.NumericUpDown numericUpDownTests;
   }
 }
 

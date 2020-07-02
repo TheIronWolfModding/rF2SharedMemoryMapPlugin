@@ -148,12 +148,25 @@ namespace PitMenuSampleApp
               if (!choiceStr.Contains(tyreType))
                 numericUpDownErrors.Value += 1;
 
+              numericUpDownTests.Value += 1;
+
               if (!this.checkBox2.Checked)
                 return;
             }
-            System.Threading.Thread.Sleep(100);
             //this.timer1.Start();
           }
+
+          this.Pmc.SetFuelLevel(65);
+          if (!this.checkBox2.Checked)
+            return;
+          this.Pmc.SetFuelLevel(5);
+          if (!this.checkBox2.Checked)
+            return;
+          this.Pmc.SetCategory("FR TIRE:");
+          this.Pmc.SetTyreType("No Change");
+          this.Pmc.SetCategory("FL TIRE:");
+          this.Pmc.SetTyreType("No Change");
+          System.Threading.Thread.Sleep(2000);
         }
       }
     }
