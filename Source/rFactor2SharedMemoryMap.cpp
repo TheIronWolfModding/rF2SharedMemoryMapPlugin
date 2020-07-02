@@ -118,12 +118,14 @@ bool SharedMemoryPlugin::msDebugISIInternals = false;
 bool SharedMemoryPlugin::msDedicatedServerMapGlobally = false;
 bool SharedMemoryPlugin::msDirectMemoryAccessRequested = false;
 long SharedMemoryPlugin::msUnsubscribedBuffersMask = 0L;
+bool SharedMemoryPlugin::msHWControlInputRequested = false;
+bool SharedMemoryPlugin::msWeatherControlInputRequested = false;
+bool SharedMemoryPlugin::msRulesControlInputRequested = false;
 
 FILE* SharedMemoryPlugin::msDebugFile;
 FILE* SharedMemoryPlugin::msIsiTelemetryFile;
 FILE* SharedMemoryPlugin::msIsiScoringFile;
 
-// _Weather ?
 char const* const SharedMemoryPlugin::MM_TELEMETRY_FILE_NAME = "$rFactor2SMMP_Telemetry$";
 char const* const SharedMemoryPlugin::MM_SCORING_FILE_NAME = "$rFactor2SMMP_Scoring$";
 char const* const SharedMemoryPlugin::MM_RULES_FILE_NAME = "$rFactor2SMMP_Rules$";
@@ -132,8 +134,11 @@ char const* const SharedMemoryPlugin::MM_FORCE_FEEDBACK_FILE_NAME = "$rFactor2SM
 char const* const SharedMemoryPlugin::MM_GRAPHICS_FILE_NAME = "$rFactor2SMMP_Graphics$";
 char const* const SharedMemoryPlugin::MM_EXTENDED_FILE_NAME = "$rFactor2SMMP_Extended$";
 char const* const SharedMemoryPlugin::MM_PIT_INFO_FILE_NAME = "$rFactor2SMMP_PitInfo$";
+char const* const SharedMemoryPlugin::MM_WEATHER_FILE_NAME = "$rFactor2SMMP_Weather$";
 
 char const* const SharedMemoryPlugin::MM_HWCONTROL_FILE_NAME = "$rFactor2SMMP_HWControl$";
+char const* const SharedMemoryPlugin::MM_WEATHER_CONTROL_FILE_NAME = "$rFactor2SMMP_WeatherControl$";
+char const* const SharedMemoryPlugin::MM_RULES_CONTROL_FILE_NAME = "$rFactor2SMMP_RulesControl$";
 
 char const* const SharedMemoryPlugin::INTERNALS_TELEMETRY_FILENAME = R"(UserData\Log\RF2SMMP_InternalsTelemetryOutput.txt)";
 char const* const SharedMemoryPlugin::INTERNALS_SCORING_FILENAME = R"(UserData\Log\RF2SMMP_InternalsScoringOutput.txt)";
@@ -169,7 +174,10 @@ SharedMemoryPlugin::SharedMemoryPlugin()
     , mGraphics(SharedMemoryPlugin::MM_GRAPHICS_FILE_NAME)
     , mExtended(SharedMemoryPlugin::MM_EXTENDED_FILE_NAME)
     , mPitInfo(SharedMemoryPlugin::MM_PIT_INFO_FILE_NAME)
-    , mHWControl(SharedMemoryPlugin::MM_HWCONTROL_FILE_NAME, rF2MappedBufferHeader::MAX_HWCONTROL_LAYOUT_VERSION)
+    , mWeather(SharedMemoryPlugin::MM_WEATHER_FILE_NAME)
+    , mHWControl(SharedMemoryPlugin::MM_HWCONTROL_FILE_NAME, rF2HWControl::SUPPORTED_LAYOUT_VERSION)
+    , mWeatherControl(SharedMemoryPlugin::MM_WEATHER_CONTROL_FILE_NAME, rF2WeatherControl::SUPPORTED_LAYOUT_VERSION)
+    , mRulesControl(SharedMemoryPlugin::MM_RULES_CONTROL_FILE_NAME, rF2HWControl::SUPPORTED_LAYOUT_VERSION)
 {
   memset(mParticipantTelemetryUpdated, 0, sizeof(mParticipantTelemetryUpdated));
   memset(mHWControlRequest_mControlName, 0, sizeof(mHWControlRequest_mControlName));
@@ -194,10 +202,9 @@ void SharedMemoryPlugin::Startup(long version)
   DEBUG_INT2(DebugLevel::CriticalInfo, "DedicatedServerMapGlobally:", SharedMemoryPlugin::msDedicatedServerMapGlobally);
   DEBUG_INT2(DebugLevel::CriticalInfo, "EnableDirectMemoryAccess:", SharedMemoryPlugin::msDirectMemoryAccessRequested);
   DEBUG_INT2(DebugLevel::CriticalInfo, "UnsubscribedBuffersMask:", SharedMemoryPlugin::msUnsubscribedBuffersMask);
-  if (HasHardwareInputs())
-  {
-    DEBUG_MSG(DebugLevel::CriticalInfo, "CheckHWControl ACTIVE");
-  }
+  DEBUG_INT2(DebugLevel::CriticalInfo, "EnableHWControlInput:", SharedMemoryPlugin::msHWControlInputRequested);
+  DEBUG_INT2(DebugLevel::CriticalInfo, "EnableWeatherControlInput:", SharedMemoryPlugin::msWeatherControlInputRequested);
+  DEBUG_INT2(DebugLevel::CriticalInfo, "EnableRulesControlInput:", SharedMemoryPlugin::msRulesControlInputRequested);
 
   if (SharedMemoryPlugin::msUnsubscribedBuffersMask != 0L) {
     if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Telemetry))
@@ -220,12 +227,17 @@ void SharedMemoryPlugin::Startup(long version)
 
     if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::PitInfo))
       DEBUG_MSG(DebugLevel::CriticalInfo, "Unsubscribed from the Pit Info updates");
+
+    if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Weather))
+      DEBUG_MSG(DebugLevel::CriticalInfo, "Unsubscribed from the Weather updates");
   }
 
   char charBuff[80] = {};
   sprintf(charBuff, "-STARTUP- (version %.3f)", (float)version / 1000.0f);
   WriteToAllExampleOutputFiles("w", charBuff);
 
+  // Even if some buffers are unsubscribed from, create them all.  Unsubscribe simply
+  // means buffer won't get updated.  This simplifies client code a bit.
   if (!mTelemetry.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
     DEBUG_MSG(DebugLevel::Errors, "Failed to initialize Telemetry mapping");
     return;
@@ -256,18 +268,67 @@ void SharedMemoryPlugin::Startup(long version)
     return;
   }
 
-  if (!mExtended.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
-    DEBUG_MSG(DebugLevel::Errors, "Failed to initialize Extended mapping");
-    return;
-  }
-
   if (!mPitInfo.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
     DEBUG_MSG(DebugLevel::Errors, "Failed to initialize Pit Info mapping");
     return;
   }
 
+  if (!mWeather.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
+    DEBUG_MSG(DebugLevel::Errors, "Failed to initialize Weather mapping");
+    return;
+  }
+
+  if (SharedMemoryPlugin::msHWControlInputRequested
+    && Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Scoring)) {
+    DEBUG_MSG(DebugLevel::Errors, "HWControl input is disabled because Scoring update is turned off.");
+
+    SharedMemoryPlugin::msHWControlInputRequested = false;
+  }
+
   if (!mHWControl.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
-    DEBUG_MSG(DebugLevel::Errors, "Failed to initialize HWControl mapping");
+    DEBUG_MSG(DebugLevel::Errors, "Failed to initialize HWControl input mapping");
+    return;
+  }
+
+  if (SharedMemoryPlugin::msWeatherControlInputRequested) {
+    if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Scoring)) {
+      DEBUG_MSG(DebugLevel::Errors, "Weather Control input is disabled because Scoring update is turned off.");
+
+      SharedMemoryPlugin::msWeatherControlInputRequested = false;
+    }
+    else if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Weather)) {
+      DEBUG_MSG(DebugLevel::Errors, "Weather Control input is disabled because Weather update is turned off.");
+
+      SharedMemoryPlugin::msWeatherControlInputRequested = false;
+    }
+  }
+
+  if (!mWeatherControl.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
+    DEBUG_MSG(DebugLevel::Errors, "Failed to initialize Weather control input mapping");
+    return;
+  }
+
+  if (SharedMemoryPlugin::msRulesControlInputRequested) {
+    if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Scoring)) {
+      DEBUG_MSG(DebugLevel::Errors, "Rules Control input is disabled because Scoring update is turned off.");
+
+      SharedMemoryPlugin::msRulesControlInputRequested = false;
+    }
+    else if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Rules)) {
+      DEBUG_MSG(DebugLevel::Errors, "Rules Control input is disabled because Rules update is turned off.");
+
+      SharedMemoryPlugin::msRulesControlInputRequested = false;
+    }
+  }
+
+  if (!mRulesControl.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
+    DEBUG_MSG(DebugLevel::Errors, "Failed to initialize Rules control input mapping");
+    return;
+  }
+
+  // Extended buffer is initialized last and is an indicator of initialization completed.
+  if (!mExtended.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
+    DEBUG_MSG(DebugLevel::Errors, "Failed to initialize Extended mapping");
     return;
   }
 
@@ -320,6 +381,29 @@ void SharedMemoryPlugin::Startup(long version)
     DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the Pit Info buffer:", sizeSz, "bytes.");
 
     sizeSz[0] = '\0';
+    size = static_cast<int>(sizeof(rF2Weather) + sizeof(rF2MappedBufferVersionBlock));
+    _itoa_s(size, sizeSz, 10);
+    DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the Weather buffer:", sizeSz, "bytes.");
+
+    sizeSz[0] = '\0';
+    size = static_cast<int>(sizeof(rF2HWControl) + sizeof(rF2MappedBufferVersionBlock));
+    _itoa_s(size, sizeSz, 10);
+    DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the HWControl input buffer:", sizeSz, "bytes.");
+    DEBUG_INT2(DebugLevel::CriticalInfo, "HWControl input buffer supported layout version:", rF2HWControl::SUPPORTED_LAYOUT_VERSION);
+
+    sizeSz[0] = '\0';
+    size = static_cast<int>(sizeof(rF2WeatherControl) + sizeof(rF2MappedBufferVersionBlock));
+    _itoa_s(size, sizeSz, 10);
+    DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the Weather control input buffer:", sizeSz, "bytes.");
+    DEBUG_INT2(DebugLevel::CriticalInfo, "Weather control input buffer supported layout version:", rF2WeatherControl::SUPPORTED_LAYOUT_VERSION);
+
+    sizeSz[0] = '\0';
+    size = static_cast<int>(sizeof(rF2RulesControl) + sizeof(rF2MappedBufferVersionBlock));
+    _itoa_s(size, sizeSz, 10);
+    DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the Rules control input buffer:", sizeSz, "bytes.");
+    DEBUG_INT2(DebugLevel::CriticalInfo, "Rules control input buffer supported layout version:", rF2RulesControl::SUPPORTED_LAYOUT_VERSION);
+
+    sizeSz[0] = '\0';
     size = static_cast<int>(sizeof(rF2Extended) + sizeof(rF2MappedBufferVersionBlock));
     _itoa_s(size, sizeSz, 10);
     DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the Extended buffer:", sizeSz, "bytes.");
@@ -339,6 +423,10 @@ void SharedMemoryPlugin::Startup(long version)
       mExtStateTracker.mExtended.mSCRPluginEnabled = mDMR.IsSCRPluginEnabled();
       mExtStateTracker.mExtended.mSCRPluginDoubleFileType = mDMR.GetSCRPluginDoubleFileType();
     }
+
+    mExtStateTracker.mExtended.mHWControlInputEnabled = SharedMemoryPlugin::msHWControlInputRequested;
+    mExtStateTracker.mExtended.mWeatherControlInputEnabled = SharedMemoryPlugin::msWeatherControlInputRequested;
+    mExtStateTracker.mExtended.mRulesControlInputEnabled = SharedMemoryPlugin::msRulesControlInputRequested;
 
     mExtended.BeginUpdate();
     memcpy(mExtended.mpWriteBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
@@ -396,6 +484,12 @@ void SharedMemoryPlugin::Shutdown()
   mPitInfo.ClearState(nullptr /*pInitialContents*/);
   mPitInfo.ReleaseResources();
 
+  mWeather.ClearState(nullptr /*pInitialContents*/);
+  mWeather.ReleaseResources();
+
+  mHWControl.ReleaseResources();
+  mWeatherControl.ReleaseResources();
+  mRulesControl.ReleaseResources();
 }
 
 void SharedMemoryPlugin::ClearTimingsAndCounters()
@@ -423,6 +517,9 @@ void SharedMemoryPlugin::ClearTimingsAndCounters()
 
   memset(mHWControlRequest_mControlName, 0, sizeof(mHWControlRequest_mControlName));
   mHWControlRequest_mfRetVal = 0.0;
+
+  mWeatherControlInputRequestReceived = false;
+  mRulesControlInputRequestReceived = false;
 }
 
 
@@ -442,7 +539,9 @@ void SharedMemoryPlugin::ClearState()
   // So, clear the state but pass persisting state as initial state.
   mExtStateTracker.ClearState();
   mExtended.ClearState(&(mExtStateTracker.mExtended));
+
   mPitInfo.ClearState(nullptr /*pInitialContents*/);
+  mWeather.ClearState(nullptr /*pInitialContents*/);
 
   ClearTimingsAndCounters();
 }
@@ -840,6 +939,27 @@ void SharedMemoryPlugin::UpdateScoring(ScoringInfoV01 const& info)
 
   mScoring.EndUpdate();
 
+  //
+  // Piggyback on the ::UpdateScoring callback to perform operations that depend on scoring updates
+  // or do not have appropriate callbacks, and 5FPS is fine.
+  //
+
+  ReadDMROnScoringUpdate(info);
+
+  // Update extended state.
+  mExtStateTracker.ProcessScoringUpdate(info);
+
+  mExtended.BeginUpdate();
+  memcpy(mExtended.mpWriteBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
+  mExtended.EndUpdate();
+
+  ReadWeatherControl();
+  ReadRulesControl();
+}
+
+
+void SharedMemoryPlugin::ReadDMROnScoringUpdate(ScoringInfoV01 const& info)
+{
   if (SharedMemoryPlugin::msDirectMemoryAccessRequested) {
     auto const LSIVisible = info.mYellowFlagState != 0 || info.mGamePhase == static_cast<unsigned char>(rF2GamePhase::Formation);
     if (!mDMR.Read(mExtStateTracker.mExtended)
@@ -857,15 +977,83 @@ void SharedMemoryPlugin::UpdateScoring(ScoringInfoV01 const& info)
       mLastUpdateLSIWasVisible = LSIVisible;
     }
   }
-
-  // Update extended state.
-  mExtStateTracker.ProcessScoringUpdate(info);
-
-  // FUTURE: Minor optimization would be track if mExtended has been updated in Telemetry/Scoring and flip only if that is the case.
-  mExtended.BeginUpdate();
-  memcpy(mExtended.mpWriteBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
-  mExtended.EndUpdate();
 }
+
+
+void SharedMemoryPlugin::ReadHWControl()
+{
+  if (!mIsMapped
+    || !SharedMemoryPlugin::msHWControlInputRequested
+    || !mExtStateTracker.mExtended.mHWControlInputEnabled)
+    return;
+
+  // Read input buffers.
+  if (mHWControl.ReadUpdate()) {
+    if (mHWControl.mReadBuff.mLayoutVersion != rF2HWControl::SUPPORTED_LAYOUT_VERSION) {
+      DEBUG_INT2(DebugLevel::Errors, "HWControl: unsupported input buffer layout version  ", mHWControl.mReadBuff.mLayoutVersion);
+      DEBUG_MSG(DebugLevel::Errors, "HWControl: disabling HWControl.");
+
+      mExtStateTracker.mExtended.mHWControlInputEnabled = false;
+      return;
+    }
+
+    strcpy_s(mHWControlRequest_mControlName, mHWControl.mReadBuff.mControlName);
+    mHWControlRequest_mfRetVal = mHWControl.mReadBuff.mfRetVal;
+
+    if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::DevInfo) {
+      char charBuff[200] = {};
+      sprintf_s(charBuff, "HWControl: received:  '%s'  %1.1f", mHWControlRequest_mControlName, mHWControlRequest_mfRetVal);
+      DEBUG_MSG(DebugLevel::DevInfo, charBuff);
+    }
+  }
+}
+
+
+void SharedMemoryPlugin::ReadWeatherControl()
+{
+  if (!mIsMapped
+    || !SharedMemoryPlugin::msWeatherControlInputRequested
+    || !mExtStateTracker.mExtended.mWeatherControlInputEnabled)
+    return;
+
+  // Read input buffers.
+  if (mWeatherControl.ReadUpdate()) {
+    if (mWeatherControl.mReadBuff.mLayoutVersion != rF2WeatherControl::SUPPORTED_LAYOUT_VERSION) {
+      DEBUG_INT2(DebugLevel::Errors, "Weather control: unsupported input buffer layout version  ", mHWControl.mReadBuff.mLayoutVersion);
+      DEBUG_MSG(DebugLevel::Errors, "Weather control: disabling HWControl.");
+
+      mExtStateTracker.mExtended.mWeatherControlInputEnabled = false;
+      return;
+    }
+
+    DEBUG_MSG(DebugLevel::DevInfo, "Weather control input received.");
+    mWeatherControlInputRequestReceived = true;
+  }
+}
+
+
+void SharedMemoryPlugin::ReadRulesControl()
+{
+  if (!mIsMapped
+    || !SharedMemoryPlugin::msRulesControlInputRequested
+    || !mExtStateTracker.mExtended.mRulesControlInputEnabled)
+    return;
+
+  // Read input buffers.
+  if (mRulesControl.ReadUpdate()) {
+    if (mRulesControl.mReadBuff.mLayoutVersion != rF2RulesControl::SUPPORTED_LAYOUT_VERSION) {
+      DEBUG_INT2(DebugLevel::Errors, "Rules control: unsupported input buffer layout version  ", mHWControl.mReadBuff.mLayoutVersion);
+      DEBUG_MSG(DebugLevel::Errors, "Rules control: disabling HWControl.");
+
+      mExtStateTracker.mExtended.mRulesControlInputEnabled = false;
+      return;
+    }
+
+    DEBUG_MSG(DebugLevel::DevInfo, "Rules control input received.");
+    mRulesControlInputRequestReceived = true;
+  }
+}
+
 
 // Invoked at ~400FPS.
 bool SharedMemoryPlugin::ForceFeedback(double& forceValue)
@@ -901,6 +1089,7 @@ void SharedMemoryPlugin::ThreadStarted(long type)
   DEBUG_MSG(DebugLevel::Synchronization, type == 0 ? "Multimedia thread started" : "Simulation thread started");
   UpdateThreadState(type, true /*starting*/);
 }
+
 
 void SharedMemoryPlugin::ThreadStopping(long type)
 {
@@ -992,6 +1181,127 @@ bool SharedMemoryPlugin::AccessMultiSessionRules(MultiSessionRulesV01& info)
 }
 
 
+
+void SharedMemoryPlugin::UpdateGraphics(GraphicsInfoV02 const& info)
+{
+  if (!mIsMapped)
+    return;
+
+  DEBUG_MSG(DebugLevel::Timing, "GRAPHICS - updated.");
+
+  // Do not version Graphics buffer, as it is asynchronous by the nature anyway.
+  memcpy(&(mGraphics.mpWriteBuff->mGraphicsInfo), &info, sizeof(rF2GraphicsInfo));
+}
+
+
+// Invoked at 100FPS.
+bool SharedMemoryPlugin::AccessPitMenu(PitMenuV01& info)
+{
+  if (!mIsMapped)
+    return false;
+
+  ReadHWControl();
+
+  if (mPitMenuLastCategoryIndex == info.mCategoryIndex
+    && mPitMenuLastChoiceIndex == info.mChoiceIndex
+    && mPitMenuLastNumChoices == info.mNumChoices) {
+    DEBUG_MSG(DebugLevel::Timing, "PIT MENU - no changes.");
+    return false;
+  }
+
+  if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::DevInfo)
+  {
+    char charBuff[80] = {};
+    sprintf(charBuff, "PIT MENU - Updated.  Category: '%s'  Value: '%s'", info.mCategoryName, info.mChoiceString);
+    DEBUG_MSG(DebugLevel::DevInfo, charBuff);
+  }
+
+  mPitInfo.BeginUpdate();
+
+  memcpy(&(mPitInfo.mpWriteBuff->mPitMenu), &info, sizeof(rF2PitMenu));
+
+  mPitInfo.EndUpdate();
+
+  // Avoid unnecessary interlocked operations unless pit menu state actually changed.
+  mPitMenuLastCategoryIndex = info.mCategoryIndex;
+  mPitMenuLastChoiceIndex = info.mChoiceIndex;
+  mPitMenuLastNumChoices = info.mNumChoices;
+
+  return false;
+}
+
+
+// Invoked at 100FPS twice for each control (836 times per frame in my test)
+bool SharedMemoryPlugin::CheckHWControl(char const* const controlName, double& fRetVal)
+{
+  if (!mIsMapped
+    || !SharedMemoryPlugin::msHWControlInputRequested
+    || !mExtStateTracker.mExtended.mHWControlInputEnabled)
+    return false;
+
+  DEBUG_MSG2(DebugLevel::Timing, "CheckHWControl - invoked for:", controlName);
+
+  if (mHWControlRequest_mControlName[0] != '\0'
+    && _stricmp(controlName, mHWControlRequest_mControlName) == 0) {
+    if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::DevInfo) {
+      char charBuff[200] = {};
+      sprintf_s(charBuff, "CheckHWControl input applied:  '%s'  %1.1f .  Update version: %ld",
+        mHWControlRequest_mControlName, mHWControlRequest_mfRetVal, mHWControl.mReadLastVersionUpdateBegin);
+
+      DEBUG_MSG(DebugLevel::DevInfo, charBuff);
+    }
+
+    fRetVal = mHWControlRequest_mfRetVal;
+
+    // Mark cached vars as handled.
+    mHWControlRequest_mControlName[0] ='\0';
+    mHWControlRequest_mfRetVal = 0.0;
+
+    return true;
+  }
+
+  return false;
+}
+
+
+// Invoked at 1FPS.
+bool SharedMemoryPlugin::AccessWeather(double trackNodeSize, WeatherControlInfoV01& info)
+{
+  if (!mIsMapped)
+    return false;
+
+  DEBUG_MSG(DebugLevel::Timing, "WEATHER - invoked.");
+
+  mWeather.BeginUpdate();
+
+  mWeather.mpWriteBuff->mTrackNodeSize = trackNodeSize;
+  memcpy(&(mWeather.mpWriteBuff->mWeatherInfo), &info, sizeof(rF2WeatherControlInfo));
+
+  mWeather.EndUpdate();
+
+  if (mWeatherControlInputRequestReceived) {
+    memcpy(&info, &(mWeatherControl.mReadBuff.mWeatherInfo), sizeof(WeatherControlInfoV01));
+    mWeatherControlInputRequestReceived = false;
+
+    DEBUG_INT2(DebugLevel::DevInfo, "Weather control input applied.  Update version:", mWeatherControl.mReadLastVersionUpdateBegin);
+    return true;
+  }
+
+  /*static int counter = 0;
+  if (counter < 1)
+  {
+    info.mET += 20;
+    DEBUG_FLOAT2(DebugLevel::CriticalInfo, "et ", info.mET);
+    info.mRaining[1][1] = 0.5;
+    //memset(info.mRaining, 1.0, sizeof(info.mRaining));
+    ++counter;
+    return true;
+  }
+  */
+  return false;
+}
+
+
 bool SharedMemoryPlugin::GetCustomVariable(long i, CustomVariableV01& var)
 {
   DEBUG_MSG2(DebugLevel::Timing, "GetCustomVariable - Invoked:  mCaption - ", var.mCaption);
@@ -1031,10 +1341,28 @@ bool SharedMemoryPlugin::GetCustomVariable(long i, CustomVariableV01& var)
     strcpy_s(var.mCaption, "UnsubscribedBuffersMask");
     var.mNumSettings = 1;
 
-    // By default, unsubscribe from the Graphics buffer updates.
+    // By default, unsubscribe from the Graphics and Weather buffer updates.
     // CC does not need some other buffers either, however it is going to be a headache
     // to explain SH users who rely on them how to configure plugin, so let it be.
-    var.mCurrentSetting = 32;
+    var.mCurrentSetting = 160;
+    return true;
+  }
+  else if (i == 6) {
+    strcpy_s(var.mCaption, "EnableHWControlInput");
+    var.mNumSettings = 2;
+    var.mCurrentSetting = 1;
+    return true;
+  }
+  else if (i == 7) {
+    strcpy_s(var.mCaption, "EnableWeatherControlInput");
+    var.mNumSettings = 2;
+    var.mCurrentSetting = 0;
+    return true;
+  }
+  else if (i == 8) {
+    strcpy_s(var.mCaption, "EnableRulesControlInput");
+    var.mNumSettings = 2;
+    var.mCurrentSetting = 0;
     return true;
   }
 
@@ -1066,6 +1394,12 @@ void SharedMemoryPlugin::AccessCustomVariable(CustomVariableV01& var)
     auto sanitized = min(max(var.mCurrentSetting, 0L), static_cast<long>(SubscribedBuffer::All));
     SharedMemoryPlugin::msUnsubscribedBuffersMask = sanitized;
   }
+  else if (_stricmp(var.mCaption, "EnableHWControlInput") == 0)
+    SharedMemoryPlugin::msHWControlInputRequested = var.mCurrentSetting != 0;
+  else if (_stricmp(var.mCaption, "EnableWeatherControlInput") == 0)
+    SharedMemoryPlugin::msWeatherControlInputRequested = var.mCurrentSetting != 0;
+  else if (_stricmp(var.mCaption, "EnableRulesControlInput") == 0)
+    SharedMemoryPlugin::msRulesControlInputRequested = var.mCurrentSetting != 0;
 }
 
 
@@ -1099,105 +1433,26 @@ void SharedMemoryPlugin::GetCustomVariableSetting(CustomVariableV01& var, long i
     else
       strcpy_s(setting.mName, "True");
   }
+  else if (_stricmp(var.mCaption, "EnableHWControlInput") == 0) {
+    if (i == 0)
+      strcpy_s(setting.mName, "False");
+    else
+      strcpy_s(setting.mName, "True");
+  }
+  else if (_stricmp(var.mCaption, "EnableWeatherControlInput") == 0) {
+    if (i == 0)
+      strcpy_s(setting.mName, "False");
+    else
+      strcpy_s(setting.mName, "True");
+  }
+  else if (_stricmp(var.mCaption, "EnableRulesControlInput") == 0) {
+    if (i == 0)
+      strcpy_s(setting.mName, "False");
+    else
+      strcpy_s(setting.mName, "True");
+  }
 }
 
-void SharedMemoryPlugin::UpdateGraphics(GraphicsInfoV02 const& info)
-{
-  if (!mIsMapped)
-    return;
-
-  DEBUG_MSG(DebugLevel::Timing, "GRAPHICS - updated.");
-
-  // Do not version Graphics buffer, as it is asynchronous by the nature anyway.
-  memcpy(&(mGraphics.mpWriteBuff->mGraphicsInfo), &info, sizeof(rF2GraphicsInfo));
-}
-
-
-///////////////////////////////////////////////////////////
-// Access the Pit Menu
-
-bool SharedMemoryPlugin::AccessPitMenu(PitMenuV01& info)
-{
-  if (!mIsMapped)
-    return false;
-
-  if (mPitMenuLastCategoryIndex == info.mCategoryIndex
-    && mPitMenuLastChoiceIndex == info.mChoiceIndex
-    && mPitMenuLastNumChoices == info.mNumChoices) {
-    DEBUG_MSG(DebugLevel::Timing, "PIT MENU - no changes.");
-    return false;
-  }
-
-  if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::DevInfo)
-  {
-    char charBuff[80] = {};
-    sprintf(charBuff, "PIT MENU - Updated.  Category: '%s'  Value: '%s'", info.mCategoryName, info.mChoiceString);
-    DEBUG_MSG(DebugLevel::DevInfo, charBuff);
-  }
-
-  mPitInfo.BeginUpdate();
-
-  memcpy(&(mPitInfo.mpWriteBuff->mPitMenu), &info, sizeof(rF2PitMenu));
-
-  mPitInfo.EndUpdate();
-
-  // Avoid unnecessary interlocked operations unless pit menu state actually changed.
-  mPitMenuLastCategoryIndex = info.mCategoryIndex;
-  mPitMenuLastChoiceIndex = info.mChoiceIndex;
-  mPitMenuLastNumChoices = info.mNumChoices;
-
-  return false;
-}
-
-///////////////////////////////////////////////////////////
-// Hardware Control
-
-bool SharedMemoryPlugin::CheckHWControl(char const* const controlName, double& fRetVal)
-{
-  DEBUG_MSG(DebugLevel::Timing, "CheckHWControl - invoked.");
-
-  if (false) // TODO: process to disable HW control
-    return(false);
-
-  if (mHWControl.ReadUpdate()) {
-    // TODO: Not the right way to do this, revisit.
-    if (mHWControl.mReadBuff.mLayoutVersion != rF2MappedBufferHeader::MAX_HWCONTROL_LAYOUT_VERSION) {
-      DEBUG_INT2(DebugLevel::Errors, "CheckHWControl: unsupported input buffer layout version  ", mHWControl.mReadBuff.mLayoutVersion);
-      DEBUG_MSG(DebugLevel::Errors, "CheckHWControl: disabling HWControl.");
-      // TODO: Disable
-    }
-
-    strcpy_s(mHWControlRequest_mControlName, mHWControl.mReadBuff.mControlName);
-    mHWControlRequest_mfRetVal = mHWControl.mReadBuff.mfRetVal;
-    
-    if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::DevInfo) {
-      char charBuff[200] = {};
-      sprintf_s(charBuff, "CheckHWControl received:  '%s'  %1.1f", mHWControlRequest_mControlName, mHWControlRequest_mfRetVal);
-
-      DEBUG_MSG(DebugLevel::DevInfo, charBuff);
-    }
-  }
-
-  if (mHWControlRequest_mControlName[0] != '\0'
-    && _stricmp(controlName, mHWControlRequest_mControlName) == 0) {
-    if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::DevInfo) {
-      char charBuff[200] = {};
-      sprintf_s(charBuff, "CheckHWControl matched:  '%s'  %1.1f", mHWControlRequest_mControlName, mHWControlRequest_mfRetVal);
-
-      DEBUG_MSG(DebugLevel::DevInfo, charBuff);
-    }
-
-    fRetVal = mHWControlRequest_mfRetVal;
-
-    // Mark cached vars as handled.
-    mHWControlRequest_mControlName[0] ='\0';
-    mHWControlRequest_mfRetVal = 0.0;
-
-    return true;
-  }
-
-  return false;
-}
 
 ////////////////////////////////////////////
 // Debug output helpers.

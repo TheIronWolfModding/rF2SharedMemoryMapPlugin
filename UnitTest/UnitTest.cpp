@@ -123,8 +123,8 @@ namespace UnitTestMethods // startup code tested, now use it to test the rest
       // Init the shared memory
 #define CONTROL_NAME "ToggleMFDB"
 #define IGNORED_CONTROL_NAME "ToggleMFDA"
-      strcpy_s(smp_obj.mHWControl.mpBuff->mControlName, sizeof(CONTROL_NAME), CONTROL_NAME);
-      smp_obj.mHWControl.mpBuff->mfRetVal = 1.0f;
+      strcpy_s(smp_obj.mHWControl.mpWriteBuff->mControlName, sizeof(CONTROL_NAME), CONTROL_NAME);
+      smp_obj.mHWControl.mpWriteBuff->mfRetVal = 1.0f;
 
       RetVal = 0.0f;
       // Check that a call with another control name doesn't respond
@@ -173,8 +173,8 @@ namespace UnitTestMethods // startup code tested, now use it to test the rest
       PitMenuV01 info;
       TEST_NAME_IN_DEBUG("TestAccessPitMenu");
       // Init the shared memory
-      smp_obj.mPitInfo.mpBuff->mCategoryName[0] = NULL;
-      smp_obj.mPitInfo.mpBuff->mChoiceString[0] = NULL;
+      smp_obj.mPitInfo.mReadBuff->mCategoryName[0] = NULL;
+      smp_obj.mPitInfo.mReadBuff->mChoiceString[0] = NULL;
 
       // Load rFactor's input
       info.mCategoryIndex = 1;
@@ -182,8 +182,8 @@ namespace UnitTestMethods // startup code tested, now use it to test the rest
       strcpy_s(info.mCategoryName, sizeof(info.mCategoryName), "PIT MENU 1");
       strcpy_s(info.mChoiceString, sizeof(info.mChoiceString), "CHOICE 1");
       smp_obj.AccessPitMenu(info);
-      Assert::AreEqual(smp_obj.mPitInfo.mpBuff->mCategoryName, "PIT MENU 1");
-      Assert::AreEqual(smp_obj.mPitInfo.mpBuff->mChoiceString, "CHOICE 1");
+      Assert::AreEqual(smp_obj.mPitInfo.mReadBuff->mCategoryName, "PIT MENU 1");
+      Assert::AreEqual(smp_obj.mPitInfo.mReadBuff->mChoiceString, "CHOICE 1");
     }
 
     TEST_METHOD(TestAccessPitMenu_Timing)
@@ -191,8 +191,8 @@ namespace UnitTestMethods // startup code tested, now use it to test the rest
       PitMenuV01 info;
       TEST_NAME_IN_DEBUG("TestAccessPitMenu_Timing");
       // Init the shared memory
-      smp_obj.mPitInfo.mpBuff->mCategoryName[0] = NULL;
-      smp_obj.mPitInfo.mpBuff->mChoiceString[0] = NULL;
+      smp_obj.mPitInfo.mReadBuff->mCategoryName[0] = NULL;
+      smp_obj.mPitInfo.mReadBuff->mChoiceString[0] = NULL;
 
       // Load rFactor's input
       info.mCategoryIndex = 2;
@@ -205,8 +205,8 @@ namespace UnitTestMethods // startup code tested, now use it to test the rest
       smp_obj.AccessPitMenu(info);
       smp_obj.AccessPitMenu(info);
       smp_obj.AccessPitMenu(info);
-      Assert::AreEqual(smp_obj.mPitInfo.mpBuff->mCategoryName, "PIT MENU 2");
-      Assert::AreEqual(smp_obj.mPitInfo.mpBuff->mChoiceString, "CHOICE 2");
+      Assert::AreEqual(smp_obj.mPitInfo.mReadBuff->mCategoryName, "PIT MENU 2");
+      Assert::AreEqual(smp_obj.mPitInfo.mReadBuff->mChoiceString, "CHOICE 2");
     }
 
     TEST_METHOD(TestISIinternals)

@@ -46,7 +46,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="..\..\..\rF2SharedMemory\RF2SharedMemoryBuffers.cs" />
+    <Compile Include="..\..\..\rF2SharedMemory\MappedBuffer.cs" />
     <Compile Include="..\rF2SMMonitor\IniFile.cs" />
     <Compile Include="..\rF2SMMonitor\MainForm.cs">
       <SubType>Form</SubType>

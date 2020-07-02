@@ -117,7 +117,7 @@ namespace TestHWControl //
       info.mfRetVal = 1.0f;
 
       clientHWControl.BeginUpdate();
-      memcpy(clientHWControl.mpBuff, &info, sizeof(rF2HWControl));
+      memcpy(clientHWControl.mpWriteBuff, &info, sizeof(rF2HWControl));
       clientHWControl.EndUpdate();
 
       bool res = smp_obj.CheckHWControl("ToggleMFDB", fRetVal);
@@ -144,7 +144,7 @@ namespace TestHWControl //
       strcpy(info.mControlName, "ToggleMFDB");
       info.mfRetVal = 1.0f;
       clientHWControl.BeginUpdate();
-      memcpy(clientHWControl.mpBuff, &info, sizeof(rF2HWControl));
+      memcpy(clientHWControl.mpWriteBuff, &info, sizeof(rF2HWControl));
       clientHWControl.EndUpdate();
 
       res = smp_obj.CheckHWControl("ToggleMFDB", fRetVal);
@@ -158,7 +158,7 @@ namespace TestHWControl //
       strcpy(info.mControlName, "ToggleMFDB");
       info.mfRetVal = 0.0f;
       clientHWControl.BeginUpdate();
-      memcpy(clientHWControl.mpBuff, &info, sizeof(rF2HWControl));
+      memcpy(clientHWControl.mpWriteBuff, &info, sizeof(rF2HWControl));
       clientHWControl.EndUpdate();
 
       res = smp_obj.CheckHWControl("ToggleMFDB", fRetVal);
@@ -172,7 +172,7 @@ namespace TestHWControl //
       strcpy(info.mControlName, "ToggleMFDB");
       info.mfRetVal = 1.0f;
       clientHWControl.BeginUpdate();
-      memcpy(clientHWControl.mpBuff, &info, sizeof(rF2HWControl));
+      memcpy(clientHWControl.mpWriteBuff, &info, sizeof(rF2HWControl));
       clientHWControl.EndUpdate();
 
       // Ignored when asking about ToggleMFDA

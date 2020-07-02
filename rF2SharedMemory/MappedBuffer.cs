@@ -1,3 +1,10 @@
+/*
+MappedBuffer implementation.  Implements writing and reading to/from rF2 shared memory.
+
+Author: The Iron Wolf (vleonavicius@hotmail.com)
+Website: thecrewchief.org
+*/
+
 using System;
 using System.IO;
 using System.IO.MemoryMappedFiles;
@@ -19,8 +26,7 @@ namespace rF2SharedMemory
     // Holds the entire byte array that can be marshalled to a MappedBufferT.  Partial updates
     // only read changed part of buffer, ignoring trailing uninteresting bytes.  However,
     // to marshal we still need to supply entire structure size.  So, on update new bytes are copied.
-    byte[] fullSizeBuffer = null;
-
+    private byte[] fullSizeBuffer = null;
     MemoryMappedFile memoryMappedFile = null;
 
     bool partial = false;
@@ -145,7 +151,7 @@ namespace rF2SharedMemory
         var versionHeaderWithSize = new rF2MappedBufferVersionBlockWithSize();
         var versionHeader = new rF2MappedBufferVersionBlock();
 
-        for (retry = 0; retry < NUM_MAX_RETRIEES; ++retry)
+        for (retry = 0; retry < MappedBuffer<MappedBufferT>.NUM_MAX_RETRIEES; ++retry)
         {
           var bufferSizeBytes = this.BUFFER_SIZE_BYTES;
           // Read current buffer versions.

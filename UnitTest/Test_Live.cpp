@@ -93,7 +93,7 @@ namespace TestLiveHWControl //
       info.mfRetVal = 1.0f;
 
       clientHWControl.BeginUpdate();
-      memcpy(clientHWControl.mpBuff, &info, sizeof(rF2HWControl));
+      memcpy(clientHWControl.mpWriteBuff, &info, sizeof(rF2HWControl));
       clientHWControl.EndUpdate();
       Sleep(1000);
 
@@ -115,7 +115,7 @@ namespace TestLiveHWControl //
       strcpy(info.mControlName, "ToggleMFDB");
       info.mfRetVal = 1.0f;
       clientHWControl.BeginUpdate();
-      memcpy(clientHWControl.mpBuff, &info, sizeof(rF2HWControl));
+      memcpy(clientHWControl.mpWriteBuff, &info, sizeof(rF2HWControl));
       clientHWControl.EndUpdate();
       Sleep(100);
 
@@ -123,7 +123,7 @@ namespace TestLiveHWControl //
       strcpy(info.mControlName, "ToggleMFDB");
       info.mfRetVal = 0.0f;
       clientHWControl.BeginUpdate();
-      memcpy(clientHWControl.mpBuff, &info, sizeof(rF2HWControl));
+      memcpy(clientHWControl.mpWriteBuff, &info, sizeof(rF2HWControl));
       clientHWControl.EndUpdate();
       Sleep(100);
 
@@ -145,7 +145,7 @@ namespace TestLiveHWControl //
       strcpy(info.mControlName, "PitMenuIncrementValue");
       info.mfRetVal = 1.0f;
       clientHWControl.BeginUpdate();
-      memcpy(clientHWControl.mpBuff, &info, sizeof(rF2HWControl));
+      memcpy(clientHWControl.mpWriteBuff, &info, sizeof(rF2HWControl));
       clientHWControl.EndUpdate();
       Sleep(100);
 
@@ -153,7 +153,7 @@ namespace TestLiveHWControl //
       strcpy(info.mControlName, "PitMenuIncrementValue");
       info.mfRetVal = 0.0f;
       clientHWControl.BeginUpdate();
-      memcpy(clientHWControl.mpBuff, &info, sizeof(rF2HWControl));
+      memcpy(clientHWControl.mpWriteBuff, &info, sizeof(rF2HWControl));
       clientHWControl.EndUpdate();
       Sleep(100);
 
@@ -175,7 +175,7 @@ namespace TestLiveHWControl //
       strcpy(info.mControlName, "PitMenuDecrementValue");
       info.mfRetVal = 1.0f;
       clientHWControl.BeginUpdate();
-      memcpy(clientHWControl.mpBuff, &info, sizeof(rF2HWControl));
+      memcpy(clientHWControl.mpWriteBuff, &info, sizeof(rF2HWControl));
       clientHWControl.EndUpdate();
       Sleep(100);
 
@@ -183,7 +183,7 @@ namespace TestLiveHWControl //
       strcpy(info.mControlName, "PitMenuDecrementValue");
       info.mfRetVal = 0.0f;
       clientHWControl.BeginUpdate();
-      memcpy(clientHWControl.mpBuff, &info, sizeof(rF2HWControl));
+      memcpy(clientHWControl.mpWriteBuff, &info, sizeof(rF2HWControl));
       clientHWControl.EndUpdate();
       Sleep(100);
 
@@ -205,7 +205,7 @@ namespace TestLiveHWControl //
       strcpy(info.mControlName, "PitMenuUp");
       info.mfRetVal = 1.0f;
       clientHWControl.BeginUpdate();
-      memcpy(clientHWControl.mpBuff, &info, sizeof(rF2HWControl));
+      memcpy(clientHWControl.mpWriteBuff, &info, sizeof(rF2HWControl));
       clientHWControl.EndUpdate();
       Sleep(100);
 
@@ -213,7 +213,7 @@ namespace TestLiveHWControl //
       strcpy(info.mControlName, "PitMenuUp");
       info.mfRetVal = 0.0f;
       clientHWControl.BeginUpdate();
-      memcpy(clientHWControl.mpBuff, &info, sizeof(rF2HWControl));
+      memcpy(clientHWControl.mpWriteBuff, &info, sizeof(rF2HWControl));
       clientHWControl.EndUpdate();
       Sleep(100);
 
@@ -236,7 +236,7 @@ namespace TestLiveHWControl //
       strcpy(info.mControlName, "ToggleMFDB");
       info.mfRetVal = 1.0f;
       clientHWControl.BeginUpdate();
-      memcpy(clientHWControl.mpBuff, &info, sizeof(rF2HWControl));
+      memcpy(clientHWControl.mpWriteBuff, &info, sizeof(rF2HWControl));
       clientHWControl.EndUpdate();
       Sleep(1000);
 
@@ -244,14 +244,14 @@ namespace TestLiveHWControl //
       strcpy(info.mControlName, "ToggleMFDB");
       info.mfRetVal = 0.0f;
       clientHWControl.BeginUpdate();
-      memcpy(clientHWControl.mpBuff, &info, sizeof(rF2HWControl));
+      memcpy(clientHWControl.mpWriteBuff, &info, sizeof(rF2HWControl));
       clientHWControl.EndUpdate();
       Sleep(1000);
 
       strcpy(info.mControlName, "PitMenuIncrementValue");
       info.mfRetVal = 1.0f;
       clientHWControl.BeginUpdate();
-      memcpy(clientHWControl.mpBuff, &info, sizeof(rF2HWControl));
+      memcpy(clientHWControl.mpWriteBuff, &info, sizeof(rF2HWControl));
       clientHWControl.EndUpdate();
       Sleep(1000);
 
@@ -259,14 +259,14 @@ namespace TestLiveHWControl //
       strcpy(info.mControlName, "PitMenuIncrementValue");
       info.mfRetVal = 0.0f;
       clientHWControl.BeginUpdate();
-      memcpy(clientHWControl.mpBuff, &info, sizeof(rF2HWControl));
+      memcpy(clientHWControl.mpWriteBuff, &info, sizeof(rF2HWControl));
       clientHWControl.EndUpdate();
       Sleep(1000);
 #if false
       strcpy(info.mControlName, "PitMenuUp");
       info.mfRetVal = 1.0f;
       clientHWControl.BeginUpdate();
-      memcpy(clientHWControl.mpBuff, &info, sizeof(rF2HWControl));
+      memcpy(clientHWControl.mpWriteBuff, &info, sizeof(rF2HWControl));
       clientHWControl.EndUpdate();
       Sleep(1000);
 
@@ -274,7 +274,7 @@ namespace TestLiveHWControl //
       strcpy(info.mControlName, "PitMenuUp");
       info.mfRetVal = 0.0f;
       clientHWControl.BeginUpdate();
-      memcpy(clientHWControl.mpBuff, &info, sizeof(rF2HWControl));
+      memcpy(clientHWControl.mpWriteBuff, &info, sizeof(rF2HWControl));
       clientHWControl.EndUpdate();
       Sleep(1000);
 #endif

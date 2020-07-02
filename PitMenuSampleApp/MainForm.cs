@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Windows.Forms;
 using rF2SharedMemory;
 using rF2SharedMemoryAPI;
@@ -102,6 +103,59 @@ namespace PitMenuSampleApp
     {
       this.SendControl.SendHWControl(this.cbAllControls.SelectedItem.ToString(), true);
       this.timer1.Start();
+    }
+
+    private void trackBarDelay_ValueChanged(object sender, EventArgs e)
+    {
+      this.Pmc.setDelay(this.trackBarDelay.Value);
+      this.labelDelay.Text = this.trackBarDelay.Value.ToString() + " mS";
+    }
+
+    private void comboBoxAllTyres_SelectionChangeCommitted(object sender, EventArgs e)
+    {
+      foreach (string tyre in new[] { "RR TIRE:", "RL TIRE:", "FR TIRE:", "FL TIRE:" })
+      {
+        this.Pmc.SetCategory(tyre);
+        this.Pmc.SetTyreType(this.comboBoxAllTyres.SelectedItem.ToString());
+      }
+      this.timer1.Start();
+    }
+
+    private void button1_Click(object sender, EventArgs e)
+    {
+      this.SendControl.SendHWControl("ToggleMFDB", true);
+      this.LastControl = "ToggleMFDB";
+      this.timer1.Start();
+    }
+
+    private void checkBox2_CheckedChanged(object sender, EventArgs e)
+    {
+      if (this.checkBox2.Checked)
+      {
+        while (true)
+        {
+          foreach (string tyreType in new[] { "Wet", "Hard", "Medium", "Soft" })
+          {
+            foreach (string tyre in new[] { "RR TIRE:", "RL TIRE:", "FR TIRE:", "FL TIRE:" })
+            {
+              this.Pmc.SetCategory(tyre);
+              this.Pmc.SetTyreType(tyreType);
+              Application.DoEvents();
+              var catName = this.Pmc.GetCategory();
+              if (catName != tyre)
+                numericUpDownErrors.Value += 1;
+              var choiceStr = this.Pmc.GetChoice();
+              if (!choiceStr.Contains(tyreType))
+                numericUpDownErrors.Value += 1;
+
+              if (!this.checkBox2.Checked)
+                return;
+            }
+            System.Threading.Thread.Sleep(100);
+            //this.timer1.Start();
+          }
+        }
+      }
     }
   }
 }

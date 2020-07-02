@@ -30,11 +30,15 @@ namespace rF2SharedMemory
     public const string MM_RULES_FILE_NAME = "$rFactor2SMMP_Rules$";
     public const string MM_FORCE_FEEDBACK_FILE_NAME = "$rFactor2SMMP_ForceFeedback$";
     public const string MM_GRAPHICS_FILE_NAME = "$rFactor2SMMP_Graphics$";
-    public const string MM_EXTENDED_FILE_NAME = "$rFactor2SMMP_Extended$";
     public const string MM_PITINFO_FILE_NAME = "$rFactor2SMMP_PitInfo$";
+    public const string MM_WEATHER_FILE_NAME = "$rFactor2SMMP_Weather$";
+    public const string MM_EXTENDED_FILE_NAME = "$rFactor2SMMP_Extended$";
 
     public const string MM_HWCONTROL_FILE_NAME = "$rFactor2SMMP_HWControl$";
     public const int MM_HWCONTROL_LAYOUT_VERSION = 1;
+
+    public const string MM_WEATHER_CONTROL_FILE_NAME = "$rFactor2SMMP_WeatherControl$";
+    public const int MM_WEATHER_CONTROL_LAYOUT_VERSION = 1;
 
     public const int MAX_MAPPED_VEHICLES = 128;
     public const int MAX_MAPPED_IDS = 512;
@@ -124,8 +128,7 @@ namespace rF2SharedMemory
     }
 
     // who's in control: -1=nobody (shouldn't get this), 0=local player, 1=local AI, 2=remote, 3=replay (shouldn't get this)
-    public enum rF2Control
-    {
+    public enum rF2Control {
       Nobody = -1,
       Player = 0,
       AI = 1,
@@ -134,8 +137,7 @@ namespace rF2SharedMemory
     }
 
     // wheel info (front left, front right, rear left, rear right)
-    public enum rF2WheelIndex
-    {
+    public enum rF2WheelIndex {
       FrontLeft = 0,
       FrontRight = 1,
       RearLeft = 2,
@@ -143,8 +145,7 @@ namespace rF2SharedMemory
     }
 
     // 0=none, 1=request, 2=entering, 3=stopped, 4=exiting
-    public enum rF2PitState
-    {
+    public enum rF2PitState {
       None = 0,
       Request = 1,
       Entering = 2,
@@ -153,39 +154,34 @@ namespace rF2SharedMemory
     }
 
     // primary flag being shown to vehicle (currently only 0=green or 6=blue)
-    public enum rF2PrimaryFlag
-    {
+    public enum rF2PrimaryFlag {
       Green = 0,
       Blue = 6
     }
 
     // 0 = do not count lap or time, 1 = count lap but not time, 2 = count lap and time
-    public enum rF2CountLapFlag
-    {
+    public enum rF2CountLapFlag {
       DoNotCountLap = 0,
       CountLapButNotTime = 1,
       CountLapAndTime = 2,
     }
 
     // 0=disallowed, 1=criteria detected but not allowed quite yet, 2=allowed
-    public enum rF2RearFlapLegalStatus
-    {
+    public enum rF2RearFlapLegalStatus {
       Disallowed = 0,
       DetectedButNotAllowedYet = 1,
       Alllowed = 2
     }
 
     // 0=off 1=ignition 2=ignition+starter
-    public enum rF2IgnitionStarterStatus
-    {
+    public enum rF2IgnitionStarterStatus {
       Off = 0,
       Ignition = 1,
       IgnitionAndStarter = 2
     }
 
     // 0=no change, 1=go active, 2=head for pits
-    public enum rF2SafetyCarInstruction
-    {
+    public enum rF2SafetyCarInstruction {
       NoChange = 0,
       GoActive = 1,
       HeadForPits = 2
@@ -466,7 +462,7 @@ namespace rF2SharedMemory
       public double mLastLapTime;           // last lap time
       public double mCurSector1;            // current sector 1 if valid
       public double mCurSector2;            // current sector 2 (plus sector 1) if valid
-                                            // no current laptime because it instantly becomes "last"
+                                      // no current laptime because it instantly becomes "last"
 
       public short mNumPitstops;            // number of pitstops made
       public short mNumPenalties;           // number of outstanding penalties
@@ -758,6 +754,38 @@ namespace rF2SharedMemory
     }
 
 
+    //////////////////////////////////////////////////////////////////////////////////////////
+    // Identical to WeatherControlInfoV01, except where noted by MM_NEW/MM_NOT_USED comments.
+    //////////////////////////////////////////////////////////////////////////////////////////
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
+    public struct rF2WeatherControlInfo
+    {
+      // The current conditions are passed in with the API call. The following ET (Elapsed Time) value should typically be far
+      // enough in the future that it can be interpolated smoothly, and allow clouds time to roll in before rain starts. In
+      // other words you probably shouldn't have mCloudiness and mRaining suddenly change from 0.0 to 1.0 and expect that
+      // to happen in a few seconds without looking crazy.
+      public double mET;                           // when you want this weather to take effect
+
+      // mRaining[1][1] is at the origin (2013.12.19 - and currently the only implemented node), while the others
+      // are spaced at <trackNodeSize> meters where <trackNodeSize> is the maximum absolute value of a track vertex
+      // coordinate (and is passed into the API call).
+      [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = 9)]
+      public double[] mRaining;            // rain (0.0-1.0) at different nodes
+
+      public double mCloudiness;                   // general cloudiness (0.0=clear to 1.0=dark), will be automatically overridden to help ensure clouds exist over rainy areas
+      public double mAmbientTempK;                 // ambient temperature (Kelvin)
+      public double mWindMaxSpeed;                 // maximum speed of wind (ground speed, but it affects how fast the clouds move, too)
+
+      public bool mApplyCloudinessInstantly;       // preferably we roll the new clouds in, but you can instantly change them now
+      public bool mUnused1;                        //
+      public bool mUnused2;                        //
+      public bool mUnused3;                        //
+
+      [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = 508)]
+      public byte[] mExpansion;      // future use (humidity, pressure, air density, etc.)
+    }
+
+
     ///////////////////////////////////////////
     // Mapped wrapper structures
     ///////////////////////////////////////////
@@ -898,6 +926,17 @@ namespace rF2SharedMemory
     }
 
 
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
+    struct rF2Weather
+    {
+      public uint mVersionUpdateBegin;          // Incremented right before buffer is written to.
+      public uint mVersionUpdateEnd;            // Incremented after buffer write is done.
+
+      public double mTrackNodeSize;
+      public rF2WeatherControlInfo mWeatherInfo;
+    }
+
+
     [StructLayout(LayoutKind.Sequential, Pack = 4)]
     public struct rF2TrackedDamage
     {
@@ -994,7 +1033,11 @@ namespace rF2SharedMemory
       [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = rFactor2Constants.MAX_RULES_INSTRUCTION_MSG_LEN)]
       public byte[] mLSIRulesInstructionMessage;
 
-      public long mUnsubscribedBuffersMask;                     // Currently active UnsbscribedBuffersMask value.  This will be allowed for clients to write to in the future, but not yet.
+      public int mUnsubscribedBuffersMask;                     // Currently active UnsbscribedBuffersMask value.  This will be allowed for clients to write to in the future, but not yet.
+
+      public byte mHWControlInputEnabled;                       // HWControl input buffer is enabled.
+      public byte mWeatherControlInputEnabled;                  // WeatherControl input buffer is enabled.
+      public byte mRulesControlInputEnabled;                    // RulesControl input buffer is enabled.
     }
 
 
@@ -1011,6 +1054,17 @@ namespace rF2SharedMemory
       public double mfRetVal;
     }
 
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
+    struct rF2WeatherControl
+    {
+      public uint mVersionUpdateBegin;          // Incremented right before buffer is written to.
+      public uint mVersionUpdateEnd;            // Incremented after buffer write is done.
+
+      public int mLayoutVersion;
+
+      public rF2WeatherControlInfo mWeatherInfo;
+    }
+
     enum SubscribedBuffer
     {
       Telemetry = 1,
@@ -1020,7 +1074,8 @@ namespace rF2SharedMemory
       ForceFeedback = 16,
       Graphics = 32,
       PitInfo = 64,
-      All = 127
+      Weather = 128,
+      All = 255
     };
   }
 }

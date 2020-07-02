@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -12,10 +12,10 @@ namespace rF2SharedMemory
   public class SendrF2HWControl
   {
     // Write buffers:
-    MappedBuffer<rF2HWControl> hwcontrolBuffer = new MappedBuffer<rF2HWControl>(rF2SharedMemory.rFactor2Constants.MM_HWCONTROL_FILE_NAME);
+    MappedBuffer<rF2HWControl> hwControlBuffer = new MappedBuffer<rF2HWControl>(rF2SharedMemory.rFactor2Constants.MM_HWCONTROL_FILE_NAME);
 
     // Marshalled output views:
-    rF2HWControl hwcontrol;
+    rF2HWControl hwControl;
 
     private bool Connected = false;
 
@@ -23,7 +23,7 @@ namespace rF2SharedMemory
     {
       try
       {
-        this.hwcontrolBuffer.Connect();
+        this.hwControlBuffer.Connect();
         this.Connected = true;
       }
       catch (Exception)
@@ -38,22 +38,23 @@ namespace rF2SharedMemory
       if (this.Connected && commandStr != null)
       {
         byte[] temp = Encoding.Default.GetBytes(commandStr);
-        this.hwcontrol.mVersionUpdateBegin = this.hwcontrol.mVersionUpdateEnd = this.hwcontrol.mVersionUpdateBegin + 1;
+        this.hwControl.mVersionUpdateBegin = this.hwControl.mVersionUpdateEnd = this.hwControl.mVersionUpdateBegin + 1;
+        this.hwControl.mLayoutVersion = rFactor2Constants.MM_HWCONTROL_LAYOUT_VERSION;
 
-        this.hwcontrol.mControlName = new byte[rFactor2Constants.MAX_HWCONTROL_NAME_LEN];
-        for (int i = 0; i < temp.Length; ++i)
-          this.hwcontrol.mControlName[i] = temp[i];
+        this.hwControl.mControlName = new byte[rFactor2Constants.MAX_HWCONTROL_NAME_LEN];
+        for (int i = 0; i < commandStr.Length; ++i)
+          this.hwControl.mControlName[i] = temp[i];
 
         if (down)
         {
-          this.hwcontrol.mfRetVal = 1.0;
+          this.hwControl.mfRetVal = 1.0;
         }
         else
         {
-          this.hwcontrol.mfRetVal = 0.0;
+          this.hwControl.mfRetVal = 0.0;
         }
 
-        this.hwcontrolBuffer.PutMappedData(ref this.hwcontrol);
+        this.hwControlBuffer.PutMappedData(ref this.hwControl);
       }
     }
   }

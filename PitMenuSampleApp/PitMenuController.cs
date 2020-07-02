@@ -23,7 +23,7 @@ namespace rF2SharedMemoryAPI
 
     // Delay in mS after sending a HW control to rFactor before sending another, set by experiment
     // 20 works for category selection and tyres but fuel needs it slower
-    int delay = 40;
+    int delay = 200;
 
     /// <summary>
     /// Connect to the Shared Memory running in rFactor
@@ -313,6 +313,16 @@ namespace rF2SharedMemoryAPI
     }
 
 
+    //////////////////////////////////////////////////////////////////////////
+    // Testing
+    /// <summary>
+    /// Set the delay between sending each control
+    /// </summary>
+    /// <param name="mS"></param>
+    public void setDelay(int mS)
+    {
+      this.delay = mS;
+    }
     //////////////////////////////////////////////////////////////////////////
     // Utils
     private static string GetStringFromBytes(byte[] bytes)
