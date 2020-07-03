@@ -28,7 +28,7 @@ Website: thecrewchief.org
 // Each component can be in [0:99] range.
 // Note: each time major version changes, that means layout has changed, and clients might need an update.
 #define PLUGIN_VERSION_MAJOR "3.7"
-#define PLUGIN_VERSION_MINOR "6.0"
+#define PLUGIN_VERSION_MINOR "7.1"
 
 #ifdef VERSION_AVX2
 #ifdef VERSION_MT
@@ -65,7 +65,8 @@ enum class DebugLevel : long
   Synchronization = 16,
   Perf = 32,
   Timing = 64,
-  Verbose = 127
+  Verbose = 128,
+  All = 255,
 };
 
 enum class SubscribedBuffer : long
@@ -359,7 +360,10 @@ private:
   // HWControl request tracking variables.  Empty indicates initial state or the fact that request passed to rF2.
   char mHWControlRequest_mControlName[rF2HWControl::MAX_HWCONTROL_NAME_LEN];
   double mHWControlRequest_mfRetVal = 0.0;
-  int mHWControlRequestUpdateCounter = 0;
+  // Read attempt counter, used to skip reads.
+  int mHWControlRequestReadCounter = 0;
+  // Boost counter, boost read rate after buffer update.
+  int mHWControlRequestBoostCounter = 0;
 
   bool mWeatherControlInputRequestReceived = true;
   bool mRulesControlInputRequestReceived = true;

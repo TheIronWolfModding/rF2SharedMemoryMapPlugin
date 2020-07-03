@@ -521,7 +521,8 @@ void SharedMemoryPlugin::ClearTimingsAndCounters()
 
   memset(mHWControlRequest_mControlName, 0, sizeof(mHWControlRequest_mControlName));
   mHWControlRequest_mfRetVal = 0.0;
-  mHWControlRequestUpdateCounter = 0;
+  mHWControlRequestReadCounter = 0;
+  mHWControlRequestBoostCounter = 0;
 
   mWeatherControlInputRequestReceived = false;
   mRulesControlInputRequestReceived = false;
@@ -992,9 +993,15 @@ void SharedMemoryPlugin::ReadHWControl()
 {
   if (!mIsMapped
     || !SharedMemoryPlugin::msHWControlInputRequested
-    || !mExtStateTracker.mExtended.mHWControlInputEnabled
-    || (mHWControlRequestUpdateCounter++ % 3) != 0)
+    || !mExtStateTracker.mExtended.mHWControlInputEnabled)
     return;
+
+  // Control the rate of reads.
+  auto const boost = ++mHWControlRequestBoostCounter < 5;  // 100ms boost.
+  ++mHWControlRequestReadCounter;
+  if (!boost
+    && (mHWControlRequestReadCounter % 10) != 0) // Normal 200ms poll (this function is called at 20ms update rate))
+    return;  // Skip read attempt.
 
   // Read input buffers.
   if (mHWControl.ReadUpdate()) {
@@ -1004,7 +1011,7 @@ void SharedMemoryPlugin::ReadHWControl()
 
       SharedMemoryPlugin::msHWControlInputRequested = false;
       mExtStateTracker.mExtended.mHWControlInputEnabled = false;
-      
+
       mExtended.BeginUpdate();
       memcpy(mExtended.mpWriteBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
       mExtended.EndUpdate();
@@ -1014,10 +1021,15 @@ void SharedMemoryPlugin::ReadHWControl()
 
     strcpy_s(mHWControlRequest_mControlName, mHWControl.mReadBuff.mControlName);
     mHWControlRequest_mfRetVal = mHWControl.mReadBuff.mfRetVal;
-    
+
+    mHWControlRequestBoostCounter = 0;  // Boost next 100ms.
+
     if (Utils::IsFlagOn(SharedMemoryPlugin::msDebugOutputLevel, DebugLevel::DevInfo)) {
       char charBuff[200] = {};
-      sprintf_s(charBuff, "HWControl: received:  '%s'  %1.1f", mHWControlRequest_mControlName, mHWControlRequest_mfRetVal);
+      sprintf_s(charBuff, "HWControl: received:  '%s'  %1.1f   boosted: '%s'", 
+        mHWControlRequest_mControlName, mHWControlRequest_mfRetVal, 
+        boost ? "True" : "False");
+
       DEBUG_MSG(DebugLevel::DevInfo, charBuff);
     }
   }
