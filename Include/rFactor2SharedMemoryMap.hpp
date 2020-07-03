@@ -292,7 +292,7 @@ public:
 
   // HW Control- action a control within the game
   bool HasHardwareInputs() override { return SharedMemoryPlugin::msHWControlInputRequested && mExtStateTracker.mExtended.mHWControlInputEnabled; }
-  bool CheckHWControl(const char* const controlName, double& fRetVal) override;
+  bool CheckHWControl(char const* const controlName, double& fRetVal) override;
 
   // CONDITIONS CONTROL
   bool WantsWeatherAccess() override { return Utils::IsFlagOff(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Weather); } // change to true in order to read or write weather with AccessWeather() call:

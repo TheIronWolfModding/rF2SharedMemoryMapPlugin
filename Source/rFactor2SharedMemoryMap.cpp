@@ -150,7 +150,7 @@ char const* const SharedMemoryPlugin::DEBUG_OUTPUT_FILENAME = R"(UserData\Log\RF
 
 // plugin information
 extern "C" __declspec(dllexport)
-const char * __cdecl GetPluginName() { return PLUGIN_NAME_AND_VERSION; }
+char const* __cdecl GetPluginName() { return PLUGIN_NAME_AND_VERSION; }
 
 extern "C" __declspec(dllexport)
 PluginObjectType __cdecl GetPluginType() { return(PO_INTERNALS); }
@@ -1532,7 +1532,7 @@ void SharedMemoryPlugin::GetCustomVariableSetting(CustomVariableV01& var, long i
 // Debug output helpers.
 ////////////////////////////////////////////
 
-void SharedMemoryPlugin::WriteToAllExampleOutputFiles(const char* const openStr, const char* const msg)
+void SharedMemoryPlugin::WriteToAllExampleOutputFiles(char const* const openStr, char const* const msg)
 {
   if (!SharedMemoryPlugin::msDebugISIInternals)
     return;
@@ -1551,7 +1551,7 @@ void SharedMemoryPlugin::WriteToAllExampleOutputFiles(const char* const openStr,
 }
 
 
-void SharedMemoryPlugin::WriteDebugMsg(DebugLevel lvl, const char* const format, ...)
+void SharedMemoryPlugin::WriteDebugMsg(DebugLevel lvl, char const* const format, ...)
 {
   if (Utils::IsFlagOff(SharedMemoryPlugin::msDebugOutputLevel, lvl))
     return;
