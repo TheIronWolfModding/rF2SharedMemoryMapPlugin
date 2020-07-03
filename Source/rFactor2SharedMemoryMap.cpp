@@ -1391,7 +1391,7 @@ bool SharedMemoryPlugin::GetCustomVariable(long i, CustomVariableV01& var)
   }
   else if (i == 1) {
     strcpy_s(var.mCaption, "DebugOutputLevel");
-    var.mNumSettings = 9;
+    var.mNumSettings = 1;
     var.mCurrentSetting = 0;
     return true;
   }
@@ -1454,7 +1454,7 @@ void SharedMemoryPlugin::AccessCustomVariable(CustomVariableV01& var)
     ; // Do nothing; this variable is just for rF2 to know whether to keep the plugin loaded.
   else if (_stricmp(var.mCaption, "DebugOutputLevel") == 0) {
     auto sanitized = min(max(var.mCurrentSetting, 0L), static_cast<long>(DebugLevel::Verbose));
-    SharedMemoryPlugin::msDebugOutputLevel = static_cast<long>(sanitized);
+    SharedMemoryPlugin::msDebugOutputLevel = sanitized;
 
     // Remove previous debug output.
     if (SharedMemoryPlugin::msDebugOutputLevel != static_cast<long>(DebugLevel::Off))
@@ -1489,8 +1489,6 @@ void SharedMemoryPlugin::GetCustomVariableSetting(CustomVariableV01& var, long i
     else
       strcpy_s(setting.mName, "True");
   }
-  else if (_stricmp(var.mCaption, "DebugOutputLevel") == 0)
-    sprintf_s(setting.mName, "%ld%%", i);
   else if (_stricmp(var.mCaption, "DebugISIInternals") == 0) {
     if (i == 0)
       strcpy_s(setting.mName, "False");
@@ -1534,7 +1532,7 @@ void SharedMemoryPlugin::GetCustomVariableSetting(CustomVariableV01& var, long i
 // Debug output helpers.
 ////////////////////////////////////////////
 
-void SharedMemoryPlugin::WriteToAllExampleOutputFiles(const char * const openStr, const char * const msg)
+void SharedMemoryPlugin::WriteToAllExampleOutputFiles(const char* const openStr, const char* const msg)
 {
   if (!SharedMemoryPlugin::msDebugISIInternals)
     return;
@@ -1555,7 +1553,7 @@ void SharedMemoryPlugin::WriteToAllExampleOutputFiles(const char * const openStr
 
 void SharedMemoryPlugin::WriteDebugMsg(DebugLevel lvl, const char* const format, ...)
 {
-  if (Utils::IsFlagOn(SharedMemoryPlugin::msDebugOutputLevel, lvl))
+  if (Utils::IsFlagOff(SharedMemoryPlugin::msDebugOutputLevel, lvl))
     return;
 
   va_list argList;

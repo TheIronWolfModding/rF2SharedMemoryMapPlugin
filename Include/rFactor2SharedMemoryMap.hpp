@@ -55,7 +55,7 @@ Website: thecrewchief.org
 #include "MappedBuffer.h"
 #include "DirectMemoryReader.h"
 
-enum class DebugLevel
+enum class DebugLevel : long
 {
   Off = 0,
   Errors = 1,
@@ -68,7 +68,7 @@ enum class DebugLevel
   Verbose = 127
 };
 
-enum class SubscribedBuffer
+enum class SubscribedBuffer : long
 {
   Telemetry = 1,
   Scoring = 2,
