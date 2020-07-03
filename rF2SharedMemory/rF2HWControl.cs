@@ -9,6 +9,9 @@ using static rF2SharedMemory.rFactor2Constants;
 
 namespace rF2SharedMemory
 {
+  public class JsonIgnoreAttribute : Attribute
+  {
+  }
   public class SendrF2HWControl
   {
     // Write buffers:
