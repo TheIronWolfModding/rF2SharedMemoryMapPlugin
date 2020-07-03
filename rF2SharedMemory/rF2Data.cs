@@ -1033,7 +1033,7 @@ namespace rF2SharedMemory
       [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = rFactor2Constants.MAX_RULES_INSTRUCTION_MSG_LEN)]
                    public byte[] mLSIRulesInstructionMessage;
 
-      [JsonIgnore] public long mUnsubscribedBuffersMask;                     // Currently active UnsbscribedBuffersMask value.  This will be allowed for clients to write to in the future, but not yet.
+      [JsonIgnore] public int mUnsubscribedBuffersMask;                      // Currently active UnsbscribedBuffersMask value.  This will be allowed for clients to write to in the future, but not yet.
 
                    public byte mHWControlInputEnabled;                       // HWControl input buffer is enabled.
                    public byte mWeatherControlInputEnabled;                  // WeatherControl input buffer is enabled.
