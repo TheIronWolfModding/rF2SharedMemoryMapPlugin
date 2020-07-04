@@ -24,12 +24,27 @@ namespace rF2SharedMemoryAPI
     // Delay in mS after sending a HW control to rFactor before sending another, set by experiment
     // 20 works for category selection and tyres but fuel needs it slower
     int delay = 40;
+    int initialDelay = 200;   // Shared memory is normally scanning slowly until a control is received
+
+    /// <summary>
+    /// All the Pit Menu categories of tyres that rF2 selects from
+    /// </summary>
+    private readonly string[] tyres = {
+            "RR TIRE:",
+            "RL TIRE:",
+            "FR TIRE:",
+            "FL TIRE:",
+            "R TIRES:",
+            "F TIRES:",
+            "RT TIRES:",
+            "LF TIRES:"
+        };
 
     /// <summary>
     /// Connect to the Shared Memory running in rFactor
     /// </summary>
     /// <returns>
-    /// true of connected
+    /// true if connected
     /// </returns>
     public bool Connect()
     {
@@ -37,13 +52,28 @@ namespace rF2SharedMemoryAPI
       if (this.Connected)
       {
         this.pitInfoBuffer.Connect();
-        this.SendControl.SendHWControl("ToggleMFDB", true); // Select rFactor Pit Menu
-        System.Threading.Thread.Sleep(delay);
-        this.SendControl.SendHWControl("ToggleMFDB", false); // Select rFactor Pit Menu
       }
       return this.Connected;
     }
 
+    /// <summary>
+    /// Shared memory is normally scanning slowly until a control is received
+    /// so send the first control (to select the Pit Menu) with a longer delay
+    /// </summary>
+    public void startUsingPitMenu()
+    {
+      // Need to select the Pit Menu
+      this.SendControl.SendHWControl("ToggleMFDB", true); // Select rFactor Pit Menu
+      System.Threading.Thread.Sleep(initialDelay);
+      //this.SendControl.SendHWControl("ToggleMFDB", false); // Select rFactor Pit Menu
+      System.Threading.Thread.Sleep(delay);
+      // And it would be annoying to turn if off it was on so toggle it again.
+      // There is no way of telling if it's being displayed or not and the menu
+      // can be operated whether it is or not.
+      this.SendControl.SendHWControl("ToggleMFDB", true); // Select rFactor Pit Menu
+      System.Threading.Thread.Sleep(delay);
+      //this.SendControl.SendHWControl("ToggleMFDB", false); // Select rFactor Pit Menu
+    }
     //////////////////////////////////////////////////////////////////////////
     // Menu Categories
     /// <summary>
@@ -76,7 +106,7 @@ namespace rF2SharedMemoryAPI
         cmd = "PitMenuDown";
       this.SendControl.SendHWControl(cmd, true);
       System.Threading.Thread.Sleep(delay);
-      this.SendControl.SendHWControl(cmd, false);
+      //this.SendControl.SendHWControl(cmd, false);
       System.Threading.Thread.Sleep(delay);
     }
 
@@ -119,7 +149,7 @@ namespace rF2SharedMemoryAPI
         cmd = "PitMenuDecrementValue";
       this.SendControl.SendHWControl(cmd, true);
       System.Threading.Thread.Sleep(delay);
-      this.SendControl.SendHWControl(cmd, false);
+      //this.SendControl.SendHWControl(cmd, false);
       System.Threading.Thread.Sleep(delay);
     }
 
@@ -319,9 +349,10 @@ namespace rF2SharedMemoryAPI
     /// Set the delay between sending each control
     /// </summary>
     /// <param name="mS"></param>
-    public void setDelay(int mS)
+    public void setDelay(int mS, int initialDelay)
     {
       this.delay = mS;
+      this.initialDelay = initialDelay;
     }
     //////////////////////////////////////////////////////////////////////////
     // Utils

@@ -56,6 +56,7 @@ namespace PitMenuSampleApp
       {
         //this.SendControl.SendHWControl(this.LastControl, false);
 
+        //this.Pmc.startUsingPitMenu();
         var catName = this.Pmc.GetCategory();
         this.cbCategory.SelectedItem = catName;
         var choiceStr = this.Pmc.GetChoice();
@@ -69,12 +70,14 @@ namespace PitMenuSampleApp
 
     private void cbCategory_ChangeCommitted(object sender, EventArgs e)
     {
+      this.Pmc.startUsingPitMenu();
       this.Pmc.SetCategory(this.cbCategory.SelectedItem.ToString());
       this.timer1.Start();
     }
 
     private void cbChoices_SelectionChangeCommitted(object sender, EventArgs e)
     {
+      this.Pmc.startUsingPitMenu();
       this.Pmc.SetChoice(this.cbChoices.SelectedItem.ToString());
       this.timer1.Start();
     }
@@ -87,6 +90,7 @@ namespace PitMenuSampleApp
         bool parsed = Int16.TryParse(tbSetFuel.Text, out level);
         if (parsed && level >= 0)
         {
+          this.Pmc.startUsingPitMenu();
           this.Pmc.SetFuelLevel(level);
           this.timer1.Start();
         }
@@ -95,6 +99,7 @@ namespace PitMenuSampleApp
 
     private void cbTyreChoice_SelectionChangeCommitted(object sender, EventArgs e)
     {
+      this.Pmc.startUsingPitMenu();
       this.Pmc.SetTyreType(this.cbTyreChoice.SelectedItem.ToString());
       this.timer1.Start();
     }
@@ -107,12 +112,18 @@ namespace PitMenuSampleApp
 
     private void trackBarDelay_ValueChanged(object sender, EventArgs e)
     {
-      this.Pmc.setDelay(this.trackBarDelay.Value);
+      this.Pmc.setDelay(this.trackBarDelay.Value, this.trackBarInitialDelay.Value);
       this.labelDelay.Text = this.trackBarDelay.Value.ToString() + " mS";
+    }
+    private void trackBarInitialDelay_ValueChanged(object sender, EventArgs e)
+    {
+      this.Pmc.setDelay(this.trackBarDelay.Value, this.trackBarInitialDelay.Value);
+      this.labelInitialDelay.Text = this.trackBarInitialDelay.Value.ToString() + " mS";
     }
 
     private void comboBoxAllTyres_SelectionChangeCommitted(object sender, EventArgs e)
     {
+      this.Pmc.startUsingPitMenu();
       foreach (string tyre in new[] { "RR TIRE:", "RL TIRE:", "FR TIRE:", "FL TIRE:" })
       {
         this.Pmc.SetCategory(tyre);
@@ -132,6 +143,7 @@ namespace PitMenuSampleApp
     {
       if (this.checkBox2.Checked)
       {
+        this.Pmc.startUsingPitMenu();
         while (true)
         {
           foreach (string tyreType in new[] { "Wet", "Hard", "Medium", "Soft" })
@@ -166,7 +178,8 @@ namespace PitMenuSampleApp
           this.Pmc.SetTyreType("No Change");
           this.Pmc.SetCategory("FL TIRE:");
           this.Pmc.SetTyreType("No Change");
-          System.Threading.Thread.Sleep(2000);
+          System.Threading.Thread.Sleep(1000);
+          this.Pmc.startUsingPitMenu();
         }
       }
     }
