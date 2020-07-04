@@ -1104,7 +1104,7 @@ void SharedMemoryPlugin::ReadPluginControl()
     || !mExtStateTracker.mExtended.mPluginControlInputEnabled)
     return;
 
-  // Read input buffers.
+  // Read the input buffer.
   if (mPluginControl.ReadUpdate()) {
     if (mPluginControl.mReadBuff.mLayoutVersion != rF2PluginControl::SUPPORTED_LAYOUT_VERSION) {
       DEBUG_INT2(DebugLevel::Errors, "Plugin control: unsupported input buffer layout version  ", mPluginControl.mReadBuff.mLayoutVersion);
@@ -1118,40 +1118,62 @@ void SharedMemoryPlugin::ReadPluginControl()
 
     auto const rebm = mPluginControl.mReadBuff.mRequestEnableBuffersMask;
     DEBUG_MSG(DebugLevel::CriticalInfo, "Plugin control input received.");
-    if (Utils::IsFlagOff(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Telemetry)
-      && Utils::IsFlagOn(rebm, SubscribedBuffer::Telemetry))
+    if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Telemetry)
+      && Utils::IsFlagOn(rebm, SubscribedBuffer::Telemetry)) {
       DEBUG_MSG(DebugLevel::CriticalInfo, "Subscribing to the Telemetry updates based on the dynamic request.");
 
-    if (Utils::IsFlagOff(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Scoring)
-      && Utils::IsFlagOn(rebm, SubscribedBuffer::Scoring))
+      SharedMemoryPlugin::msUnsubscribedBuffersMask ^= static_cast<long>(SubscribedBuffer::Telemetry);
+    }
+
+    if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Scoring)
+      && Utils::IsFlagOn(rebm, SubscribedBuffer::Scoring)) {
       DEBUG_MSG(DebugLevel::CriticalInfo, "Subscribing to the Scoring updates based on the dynamic request.");
 
-    if (Utils::IsFlagOff(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Rules)
-      && Utils::IsFlagOn(rebm, SubscribedBuffer::Rules))
+      SharedMemoryPlugin::msUnsubscribedBuffersMask ^= static_cast<long>(SubscribedBuffer::Scoring);
+    }
+
+    if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Rules)
+      && Utils::IsFlagOn(rebm, SubscribedBuffer::Rules)) {
       DEBUG_MSG(DebugLevel::CriticalInfo, "Subscribing to the Rules updates based on the dynamic request.");
 
-    if (Utils::IsFlagOff(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::MultiRules)
-      && Utils::IsFlagOn(rebm, SubscribedBuffer::MultiRules))
+      SharedMemoryPlugin::msUnsubscribedBuffersMask ^= static_cast<long>(SubscribedBuffer::Rules);
+    }
+
+    if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::MultiRules)
+      && Utils::IsFlagOn(rebm, SubscribedBuffer::MultiRules)) {
       DEBUG_MSG(DebugLevel::CriticalInfo, "Subscribing to the MultiRules updates based on the dynamic request.");
 
-    if (Utils::IsFlagOff(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::ForceFeedback)
-      && Utils::IsFlagOn(rebm, SubscribedBuffer::ForceFeedback))
+      SharedMemoryPlugin::msUnsubscribedBuffersMask ^= static_cast<long>(SubscribedBuffer::MultiRules);
+    }
+
+    if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::ForceFeedback)
+      && Utils::IsFlagOn(rebm, SubscribedBuffer::ForceFeedback)) {
       DEBUG_MSG(DebugLevel::CriticalInfo, "Subscribing to the ForceFeedback updates based on the dynamic request.");
 
-    if (Utils::IsFlagOff(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Graphics)
-      && Utils::IsFlagOn(rebm, SubscribedBuffer::Graphics))
+      SharedMemoryPlugin::msUnsubscribedBuffersMask ^= static_cast<long>(SubscribedBuffer::ForceFeedback);
+    }
+
+    if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Graphics)
+      && Utils::IsFlagOn(rebm, SubscribedBuffer::Graphics)) {
       DEBUG_MSG(DebugLevel::CriticalInfo, "Subscribing to the Graphics updates based on the dynamic request.");
 
-    if (Utils::IsFlagOff(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::PitInfo)
-      && Utils::IsFlagOn(rebm, SubscribedBuffer::PitInfo))
+      SharedMemoryPlugin::msUnsubscribedBuffersMask ^= static_cast<long>(SubscribedBuffer::Graphics);
+    }
+
+    if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::PitInfo)
+      && Utils::IsFlagOn(rebm, SubscribedBuffer::PitInfo)) {
       DEBUG_MSG(DebugLevel::CriticalInfo, "Subscribing to the PitInfo updates based on the dynamic request.");
 
-    if (Utils::IsFlagOff(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Weather)
-      && Utils::IsFlagOn(rebm, SubscribedBuffer::Weather))
+      SharedMemoryPlugin::msUnsubscribedBuffersMask ^= static_cast<long>(SubscribedBuffer::PitInfo);
+    }
+
+    if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Weather)
+      && Utils::IsFlagOn(rebm, SubscribedBuffer::Weather)) {
       DEBUG_MSG(DebugLevel::CriticalInfo, "Subscribing to the Weather updates based on the dynamic request.");
 
-    // Save the updated UBM.
-    SharedMemoryPlugin::msUnsubscribedBuffersMask |= rebm;
+      SharedMemoryPlugin::msUnsubscribedBuffersMask ^= static_cast<long>(SubscribedBuffer::Weather);
+    }
+
     mExtStateTracker.mExtended.mUnsubscribedBuffersMask = SharedMemoryPlugin::msUnsubscribedBuffersMask;
     DEBUG_INT2(DebugLevel::CriticalInfo, "Updated UnsubscribedBuffersMask:", SharedMemoryPlugin::msUnsubscribedBuffersMask);
 
@@ -1159,7 +1181,7 @@ void SharedMemoryPlugin::ReadPluginControl()
       && mPluginControl.mReadBuff.mRequestHWControlInput) {
       auto hwCtrlDependencyMissing = false;
       if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Telemetry)) {
-        DEBUG_MSG(DebugLevel::Errors, "HWControl input cannot be enabled dynamically, because Telemetry updates are turned off.");
+        DEBUG_MSG(DebugLevel::CriticalInfo, "HWControl input cannot be enabled dynamically, because Telemetry updates are turned off.");
 
         hwCtrlDependencyMissing = true;
       }
@@ -1176,13 +1198,13 @@ void SharedMemoryPlugin::ReadPluginControl()
       && mPluginControl.mReadBuff.mRequestWeatherControlInput) {
       auto weatherCtrlDependencyMissing = false;
       if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Scoring)) {
-        DEBUG_MSG(DebugLevel::Errors, "Weather control input cannot be enabled dynamically, because Scoring updates are turned off.");
+        DEBUG_MSG(DebugLevel::CriticalInfo, "Weather control input cannot be enabled dynamically, because Scoring updates are turned off.");
 
         weatherCtrlDependencyMissing = true;
       }
 
       if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Weather)) {
-        DEBUG_MSG(DebugLevel::Errors, "Weather control input cannot be enabled dynamically, because Weather updates are turned off.");
+        DEBUG_MSG(DebugLevel::CriticalInfo, "Weather control input cannot be enabled dynamically, because Weather updates are turned off.");
 
         weatherCtrlDependencyMissing = true;
       }
@@ -1199,13 +1221,13 @@ void SharedMemoryPlugin::ReadPluginControl()
       && mPluginControl.mReadBuff.mRequestRulesControlInput) {
       auto rulesCtrlDependencyMissing = false;
       if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Scoring)) {
-        DEBUG_MSG(DebugLevel::Errors, "Rules control input cannot be enabled dynamically, because Scoring updates are turned off.");
+        DEBUG_MSG(DebugLevel::CriticalInfo, "Rules control input cannot be enabled dynamically, because Scoring updates are turned off.");
 
         rulesCtrlDependencyMissing = true;
       }
 
       if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Rules)) {
-        DEBUG_MSG(DebugLevel::Errors, "Rules control input cannot be enabled dynamically, because Rules updates are turned off.");
+        DEBUG_MSG(DebugLevel::CriticalInfo, "Rules control input cannot be enabled dynamically, because Rules updates are turned off.");
 
         rulesCtrlDependencyMissing = true;
       }

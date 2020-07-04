@@ -43,6 +43,9 @@ namespace rF2SMMonitor
     public const string MM_RULES_CONTROL_FILE_NAME = "$rFactor2SMMP_RulesControl$";
     public const int MM_RULES_CONTROL_LAYOUT_VERSION = 1;
 
+    public const string MM_PLUGIN_CONTROL_FILE_NAME = "$rFactor2SMMP_PluginControl$";
+    public const int MM_PLUGIN_CONTROL_LAYOUT_VERSION = 1;
+
     public const int MAX_MAPPED_VEHICLES = 128;
     public const int MAX_MAPPED_IDS = 512;
     public const int MAX_STATUS_MSG_LEN = 128;
@@ -1041,6 +1044,7 @@ namespace rF2SMMonitor
       public byte mHWControlInputEnabled;                       // HWControl input buffer is enabled.
       public byte mWeatherControlInputEnabled;                  // WeatherControl input buffer is enabled.
       public byte mRulesControlInputEnabled;                    // RulesControl input buffer is enabled.
+      public byte mPluginControlInputEnabled;                   // Plugin control input buffer is enabled.
     }
 
 
@@ -1059,7 +1063,7 @@ namespace rF2SMMonitor
 
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
-    struct rF2WeatherControl
+    public struct rF2WeatherControl
     {
       public uint mVersionUpdateBegin;          // Incremented right before buffer is written to.
       public uint mVersionUpdateEnd;            // Incremented after buffer write is done.
@@ -1086,6 +1090,21 @@ namespace rF2SMMonitor
 
       [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = rFactor2Constants.MAX_MAPPED_VEHICLES)]
       public rF2TrackRulesParticipant[] mParticipants;
+    }
+
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
+    struct rF2PluginControl
+    {
+      public uint mVersionUpdateBegin;          // Incremented right before buffer is written to.
+      public uint mVersionUpdateEnd;            // Incremented after buffer write is done.
+
+      public int mLayoutVersion;
+
+      public int mRequestEnableBuffersMask;
+      public byte mRequestHWControlInput;
+      public byte mRequestWeatherControlInput;
+      public byte mRequestRulesControlInput;
     }
 
 

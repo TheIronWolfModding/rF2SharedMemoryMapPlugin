@@ -1013,7 +1013,7 @@ struct rF2Extended : public rF2MappedBufferHeader
   bool mHWControlInputEnabled;                    // HWControl input buffer is enabled.
   bool mWeatherControlInputEnabled;               // Weather Control input buffer is enabled.
   bool mRulesControlInputEnabled;                 // Rules Control input buffer is enabled.
-  bool mPluginControlInputEnabled;                 // Plugin Control input buffer is enabled.
+  bool mPluginControlInputEnabled;                // Plugin Control input buffer is enabled.
 };
 
 
@@ -1060,6 +1060,7 @@ struct rF2PluginControl : public rF2MappedInputBufferHeader
   // Version supported by the _current_ plugin.
   static int const SUPPORTED_LAYOUT_VERSION = 1;
 
+  // Bitmask TODO: scoring can't be requested.
   long mRequestEnableBuffersMask;
   bool mRequestHWControlInput;
   bool mRequestWeatherControlInput;

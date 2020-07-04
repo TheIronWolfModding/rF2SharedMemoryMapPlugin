@@ -47,6 +47,7 @@ namespace rF2SMMonitor
     MappedBuffer<rF2HWControl> hwControlBuffer = new MappedBuffer<rF2HWControl>(rFactor2Constants.MM_HWCONTROL_FILE_NAME);
     MappedBuffer<rF2WeatherControl> weatherControlBuffer = new MappedBuffer<rF2WeatherControl>(rFactor2Constants.MM_WEATHER_CONTROL_FILE_NAME);
     MappedBuffer<rF2RulesControl> rulesControlBuffer = new MappedBuffer<rF2RulesControl>(rFactor2Constants.MM_RULES_CONTROL_FILE_NAME);
+    MappedBuffer<rF2PluginControl> pluginControlBuffer = new MappedBuffer<rF2PluginControl>(rFactor2Constants.MM_PLUGIN_CONTROL_FILE_NAME);
 
     // Marshalled views:
     rF2Telemetry telemetry;
@@ -62,6 +63,7 @@ namespace rF2SMMonitor
     rF2HWControl hwControl;
     rF2WeatherControl weatherControl;
     rF2RulesControl rulesControl;
+    rF2PluginControl pluginControl;
 
     // Track rF2 transitions.
     TransitionTracker tracker = new TransitionTracker();
@@ -570,6 +572,7 @@ namespace rF2SMMonitor
           + $"{(this.extended.mHWControlInputEnabled == 1 ? "    HWCI enabled" : "")}"
           + $"{(this.extended.mWeatherControlInputEnabled == 1 ? "    WCI enabled" : "")}"
           + $"{(this.extended.mRulesControlInputEnabled == 1 ? "    RCI enabled" : "")}"
+          + $"{(this.extended.mPluginControlInputEnabled == 1 ? "    PCI enabled" : "")}"
           + $"    UBM: {this.extended.mUnsubscribedBuffersMask}"
           + $"    FPS: {this.fps}"
           + $"    FFB Curr: {this.forceFeedback.mForceValue:N3} Max: {this.maxFFBValue:N3}");
@@ -1020,6 +1023,19 @@ namespace rF2SMMonitor
           this.rulesControlBuffer.GetMappedData(ref this.rulesControl);
           this.rulesControl.mLayoutVersion = rFactor2Constants.MM_RULES_CONTROL_LAYOUT_VERSION;
 
+          this.pluginControlBuffer.Connect();
+          this.pluginControlBuffer.GetMappedData(ref this.pluginControl);
+          this.pluginControl.mLayoutVersion = rFactor2Constants.MM_PLUGIN_CONTROL_LAYOUT_VERSION;
+
+          // Scoring cannot be enabled on demand.
+          this.pluginControl.mRequestEnableBuffersMask = /*(int)SubscribedBuffer.Scoring | */(int)SubscribedBuffer.Telemetry | (int)SubscribedBuffer.Rules
+            | (int)SubscribedBuffer.ForceFeedback | (int)SubscribedBuffer.Graphics | (int)SubscribedBuffer.Weather | (int)SubscribedBuffer.PitInfo;
+          this.pluginControl.mRequestHWControlInput = 1;
+          this.pluginControl.mRequestRulesControlInput = 1;
+          this.pluginControl.mRequestWeatherControlInput = 1;
+          this.pluginControl.mVersionUpdateBegin = this.pluginControl.mVersionUpdateEnd = this.pluginControl.mVersionUpdateBegin + 1;
+          this.pluginControlBuffer.PutMappedData(ref this.pluginControl);
+
           this.connected = true;
 
           this.EnableControls(true);
@@ -1063,6 +1079,7 @@ namespace rF2SMMonitor
       this.hwControlBuffer.Disconnect();
       this.weatherControlBuffer.Disconnect();
       this.rulesControlBuffer.Disconnect();
+      this.pluginControlBuffer.Disconnect();
 
       this.connected = false;
 
