@@ -40,6 +40,9 @@ namespace rF2SMMonitor
     public const string MM_WEATHER_CONTROL_FILE_NAME = "$rFactor2SMMP_WeatherControl$";
     public const int MM_WEATHER_CONTROL_LAYOUT_VERSION = 1;
 
+    public const string MM_RULES_CONTROL_FILE_NAME = "$rFactor2SMMP_RulesControl$";
+    public const int MM_RULES_CONTROL_LAYOUT_VERSION = 1;
+
     public const int MAX_MAPPED_VEHICLES = 128;
     public const int MAX_MAPPED_IDS = 512;
     public const int MAX_STATUS_MSG_LEN = 128;
@@ -1054,6 +1057,7 @@ namespace rF2SMMonitor
       public double mfRetVal;
     }
 
+
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
     struct rF2WeatherControl
     {
@@ -1064,6 +1068,26 @@ namespace rF2SMMonitor
 
       public rF2WeatherControlInfo mWeatherInfo;
     }
+
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
+    public struct rF2RulesControl
+    {
+      public uint mVersionUpdateBegin;          // Incremented right before buffer is written to.
+      public uint mVersionUpdateEnd;            // Incremented after buffer write is done.
+
+      public int mLayoutVersion;             // How many bytes of the structure were written during the last update.
+                                             // 0 means unknown (whole buffer should be considered as updated).
+
+      public rF2TrackRules mTrackRules;
+
+      [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = rFactor2Constants.MAX_MAPPED_VEHICLES)]
+      public rF2TrackRulesAction[] mActions;
+
+      [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = rFactor2Constants.MAX_MAPPED_VEHICLES)]
+      public rF2TrackRulesParticipant[] mParticipants;
+    }
+
 
     enum SubscribedBuffer
     {

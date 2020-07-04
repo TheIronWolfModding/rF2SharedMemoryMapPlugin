@@ -46,6 +46,7 @@ namespace rF2SMMonitor
     // Write buffers:
     MappedBuffer<rF2HWControl> hwControlBuffer = new MappedBuffer<rF2HWControl>(rFactor2Constants.MM_HWCONTROL_FILE_NAME);
     MappedBuffer<rF2WeatherControl> weatherControlBuffer = new MappedBuffer<rF2WeatherControl>(rFactor2Constants.MM_WEATHER_CONTROL_FILE_NAME);
+    MappedBuffer<rF2RulesControl> rulesControlBuffer = new MappedBuffer<rF2RulesControl>(rFactor2Constants.MM_RULES_CONTROL_FILE_NAME);
 
     // Marshalled views:
     rF2Telemetry telemetry;
@@ -60,6 +61,7 @@ namespace rF2SMMonitor
     // Marashalled output views:
     rF2HWControl hwControl;
     rF2WeatherControl weatherControl;
+    rF2RulesControl rulesControl;
 
     // Track rF2 transitions.
     TransitionTracker tracker = new TransitionTracker();
@@ -193,13 +195,34 @@ namespace rF2SMMonitor
       var fRetVal = 1.0;
 
       if (MainForm.GetAsyncKeyState(Keys.U) != 0)
-          commandStr = Encoding.Default.GetBytes("PitMenuIncrementValue");
+        commandStr = Encoding.Default.GetBytes("PitMenuIncrementValue");
       else if (MainForm.GetAsyncKeyState(Keys.Y) != 0)
         commandStr = Encoding.Default.GetBytes("PitMenuDecrementValue");
       else if (MainForm.GetAsyncKeyState(Keys.P) != 0)
         commandStr = Encoding.Default.GetBytes("PitMenuUp");
       else if (MainForm.GetAsyncKeyState(Keys.O) != 0)
         commandStr = Encoding.Default.GetBytes("PitMenuDown");
+      // rough sample for rule input buffer.
+      /*else if (MainForm.GetAsyncKeyState(Keys.T) != 0)
+      {
+        if (this.extended.mRulesControlInputEnabled == 0)
+          return;
+
+        this.rulesControl.mVersionUpdateBegin = this.rulesControl.mVersionUpdateEnd = this.rulesControl.mVersionUpdateBegin + 1;
+
+        // First, copy current state into control buffer.
+        // This is not a deep copy. Values in rules buffer wwill change.  If that is not desired, deep copy needs to be performed.
+        this.rulesControl.mTrackRules = this.rules.mTrackRules;
+        this.rulesControl.mActions = this.rules.mActions;
+        this.rulesControl.mParticipants = this.rules.mParticipants;
+
+        this.rulesControl.mTrackRules.mMessage = new byte[96];
+        var msg = Encoding.Default.GetBytes("Hello!");  // should be visible in LSI during FCY?
+        for (int i = 0; i < msg.Length; ++i)
+          this.rulesControl.mTrackRules.mMessage[i] = msg[i];
+
+        this.rulesControlBuffer.PutMappedData(ref this.rulesControl);
+      }*/
 
       this.SendPitMenuCmd(commandStr, fRetVal);
     }
@@ -993,6 +1016,10 @@ namespace rF2SMMonitor
           this.weatherControlBuffer.GetMappedData(ref this.weatherControl);
           this.weatherControl.mLayoutVersion = rFactor2Constants.MM_WEATHER_CONTROL_LAYOUT_VERSION;
 
+          this.rulesControlBuffer.Connect();
+          this.rulesControlBuffer.GetMappedData(ref this.rulesControl);
+          this.rulesControl.mLayoutVersion = rFactor2Constants.MM_RULES_CONTROL_LAYOUT_VERSION;
+
           this.connected = true;
 
           this.EnableControls(true);
@@ -1035,6 +1062,7 @@ namespace rF2SMMonitor
 
       this.hwControlBuffer.Disconnect();
       this.weatherControlBuffer.Disconnect();
+      this.rulesControlBuffer.Disconnect();
 
       this.connected = false;
 

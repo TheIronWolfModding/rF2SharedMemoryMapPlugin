@@ -1013,6 +1013,7 @@ struct rF2Extended : public rF2MappedBufferHeader
   bool mHWControlInputEnabled;                    // HWControl input buffer is enabled.
   bool mWeatherControlInputEnabled;               // Weather Control input buffer is enabled.
   bool mRulesControlInputEnabled;                 // Rules Control input buffer is enabled.
+  bool mPluginControlInputEnabled;                 // Plugin Control input buffer is enabled.
 };
 
 
@@ -1051,6 +1052,18 @@ struct rF2RulesControl : public rF2MappedInputBufferHeader
 
   rF2TrackRulesAction mActions[rF2MappedBufferHeader::MAX_MAPPED_VEHICLES];
   rF2TrackRulesParticipant mParticipants[rF2MappedBufferHeader::MAX_MAPPED_VEHICLES];
+};
+
+
+struct rF2PluginControl : public rF2MappedInputBufferHeader
+{
+  // Version supported by the _current_ plugin.
+  static int const SUPPORTED_LAYOUT_VERSION = 1;
+
+  long mRequestEnableBuffersMask;
+  bool mRequestHWControlInput;
+  bool mRequestWeatherControlInput;
+  bool mRequestRulesControlInput;
 };
 
 

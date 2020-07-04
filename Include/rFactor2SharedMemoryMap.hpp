@@ -28,7 +28,7 @@ Website: thecrewchief.org
 // Each component can be in [0:99] range.
 // Note: each time major version changes, that means layout has changed, and clients might need an update.
 #define PLUGIN_VERSION_MAJOR "3.7"
-#define PLUGIN_VERSION_MINOR "7.1"
+#define PLUGIN_VERSION_MINOR "8.0"
 
 #ifdef VERSION_AVX2
 #ifdef VERSION_MT
@@ -106,6 +106,7 @@ public:
   static char const* const MM_HWCONTROL_FILE_NAME; 
   static char const* const MM_WEATHER_CONTROL_FILE_NAME;
   static char const* const MM_RULES_CONTROL_FILE_NAME;
+  static char const* const MM_PLUGIN_CONTROL_FILE_NAME;
 
   static char const* const INTERNALS_TELEMETRY_FILENAME;
   static char const* const INTERNALS_SCORING_FILENAME;
@@ -320,6 +321,7 @@ private:
   void ReadHWControl();
   void ReadWeatherControl();
   void ReadRulesControl();
+  void ReadPluginControl();
 
   template <typename BuffT>
   void TraceBeginUpdate(BuffT const& buffer, double& lastUpdateMillis, char const msgPrefix[]) const;
@@ -382,6 +384,7 @@ private:
   MappedBuffer<rF2HWControl> mHWControl;
   MappedBuffer<rF2WeatherControl> mWeatherControl;
   MappedBuffer<rF2RulesControl> mRulesControl;
+  MappedBuffer<rF2PluginControl> mPluginControl;
 
   // All requested buffers mapped successfully or not.
   bool mIsMapped = false;
@@ -392,5 +395,3 @@ private:
   DirectMemoryReader mDMR;
   bool mLastUpdateLSIWasVisible = false;
 };
-
-
