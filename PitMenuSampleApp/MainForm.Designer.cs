@@ -52,21 +52,21 @@
       this.groupBox1 = new System.Windows.Forms.GroupBox();
       this.cbCategory = new System.Windows.Forms.ComboBox();
       this.checkBox1 = new System.Windows.Forms.CheckBox();
-      this.groupBox6 = new System.Windows.Forms.GroupBox();
-      this.labelDelay = new System.Windows.Forms.Label();
-      this.trackBarDelay = new System.Windows.Forms.TrackBar();
       this.groupBox7 = new System.Windows.Forms.GroupBox();
       this.label7 = new System.Windows.Forms.Label();
       this.numericUpDownTests = new System.Windows.Forms.NumericUpDown();
       this.label6 = new System.Windows.Forms.Label();
       this.numericUpDownErrors = new System.Windows.Forms.NumericUpDown();
       this.checkBox2 = new System.Windows.Forms.CheckBox();
-      this.timer1 = new System.Windows.Forms.Timer(this.components);
-      this.toolTip1 = new System.Windows.Forms.ToolTip(this.components);
+      this.panel1 = new System.Windows.Forms.Panel();
       this.groupBox8 = new System.Windows.Forms.GroupBox();
       this.labelInitialDelay = new System.Windows.Forms.Label();
       this.trackBarInitialDelay = new System.Windows.Forms.TrackBar();
-      this.panel1 = new System.Windows.Forms.Panel();
+      this.groupBox6 = new System.Windows.Forms.GroupBox();
+      this.labelDelay = new System.Windows.Forms.Label();
+      this.trackBarDelay = new System.Windows.Forms.TrackBar();
+      this.timer1 = new System.Windows.Forms.Timer(this.components);
+      this.toolTip1 = new System.Windows.Forms.ToolTip(this.components);
       this.flowLayoutPanel1.SuspendLayout();
       this.tableLayoutPanel1.SuspendLayout();
       this.groupBox3.SuspendLayout();
@@ -75,14 +75,14 @@
       this.groupBox5.SuspendLayout();
       this.groupBox4.SuspendLayout();
       this.groupBox1.SuspendLayout();
-      this.groupBox6.SuspendLayout();
-      ((System.ComponentModel.ISupportInitialize)(this.trackBarDelay)).BeginInit();
       this.groupBox7.SuspendLayout();
       ((System.ComponentModel.ISupportInitialize)(this.numericUpDownTests)).BeginInit();
       ((System.ComponentModel.ISupportInitialize)(this.numericUpDownErrors)).BeginInit();
+      this.panel1.SuspendLayout();
       this.groupBox8.SuspendLayout();
       ((System.ComponentModel.ISupportInitialize)(this.trackBarInitialDelay)).BeginInit();
-      this.panel1.SuspendLayout();
+      this.groupBox6.SuspendLayout();
+      ((System.ComponentModel.ISupportInitialize)(this.trackBarDelay)).BeginInit();
       this.SuspendLayout();
       // 
       // flowLayoutPanel1
@@ -90,7 +90,7 @@
       this.flowLayoutPanel1.Controls.Add(this.tableLayoutPanel1);
       this.flowLayoutPanel1.Dock = System.Windows.Forms.DockStyle.Fill;
       this.flowLayoutPanel1.Location = new System.Drawing.Point(0, 0);
-      this.flowLayoutPanel1.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+      this.flowLayoutPanel1.Margin = new System.Windows.Forms.Padding(4);
       this.flowLayoutPanel1.Name = "flowLayoutPanel1";
       this.flowLayoutPanel1.Size = new System.Drawing.Size(1162, 624);
       this.flowLayoutPanel1.TabIndex = 0;
@@ -98,8 +98,8 @@
       // tableLayoutPanel1
       // 
       this.tableLayoutPanel1.ColumnCount = 2;
-      this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 57.35608F));
-      this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 42.64392F));
+      this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 64.31065F));
+      this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 35.68935F));
       this.tableLayoutPanel1.Controls.Add(this.groupBox3, 1, 2);
       this.tableLayoutPanel1.Controls.Add(this.groupBox2, 1, 1);
       this.tableLayoutPanel1.Controls.Add(this.Box_PitMenu, 0, 0);
@@ -123,11 +123,11 @@
       // 
       this.groupBox3.Controls.Add(this.label4);
       this.groupBox3.Controls.Add(this.cbAllControls);
-      this.groupBox3.Location = new System.Drawing.Point(659, 378);
+      this.groupBox3.Location = new System.Drawing.Point(739, 378);
       this.groupBox3.Margin = new System.Windows.Forms.Padding(2);
       this.groupBox3.Name = "groupBox3";
       this.groupBox3.Padding = new System.Windows.Forms.Padding(2);
-      this.groupBox3.Size = new System.Drawing.Size(467, 134);
+      this.groupBox3.Size = new System.Drawing.Size(405, 134);
       this.groupBox3.TabIndex = 7;
       this.groupBox3.TabStop = false;
       this.groupBox3.Text = "All the control strings";
@@ -365,11 +365,11 @@
       // groupBox2
       // 
       this.groupBox2.Controls.Add(this.cbChoices);
-      this.groupBox2.Location = new System.Drawing.Point(659, 193);
+      this.groupBox2.Location = new System.Drawing.Point(739, 193);
       this.groupBox2.Margin = new System.Windows.Forms.Padding(2);
       this.groupBox2.Name = "groupBox2";
       this.groupBox2.Padding = new System.Windows.Forms.Padding(2);
-      this.groupBox2.Size = new System.Drawing.Size(467, 120);
+      this.groupBox2.Size = new System.Drawing.Size(405, 120);
       this.groupBox2.TabIndex = 6;
       this.groupBox2.TabStop = false;
       this.groupBox2.Text = "Pit Menu choices";
@@ -431,9 +431,9 @@
       this.Box_PitMenu.Controls.Add(this.textBox1);
       this.Box_PitMenu.Controls.Add(this.label1);
       this.Box_PitMenu.Location = new System.Drawing.Point(4, 4);
-      this.Box_PitMenu.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+      this.Box_PitMenu.Margin = new System.Windows.Forms.Padding(4);
       this.Box_PitMenu.Name = "Box_PitMenu";
-      this.Box_PitMenu.Padding = new System.Windows.Forms.Padding(4, 4, 4, 4);
+      this.Box_PitMenu.Padding = new System.Windows.Forms.Padding(4);
       this.tableLayoutPanel1.SetRowSpan(this.Box_PitMenu, 2);
       this.Box_PitMenu.Size = new System.Drawing.Size(640, 368);
       this.Box_PitMenu.TabIndex = 0;
@@ -444,13 +444,13 @@
       // 
       this.buttonToggleMenu.Font = new System.Drawing.Font("Lucida Console", 8F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
       this.buttonToggleMenu.Location = new System.Drawing.Point(471, 226);
-      this.buttonToggleMenu.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+      this.buttonToggleMenu.Margin = new System.Windows.Forms.Padding(4);
       this.buttonToggleMenu.Name = "buttonToggleMenu";
       this.buttonToggleMenu.Size = new System.Drawing.Size(138, 145);
       this.buttonToggleMenu.TabIndex = 3;
       this.buttonToggleMenu.Text = "Toggle Menu Display";
       this.buttonToggleMenu.UseVisualStyleBackColor = true;
-      this.buttonToggleMenu.Click += new System.EventHandler(this.button1_Click);
+      this.buttonToggleMenu.Click += new System.EventHandler(this.buttonToggleMenu_Click);
       // 
       // groupBox5
       // 
@@ -491,10 +491,13 @@
       // 
       this.comboBoxAllTyres.FormattingEnabled = true;
       this.comboBoxAllTyres.Items.AddRange(new object[] {
+            "Supersoft",
             "Soft",
             "Medium",
             "Hard",
+            "Intermediate",
             "Wet",
+            "Monsoon",
             "No Change"});
       this.comboBoxAllTyres.Location = new System.Drawing.Point(264, 29);
       this.comboBoxAllTyres.Margin = new System.Windows.Forms.Padding(2);
@@ -507,10 +510,13 @@
       // 
       this.cbTyreChoice.FormattingEnabled = true;
       this.cbTyreChoice.Items.AddRange(new object[] {
+            "Supersoft",
             "Soft",
             "Medium",
             "Hard",
+            "Intermediate",
             "Wet",
+            "Monsoon",
             "No Change"});
       this.cbTyreChoice.Location = new System.Drawing.Point(46, 29);
       this.cbTyreChoice.Margin = new System.Windows.Forms.Padding(2);
@@ -568,7 +574,7 @@
       // 
       this.textBox1.Font = new System.Drawing.Font("LCDMono", 14F, System.Drawing.FontStyle.Bold);
       this.textBox1.Location = new System.Drawing.Point(7, 30);
-      this.textBox1.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+      this.textBox1.Margin = new System.Windows.Forms.Padding(4);
       this.textBox1.Multiline = true;
       this.textBox1.Name = "textBox1";
       this.textBox1.ReadOnly = true;
@@ -595,11 +601,11 @@
       // groupBox1
       // 
       this.groupBox1.Controls.Add(this.cbCategory);
-      this.groupBox1.Location = new System.Drawing.Point(659, 2);
+      this.groupBox1.Location = new System.Drawing.Point(739, 2);
       this.groupBox1.Margin = new System.Windows.Forms.Padding(2);
       this.groupBox1.Name = "groupBox1";
       this.groupBox1.Padding = new System.Windows.Forms.Padding(2);
-      this.groupBox1.Size = new System.Drawing.Size(467, 124);
+      this.groupBox1.Size = new System.Drawing.Size(405, 124);
       this.groupBox1.TabIndex = 5;
       this.groupBox1.TabStop = false;
       this.groupBox1.Text = "Pit Menu categories";
@@ -629,53 +635,13 @@
       // checkBox1
       // 
       this.checkBox1.AutoSize = true;
-      this.checkBox1.Location = new System.Drawing.Point(659, 521);
+      this.checkBox1.Location = new System.Drawing.Point(739, 521);
       this.checkBox1.Margin = new System.Windows.Forms.Padding(2);
       this.checkBox1.Name = "checkBox1";
       this.checkBox1.Size = new System.Drawing.Size(195, 29);
       this.checkBox1.TabIndex = 3;
       this.checkBox1.Text = "rFactor connected";
       this.checkBox1.UseVisualStyleBackColor = true;
-      // 
-      // groupBox6
-      // 
-      this.groupBox6.Controls.Add(this.labelDelay);
-      this.groupBox6.Controls.Add(this.trackBarDelay);
-      this.groupBox6.Location = new System.Drawing.Point(323, 4);
-      this.groupBox6.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
-      this.groupBox6.Name = "groupBox6";
-      this.groupBox6.Padding = new System.Windows.Forms.Padding(4, 4, 4, 4);
-      this.groupBox6.Size = new System.Drawing.Size(319, 120);
-      this.groupBox6.TabIndex = 8;
-      this.groupBox6.TabStop = false;
-      this.groupBox6.Text = "Delay between sending controls";
-      this.toolTip1.SetToolTip(this.groupBox6, "200 mS seems to be \r\nthe minimum reliable\r\nvalue\r\n");
-      // 
-      // labelDelay
-      // 
-      this.labelDelay.AutoSize = true;
-      this.labelDelay.Location = new System.Drawing.Point(93, 90);
-      this.labelDelay.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
-      this.labelDelay.Name = "labelDelay";
-      this.labelDelay.Size = new System.Drawing.Size(64, 25);
-      this.labelDelay.TabIndex = 4;
-      this.labelDelay.Text = "40mS";
-      // 
-      // trackBarDelay
-      // 
-      this.trackBarDelay.LargeChange = 50;
-      this.trackBarDelay.Location = new System.Drawing.Point(9, 37);
-      this.trackBarDelay.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
-      this.trackBarDelay.Maximum = 500;
-      this.trackBarDelay.Minimum = 10;
-      this.trackBarDelay.Name = "trackBarDelay";
-      this.trackBarDelay.Size = new System.Drawing.Size(251, 80);
-      this.trackBarDelay.SmallChange = 10;
-      this.trackBarDelay.TabIndex = 3;
-      this.trackBarDelay.TickFrequency = 50;
-      this.toolTip1.SetToolTip(this.trackBarDelay, "200 mS seems to be \r\nthe minimum reliable\r\nvalue");
-      this.trackBarDelay.Value = 30;
-      this.trackBarDelay.ValueChanged += new System.EventHandler(this.trackBarDelay_ValueChanged);
       // 
       // groupBox7
       // 
@@ -685,9 +651,9 @@
       this.groupBox7.Controls.Add(this.numericUpDownErrors);
       this.groupBox7.Controls.Add(this.checkBox2);
       this.groupBox7.Location = new System.Drawing.Point(4, 523);
-      this.groupBox7.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+      this.groupBox7.Margin = new System.Windows.Forms.Padding(4);
       this.groupBox7.Name = "groupBox7";
-      this.groupBox7.Padding = new System.Windows.Forms.Padding(4, 4, 4, 4);
+      this.groupBox7.Padding = new System.Windows.Forms.Padding(4);
       this.groupBox7.Size = new System.Drawing.Size(649, 60);
       this.groupBox7.TabIndex = 9;
       this.groupBox7.TabStop = false;
@@ -706,7 +672,7 @@
       // numericUpDownTests
       // 
       this.numericUpDownTests.Location = new System.Drawing.Point(252, 22);
-      this.numericUpDownTests.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+      this.numericUpDownTests.Margin = new System.Windows.Forms.Padding(4);
       this.numericUpDownTests.Maximum = new decimal(new int[] {
             10000000,
             0,
@@ -730,7 +696,7 @@
       // numericUpDownErrors
       // 
       this.numericUpDownErrors.Location = new System.Drawing.Point(499, 22);
-      this.numericUpDownErrors.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+      this.numericUpDownErrors.Margin = new System.Windows.Forms.Padding(4);
       this.numericUpDownErrors.Maximum = new decimal(new int[] {
             10000000,
             0,
@@ -745,16 +711,21 @@
       // 
       this.checkBox2.AutoSize = true;
       this.checkBox2.Location = new System.Drawing.Point(9, 30);
-      this.checkBox2.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+      this.checkBox2.Margin = new System.Windows.Forms.Padding(4);
       this.checkBox2.Name = "checkBox2";
       this.checkBox2.Size = new System.Drawing.Size(22, 21);
       this.checkBox2.TabIndex = 3;
       this.checkBox2.UseVisualStyleBackColor = true;
       this.checkBox2.CheckedChanged += new System.EventHandler(this.checkBox2_CheckedChanged);
       // 
-      // timer1
+      // panel1
       // 
-      this.timer1.Tick += new System.EventHandler(this.timer1_Tick);
+      this.panel1.Controls.Add(this.groupBox8);
+      this.panel1.Controls.Add(this.groupBox6);
+      this.panel1.Location = new System.Drawing.Point(3, 379);
+      this.panel1.Name = "panel1";
+      this.panel1.Size = new System.Drawing.Size(651, 137);
+      this.panel1.TabIndex = 11;
       // 
       // groupBox8
       // 
@@ -796,14 +767,49 @@
       this.trackBarInitialDelay.Value = 200;
       this.trackBarInitialDelay.ValueChanged += new System.EventHandler(this.trackBarInitialDelay_ValueChanged);
       // 
-      // panel1
+      // groupBox6
       // 
-      this.panel1.Controls.Add(this.groupBox8);
-      this.panel1.Controls.Add(this.groupBox6);
-      this.panel1.Location = new System.Drawing.Point(3, 379);
-      this.panel1.Name = "panel1";
-      this.panel1.Size = new System.Drawing.Size(651, 137);
-      this.panel1.TabIndex = 11;
+      this.groupBox6.Controls.Add(this.labelDelay);
+      this.groupBox6.Controls.Add(this.trackBarDelay);
+      this.groupBox6.Location = new System.Drawing.Point(323, 4);
+      this.groupBox6.Margin = new System.Windows.Forms.Padding(4);
+      this.groupBox6.Name = "groupBox6";
+      this.groupBox6.Padding = new System.Windows.Forms.Padding(4);
+      this.groupBox6.Size = new System.Drawing.Size(319, 120);
+      this.groupBox6.TabIndex = 8;
+      this.groupBox6.TabStop = false;
+      this.groupBox6.Text = "Delay between sending controls";
+      this.toolTip1.SetToolTip(this.groupBox6, "200 mS seems to be \r\nthe minimum reliable\r\nvalue\r\n");
+      // 
+      // labelDelay
+      // 
+      this.labelDelay.AutoSize = true;
+      this.labelDelay.Location = new System.Drawing.Point(93, 90);
+      this.labelDelay.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
+      this.labelDelay.Name = "labelDelay";
+      this.labelDelay.Size = new System.Drawing.Size(64, 25);
+      this.labelDelay.TabIndex = 4;
+      this.labelDelay.Text = "40mS";
+      // 
+      // trackBarDelay
+      // 
+      this.trackBarDelay.LargeChange = 50;
+      this.trackBarDelay.Location = new System.Drawing.Point(9, 37);
+      this.trackBarDelay.Margin = new System.Windows.Forms.Padding(4);
+      this.trackBarDelay.Maximum = 500;
+      this.trackBarDelay.Minimum = 10;
+      this.trackBarDelay.Name = "trackBarDelay";
+      this.trackBarDelay.Size = new System.Drawing.Size(251, 80);
+      this.trackBarDelay.SmallChange = 10;
+      this.trackBarDelay.TabIndex = 3;
+      this.trackBarDelay.TickFrequency = 50;
+      this.toolTip1.SetToolTip(this.trackBarDelay, "200 mS seems to be \r\nthe minimum reliable\r\nvalue");
+      this.trackBarDelay.Value = 30;
+      this.trackBarDelay.ValueChanged += new System.EventHandler(this.trackBarDelay_ValueChanged);
+      // 
+      // timer1
+      // 
+      this.timer1.Tick += new System.EventHandler(this.timer1_Tick);
       // 
       // MainForm
       // 
@@ -812,7 +818,7 @@
       this.ClientSize = new System.Drawing.Size(1162, 624);
       this.Controls.Add(this.flowLayoutPanel1);
       this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
-      this.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+      this.Margin = new System.Windows.Forms.Padding(4);
       this.MaximizeBox = false;
       this.Name = "MainForm";
       this.Text = "Pit Menu Control Demo";
@@ -831,17 +837,17 @@
       this.groupBox4.ResumeLayout(false);
       this.groupBox4.PerformLayout();
       this.groupBox1.ResumeLayout(false);
-      this.groupBox6.ResumeLayout(false);
-      this.groupBox6.PerformLayout();
-      ((System.ComponentModel.ISupportInitialize)(this.trackBarDelay)).EndInit();
       this.groupBox7.ResumeLayout(false);
       this.groupBox7.PerformLayout();
       ((System.ComponentModel.ISupportInitialize)(this.numericUpDownTests)).EndInit();
       ((System.ComponentModel.ISupportInitialize)(this.numericUpDownErrors)).EndInit();
+      this.panel1.ResumeLayout(false);
       this.groupBox8.ResumeLayout(false);
       this.groupBox8.PerformLayout();
       ((System.ComponentModel.ISupportInitialize)(this.trackBarInitialDelay)).EndInit();
-      this.panel1.ResumeLayout(false);
+      this.groupBox6.ResumeLayout(false);
+      this.groupBox6.PerformLayout();
+      ((System.ComponentModel.ISupportInitialize)(this.trackBarDelay)).EndInit();
       this.ResumeLayout(false);
 
         }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Security.Cryptography;
@@ -11,8 +12,17 @@ using rF2SharedMemory.rFactor2Data;
 
 namespace rF2SharedMemoryAPI
 {
-  class PitMenuController
+  public class PitMenuController
   {
+    public string[] genericTyreTypes = {
+      "Supersoft",
+      "Soft",
+      "Medium",
+      "Hard",
+      "Intermediate",
+      "Wet"
+    };
+
     private
     SendrF2HWControl SendControl = new SendrF2HWControl();
 
@@ -309,18 +319,92 @@ namespace rF2SharedMemoryAPI
       return result;
     }
 
+    public List<string> GetTyreTypes()
+    {
+      List<string> result = null;
+      if (this.SetCategory("TIRE"))
+      {
+        string current = GetChoice();
+        while (!result.Contains(current))
+        {
+          result.Add(current);
+          IncDecOne(true);
+          current = GetChoice();
+        }
+      }
+      else
+      {
+        result = new List<string> { "NO_TYRE" };
+      }
+      return result;
+    }
 
     /// <summary>
-    /// Set the type of tyre selected
+    /// Take a list of tyre types available in the menu and map them on to
+    /// the set of generic tyre types
+    /// Supersoft
     /// Soft
     /// Medium
     /// Hard
+    /// Intermediate
     /// Wet
-    /// No Change
+    /// Monsoon
+    /// </summary>
+    /// <param name="inMenu">
+    /// The list returned by GetTyreTypes()
+    /// </param>
+    /// <returns>
+    /// Dictionary mapping generic tyre types to available
+    /// </returns>
+
+    // Complicated because rF2 has many names for tyres so use a dict of
+    // possible alternative names for each type
+    // Each entry has a list of possible matches in declining order
+    private static readonly Dictionary<string, List<string>> tyreDict = new Dictionary<string, List<string>>() {
+            { "Supersoft", new List <string> {"supersoft" , "soft", "s310", "slick" } },
+            { "Soft", new List <string> {"soft", "s310", "slick" } },
+            { "Medium", new List <string> { "medium", "default", "slick" } },
+            { "Hard", new List <string> {"hard", "p310", "endur", "medium", "default", "slick" } },
+            { "Intermediate", new List <string> { "intermediate", "wet", "rain", "all-weather" } },
+            { "Wet", new List <string> {"wet", "rain", "monsoon", "intermediate", "all-weather" } },
+            { "Monsoon", new List <string> {"monsoon", "wet", "rain", "intermediate", "all-weather" } }
+        };
+    public Dictionary<string, string> translateTyreTypes(List<string> inMenu)
+    {
+      Dictionary<string, string> result = new Dictionary<string, string>();
+      foreach (var genericTyretype in tyreDict)
+      { // "Supersoft", "Soft"...
+        foreach (var availableTyretype in inMenu)
+        {  // Tyre type in the menu
+          foreach (var tyreName in genericTyretype.Value)
+          { // Type that generic type can match to
+            if (availableTyretype.IndexOf(tyreName, StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+              result[genericTyretype.Key] = availableTyretype;
+              break;
+            }
+          }
+        }
+      }
+      return result;
+    }
+
+
+    /// <summary>
+    /// Set the type of tyre selected
+    /// Supersoft
+    /// Soft
+    /// Medium
+    /// Hard
+    /// Intermediate
+    /// Wet
+    /// Monsoon
+    /// and No Change
     /// </summary>
     /// <returns>
     /// true if successful
     /// </returns>
+
     public bool SetTyreType(string requiredType)
     {
       if (this.GetCategory().Contains("TIRE"))

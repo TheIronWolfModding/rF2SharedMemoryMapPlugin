@@ -21,6 +21,9 @@ namespace PitMenuSampleApp
     string LastControl;
     bool Connected = false;
     PitMenuController Pmc = new PitMenuController();
+    Dictionary<string, string> ttDict;
+
+
     public MainForm()
     {
       InitializeComponent();
@@ -29,6 +32,9 @@ namespace PitMenuSampleApp
       if (this.Connected)
       {
         this.Pmc.Connect();
+        Pmc.startUsingPitMenu();
+        List<string> tyreTypes = Pmc.GetTyreTypes();
+        ttDict = Pmc.translateTyreTypes(tyreTypes);
       }
       this.timer1.Start();
     }
@@ -100,7 +106,7 @@ namespace PitMenuSampleApp
     private void cbTyreChoice_SelectionChangeCommitted(object sender, EventArgs e)
     {
       this.Pmc.startUsingPitMenu();
-      this.Pmc.SetTyreType(this.cbTyreChoice.SelectedItem.ToString());
+      this.Pmc.SetTyreType(ttDict[this.cbTyreChoice.SelectedItem.ToString()]);
       this.timer1.Start();
     }
 
@@ -127,12 +133,12 @@ namespace PitMenuSampleApp
       foreach (string tyre in new[] { "RR TIRE:", "RL TIRE:", "FR TIRE:", "FL TIRE:" })
       {
         this.Pmc.SetCategory(tyre);
-        this.Pmc.SetTyreType(this.comboBoxAllTyres.SelectedItem.ToString());
+        this.Pmc.SetTyreType(ttDict[this.comboBoxAllTyres.SelectedItem.ToString()]);
       }
       this.timer1.Start();
     }
 
-    private void button1_Click(object sender, EventArgs e)
+    private void buttonToggleMenu_Click(object sender, EventArgs e)
     {
       this.SendControl.SendHWControl("ToggleMFDB", true);
       this.LastControl = "ToggleMFDB";
@@ -151,13 +157,13 @@ namespace PitMenuSampleApp
             foreach (string tyre in new[] { "RR TIRE:", "RL TIRE:", "FR TIRE:", "FL TIRE:" })
             {
               this.Pmc.SetCategory(tyre);
-              this.Pmc.SetTyreType(tyreType);
+              this.Pmc.SetTyreType(ttDict[tyreType]);
               Application.DoEvents();
               var catName = this.Pmc.GetCategory();
               if (catName != tyre)
                 numericUpDownErrors.Value += 1;
               var choiceStr = this.Pmc.GetChoice();
-              if (!choiceStr.Contains(tyreType))
+              if (!choiceStr.Contains(ttDict[tyreType]))
                 numericUpDownErrors.Value += 1;
 
               numericUpDownTests.Value += 1;
