@@ -73,12 +73,8 @@ public:
     // Fix up out of sync situation.
     if (mpWriteBuffVersionBlock->mVersionUpdateBegin != mpWriteBuffVersionBlock->mVersionUpdateEnd) {
       if (Utils::IsFlagOn(SharedMemoryPlugin::msDebugOutputLevel, DebugLevel::Synchronization)) {
-        char msg[512] = {};
-
-        sprintf(msg, "BeginUpdate: versions out of sync.  Version Begin:%ld  End:%ld",
+        DEBUG_MSG(DebugLevel::Synchronization, "BeginUpdate: versions out of sync.  Version Begin:%ld  End:%ld",
           mpWriteBuffVersionBlock->mVersionUpdateBegin, mpWriteBuffVersionBlock->mVersionUpdateEnd);
-
-        DEBUG_MSG(DebugLevel::Synchronization, msg);
       }
       ::InterlockedExchange(&mpWriteBuffVersionBlock->mVersionUpdateEnd, mpWriteBuffVersionBlock->mVersionUpdateBegin);
     }
@@ -98,12 +94,8 @@ public:
     // Fix up out of sync situation.
     if (mpWriteBuffVersionBlock->mVersionUpdateBegin != mpWriteBuffVersionBlock->mVersionUpdateEnd) {
       if (Utils::IsFlagOn(SharedMemoryPlugin::msDebugOutputLevel, DebugLevel::Synchronization)) {
-        char msg[512] = {};
-
-        sprintf(msg, "EndUpdate: versions out of sync.  Version Begin:%ld  End:%ld",
+         DEBUG_MSG(DebugLevel::Synchronization, "EndUpdate: versions out of sync.  Version Begin:%ld  End:%ld",
           mpWriteBuffVersionBlock->mVersionUpdateBegin, mpWriteBuffVersionBlock->mVersionUpdateEnd);
-
-        DEBUG_MSG(DebugLevel::Synchronization, msg);
       }
       ::InterlockedExchange(&mpWriteBuffVersionBlock->mVersionUpdateBegin, mpWriteBuffVersionBlock->mVersionUpdateEnd);
     }
@@ -138,11 +130,8 @@ public:
     // Check busy or out of sync situation.
     if (versionUpdateBegin != versionUpdateEnd) {
       if (Utils::IsFlagOn(SharedMemoryPlugin::msDebugOutputLevel, DebugLevel::Synchronization)) {
-        char msg[512] = {};
-        sprintf(msg, "VerifyBusyOrUnchanged: versions out of sync.  Version Begin:%ld  End:%ld",
+        DEBUG_MSG(DebugLevel::Synchronization, "VerifyBusyOrUnchanged: versions out of sync.  Version Begin:%ld  End:%ld",
           versionUpdateBegin, versionUpdateEnd);
-
-        DEBUG_MSG(DebugLevel::Synchronization, msg);
       }
       return true;
     }
@@ -265,7 +254,7 @@ private:
       });
 
       if (!ret) {
-        DEBUG_MSG2(DebugLevel::Errors, "Failed to create security descriptor for mapping:", mappingName);
+        DEBUG_MSG(DebugLevel::Errors, "Failed to create security descriptor for mapping: '%s'", mappingName);
         SharedMemoryPlugin::TraceLastWin32Error();
         return nullptr;
       }
@@ -281,13 +270,13 @@ private:
     }
 
     if (hMap == nullptr) {
-      DEBUG_MSG2(DebugLevel::Errors, "Failed to create file mapping for file:", mappingName);
+      DEBUG_MSG(DebugLevel::Errors, "Failed to create file mapping for file: '%s'", mappingName);
       SharedMemoryPlugin::TraceLastWin32Error();
       return nullptr;
     }
 
     if (::GetLastError() == ERROR_ALREADY_EXISTS)
-      DEBUG_MSG2(DebugLevel::Warnings, "WARNING: File mapping already exists for file:", mappingName);
+      DEBUG_MSG(DebugLevel::Warnings, "File mapping already exists for file: '%s'", mappingName);
 
     pMappedView = ::MapViewOfFile(
       hMap,

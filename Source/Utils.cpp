@@ -48,7 +48,7 @@ char* GetFileContents(char const* const filePath)
     if (fileHandle != nullptr) {
       auto ret = fclose(fileHandle);
       if (ret != 0) {
-        DEBUG_INT2(DebugLevel::Errors, "fclose() failed with:", ret);
+        DEBUG_MSG(DebugLevel::Errors, "fclose() failed with: %d", ret);
       }
     }
   });
@@ -56,13 +56,13 @@ char* GetFileContents(char const* const filePath)
   char* fileContents = nullptr;
   auto ret = fopen_s(&fileHandle, filePath, "rb");
   if (ret != 0) {
-    DEBUG_INT2(DebugLevel::Errors, "fopen_s() failed with:", ret);
+    DEBUG_MSG(DebugLevel::Errors, "fopen_s() failed with: %d", ret);
     return nullptr;
   }
 
   ret = fseek(fileHandle, 0, SEEK_END);
   if (ret != 0) {
-    DEBUG_INT2(DebugLevel::Errors, "fseek() failed with:", ret);
+    DEBUG_MSG(DebugLevel::Errors, "fseek() failed with: %d", ret);
     return nullptr;
   }
 

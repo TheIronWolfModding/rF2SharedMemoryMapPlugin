@@ -28,7 +28,7 @@ Website: thecrewchief.org
 // Each component can be in [0:99] range.
 // Note: each time major version changes, that means layout has changed, and clients might need an update.
 #define PLUGIN_VERSION_MAJOR "3.7"
-#define PLUGIN_VERSION_MINOR "8.0"
+#define PLUGIN_VERSION_MINOR "9.0"
 
 #ifdef VERSION_AVX2
 #ifdef VERSION_MT
@@ -42,14 +42,7 @@ Website: thecrewchief.org
 
 #define SHARED_MEMORY_VERSION PLUGIN_VERSION_MAJOR "." PLUGIN_VERSION_MINOR
 
-// This is hell on earth, but I do not want to add additional dependencies needed for STL right now.
-// Be super careful with those, there's no type safety or checks of any kind (1979 style).
-#define DEBUG_MSG(lvl, msg) SharedMemoryPlugin::WriteDebugMsg(lvl, "%s(%d) : %s\n", __FUNCTION__, __LINE__, msg)
-#define DEBUG_MSG2(lvl, msg, msg2) SharedMemoryPlugin::WriteDebugMsg(lvl, "%s(%d) : %s %s\n", __FUNCTION__, __LINE__, msg, msg2)
-#define DEBUG_INT2(lvl, msg, intValue) SharedMemoryPlugin::WriteDebugMsg(lvl, "%s(%d) : %s %d\n", __FUNCTION__, __LINE__, msg, intValue)
-#define DEBUG_ADDR2(lvl, msg, addrValue) SharedMemoryPlugin::WriteDebugMsg(lvl, "%s(%d) : %s 0x%p\n", __FUNCTION__, __LINE__, msg, addrValue)
-#define DEBUG_FLOAT2(lvl, msg, floatValue) SharedMemoryPlugin::WriteDebugMsg(lvl, "%s(%d) : %s %f\n", __FUNCTION__, __LINE__, msg, floatValue)
-#define DEBUG_MSG3(lvl, msg, msg2, msg3) SharedMemoryPlugin::WriteDebugMsg(lvl, "%s(%d) : %s %s %s\n", __FUNCTION__, __LINE__, msg, msg2, msg3)
+#define DEBUG_MSG(lvl, msg, ...) SharedMemoryPlugin::WriteDebugMsg(lvl, __FUNCTION__, __LINE__, msg, __VA_ARGS__)
 
 #include "rF2State.h"
 #include "MappedBuffer.h"
@@ -130,7 +123,13 @@ public:
   static FILE* msIsiScoringFile;
 
   // Debug output helpers
-  static void WriteDebugMsg(DebugLevel lvl, char const* const format, ...);
+  static void WriteDebugMsg(
+    DebugLevel lvl,
+    char const* const functionName,
+    int line,
+    char const* const msg,
+    ...);
+
   static void WriteToAllExampleOutputFiles(char const* const openStr, char const* const msg);
   static void WriteTelemetryInternals(TelemInfoV01 const& info);
   static void WriteScoringInternals(ScoringInfoV01 const& info);
@@ -360,6 +359,7 @@ private:
   // Input buffer logic members:
 
   // HWControl request tracking variables.  Empty indicates initial state or the fact that request passed to rF2.
+  // TODO: change to same model used for weather/rules 
   char mHWControlRequest_mControlName[rF2HWControl::MAX_HWCONTROL_NAME_LEN];
   double mHWControlRequest_mfRetVal = 0.0;
   // Read attempt counter, used to skip reads.

@@ -1027,7 +1027,7 @@ struct rF2HWControl : public rF2MappedInputBufferHeader
   static int const MAX_HWCONTROL_NAME_LEN = 96;
 
   // Version supported by the _current_ plugin.
-  static int const SUPPORTED_LAYOUT_VERSION = 1;
+  static long const SUPPORTED_LAYOUT_VERSION = 1L;
 
   char mControlName[rF2HWControl::MAX_HWCONTROL_NAME_LEN];
   double mfRetVal;
@@ -1037,7 +1037,7 @@ struct rF2HWControl : public rF2MappedInputBufferHeader
 struct rF2WeatherControl : public rF2MappedInputBufferHeader
 {
   // Version supported by the _current_ plugin.
-  static int const SUPPORTED_LAYOUT_VERSION = 1;
+  static long const SUPPORTED_LAYOUT_VERSION = 1L;
 
   rF2WeatherControlInfo mWeatherInfo;
 };
@@ -1046,7 +1046,7 @@ struct rF2WeatherControl : public rF2MappedInputBufferHeader
 struct rF2RulesControl : public rF2MappedInputBufferHeader
 {
   // Version supported by the _current_ plugin.
-  static int const SUPPORTED_LAYOUT_VERSION = 1;
+  static long const SUPPORTED_LAYOUT_VERSION = 1L;
 
   rF2TrackRules mTrackRules;
 
@@ -1058,7 +1058,7 @@ struct rF2RulesControl : public rF2MappedInputBufferHeader
 struct rF2PluginControl : public rF2MappedInputBufferHeader
 {
   // Version supported by the _current_ plugin.
-  static int const SUPPORTED_LAYOUT_VERSION = 1;
+  static long const SUPPORTED_LAYOUT_VERSION = 1L;
 
   // Bitmask TODO: scoring can't be requested.
   long mRequestEnableBuffersMask;
