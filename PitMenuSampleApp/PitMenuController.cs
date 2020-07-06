@@ -20,21 +20,28 @@ namespace rF2SharedMemoryAPI
       "Medium",
       "Hard",
       "Intermediate",
-      "Wet"
+      "Wet",
+      "Monsoon"
     };
 
     private
     SendrF2HWControl SendControl = new SendrF2HWControl();
 
-    MappedBuffer<rF2PitInfo> pitInfoBuffer = new MappedBuffer<rF2PitInfo>(rFactor2Constants.MM_PITINFO_FILE_NAME, false /*partial*/, true /*skipUnchanged*/);
+    MappedBuffer<rF2PitInfo> pitInfoBuffer = new MappedBuffer<rF2PitInfo>(
+      rFactor2Constants.MM_PITINFO_FILE_NAME,
+      false /*partial*/,
+      true /*skipUnchanged*/);
     rF2PitInfo pitInfo;
     string LastControl;
     bool Connected = false;
 
-    // Delay in mS after sending a HW control to rFactor before sending another, set by experiment
+    // Delay in mS after sending a HW control to rFactor before sending another,
+    // set by experiment
     // 20 works for category selection and tyres but fuel needs it slower
     int delay = 40;
-    int initialDelay = 200;   // Shared memory is normally scanning slowly until a control is received
+    // Shared memory scans slowly until the first control is received. It
+    // returns to scanning slowly when it hasn't received a control for a while.
+    int initialDelay = 200;
 
     /// <summary>
     /// All the Pit Menu categories of tyres that rF2 selects from
@@ -131,6 +138,27 @@ namespace rF2SharedMemoryAPI
     {
       string InitialCategory = GetCategory();
       while (GetCategory() != category)
+      {
+        UpDownOne(true);
+        if (GetCategory() == InitialCategory)
+        {  // Wrapped around, category not found
+          return false;
+        }
+      }
+      return true;
+    }
+
+    /// <summary>
+    /// Select a category that includes "category"
+    /// </summary>
+    /// <param name="category"></param>
+    /// <returns>
+    /// True: category found
+    /// </returns>
+    public bool SoftMatchCategory(string category)
+    {
+      string InitialCategory = GetCategory();
+      while (!GetCategory().Contains(category))
       {
         UpDownOne(true);
         if (GetCategory() == InitialCategory)
@@ -295,37 +323,44 @@ namespace rF2SharedMemoryAPI
     /// Get the type of tyre selected
     /// </summary>
     /// <returns>
+    /// Supersoft
     /// Soft
     /// Medium
     /// Hard
+    /// Intermediate
     /// Wet
+    /// Monsoon
     /// No Change
     /// </returns>
-    public string GetTyreType()
+    public string GetGenericTyreType()
     {
       //if (this.GetCategory().Contains("TIRE"))
       string current = GetChoice();
       string result = "NO_TYRE";
-      if (current.Contains("Soft"))
-        result = "Soft";
-      else if (current.Contains("Medium"))
-        result = "Medium";
-      else if (current.Contains("Hard"))
-        result = "Hard";
-      else if (current.Contains("Wet"))
-        result = "Wet";
-      else if (current.Contains("No Change"))
-        result = "No Change";
+      foreach (var genericTyreType in tyreDict)
+      {
+        if (genericTyreType.Value.Contains(current))
+        {
+          result = genericTyreType.Key;
+          break;
+        }
+      }
       return result;
     }
 
-    public List<string> GetTyreTypes()
+    /// <summary>
+    /// Get the names of tyres available in the menu. (Includes "No Change")
+    /// </summary>
+    /// <returns>
+    /// List of the names of tyres available in the menu
+    /// </returns>
+    public List<string> GetTyreTypeNames()
     {
-      List<string> result = null;
-      if (this.SetCategory("TIRE"))
+      List<string> result = new List<string>();
+      if (this.SoftMatchCategory("TIRE"))
       {
         string current = GetChoice();
-        while (!result.Contains(current))
+        while (result == null || !result.Contains(current))
         {
           result.Add(current);
           IncDecOne(true);
@@ -340,6 +375,29 @@ namespace rF2SharedMemoryAPI
     }
 
     /// <summary>
+    /// Get the choices of tyres to change - "FL FR RL RR", "F R" etc.
+    /// </summary>
+    /// <returns>
+    /// List of the change options available in the menu
+    /// e.g. {"F TIRES", "R TIRES"}
+    /// </returns>
+    public List<string> GetTyreChangeCategories()
+    {
+      List<string> result = new List<string>();
+      string InitialCategory = GetCategory();
+      do
+      {
+        if (this.GetCategory().Contains("TIRE"))
+        {
+          result.Add(GetCategory());
+        }
+        UpDownOne(true);
+      }
+      while (GetCategory() != InitialCategory);
+      return result;
+    }
+
+    /// <summary>
     /// Take a list of tyre types available in the menu and map them on to
     /// the set of generic tyre types
     /// Supersoft
@@ -349,17 +407,19 @@ namespace rF2SharedMemoryAPI
     /// Intermediate
     /// Wet
     /// Monsoon
+    /// (No Change) for completeness
     /// </summary>
     /// <param name="inMenu">
     /// The list returned by GetTyreTypes()
     /// </param>
     /// <returns>
-    /// Dictionary mapping generic tyre types to available
+    /// Dictionary mapping generic tyre types to names of those available
     /// </returns>
 
     // Complicated because rF2 has many names for tyres so use a dict of
     // possible alternative names for each type
     // Each entry has a list of possible matches in declining order
+    // tbd: maybe the client should be able to update the lists?
     private static readonly Dictionary<string, List<string>> tyreDict = new Dictionary<string, List<string>>() {
             { "Supersoft", new List <string> {"supersoft" , "soft", "s310", "slick" } },
             { "Soft", new List <string> {"soft", "s310", "slick" } },
@@ -367,7 +427,8 @@ namespace rF2SharedMemoryAPI
             { "Hard", new List <string> {"hard", "p310", "endur", "medium", "default", "slick" } },
             { "Intermediate", new List <string> { "intermediate", "wet", "rain", "all-weather" } },
             { "Wet", new List <string> {"wet", "rain", "monsoon", "intermediate", "all-weather" } },
-            { "Monsoon", new List <string> {"monsoon", "wet", "rain", "intermediate", "all-weather" } }
+            { "Monsoon", new List <string> {"monsoon", "wet", "rain", "intermediate", "all-weather" } },
+            { "No Change", new List <string> {"no change"} }
         };
     public Dictionary<string, string> translateTyreTypes(List<string> inMenu)
     {
@@ -392,14 +453,7 @@ namespace rF2SharedMemoryAPI
 
     /// <summary>
     /// Set the type of tyre selected
-    /// Supersoft
-    /// Soft
-    /// Medium
-    /// Hard
-    /// Intermediate
-    /// Wet
-    /// Monsoon
-    /// and No Change
+    /// The name of the type or No Change
     /// </summary>
     /// <returns>
     /// true if successful
@@ -409,13 +463,13 @@ namespace rF2SharedMemoryAPI
     {
       if (this.GetCategory().Contains("TIRE"))
       {
-        string current = GetTyreType();
+        string current = GetChoice();
 
         // Adjust  if necessary
-        while (GetTyreType() != requiredType)
+        while (GetChoice() != requiredType)
         {
           IncDecOne(true);
-          string newType = GetTyreType();
+          string newType = GetChoice();
           if (newType == current)
           { // Didn't find it
             return false;

@@ -22,6 +22,7 @@ namespace PitMenuSampleApp
     bool Connected = false;
     PitMenuController Pmc = new PitMenuController();
     Dictionary<string, string> ttDict;
+    List<string> tyreCategories;
 
 
     public MainForm()
@@ -33,8 +34,9 @@ namespace PitMenuSampleApp
       {
         this.Pmc.Connect();
         Pmc.startUsingPitMenu();
-        List<string> tyreTypes = Pmc.GetTyreTypes();
+        List<string> tyreTypes = Pmc.GetTyreTypeNames();
         ttDict = Pmc.translateTyreTypes(tyreTypes);
+        tyreCategories = Pmc.GetTyreChangeCategories();
       }
       this.timer1.Start();
     }
@@ -130,7 +132,7 @@ namespace PitMenuSampleApp
     private void comboBoxAllTyres_SelectionChangeCommitted(object sender, EventArgs e)
     {
       this.Pmc.startUsingPitMenu();
-      foreach (string tyre in new[] { "RR TIRE:", "RL TIRE:", "FR TIRE:", "FL TIRE:" })
+      foreach (string tyre in tyreCategories)
       {
         this.Pmc.SetCategory(tyre);
         this.Pmc.SetTyreType(ttDict[this.comboBoxAllTyres.SelectedItem.ToString()]);
@@ -154,7 +156,7 @@ namespace PitMenuSampleApp
         {
           foreach (string tyreType in new[] { "Wet", "Hard", "Medium", "Soft" })
           {
-            foreach (string tyre in new[] { "RR TIRE:", "RL TIRE:", "FR TIRE:", "FL TIRE:" })
+            foreach (string tyre in tyreCategories)
             {
               this.Pmc.SetCategory(tyre);
               this.Pmc.SetTyreType(ttDict[tyreType]);
