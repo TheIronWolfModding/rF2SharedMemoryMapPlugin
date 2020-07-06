@@ -300,6 +300,8 @@ private:
   }
 
   public:
+    typedef BuffT BufferType;
+
     rF2MappedBufferVersionBlock* mpWriteBuffVersionBlock = nullptr;
     BuffT* mpWriteBuff = nullptr;
 

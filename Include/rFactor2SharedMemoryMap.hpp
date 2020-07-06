@@ -28,7 +28,7 @@ Website: thecrewchief.org
 // Each component can be in [0:99] range.
 // Note: each time major version changes, that means layout has changed, and clients might need an update.
 #define PLUGIN_VERSION_MAJOR "3.7"
-#define PLUGIN_VERSION_MINOR "9.0"
+#define PLUGIN_VERSION_MINOR "10.0"
 
 #ifdef VERSION_AVX2
 #ifdef VERSION_MT
@@ -43,6 +43,7 @@ Website: thecrewchief.org
 #define SHARED_MEMORY_VERSION PLUGIN_VERSION_MAJOR "." PLUGIN_VERSION_MINOR
 
 #define DEBUG_MSG(lvl, msg, ...) SharedMemoryPlugin::WriteDebugMsg(lvl, __FUNCTION__, __LINE__, msg, __VA_ARGS__)
+#define RETURN_IF_FALSE(expression) if (!expression) { DEBUG_MSG(DebugLevel::Errors, "Operation failed"); return; }
 
 #include "rF2State.h"
 #include "MappedBuffer.h"
@@ -302,6 +303,12 @@ public:
 private:
   SharedMemoryPlugin(SharedMemoryPlugin const& rhs) = delete;
   SharedMemoryPlugin& operator =(SharedMemoryPlugin const& rhs) = delete;
+
+  template <typename BuffT>
+  bool InitMappedBuffer(BuffT& buffer, char const* const buffLogicalName, SubscribedBuffer sb);
+
+  template <typename BuffT>
+  bool InitMappedInputBuffer(BuffT& buffer, char const* const buffLogicalName);
 
   void UpdateInRealtimeFC(bool inRealTime);
   void UpdateThreadState(long type, bool starting);
