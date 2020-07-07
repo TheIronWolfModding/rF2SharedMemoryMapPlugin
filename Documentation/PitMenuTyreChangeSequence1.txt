@@ -1,0 +1,38 @@
+title Using the rFactor 2 Pit Menu API
+
+participant App
+participant PM API
+participant rF2 SMMP
+participant rFactor
+
+==Start up==
+App->PM API:Connect
+PM API->rF2 SMMP:(Connect)
+==Selecting a tyre type==
+App->PM API:startUsingPitMenu
+
+PM API-->rF2 SMMP:
+rF2 SMMP->rFactor:Display Pit Menu
+App->PM API:GetTyreChangeCategories
+PM API-->rF2 SMMP:
+rF2 SMMP->rFactor:(Menu up/down and inc/dec)
+PM API<--rF2 SMMP:Current menu lines
+App<-PM API:"R TIRES:","F TIRES:"
+App->PM API:GetTyreTypeNames
+rF2 SMMP->rFactor:(Menu up/down and inc/dec)
+PM API<--rF2 SMMP:Current menu lines
+App<-PM API:blah Soft\nblah Hard etc.
+App->PM API:translateTyreTypes
+App<-PM API:Supersoft: blah Soft\nSoft: blah Soft\nMedium: blah Soft\nHard: blah Hard\nIntermediate: blah Wet\nWet: blah Wet\nMonsoon: blah Wet\n\nMaybe should be in app?
+App->PM API:SetCategory(F TIRES)
+rF2 SMMP->rFactor:(Menu up/down)
+PM API<--rF2 SMMP:Current menu lines
+App->PM API:SetTyreType(blah Soft)
+rF2 SMMP->rFactor:(Menu inc/dec)
+PM API<--rF2 SMMP:Current menu lines
+App->PM API:SetCategory(R TIRES)
+rF2 SMMP->rFactor:(Menu up/down)
+PM API<--rF2 SMMP:Current menu lines
+App->PM API:SetTyreType(blah Soft)
+rF2 SMMP->rFactor:(Menu inc/dec)
+PM API<--rF2 SMMP:Current menu lines

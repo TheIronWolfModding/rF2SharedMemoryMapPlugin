@@ -485,6 +485,10 @@ namespace rF2SharedMemoryAPI
     // Testing
     /// <summary>
     /// Set the delay between sending each control
+    /// After sending the first control in sequence the delay should be longer
+    /// as the Shared Memory takes up to 200 mS to switch to its higher update
+    /// rate.  After 200 mS without receiving any controls it returns to a
+    /// 200 mS update.
     /// </summary>
     /// <param name="mS"></param>
     public void setDelay(int mS, int initialDelay)
