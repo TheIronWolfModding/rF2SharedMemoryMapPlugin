@@ -28,7 +28,7 @@ Website: thecrewchief.org
 // Each component can be in [0:99] range.
 // Note: each time major version changes, that means layout has changed, and clients might need an update.
 #define PLUGIN_VERSION_MAJOR "3.7"
-#define PLUGIN_VERSION_MINOR "10.0"
+#define PLUGIN_VERSION_MINOR "13.1"
 
 #ifdef VERSION_AVX2
 #ifdef VERSION_MT
@@ -42,8 +42,8 @@ Website: thecrewchief.org
 
 #define SHARED_MEMORY_VERSION PLUGIN_VERSION_MAJOR "." PLUGIN_VERSION_MINOR
 
-#define DEBUG_MSG(lvl, msg, ...) SharedMemoryPlugin::WriteDebugMsg(lvl, __FUNCTION__, __LINE__, msg, __VA_ARGS__)
-#define RETURN_IF_FALSE(expression) if (!expression) { DEBUG_MSG(DebugLevel::Errors, "Operation failed"); return; }
+#define DEBUG_MSG(lvl, src, msg, ...) SharedMemoryPlugin::WriteDebugMsg(lvl, src, __FUNCTION__, __LINE__, msg, __VA_ARGS__)
+#define RETURN_IF_FALSE(expression) if (!expression) { DEBUG_MSG(DebugLevel::Errors, DebugSource::General, "Operation failed"); return; }
 
 #include "rF2State.h"
 #include "MappedBuffer.h"
@@ -61,6 +61,27 @@ enum class DebugLevel : long
   Timing = 64,
   Verbose = 128,
   All = 255,
+};
+
+enum DebugSource : long
+{
+  General = 1,  // CriticalInfo, Error and Warning level messages go there as well as some core messages.
+  DMR = 2,
+  MappedBufferSource = 4,
+  Telemetry = 4,
+  Scoring = 8,
+  Rules = 16,
+  MultiRules = 32,
+  ForceFeedback = 64,
+  Graphics = 128,
+  Weather = 256,
+  Extended = 512,
+  HWControlInput = 1024,
+  WeatherControlInput = 2048,
+  RulesControlInput = 4096,
+  PluginControlInput = 8192,
+  PitInfo = 16384,
+  All = 32767,
 };
 
 enum class SubscribedBuffer : long
@@ -110,6 +131,7 @@ public:
   static int const DEBUG_IO_FLUSH_PERIOD_SECS = 10;
 
   static long msDebugOutputLevel;
+  static long msDebugOutputSource;
   static bool msDebugISIInternals;
   static bool msDedicatedServerMapGlobally;
   static bool msDirectMemoryAccessRequested;
@@ -126,6 +148,7 @@ public:
   // Debug output helpers
   static void WriteDebugMsg(
     DebugLevel lvl,
+    long src,
     char const* const functionName,
     int line,
     char const* const msg,
@@ -327,7 +350,12 @@ private:
   void ReadHWControl();
   void ReadWeatherControl();
   void ReadRulesControl();
+  void DynamicallySubscribeToBuffer(SubscribedBuffer sb, long requestedBuffMask, const char* const buffLogicalName);
+  void DynamicallyEnableInputBuffer(bool dependencyMissing, bool& controlInputRequested, bool& controlIputEnabled, char const* const buffLogicalName);
   void ReadPluginControl();
+  bool IsHWControlInputDependencyMissing();
+  bool IsWeatherControlInputDependencyMissing();
+  bool IsRulesControlInputDependencyMissing();
 
   template <typename BuffT>
   void TraceBeginUpdate(BuffT const& buffer, double& lastUpdateMillis, char const msgPrefix[]) const;
@@ -364,18 +392,14 @@ private:
   long mPitMenuLastNumChoices = -1L;
 
   // Input buffer logic members:
-
-  // HWControl request tracking variables.  Empty indicates initial state or the fact that request passed to rF2.
-  // TODO: change to same model used for weather/rules 
-  char mHWControlRequest_mControlName[rF2HWControl::MAX_HWCONTROL_NAME_LEN];
-  double mHWControlRequest_mfRetVal = 0.0;
   // Read attempt counter, used to skip reads.
   int mHWControlRequestReadCounter = 0;
   // Boost counter, boost read rate after buffer update.
   int mHWControlRequestBoostCounter = 0;
 
-  bool mWeatherControlInputRequestReceived = true;
-  bool mRulesControlInputRequestReceived = true;
+  bool mHWControlInputRequestReceived = false;
+  bool mWeatherControlInputRequestReceived = false;
+  bool mRulesControlInputRequestReceived = false;
 
   MappedBuffer<rF2Telemetry> mTelemetry;
   MappedBuffer<rF2Scoring> mScoring;
@@ -393,7 +417,7 @@ private:
   MappedBuffer<rF2RulesControl> mRulesControl;
   MappedBuffer<rF2PluginControl> mPluginControl;
 
-  // All requested buffers mapped successfully or not.
+  // All buffers mapped successfully or not.
   bool mIsMapped = false;
 
   //////////////////////////////////////////

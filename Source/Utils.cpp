@@ -47,22 +47,21 @@ char* GetFileContents(char const* const filePath)
     [&]() {
     if (fileHandle != nullptr) {
       auto ret = fclose(fileHandle);
-      if (ret != 0) {
-        DEBUG_MSG(DebugLevel::Errors, "fclose() failed with: %d", ret);
-      }
+      if (ret != 0)
+        DEBUG_MSG(DebugLevel::Errors, DebugSource::General, "fclose() failed with: %d", ret);
     }
   });
 
   char* fileContents = nullptr;
   auto ret = fopen_s(&fileHandle, filePath, "rb");
   if (ret != 0) {
-    DEBUG_MSG(DebugLevel::Errors, "fopen_s() failed with: %d", ret);
+    DEBUG_MSG(DebugLevel::Errors, DebugSource::General, "fopen_s() failed with: %d", ret);
     return nullptr;
   }
 
   ret = fseek(fileHandle, 0, SEEK_END);
   if (ret != 0) {
-    DEBUG_MSG(DebugLevel::Errors, "fseek() failed with: %d", ret);
+    DEBUG_MSG(DebugLevel::Errors, DebugSource::General, "fseek() failed with: %d", ret);
     return nullptr;
   }
 
@@ -74,7 +73,7 @@ char* GetFileContents(char const* const filePath)
   if (elemsRead != 1 /*items*/) {
     delete[] fileContents;
     fileContents = nullptr;
-    DEBUG_MSG(DebugLevel::Errors, "fread() failed.");
+    DEBUG_MSG(DebugLevel::Errors, DebugSource::General, "fread() failed.");
     return nullptr;
   }
 

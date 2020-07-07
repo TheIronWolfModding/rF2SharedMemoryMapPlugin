@@ -1060,7 +1060,7 @@ struct rF2PluginControl : public rF2MappedInputBufferHeader
   // Version supported by the _current_ plugin.
   static long const SUPPORTED_LAYOUT_VERSION = 1L;
 
-  // Bitmask TODO: scoring can't be requested.
+  // Note: turning Scoring update on cannot be requested
   long mRequestEnableBuffersMask;
   bool mRequestHWControlInput;
   bool mRequestWeatherControlInput;

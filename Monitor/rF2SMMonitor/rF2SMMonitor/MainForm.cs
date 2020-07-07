@@ -389,7 +389,7 @@ namespace rF2SMMonitor
       float result = 0.0f;
       if (float.TryParse(this.scaleTextBox.Text, out result))
       {
-        this.scale = result;
+        this.scale = Math.Max(result, 0.05f);
         this.config.Write("scale", this.scale.ToString());
       }
       else

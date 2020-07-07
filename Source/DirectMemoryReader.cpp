@@ -7,7 +7,7 @@
 bool DirectMemoryReader::Initialize()
 {
   __try {
-    DEBUG_MSG(DebugLevel::DevInfo, "Initializing DMR.");
+    DEBUG_MSG(DebugLevel::DevInfo, DebugSource::DMR, "Initializing DMR.");
 
     auto const startTicks = TicksNow();
 
@@ -17,7 +17,7 @@ bool DirectMemoryReader::Initialize()
       "xxxxx????xxx", 5u));
 
     if (mpStatusMessage == nullptr) {
-      DEBUG_MSG(DebugLevel::Errors, "Failed to resolve status message.");
+      DEBUG_MSG(DebugLevel::Errors, DebugSource::General, "Failed to resolve status message.");
       return false;
     }
 
@@ -26,7 +26,7 @@ bool DirectMemoryReader::Initialize()
       "xxx????xxxxxxx", 3u));
 
     if (mppMessageCenterMessages == nullptr) {
-      DEBUG_MSG(DebugLevel::Errors, "Failed to resolve message array.");
+      DEBUG_MSG(DebugLevel::Errors, DebugSource::General, "Failed to resolve message array.");
       return false;
     }
 
@@ -35,7 +35,7 @@ bool DirectMemoryReader::Initialize()
       "xxxxxxxxx????xxx", 9u));
 
     if (mpCurrPitSpeedLimit == nullptr) {
-      DEBUG_MSG(DebugLevel::Errors, "Failed to resolve speed limit pointer.");
+      DEBUG_MSG(DebugLevel::Errors, DebugSource::General, "Failed to resolve speed limit pointer.");
       return false;
     }
 
@@ -46,7 +46,7 @@ bool DirectMemoryReader::Initialize()
       "xxxxxxxxxxxxxxx????xxx????x", 22u));
 
     if (mpLSIMessages == nullptr) {
-      DEBUG_MSG(DebugLevel::Errors, "Failed to resolve LSI message pointer.");
+      DEBUG_MSG(DebugLevel::Errors, DebugSource::General, "Failed to resolve LSI message pointer.");
       return false;
     }
 
@@ -54,36 +54,36 @@ bool DirectMemoryReader::Initialize()
 
     if (Utils::IsFlagOn(SharedMemoryPlugin::msDebugOutputLevel, DebugLevel::DevInfo)) {
       // Successful scan: ~20ms
-      DEBUG_MSG(DebugLevel::DevInfo, "Scan time seconds: %f", (endTicks - startTicks) / MICROSECONDS_IN_SECOND);
+      DEBUG_MSG(DebugLevel::DevInfo, DebugSource::DMR, "Scan time seconds: %f", (endTicks - startTicks) / MICROSECONDS_IN_SECOND);
 
       auto const addr1 = reinterpret_cast<char*>(reinterpret_cast<uintptr_t>(::GetModuleHandle(nullptr)) + 0x14D4C20uLL);
       auto const addr2 = *reinterpret_cast<char**>(reinterpret_cast<uintptr_t>(::GetModuleHandle(nullptr)) + 0x14D31E0uLL);
       auto const addr3 = reinterpret_cast<float*>(reinterpret_cast<uintptr_t>(::GetModuleHandle(nullptr)) + 0x14B4D0CuLL);
       auto const addr4 = reinterpret_cast<char*>(reinterpret_cast<uintptr_t>(::GetModuleHandle(nullptr)) + 0x14D3268uLL);
 
-      DEBUG_MSG(DebugLevel::DevInfo, "A1 0x%p", mpStatusMessage);
-      DEBUG_MSG(DebugLevel::DevInfo, "A11 0x%p", addr1);
-      DEBUG_MSG(DebugLevel::DevInfo, "O1 0x%p", reinterpret_cast<uintptr_t>(mpStatusMessage) - reinterpret_cast<uintptr_t>(module));
-      DEBUG_MSG(DebugLevel::DevInfo, "O11 0x%p", 0x14D4C20uLL);
+      DEBUG_MSG(DebugLevel::DevInfo, DebugSource::DMR, "A1 0x%p", mpStatusMessage);
+      DEBUG_MSG(DebugLevel::DevInfo, DebugSource::DMR, "A11 0x%p", addr1);
+      DEBUG_MSG(DebugLevel::DevInfo, DebugSource::DMR, "O1 0x%p", reinterpret_cast<uintptr_t>(mpStatusMessage) - reinterpret_cast<uintptr_t>(module));
+      DEBUG_MSG(DebugLevel::DevInfo, DebugSource::DMR, "O11 0x%p", 0x14D4C20uLL);
 
-      DEBUG_MSG(DebugLevel::DevInfo, "A2 0x%p", *mppMessageCenterMessages);
-      DEBUG_MSG(DebugLevel::DevInfo, "A21 0x%p", addr2);
-      DEBUG_MSG(DebugLevel::DevInfo, "O2 0x%p", reinterpret_cast<uintptr_t>(mppMessageCenterMessages) - reinterpret_cast<uintptr_t>(module));
-      DEBUG_MSG(DebugLevel::DevInfo, "O21 0x%p", 0x14D31E0uLL);
+      DEBUG_MSG(DebugLevel::DevInfo, DebugSource::DMR, "A2 0x%p", *mppMessageCenterMessages);
+      DEBUG_MSG(DebugLevel::DevInfo, DebugSource::DMR, "A21 0x%p", addr2);
+      DEBUG_MSG(DebugLevel::DevInfo, DebugSource::DMR, "O2 0x%p", reinterpret_cast<uintptr_t>(mppMessageCenterMessages) - reinterpret_cast<uintptr_t>(module));
+      DEBUG_MSG(DebugLevel::DevInfo, DebugSource::DMR, "O21 0x%p", 0x14D31E0uLL);
 
-      DEBUG_MSG(DebugLevel::DevInfo, "A3 0x%p", mpCurrPitSpeedLimit);
-      DEBUG_MSG(DebugLevel::DevInfo, "A31 0x%p", addr3);
-      DEBUG_MSG(DebugLevel::DevInfo, "O3 0x%p", reinterpret_cast<uintptr_t>(mpCurrPitSpeedLimit) - reinterpret_cast<uintptr_t>(module));
-      DEBUG_MSG(DebugLevel::DevInfo, "O31 0x%p", 0x14B4D0CuLL);
+      DEBUG_MSG(DebugLevel::DevInfo, DebugSource::DMR, "A3 0x%p", mpCurrPitSpeedLimit);
+      DEBUG_MSG(DebugLevel::DevInfo, DebugSource::DMR, "A31 0x%p", addr3);
+      DEBUG_MSG(DebugLevel::DevInfo, DebugSource::DMR, "O3 0x%p", reinterpret_cast<uintptr_t>(mpCurrPitSpeedLimit) - reinterpret_cast<uintptr_t>(module));
+      DEBUG_MSG(DebugLevel::DevInfo, DebugSource::DMR, "O31 0x%p", 0x14B4D0CuLL);
 
-      DEBUG_MSG(DebugLevel::DevInfo, "A4 0x%p", mpLSIMessages);
-      DEBUG_MSG(DebugLevel::DevInfo, "A41 0x%p", addr4);
-      DEBUG_MSG(DebugLevel::DevInfo, "O4 0x%p", reinterpret_cast<uintptr_t>(mpLSIMessages) - reinterpret_cast<uintptr_t>(module));
-      DEBUG_MSG(DebugLevel::DevInfo, "O41 0x%p", 0x14D3268uLL);
+      DEBUG_MSG(DebugLevel::DevInfo, DebugSource::DMR, "A4 0x%p", mpLSIMessages);
+      DEBUG_MSG(DebugLevel::DevInfo, DebugSource::DMR, "A41 0x%p", addr4);
+      DEBUG_MSG(DebugLevel::DevInfo, DebugSource::DMR, "O4 0x%p", reinterpret_cast<uintptr_t>(mpLSIMessages) - reinterpret_cast<uintptr_t>(module));
+      DEBUG_MSG(DebugLevel::DevInfo, DebugSource::DMR, "O41 0x%p", 0x14D3268uLL);
     }
   }
   __except (::GetExceptionCode() == EXCEPTION_ACCESS_VIOLATION ? EXCEPTION_EXECUTE_HANDLER : EXCEPTION_CONTINUE_SEARCH) {
-    DEBUG_MSG(DebugLevel::Errors, "Exception while reading memory, disabling DMA.");
+    DEBUG_MSG(DebugLevel::Errors, DebugSource::General, "Exception while reading memory, disabling DMA.");
     return false;
   }
 
@@ -104,12 +104,12 @@ bool DirectMemoryReader::Read(rF2Extended& extended)
       strcpy_s(mPrevStatusMessage, extended.mStatusMessage);
       extended.mTicksStatusMessageUpdated = ::GetTickCount64();
 
-      DEBUG_MSG(DebugLevel::DevInfo, "Status message updated: '%s'", extended.mStatusMessage);
+      DEBUG_MSG(DebugLevel::DevInfo, DebugSource::DMR, "Status message updated: '%s'", extended.mStatusMessage);
     }
 
     auto const pBegin = *mppMessageCenterMessages;
     if (pBegin == nullptr) {
-      DEBUG_MSG(DebugLevel::DevInfo, "No message array pointer assigned: '%s'", extended.mStatusMessage);
+      DEBUG_MSG(DebugLevel::DevInfo, DebugSource::DMR, "No message array pointer assigned: '%s'", extended.mStatusMessage);
       return true;  // Retry next time or fail?  Have counter for N failures?
     }
 
@@ -159,9 +159,9 @@ bool DirectMemoryReader::Read(rF2Extended& extended)
           extended.mTicksLastHistoryMessageUpdated = ::GetTickCount64();
 
           if (!seenSplit)
-            DEBUG_MSG(DebugLevel::DevInfo, "Last history message updated: '%s'", extended.mLastHistoryMessage);
+            DEBUG_MSG(DebugLevel::DevInfo, DebugSource::DMR, "Last history message updated: '%s'", extended.mLastHistoryMessage);
           else
-            DEBUG_MSG(DebugLevel::DevInfo, "Last history message updated (concatenated): '%s'", extended.mLastHistoryMessage);
+            DEBUG_MSG(DebugLevel::DevInfo, DebugSource::DMR, "Last history message updated (concatenated): '%s'", extended.mLastHistoryMessage);
         }
 
         break;
@@ -171,7 +171,7 @@ bool DirectMemoryReader::Read(rF2Extended& extended)
     }
   }
   __except (::GetExceptionCode() == EXCEPTION_ACCESS_VIOLATION ? EXCEPTION_EXECUTE_HANDLER : EXCEPTION_CONTINUE_SEARCH) {
-    DEBUG_MSG(DebugLevel::Errors, "Exception while reading memory, disabling DMA.");
+    DEBUG_MSG(DebugLevel::Errors, DebugSource::General, "Exception while reading memory, disabling DMA.");
     return false;
   }
 
@@ -190,10 +190,10 @@ bool DirectMemoryReader::ReadOnNewSession(rF2Extended& extended)
     ClearLSIValues(extended);
 
     extended.mCurrentPitSpeedLimit = *mpCurrPitSpeedLimit;
-    DEBUG_MSG(DebugLevel::DevInfo, "Current pit speed limit: %f", extended.mCurrentPitSpeedLimit);
+    DEBUG_MSG(DebugLevel::DevInfo, DebugSource::DMR, "Current pit speed limit: %f", extended.mCurrentPitSpeedLimit);
   }
   __except (::GetExceptionCode() == EXCEPTION_ACCESS_VIOLATION ? EXCEPTION_EXECUTE_HANDLER : EXCEPTION_CONTINUE_SEARCH) {
-    DEBUG_MSG(DebugLevel::Errors, "Excepction while reading memory, disabling DMA.");
+    DEBUG_MSG(DebugLevel::Errors, DebugSource::General, "Excepction while reading memory, disabling DMA.");
     return false;
   }
 
@@ -215,7 +215,7 @@ bool DirectMemoryReader::ReadOnLSIVisible(rF2Extended& extended)
       strcpy_s(mPrevLSIPhaseMessage, extended.mLSIPhaseMessage);
       extended.mTicksLSIPhaseMessageUpdated = ::GetTickCount64();
 
-      DEBUG_MSG(DebugLevel::DevInfo, "LSI Phase message updated: '%s'", extended.mLSIPhaseMessage);
+      DEBUG_MSG(DebugLevel::DevInfo, DebugSource::DMR, "LSI Phase message updated: '%s'", extended.mLSIPhaseMessage);
     }
 
     auto const pPitState = mpLSIMessages + 0xD0uLL;
@@ -225,7 +225,7 @@ bool DirectMemoryReader::ReadOnLSIVisible(rF2Extended& extended)
       strcpy_s(mPrevLSIPitStateMessage, extended.mLSIPitStateMessage);
       extended.mTicksLSIPitStateMessageUpdated = ::GetTickCount64();
 
-      DEBUG_MSG(DebugLevel::DevInfo, "LSI Pit State message updated: '%s'", extended.mLSIPitStateMessage);
+      DEBUG_MSG(DebugLevel::DevInfo, DebugSource::DMR, "LSI Pit State message updated: '%s'", extended.mLSIPitStateMessage);
     }
 
     auto const pOrderInstruction = mpLSIMessages + 0x150uLL;
@@ -235,7 +235,7 @@ bool DirectMemoryReader::ReadOnLSIVisible(rF2Extended& extended)
       strcpy_s(mPrevLSIOrderInstructionMessage, extended.mLSIOrderInstructionMessage);
       extended.mTicksLSIOrderInstructionMessageUpdated = ::GetTickCount64();
 
-      DEBUG_MSG(DebugLevel::DevInfo, "LSI Order Instruction message updated: '%s'", extended.mLSIOrderInstructionMessage);
+      DEBUG_MSG(DebugLevel::DevInfo, DebugSource::DMR, "LSI Order Instruction message updated: '%s'", extended.mLSIOrderInstructionMessage);
     }
 
     auto const pRulesInstruction = mpLSIMessages + 0x1D0uLL;
@@ -246,12 +246,12 @@ bool DirectMemoryReader::ReadOnLSIVisible(rF2Extended& extended)
       strcpy_s(mPrevLSIRulesInstructionMessage, extended.mLSIRulesInstructionMessage);
       extended.mTicksLSIRulesInstructionMessageUpdated = ::GetTickCount64();
 
-      DEBUG_MSG(DebugLevel::DevInfo, "LSI Rules Instruction message updated: '%s'", extended.mLSIRulesInstructionMessage);
+      DEBUG_MSG(DebugLevel::DevInfo, DebugSource::DMR, "LSI Rules Instruction message updated: '%s'", extended.mLSIRulesInstructionMessage);
     }
   }
   __except (::GetExceptionCode() == EXCEPTION_ACCESS_VIOLATION ? EXCEPTION_EXECUTE_HANDLER : EXCEPTION_CONTINUE_SEARCH)
   {
-    DEBUG_MSG(DebugLevel::Errors, "Exception while reading memory, disabling DMA.");
+    DEBUG_MSG(DebugLevel::Errors, DebugSource::General, "Exception while reading memory, disabling DMA.");
     return false;
   }
 
@@ -268,7 +268,7 @@ void DirectMemoryReader::ReadSCRPluginConfig()
 
   auto configFileContents = Utils::GetFileContents(configFilePath);
   if (configFileContents == nullptr) {
-    DEBUG_MSG(DebugLevel::Errors, "Failed to load CustomPluginVariables.JSON file");
+    DEBUG_MSG(DebugLevel::Errors, DebugSource::General, "Failed to load CustomPluginVariables.JSON file");
     return;
   }
 
@@ -333,7 +333,7 @@ void DirectMemoryReader::ReadSCRPluginConfigValues(char* const configFileContent
 
 void DirectMemoryReader::ClearLSIValues(rF2Extended& extended)
 {
-  DEBUG_MSG(DebugLevel::DevInfo, "Clearing LSI values.");
+  DEBUG_MSG(DebugLevel::DevInfo, DebugSource::DMR, "Clearing LSI values.");
 
   mPrevLSIPhaseMessage[0] = '\0';
   extended.mLSIPhaseMessage[0] = '\0';
