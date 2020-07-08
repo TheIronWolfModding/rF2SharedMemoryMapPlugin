@@ -10,6 +10,7 @@ Acknowledgements:
     - rF2 Internals Plugin sample #7 by ISI/S397 found at: https://www.studio-397.com/modding-resources/
   Was inspired by:
     - rF1 Shared Memory Map Plugin by Dan Allongo found at: https://github.com/dallongo/rFactorSharedMemoryMap
+  With contributions by: Tony Whitley
 
 
 Shared resources:
@@ -22,19 +23,31 @@ Shared resources:
     - Global\\$rFactor2SMMP_<BUFFER_TYPE>$PID if running in dedicated server and DedicatedServerMapGlobally option is set to 1.
 
   where <BUFFER_TYPE> is one of the following:
+  Output buffers:
     * Telemetry - mapped view of rF2Telemetry structure
     * Scoring - mapped view of rF2Scoring structure
     * Rules - mapped view of rF2Rules structure
     * MultiRules - mapped view of rF2MultiRules structure
     * ForceFeedback - mapped view of rF2ForceFeedback structure
     * PitInfo - mapped view of rF2PitInfo structure
+    * Weather - mapped view of rF2Weather structure
     * Extended - mapped view of rF2Extended structure
 
-  Aside from Extended (see below), those types are (with few exceptions) exact mirror of ISI structures, plugin constantly memcpy'es them from game to memory mapped files.
+  Input buffers:
+    * HWControl - mapped view of rF2HWControl structure
+    * WeatherControl - mapped view of rF2WeatherControl structure
+    * RulesControl - mapped view of rF2RulesControl structure
+    * PluginControl - mapped view of rF2PluginControl structure
 
-  Plugin offers optional weak synchronization by using version variables on each of the buffers.
+  Aside from Extended (see below), output buffers are (with few exceptions) exact mirror of ISI structures, plugin constantly memcpy'es them
+  from game to memory mapped files.
 
-Refresh rates:
+  Plugin offers optional weak synchronization by using version variables on each of the output buffers.
+
+  Input buffers are meant to be filled out by the clients.  To avoid complex locking input buffers use version variables as well, and were
+  designed with a single client in mind.  For more high level overview of the input buffers see "Input Buffers" section in the README.md.
+ 
+Output buffer refresh rates:
   Telemetry - updated every 10ms, but in practice only every other update contains updated data, so real update rate is around 50FPS (20ms).
   Scoring - every 200ms (5FPS).
   Rules - every 300ms (3FPS).
@@ -42,16 +55,27 @@ Refresh rates:
   ForceFeedback - approximately every 2.5ms (400FPS).
   Graphics - approximately 400FPS.
   PitInfo - 100FPS.
-  Extended - every 200ms or on tracked function call.
+  Weather - 1FPS.
+  Extended - every 200ms (5FPS) or on tracked function call.
 
   Plugin does not add artificial delays, except:
     - game calls UpdateTelemetry in bursts every 10ms.  However, as of 02/18 data changes only every 20ms, so one of those bursts is dropped.
     - telemetry updates with same game time are skipped
 
-  Plugin supports unsubscribing from buffer updates via UnsubscribedBuffersMask CustomPluginVariables.json flag.
+  Plugin supports unsubscribing from buffer updates via UnsubscribedBuffersMask CustomPluginVariables.json flag.  Clients can also subscribe
+  to the currently unsubscribed buffers via rF2PluginControl input buffer.
+
+Input buffer refresh rates:
+
+  HWControl - Read at 5FPS with 100ms boost to 50FPS once update is received.  Applied at 100FPS.
+  WeatherControl - Read at 5FPS.  Applied at 1FPS.
+  RulesControl - Read at 5FPS.  Applied at 3FPS.
+  PluginControl - Read at 5FPS.  Applied on read.
+
 
 Telemetry state:
-  rF2 calls UpdateTelemetry for each vehicle.  Plugin tries to guess when all vehicles received an update, and only after that buffer write is marked as complete.
+  rF2 calls UpdateTelemetry for each vehicle.  Plugin tries to guess when all vehicles received an update, and only after
+  that buffer write is marked as complete.
 
 
 Extended state:
@@ -69,23 +93,36 @@ Extended state:
 
   See SharedMemoryPlugin::ExtendedStateTracker struct for details.
 
-  Also, Extended state exposes values obtaned via Direct Memory access.  This functionality is enabled via "EnableDirectMemoryAccess" plugin variable.  See DirectMemoryReader class for more details.
+  Extended state exposes values obtaned via Direct Memory access.  This functionality is enabled via "EnableDirectMemoryAccess"
+  plugin variable.  See DirectMemoryReader class for more details.
+
+  Lastly, active plugin configuration is exposed with the intent of clients to be able to detect missing features dynamically.
 
 
-Synchronization:
+Output buffer synchronization:
   Plugin does not offer hard guarantees for mapped buffer synchronization, because using synchronization primitives opens door for misuse and
   eventually, way of harming game FPS as number of clients grows.
 
   However, each of shared memory buffers begins with rF2MappedBufferVersionBlock structure.  If you would like to make sure you're not
-  reading a torn (partially overwritten) frame, you can check rF2MappedBufferVersionBlock::mVersionUpdateBegin and rF2MappedBufferVersionBlock::mVersionUpdateEnd values.
-  If they are equal, buffer is either not torn, or, in an extreme case, currently being written into.
-  Note: $rFactor2SMMP_ForceFeedback$ buffer consists of a single double variable.  Since write into double is atomic, version block is not used (I assume compiler aligned
-  double member correctly for x64, and I am too lazy atm to check).
+  reading a torn (partially overwritten) frame, you can check rF2MappedBufferVersionBlock::mVersionUpdateBegin and
+  rF2MappedBufferVersionBlock::mVersionUpdateEnd values. If they are equal, buffer is either not torn, or, in an extreme case,
+  currently being written into.
+  
+  Note: $rFactor2SMMP_ForceFeedback$ buffer consists of a single double variable.  Since write into double is atomic, version block
+  is not used (I assume compiler aligned double member correctly for x64, and I am too lazy atm to check).
 
-  Most clients (HUDs, Dashes, visualizers) won't need synchronization.  There are many ways on detecting torn frames, Monitor app contains sample approach
-  used in the Crew Chief app.
-  * For basic reading from C#, see: rF2SMMonitor.MainForm.MappedBuffer<>.GetMappedDataUnsynchronized.
-  * To see one of the ways to avoid torn frames, see: rF2SMMonitor.MainForm.MappedBuffer<>.GetMappedData.
+  Most clients (HUDs, Dashes, visualizers) won't need synchronization.  There are many ways on detecting torn frames,
+  Monitor app contains sample approach used in the Crew Chief app.
+  * For basic reading from C#, see: rF2SMMonitor.MappedBuffer<>.GetMappedDataUnsynchronized.
+  * To see one of the ways to avoid torn frames, see: rF2SMMonitor.MappedBuffer<>.GetMappedData.
+
+
+Input buffer synchronization:
+  Input buffers are designed with a single client in mind.  Plugin detects that input buffer has changed if last saved value of
+  rF2MappedBufferVersionBlock::mVersionUpdateBegin has changed.  Plugin will attempt to detect "torn frame" situations, but won't attempt
+  any recovery.
+
+  See rF2SMMonitor.MappedBuffer<>.PutMappedData for sample client code.
 
 
 Dedicated server use:
