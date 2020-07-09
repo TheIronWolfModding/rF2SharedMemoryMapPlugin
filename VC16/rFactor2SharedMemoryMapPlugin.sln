@@ -10,7 +10,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PitMenuApp", "..\PitMenuApp
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PitMenuSampleAppCS", "..\PitMenuSampleApp\PitMenuSampleAppCS.csproj", "{1E442053-A7A5-4F48-9A58-F97F931DD74C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnitTestPitMenuController", "..\PitMenuSampleApp\UnitTestPitMenuController\UnitTestPitMenuController.csproj", "{5E34191F-4548-4C7B-9D4C-9E43DF7B2528}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "csUnitTestPitMenuAPI", "..\PitMenuSampleApp\UnitTestPitMenuController\csUnitTestPitMenuAPI.csproj", "{5E34191F-4548-4C7B-9D4C-9E43DF7B2528}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

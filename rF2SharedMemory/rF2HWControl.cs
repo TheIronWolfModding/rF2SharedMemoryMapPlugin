@@ -9,9 +9,16 @@ using static rF2SharedMemory.rFactor2Constants;
 
 namespace rF2SharedMemory
 {
+  /// <summary>
+  /// Provides a null for the attribute used in rF2Data.cs
+  /// </summary>
   public class JsonIgnoreAttribute : Attribute
   {
   }
+
+  /// <summary>
+  /// Send HW controls to rF2 via the shared memory
+  /// </summary>
   public class SendrF2HWControl
   {
     // Write buffers:
@@ -22,18 +29,35 @@ namespace rF2SharedMemory
 
     private bool Connected = false;
 
+    /// <summary>
+    /// Connect to the Shared Memory running in rFactor
+    /// </summary>
+    /// <returns>
+    /// true if connected
+    /// </returns>
     public bool Connect()
     {
-      try
+      if (!this.Connected)
       {
-        this.hwControlBuffer.Connect();
-        this.Connected = true;
-      }
-      catch (Exception)
-      {
-        this.Connected = false;
+        try
+        {
+          this.hwControlBuffer.Connect();
+          this.Connected = true;
+        }
+        catch (Exception)
+        {
+          this.Connected = false;
+        }
       }
       return this.Connected;
+    }
+
+    /// <summary>
+    /// Disconnect from the Shared Memory running in rFactor
+    /// </summary>
+    public void Disconnect()
+    {
+      this.hwControlBuffer.Disconnect();
     }
 
     public void SendHWControl(string commandStr, bool down)

@@ -2,8 +2,8 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Windows.Forms;
+using PitMenuAPI;
 using rF2SharedMemory;
-using rF2SharedMemoryAPI;
 
 namespace PitMenuSampleApp
 {
@@ -21,9 +21,9 @@ namespace PitMenuSampleApp
     string LastControl;
     bool Connected = false;
     PitMenuController Pmc = new PitMenuController();
+    PitMenuAbstractionLayer Pmal = new PitMenuAbstractionLayer();
     Dictionary<string, string> ttDict;
     List<string> tyreCategories;
-
 
     public MainForm()
     {
@@ -35,7 +35,9 @@ namespace PitMenuSampleApp
         this.Pmc.Connect();
         Pmc.startUsingPitMenu();
         List<string> tyreTypes = Pmc.GetTyreTypeNames();
-        ttDict = Pmc.translateTyreTypes(tyreTypes);
+        ttDict = Pmal.TranslateTyreTypes(
+          PitMenuAbstractionLayer.SampleTyreDict,
+          tyreTypes);
         tyreCategories = Pmc.GetTyreChangeCategories();
       }
       this.timer1.Start();
