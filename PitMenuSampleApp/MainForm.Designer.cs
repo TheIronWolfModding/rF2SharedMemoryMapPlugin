@@ -67,6 +67,7 @@
       this.trackBarDelay = new System.Windows.Forms.TrackBar();
       this.timer1 = new System.Windows.Forms.Timer(this.components);
       this.toolTip1 = new System.Windows.Forms.ToolTip(this.components);
+      this.lblSettingTyreType = new System.Windows.Forms.Label();
       this.flowLayoutPanel1.SuspendLayout();
       this.tableLayoutPanel1.SuspendLayout();
       this.groupBox3.SuspendLayout();
@@ -454,6 +455,7 @@
       // 
       // groupBox5
       // 
+      this.groupBox5.Controls.Add(this.lblSettingTyreType);
       this.groupBox5.Controls.Add(this.label3);
       this.groupBox5.Controls.Add(this.label2);
       this.groupBox5.Controls.Add(this.comboBoxAllTyres);
@@ -811,6 +813,15 @@
       // 
       this.timer1.Tick += new System.EventHandler(this.timer1_Tick);
       // 
+      // lblSettingTyreType
+      // 
+      this.lblSettingTyreType.AutoSize = true;
+      this.lblSettingTyreType.Location = new System.Drawing.Point(242, 107);
+      this.lblSettingTyreType.Name = "lblSettingTyreType";
+      this.lblSettingTyreType.Size = new System.Drawing.Size(109, 25);
+      this.lblSettingTyreType.TabIndex = 4;
+      this.lblSettingTyreType.Text = "Setting to...";
+      // 
       // MainForm
       // 
       this.AutoScaleDimensions = new System.Drawing.SizeF(11F, 24F);
@@ -892,6 +903,7 @@
     private System.Windows.Forms.GroupBox groupBox8;
     private System.Windows.Forms.Label labelInitialDelay;
     private System.Windows.Forms.TrackBar trackBarInitialDelay;
+    private System.Windows.Forms.Label lblSettingTyreType;
   }
 }
 

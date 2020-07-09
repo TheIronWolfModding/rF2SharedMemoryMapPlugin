@@ -24,6 +24,7 @@ namespace PitMenuSampleApp
     PitMenuAbstractionLayer Pmal = new PitMenuAbstractionLayer();
     Dictionary<string, string> ttDict;
     List<string> tyreCategories;
+    //Dictionary<string, List<string>> MenuDict;
 
     public MainForm()
     {
@@ -32,12 +33,13 @@ namespace PitMenuSampleApp
       this.checkBox1.Checked = this.Connected;
       if (this.Connected)
       {
-        this.Pmc.Connect();
+        this.Pmal.Connect();
         Pmc.startUsingPitMenu();
-        List<string> tyreTypes = Pmc.GetTyreTypeNames();
+        Pmal.GetMenuDict();
+        List<string> _tyreTypes = Pmal.GetTyreTypeNames();
         ttDict = Pmal.TranslateTyreTypes(
           PitMenuAbstractionLayer.SampleTyreDict,
-          tyreTypes);
+          _tyreTypes);
         tyreCategories = Pmc.GetTyreChangeCategories();
       }
       this.timer1.Start();
@@ -134,11 +136,9 @@ namespace PitMenuSampleApp
     private void comboBoxAllTyres_SelectionChangeCommitted(object sender, EventArgs e)
     {
       this.Pmc.startUsingPitMenu();
-      foreach (string tyre in tyreCategories)
-      {
-        this.Pmc.SetCategory(tyre);
-        this.Pmc.SetTyreType(ttDict[this.comboBoxAllTyres.SelectedItem.ToString()]);
-      }
+      this.lblSettingTyreType.Text = "Setting to " +
+        ttDict[this.comboBoxAllTyres.SelectedItem.ToString()];
+      this.Pmal.SetAllTyreTypes(ttDict[this.comboBoxAllTyres.SelectedItem.ToString()]);
       this.timer1.Start();
     }
 

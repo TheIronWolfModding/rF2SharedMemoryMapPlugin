@@ -253,8 +253,8 @@ namespace PitMenuAPI
       this.sendHWControl.SendHWControl(control, true);
       System.Threading.Thread.Sleep(delay);
       // Doesn't seem to be necessary to do "retVal false" too
-      //this.SendControl.SendHWControl(control, false);
-      //System.Threading.Thread.Sleep(delay);
+      this.sendHWControl.SendHWControl(control, false);
+      System.Threading.Thread.Sleep(delay);
     }
 
     //////////////////////////////////////////////////////////////////////////

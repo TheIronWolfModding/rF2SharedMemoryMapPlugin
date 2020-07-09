@@ -24,9 +24,9 @@ namespace csUnitTestPitMenuAbstractionLayer
     private static readonly Dictionary<string, List<string>> _tyreDict =
       new Dictionary<string, List<string>>() {
             { "Supersoft",    new List <string> {"supersoft", "soft",
-                                                  "s310", "slick", "dry", "all-weather" } },
+                                                  "s310", "slick", "dry", "all-weather", "medium" } },
             { "Soft",         new List <string> {"soft",
-                                                  "s310", "slick", "dry", "all-weather" } },
+                                                  "s310", "slick", "dry", "all-weather", "medium" } },
             { "Medium",       new List <string> { "medium", "default",
                                                   "s310", "slick", "dry", "all-weather" } },
             { "Hard",         new List <string> {"hard", "p310", "endur",
@@ -144,11 +144,25 @@ namespace csUnitTestPitMenuAbstractionLayer
     public void Test_translateTyreTypes()
     {
       Dictionary<string, string> translation;
+      List<string> menuTyres;
 
       translation = Pmal.TranslateTyreTypes(_tyreDict,
         _getTestDict(KartDict)["F TIRES:"]);
       Assert.AreEqual(_tyreDict.Count, translation.Count);
       Assert.AreEqual("YMW DRY", translation["Soft"]);
+
+      menuTyres = new List<string>
+      {
+        "Wet",
+        "Intermediate",
+        "Medium",
+        "Hard",
+        "No Change"
+      };
+      translation = Pmal.TranslateTyreTypes(_tyreDict,
+        menuTyres);
+      Assert.AreEqual(_tyreDict.Count, translation.Count);
+      Assert.AreEqual("Medium", translation["Soft"]);
     }
 
     [TestMethod]
@@ -192,6 +206,15 @@ namespace csUnitTestPitMenuAbstractionLayer
         string jsonString = JsonSerializer.Serialize(result, options);
         Console.WriteLine(jsonString);
       }
+    }
+
+    [TestMethod]
+    public void TestGetFrontTyreCategories()
+    {
+      Pmal.setMenuDict(_getTestDict(KartDict));
+
+      var ftc = Pmal.GetFrontTyreCategories();
+      Assert.AreEqual("F TIRES:", ftc[0]);
     }
   }
 }

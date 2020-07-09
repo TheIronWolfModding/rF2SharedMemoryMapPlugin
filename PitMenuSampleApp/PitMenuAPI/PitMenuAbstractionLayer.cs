@@ -15,12 +15,12 @@ namespace PitMenuAPI
   public class PitMenuAbstractionLayer : PitMenuController
   {
     private Dictionary<string, List<string>> menuDict;
-    PitMenuController Pmc;
+    PitMenuController Pmc = new PitMenuController();
 
     /// <summary>
     /// All the Pit Menu categories of tyres that rF2 selects from
     /// </summary>
-    private readonly string[] tyres = {
+    private readonly string[] tyreCategories = {
             "RR TIRE:",
             "RL TIRE:",
             "FR TIRE:",
@@ -34,12 +34,13 @@ namespace PitMenuAPI
     /// The Pit Menu categories of tyres that rF2 uses to select compounds,
     /// the remainder sometimes only choose this compound or NO CHANGE
     /// </summary>
-    private readonly string[] tyreSelectionCategories = {
+    private readonly string[] frontTyreCategories = {
             "FR TIRE:",
             "FL TIRE:",
             "F TIRES:",
             "RT TIRES:",
-            "LF TIRES:"
+            "LF TIRES:",
+            "TIRES:"
         };
 
     /// <summary>
@@ -58,14 +59,26 @@ namespace PitMenuAPI
     /// <returns>
     /// A list of the front tyre changes provided for this vehicle
     /// </returns>
-    public List<string> GetFrontTyres()
+    public List<string> GetFrontTyreCategories()
     {
-      return (List<string>)tyreSelectionCategories.Intersect(menuDict.Keys.ToList());
+      return frontTyreCategories.Intersect(menuDict.Keys).ToList();
     }
 
+    /// <summary>
+    /// Get a list of the rear tyre changes provided for this vehicle.
+    /// </summary>
+    /// <returns>
+    /// A list of the rear tyre changes provided for this vehicle
+    /// </returns>
+    public List<string> GetRearTyreCategories()
+    {
+      // There are simpler ways to do this but...
+      return (List<string>)tyreCategories.Except(frontTyreCategories)
+        .Intersect(menuDict.Keys).ToList();
+    }
     public void GetMenuDict()
     {
-      Pmc.Connect();
+      //Pmc.Connect();
       menuDict = Pmc.GetMenuDict();
     }
 
@@ -98,6 +111,12 @@ namespace PitMenuAPI
       return result;
     }
 
+    public List<string> GetTyreTypeNames()
+    {
+      Pmc.SetCategory(GetFrontTyreCategories()[0]);
+      return Pmc.GetTyreTypeNames();
+    }
+
     /// <summary>
     /// Take a list of tyre types available in the menu and map them on to
     /// the set of generic tyre types
@@ -124,9 +143,9 @@ namespace PitMenuAPI
     public static readonly Dictionary<string, List<string>> SampleTyreDict =
       new Dictionary<string, List<string>>() {
             { "Supersoft",    new List <string> {"supersoft", "soft",
-                                                  "s310", "slick", "dry", "all-weather" } },
+                                                  "s310", "slick", "dry", "all-weather", "medium" } },
             { "Soft",         new List <string> {"soft",
-                                                  "s310", "slick", "dry", "all-weather" } },
+                                                  "s310", "slick", "dry", "all-weather", "medium" } },
             { "Medium",       new List <string> { "medium", "default",
                                                   "s310", "slick", "dry", "all-weather" } },
             { "Hard",         new List <string> {"hard", "p310", "endur",
@@ -160,6 +179,44 @@ namespace PitMenuAPI
         }
       }
       return result;
+    }
+
+    /// <summary>
+    /// Set the tyre compound selection in the Pit Menu.
+    /// Set the front tyres first as the rears may may depend on what is
+    /// selected for the fronts
+    /// Having changed them all, the client can then set specific tyres to
+    /// NO CHANGE
+    /// </summary>
+    /// <param name="tyreType">Name of actual tyre type or NO CHANGE</param>
+    /// <returns>true all tyres changed</returns>
+    public bool SetAllTyreTypes(string tyreType)
+    {
+      bool response = true;
+
+      foreach (string whichTyre in GetFrontTyreCategories())
+      {
+        if (response)
+        {
+          response = Pmc.SetCategory(whichTyre);
+        }
+        if(response)
+        {
+          response = Pmc.SetTyreType(tyreType);
+        }
+      }
+      foreach (string whichTyre in GetRearTyreCategories())
+      {
+        if (response)
+        {
+          response = Pmc.SetCategory(whichTyre);
+        }
+        if (response)
+        {
+          response = Pmc.SetTyreType(tyreType);
+        }
+      }
+      return response;
     }
 
     // Unit Test
