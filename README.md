@@ -1,15 +1,22 @@
-# rFactor 2 Internals Shared Memory Map Plugin
+﻿# rFactor 2 Internals Shared Memory Map Plugin
 
-This plugin mirrors exposed rFactor 2 internal state into shared memory buffers.  Essentially, this is direct memcpy of rFactor 2 internals.
+This plugin mirrors exposed rFactor 2 internal state into shared memory buffers.  Essentially, this is direct memcpy of rFactor 2 internals.  Plugin also allows some level of input back into the rFactor 2 API.
 
-Reading shared memory allows creating external tools running outside of rFactor 2 and written in languages other than C++ (C# sample is included).  It also allows keeping CPU time impact in rFactor 2 plugin threads to the minimum.
+Reading and writing shared memory allows creating external tools running outside of rFactor 2 and written in languages other than C++ (C# sample is included).  It also allows keeping CPU time impact in rFactor 2 plugin threads to the minimum.
 
 This plugin is carefully implemented with an intent of becoming a shared component for reading rF2 internals.  It can handle any number of clients without slowing down rF2 plugin thread.  A lot of work was done to ensure it is as efficient and reliable as possible.
 
-#### This work is based on:
+# Acknowledgements
+##### This work is based on:
   * rF2 Internals Plugin sample #7 by ISI/S397 found at: https://www.studio-397.com/modding-resources/
-#### Was inspired by:
+##### Was inspired by:
   * rF1 Shared Memory Map Plugin by Dan Allongo found at: https://github.com/dallongo/rFactorSharedMemoryMap
+
+### Authors: 
+Vytautas Leonavičius
+##### With contributions by:
+Morten Roslev (partts of DMR implementation and teaching me various memory reading techniques) 
+Tony Whitley (Pit info/HWControl prototyping)
 
 ## Download:
 https://www.mediafire.com/file/hzlugtn3t7sc3gw/rf2_sm_tools_3.7.0.0.zip/file
@@ -19,7 +26,7 @@ Plugin offers optional weak synchronization by using version variables on each o
 
 Plugin is built using VS 2015 Community Edition, targeting VC12 (VS 2013) runtime, since rF2 comes with VC12 redist.
 
-## Refresh Rates:
+## Output Refresh Rates:
 * Telemetry - 50FPS.
 * Scoring - 5FPS.
 * Rules - 3FPS.
@@ -28,7 +35,7 @@ Plugin is built using VS 2015 Community Edition, targeting VC12 (VS 2013) runtim
 * Graphics - 400FPS.
 * Extended - 5FPS and on tracked callback by the game.
 
-Note: Graphics buffer is unsbscribed by default.
+Note: `Graphics` and `Weather` are unsbscribed from by default.
 
 ## Unsubscribing from the buffer updatdes
 It is possible to configure which buffers get updated and which don't.  This is done via `UnsubscribedBuffersMask` value in the `CustomPluginVariables.json` file.  To specify buffers to unsubscribe from, add desired flag values up.
