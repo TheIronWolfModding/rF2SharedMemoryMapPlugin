@@ -1,10 +1,12 @@
-﻿# rFactor 2 Internals Shared Memory Map Plugin
+﻿# rFactor 2 Internals Shared Memory Plugin
 
-This plugin mirrors exposed rFactor 2 internal state into shared memory buffers.  Essentially, this is direct memcpy of rFactor 2 internals.  Plugin also allows some level of input back into the rFactor 2 API.
+This plugin mirrors exposed rFactor 2 internal state into shared memory buffers.  Essentially, this is direct memcpy of rFactor 2 internals (except for extended stuff implemented to workaround API limitations/bugs).  Plugin also allows some level of input back into the rFactor 2 API.
 
 Reading and writing shared memory allows creating external tools running outside of rFactor 2 and written in languages other than C++ (C# sample is included).  It also allows keeping CPU time impact in rFactor 2 plugin threads to the minimum.
 
-This plugin is carefully implemented with an intent of becoming a shared component for reading rF2 internals.  It can handle any number of clients without slowing down rF2 plugin thread.  A lot of work was done to ensure it is as efficient and reliable as possible.
+This plugin is carefully implemented with an intent of becoming a shared component for reading rF2 internals.  For read operations, it can handle any number of clients without slowing down rF2 plugin thread.  A lot of work was done to ensure it is as efficient and reliable as possible.
+
+rFactor 2 API has some limitations/bugs, and plugin tries to deals with them (to some extent) by deriving some information (damage), tracking session transitions and optionally reading game memory directly.
 
 # Acknowledgements
 ##### This work is based on:
@@ -15,14 +17,14 @@ This plugin is carefully implemented with an intent of becoming a shared compone
 ### Authors: 
 Vytautas Leonavičius
 ##### With contributions by:
-Morten Roslev (partts of DMR implementation and teaching me various memory reading techniques) 
-Tony Whitley (Pit info/HWControl prototyping)
+- Morten Roslev: parts of DMR implementation and teaching me various memory reading techniques and saving my sanity
+- Tony Whitley: pit info/HWControl prototyping
 
 ## Download:
 https://www.mediafire.com/file/hzlugtn3t7sc3gw/rf2_sm_tools_3.7.0.0.zip/file
 
 ## Features
-Plugin offers optional weak synchronization by using version variables on each of the buffers.
+Plugin offers optional weak synchronization by using version variables on each of the output buffers.
 
 Plugin is built using VS 2015 Community Edition, targeting VC12 (VS 2013) runtime, since rF2 comes with VC12 redist.
 
@@ -33,9 +35,27 @@ Plugin is built using VS 2015 Community Edition, targeting VC12 (VS 2013) runtim
 * Multi Rules - on callback from a game, usually once a session and in between sessions.
 * ForceFeedback - 400FPS.
 * Graphics - 400FPS.
+* Pit Info - 100FPS.
+* Weather - 1FPS.
 * Extended - 5FPS and on tracked callback by the game.
 
 Note: `Graphics` and `Weather` are unsbscribed from by default.
+
+## Input Buffers
+Note to cheaters who dare to contact me with questions: none of this can be used to control vehicle.
+
+Plugin supports sending input to the game (using rFactor 2 API).  Please use this stuff with care - it can cause game freezes and unexpected behavior.
+
+### HWControl input
+
+
+## Input Refresh Rates:
+* HWControl - Read at 5FPS with 100ms boost to 50FPS once update is received.  Applied at 100FPS.
+* WeatherControl - Read at 5FPS.  Applied at 1FPS.
+* RulesControl - Read at 5FPS.  Applied at 3FPS.
+* PluginControl - Read at 5FPS.  Applied on read.
+
+Note: only `PluginControl` and `HWControl` buffers are enabled by default.  They can be enabled via `CustomPluginVariables.json` settings.
 
 ## Unsubscribing from the buffer updatdes
 It is possible to configure which buffers get updated and which don't.  This is done via `UnsubscribedBuffersMask` value in the `CustomPluginVariables.json` file.  To specify buffers to unsubscribe from, add desired flag values up.
@@ -45,11 +65,15 @@ Scoring = 2,
 Rules = 4,
 MultiRules = 8,
 ForceFeedback = 16,
-Graphics = 32`
+Graphics = 32,
+PitInfo = 64,
+Weather = 128
+All = 255`
 
 So, to unsubscribe from `Multi Rules` and `Graphics` buffeers set `UnsubscribedBuffersMask` to 40 (8 + 32).
 
-Note: unsubscribing from `Extended` buffer updates is not supported.
+- Note: unsubscribing from `Extended` buffer updates is not supported.
+- Note: usubscribing from `Scoring` will disable `Plugin Control` input.
 
 ## Limitations/Assumptions:
 * Negative mID is not supported.
