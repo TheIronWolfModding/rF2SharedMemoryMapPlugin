@@ -44,10 +44,27 @@ Note: `Graphics` and `Weather` are unsbscribed from by default.
 ## Input Buffers
 Note to cheaters who dare to contact me with questions: none of this can be used to control vehicle.
 
-Plugin supports sending input to the game (using rFactor 2 API).  Please use this stuff with care - it can cause game freezes and unexpected behavior.
+Plugin supports sending input to the game (using rFactor 2 API).  Please use this stuff with extreme care - it can cause game freezes and unexpected behavior.
+
+Monitor app includes sample code that uses Input buffers.
+
+Note: designed with only one write client in mind.  Although multiple clients are safe, they will need to be mindful of clashes, plugin does not moderate that part.
 
 ### HWControl input
+Allows sending restricted set of inputs to rF2.  Mostly useful for pit menu interaction.
 
+### Weather Control input
+Allows sending weather input.  This might be useful in keeping internet queries/thread synchronization out of rF2 plugin thread and inside of a standalone weather control app.
+
+### Rules Control input
+This is experimental control buffer.  It allows sending Rules input to the game.  The idea was that it might make developing custom rules plugin easier, but being able to change logic in an external app/script without rebuilding plugin/restarting rF2.  
+
+However, this is experimental, because I am not positive this approach is going to "fly"/is reliable.  The reason for that is that inside of a plugin, rules are applied synchronously, meaning game sends rules input, and allows updating that input in the same callback, meaning synchronously.  Using shared memory plugin this process is not synchronous, game sends rules in a function call, plugin picks up rules update from the input buffer, and will apply update next time function is invoked.  So there's a gap between game ouput rules and requested input rules.
+
+I tried to minimize the impact of a gap by copying some of the latest rules state onto updated state, but I do not know how reliably would that work.  That said, I am very passionate about autosport rules, so if you try to use this plugin for rules development and need help/changes (with the plugin part), feel free to reach out.
+
+### Plugin Control input
+Allows dynamically subscirbing to buffers that might've been unsubscribed by `CustomPluginVariables.json` configuration.  Also, allows enabling control input buffers.  The idea here is to allow client to turn missing functionality on if it is missing due to misconfiguration.
 
 ## Input Refresh Rates:
 * HWControl - Read at 5FPS with 100ms boost to 50FPS once update is received.  Applied at 100FPS.
@@ -257,6 +274,5 @@ So, to unsubscribe from `Multi Rules` and `Graphics` buffers set `UnsubscribedBu
 **01/31/2017 - v1.0.0.0**
   * Plugin: Added damage and invulnerability tracking
   * Monitor: Added phase and damage tracking and logging
-
 
 **1/18/2017 v0.5.0.0 - Initial release**
