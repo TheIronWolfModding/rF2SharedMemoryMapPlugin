@@ -48,7 +48,7 @@ Plugin supports sending input to the game (using rFactor 2 API).  Please use thi
 
 Monitor app includes sample code that uses Input buffers.
 
-Note: designed with only one write client in mind.  Although multiple clients are safe, they will need to be mindful of clashes, plugin does not moderate that part.
+Note: designed with only one write client in mind.  Although multiple clients should be able to coexist fine, they will need to be mindful of buffer update clashes, plugin does not moderate that part.
 
 ### HWControl input
 Allows sending restricted set of inputs to rF2.  Mostly useful for pit menu interaction.
@@ -57,11 +57,11 @@ Allows sending restricted set of inputs to rF2.  Mostly useful for pit menu inte
 Allows sending weather input.  This might be useful in keeping internet queries/thread synchronization out of rF2 plugin thread and inside of a standalone weather control app.
 
 ### Rules Control input
-This is experimental control buffer.  It allows sending Rules input to the game.  The idea was that it might make developing custom rules plugin easier, but being able to change logic in an external app/script without rebuilding plugin/restarting rF2.  
+This is experimental control buffer.  It allows sending Rules input to the game.  The idea was that it might make developing custom rules plugin easier, by being able to change logic in an external app/script without rebuilding plugin/restarting rF2.  
 
-However, this is experimental, because I am not positive this approach is going to "fly"/is reliable.  The reason for that is that inside of a plugin, rules are applied synchronously, meaning game sends rules input, and allows updating that input in the same callback, meaning synchronously.  Using shared memory plugin this process is not synchronous, game sends rules in a function call, plugin picks up rules update from the input buffer, and will apply update next time function is invoked.  So there's a gap between game ouput rules and requested input rules.
+However, this is experimental, because I am not positive this approach is going to "fly"/is reliable.  The reason for that is that when done inside of a plugin, rules are applied synchronously, game sends rules input, and allows updating that input in the same callback, meaning synchronously.  Using shared memory plugin this process is not synchronous, game sends rules in a function call, plugin picks up rules update from the input buffer, and will apply update next time function is invoked.  So there's a gap between game ouput rules and requested input rules.
 
-I tried to minimize the impact of a gap by copying some of the latest rules state onto updated state, but I do not know how reliably would that work.  That said, I am very passionate about autosport rules, so if you try to use this plugin for rules development and need help/changes (with the plugin part), feel free to reach out.
+I tried to minimize the impact of this processing gap by copying some of the latest rules state onto the updated state, but I do not know how reliably would that work.  That said, I am very passionate about autosport rules, so if you try to use this plugin for rules development and need help/changes (with the plugin part), feel free to reach out.
 
 ### Plugin Control input
 Allows dynamically subscirbing to buffers that might've been unsubscribed by `CustomPluginVariables.json` configuration.  Also, allows enabling control input buffers.  The idea here is to allow client to turn missing functionality on if it is missing due to misconfiguration.
