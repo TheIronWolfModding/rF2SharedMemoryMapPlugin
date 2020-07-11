@@ -6,7 +6,7 @@ Reading and writing shared memory allows creating external tools running outside
 
 This plugin is carefully implemented with an intent of becoming a shared component for reading rF2 internals.  For read operations, it can handle any number of clients without slowing down rF2 plugin thread.  A lot of work was done to ensure it is as efficient and reliable as possible.
 
-rFactor 2 API has some limitations/bugs, and plugin tries to deals with them (to some extent) by deriving some information (damage), tracking session transitions and optionally reading game memory directly.
+rFactor 2 API has some limitations/bugs, and plugin tries to deal with that by deriving some information: basic accumulated damage info, tracking session transitions and optionally reading game memory directly.
 
 # Acknowledgements
 ##### This work is based on:
