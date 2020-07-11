@@ -17,7 +17,7 @@ rFactor 2 API has some limitations/bugs, and plugin tries to deal with that by d
 ### Authors: 
 Vytautas Leonavičius
 ##### With contributions by:
-- Morten Roslev: parts of DMR implementation and teaching me various memory reading techniques and saving my sanity
+- Morten Roslev: parts of DMR implementation and teaching me various memory reading techniques and helping me to stay sane
 - Tony Whitley: pit info/HWControl prototyping
 
 ## Download:
@@ -26,7 +26,7 @@ https://www.mediafire.com/file/hzlugtn3t7sc3gw/rf2_sm_tools_3.7.0.0.zip/file
 ## Features
 Plugin offers optional weak synchronization by using version variables on each of the output buffers.
 
-Plugin is built using VS 2015 Community Edition, targeting VC12 (VS 2013) runtime, since rF2 comes with VC12 redist.
+Plugin is built using VS Community Edition, targeting VC12 (VS 2013) runtime, since rF2 comes with VC12 redist.
 
 ## Output Refresh Rates:
 * Telemetry - 50FPS.
@@ -59,7 +59,7 @@ Allows sending weather input.  This might be useful in keeping internet queries/
 ### Rules Control input
 This is experimental control buffer.  It allows sending Rules input to the game.  The idea was that it might make developing custom rules plugin easier, by being able to change logic in an external app/script without rebuilding plugin/restarting rF2.  
 
-However, this is experimental, because I am not positive this approach is going to "fly"/is reliable.  The reason for that is that when done inside of a plugin, rules are applied synchronously, game sends rules input, and allows updating that input in the same callback, meaning synchronously.  Using shared memory plugin this process is not synchronous, game sends rules in a function call, plugin picks up rules update from the input buffer, and will apply update next time function is invoked.  So there's a gap between game ouput rules and requested input rules.
+However, this is experimental, because I am not positive this approach is going to "fly"/is reliable.  The reason for that is that when done inside of a plugin, rules are applied synchronously: game sends rules input, and allows updating that input in the same callback, meaning synchronously.  Using shared memory plugin this process is not synchronous: game sends rules in a function call, plugin picks up rules update from the input buffer in a separate function call, and will apply update next time game calls rule update function.  So there's a gap between game ouput rules and requested input rules.
 
 I tried to minimize the impact of this processing gap by copying some of the latest rules state onto the updated state, but I do not know how reliably would that work.  That said, I am very passionate about autosport rules, so if you try to use this plugin for rules development and need help/changes (with the plugin part), feel free to reach out.
 
@@ -115,7 +115,7 @@ You are allowed to include this .dll with your distribution, as long as it is:
 * Readme is included
 * You had my permission via email
 
-Please also be aware, that Crew Chief will always ship with the latest version of the .dll and will overwrite .dll to match its version.  I do not expect compatibility to break without game changing its model, aside from rF2Extended buffer, which contains stuff not directly exposed by the game.  Every time layout of memory changes, either of the first two digits in the Plugin version is incremented, which means clients might need an update.  Monitor app is kept in sync with plugin.
+Please also be aware, that Crew Chief will always ship with the latest version of the .dll and will overwrite .dll to match its version.  I do not expect compatibility to break without game changing its model, aside from `rF2Extended` buffer, which contains stuff not directly exposed by the game.  Every time layout of memory changes, either of the first two digits in the Plugin version is incremented, which means clients might need an update.  Monitor app is kept in sync with plugin.
 
 ## Current known clients
 * Crew Chief: https://github.com/mrbelowski/CrewChiefV4 
