@@ -32,7 +32,7 @@ namespace PitMenuAPI
     // Delay in mS after sending a HW control to rFactor before sending another,
     // set by experiment
     // 20 works for category selection and tyres but fuel needs it slower
-    int delay = 40;
+    int delay = 50;
     // Shared memory scans slowly until the first control is received. It
     // returns to scanning slowly when it hasn't received a control for a while.
     int initialDelay = 200;
@@ -79,14 +79,20 @@ namespace PitMenuAPI
       if (this.Connected)
       {
         // Need to select the Pit Menu
-        this.sendHWControl.SendHWControl("ToggleMFDB", true); // Select rFactor Pit Menu
-        System.Threading.Thread.Sleep(initialDelay);
-        this.sendHWControl.SendHWControl("ToggleMFDB", false);
-        System.Threading.Thread.Sleep(delay);
-        // And it would be annoying to turn if off it was on so toggle it again.
-        // There is no way of telling if it's being displayed or not and the menu
-        // can be operated whether it is or not.
-        sendControl("ToggleMFDB");
+        // If it is off ToggleMFDA will turn it on then ToggleMFDB will switch
+        // to the Pit Menu
+        // If it is showing MFDA ToggleMFDA will turn it off then ToggleMFDB
+        // will show the Pit Menu
+        // If it is showing MFD"x" ToggleMFDA will show MFDA then ToggleMFDB
+        // will show the Pit Menu
+        do
+        {
+          this.sendHWControl.SendHWControl("ToggleMFDA", true);
+          System.Threading.Thread.Sleep(initialDelay);
+          this.sendHWControl.SendHWControl("ToggleMFDB", true); // Select rFactor Pit Menu
+          System.Threading.Thread.Sleep(delay);
+        }
+        while (!(SoftMatchCategory("TIRE") || SoftMatchCategory("FUEL")));
       }
       return this.Connected;
     }
