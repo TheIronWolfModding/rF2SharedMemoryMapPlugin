@@ -18,9 +18,10 @@ namespace PitMenuAPI
   /// </summary>
   public class PitMenu
   {
-    private
+    public
     SendrF2HWControl sendHWControl = new SendrF2HWControl();
 
+    private
     MappedBuffer<rF2PitInfo> pitInfoBuffer = new MappedBuffer<rF2PitInfo>(
       rFactor2Constants.MM_PITINFO_FILE_NAME,
       false /*partial*/,
@@ -32,7 +33,7 @@ namespace PitMenuAPI
     // Delay in mS after sending a HW control to rFactor before sending another,
     // set by experiment
     // 20 works for category selection and tyres but fuel needs it slower
-    int delay = 50;
+    int delay = 100;
     // Shared memory scans slowly until the first control is received. It
     // returns to scanning slowly when it hasn't received a control for a while.
     int initialDelay = 200;
@@ -48,10 +49,13 @@ namespace PitMenuAPI
     /// </returns>
     public bool Connect()
     {
-      this.Connected = this.sendHWControl.Connect();
-      if (this.Connected)
+      if (!this.Connected)
       {
-        this.pitInfoBuffer.Connect();
+        this.Connected = this.sendHWControl.Connect();
+        if (this.Connected)
+        {
+          this.pitInfoBuffer.Connect();
+        }
       }
       return this.Connected;
     }
@@ -89,7 +93,11 @@ namespace PitMenuAPI
         {
           this.sendHWControl.SendHWControl("ToggleMFDA", true);
           System.Threading.Thread.Sleep(initialDelay);
+          this.sendHWControl.SendHWControl("ToggleMFDA", false);
+          System.Threading.Thread.Sleep(delay);
           this.sendHWControl.SendHWControl("ToggleMFDB", true); // Select rFactor Pit Menu
+          System.Threading.Thread.Sleep(delay);
+          this.sendHWControl.SendHWControl("ToggleMFDB", false); // Select rFactor Pit Menu
           System.Threading.Thread.Sleep(delay);
         }
         while (!(SoftMatchCategory("TIRE") || SoftMatchCategory("FUEL")));
@@ -189,12 +197,16 @@ namespace PitMenuAPI
     public bool SetCategory(string category)
     {
       string InitialCategory = GetCategory();
+      int tryNo = 3;
       while (GetCategory() != category)
       {
         CategoryDown();
         if (GetCategory() == InitialCategory)
         {  // Wrapped around, category not found
-          return false;
+          if (tryNo-- > 0)
+          {
+            return false;
+          }
         }
       }
       return true;
@@ -210,12 +222,16 @@ namespace PitMenuAPI
     public bool SoftMatchCategory(string category)
     {
       string InitialCategory = GetCategory();
+      int tryNo = 3;
       while (!GetCategory().Contains(category))
       {
         CategoryDown();
         if (GetCategory() == InitialCategory)
         {  // Wrapped around, category not found
-          return false;
+          if (tryNo-- > 0)
+          {
+            return false;
+          }
         }
       }
       return true;

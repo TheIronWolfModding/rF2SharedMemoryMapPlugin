@@ -21,6 +21,8 @@ namespace PitMenuAPI
       "Monsoon"
     };
 
+    private Dictionary<string, List<string>> pitMenu;
+
 
     /// <summary>
     /// Get a dictionary of all choices for all tyre/tire menu categories
@@ -32,7 +34,7 @@ namespace PitMenuAPI
     /// </returns>
     public Dictionary<string, List<string>> GetMenuDict()
     {
-      Dictionary<string, List<string>> pitMenu = new Dictionary<string, List<string>> { };
+      pitMenu = new Dictionary<string, List<string>> { };
       string initialCategory;
       string category;
       string choice;
@@ -110,6 +112,8 @@ namespace PitMenuAPI
     /// </returns>
     public bool SetFuelLevel(int requiredFuel)
     {
+      int tryNo = 5;
+
       SetCategory("FUEL:");
       int current = GetFuelLevel();
       if (current < 0)
@@ -124,7 +128,12 @@ namespace PitMenuAPI
         int newLevel = GetFuelLevel();
         if (newLevel == current)
         { // Can't adjust further
-          break;
+          if (tryNo-- > 0)
+          {
+            return false;
+          }
+          this.startUsingPitMenu();
+          SetCategory("FUEL:");
         }
         else
         {
@@ -138,7 +147,12 @@ namespace PitMenuAPI
         int newLevel = GetFuelLevel();
         if (newLevel == current)
         { // Can't adjust further
-          break;
+          if (tryNo-- > 0)
+          {
+            return false;
+          }
+          this.startUsingPitMenu();
+          SetCategory("FUEL:");
         }
         else
         {
@@ -159,20 +173,14 @@ namespace PitMenuAPI
     /// </returns>
     public List<string> GetTyreTypeNames()
     {
-      List<string> result = new List<string>();
-      if (this.SoftMatchCategory("TIRE"))
+      List<string> result = new List<string> { "NO_TYRE" };
+      foreach (var category in this.pitMenu)
       {
-        string current = GetChoice();
-        while (result == null || !result.Contains(current))
+        if (category.Key.Contains("TIRE"))
         {
-          result.Add(current);
-          ChoiceInc();
-          current = GetChoice();
+          result = category.Value;
+          break;
         }
-      }
-      else
-      {
-        result = new List<string> { "NO_TYRE" };
       }
       return result;
     }
@@ -194,7 +202,7 @@ namespace PitMenuAPI
         {
           result.Add(GetCategory());
         }
-        CategoryUp();
+        CategoryDown();
       }
       while (GetCategory() != InitialCategory);
       return result;
@@ -221,7 +229,7 @@ namespace PitMenuAPI
           string newType = GetChoice();
           if (newType == current)
           { // Didn't find it
-            return false;
+            //return false;
           }
         }
         return true;

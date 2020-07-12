@@ -37,8 +37,10 @@
       this.groupBox2 = new System.Windows.Forms.GroupBox();
       this.cbChoices = new System.Windows.Forms.ComboBox();
       this.Box_PitMenu = new System.Windows.Forms.GroupBox();
+      this.btnStartUsingPitMenu = new System.Windows.Forms.Button();
       this.buttonToggleMenu = new System.Windows.Forms.Button();
       this.groupBox5 = new System.Windows.Forms.GroupBox();
+      this.lblSettingTyreType = new System.Windows.Forms.Label();
       this.label3 = new System.Windows.Forms.Label();
       this.label2 = new System.Windows.Forms.Label();
       this.comboBoxAllTyres = new System.Windows.Forms.ComboBox();
@@ -57,7 +59,7 @@
       this.numericUpDownTests = new System.Windows.Forms.NumericUpDown();
       this.label6 = new System.Windows.Forms.Label();
       this.numericUpDownErrors = new System.Windows.Forms.NumericUpDown();
-      this.checkBox2 = new System.Windows.Forms.CheckBox();
+      this.cbStressTest = new System.Windows.Forms.CheckBox();
       this.panel1 = new System.Windows.Forms.Panel();
       this.groupBox8 = new System.Windows.Forms.GroupBox();
       this.labelInitialDelay = new System.Windows.Forms.Label();
@@ -67,7 +69,7 @@
       this.trackBarDelay = new System.Windows.Forms.TrackBar();
       this.timer1 = new System.Windows.Forms.Timer(this.components);
       this.toolTip1 = new System.Windows.Forms.ToolTip(this.components);
-      this.lblSettingTyreType = new System.Windows.Forms.Label();
+      this.cbTestStartup = new System.Windows.Forms.CheckBox();
       this.flowLayoutPanel1.SuspendLayout();
       this.tableLayoutPanel1.SuspendLayout();
       this.groupBox3.SuspendLayout();
@@ -426,6 +428,7 @@
       // 
       // Box_PitMenu
       // 
+      this.Box_PitMenu.Controls.Add(this.btnStartUsingPitMenu);
       this.Box_PitMenu.Controls.Add(this.buttonToggleMenu);
       this.Box_PitMenu.Controls.Add(this.groupBox5);
       this.Box_PitMenu.Controls.Add(this.groupBox4);
@@ -436,10 +439,20 @@
       this.Box_PitMenu.Name = "Box_PitMenu";
       this.Box_PitMenu.Padding = new System.Windows.Forms.Padding(4);
       this.tableLayoutPanel1.SetRowSpan(this.Box_PitMenu, 2);
-      this.Box_PitMenu.Size = new System.Drawing.Size(640, 368);
+      this.Box_PitMenu.Size = new System.Drawing.Size(729, 368);
       this.Box_PitMenu.TabIndex = 0;
       this.Box_PitMenu.TabStop = false;
       this.Box_PitMenu.Text = "Pit Menu";
+      // 
+      // btnStartUsingPitMenu
+      // 
+      this.btnStartUsingPitMenu.Location = new System.Drawing.Point(598, 226);
+      this.btnStartUsingPitMenu.Name = "btnStartUsingPitMenu";
+      this.btnStartUsingPitMenu.Size = new System.Drawing.Size(106, 93);
+      this.btnStartUsingPitMenu.TabIndex = 4;
+      this.btnStartUsingPitMenu.Text = "Start\r\nusing\r\nPit Menu";
+      this.btnStartUsingPitMenu.UseVisualStyleBackColor = true;
+      this.btnStartUsingPitMenu.Click += new System.EventHandler(this.btnStartUsingPitMenu_Click);
       // 
       // buttonToggleMenu
       // 
@@ -447,7 +460,7 @@
       this.buttonToggleMenu.Location = new System.Drawing.Point(471, 226);
       this.buttonToggleMenu.Margin = new System.Windows.Forms.Padding(4);
       this.buttonToggleMenu.Name = "buttonToggleMenu";
-      this.buttonToggleMenu.Size = new System.Drawing.Size(138, 145);
+      this.buttonToggleMenu.Size = new System.Drawing.Size(111, 83);
       this.buttonToggleMenu.TabIndex = 3;
       this.buttonToggleMenu.Text = "Toggle Menu Display";
       this.buttonToggleMenu.UseVisualStyleBackColor = true;
@@ -468,6 +481,15 @@
       this.groupBox5.TabIndex = 2;
       this.groupBox5.TabStop = false;
       this.groupBox5.Text = "Tyre choice";
+      // 
+      // lblSettingTyreType
+      // 
+      this.lblSettingTyreType.AutoSize = true;
+      this.lblSettingTyreType.Location = new System.Drawing.Point(242, 107);
+      this.lblSettingTyreType.Name = "lblSettingTyreType";
+      this.lblSettingTyreType.Size = new System.Drawing.Size(109, 25);
+      this.lblSettingTyreType.TabIndex = 4;
+      this.lblSettingTyreType.Text = "Setting to...";
       // 
       // label3
       // 
@@ -647,11 +669,12 @@
       // 
       // groupBox7
       // 
+      this.groupBox7.Controls.Add(this.cbTestStartup);
       this.groupBox7.Controls.Add(this.label7);
       this.groupBox7.Controls.Add(this.numericUpDownTests);
       this.groupBox7.Controls.Add(this.label6);
       this.groupBox7.Controls.Add(this.numericUpDownErrors);
-      this.groupBox7.Controls.Add(this.checkBox2);
+      this.groupBox7.Controls.Add(this.cbStressTest);
       this.groupBox7.Location = new System.Drawing.Point(4, 523);
       this.groupBox7.Margin = new System.Windows.Forms.Padding(4);
       this.groupBox7.Name = "groupBox7";
@@ -664,7 +687,7 @@
       // label7
       // 
       this.label7.AutoSize = true;
-      this.label7.Location = new System.Drawing.Point(176, 24);
+      this.label7.Location = new System.Drawing.Point(295, 24);
       this.label7.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
       this.label7.Name = "label7";
       this.label7.Size = new System.Drawing.Size(61, 25);
@@ -673,7 +696,7 @@
       // 
       // numericUpDownTests
       // 
-      this.numericUpDownTests.Location = new System.Drawing.Point(252, 22);
+      this.numericUpDownTests.Location = new System.Drawing.Point(361, 20);
       this.numericUpDownTests.Margin = new System.Windows.Forms.Padding(4);
       this.numericUpDownTests.Maximum = new decimal(new int[] {
             10000000,
@@ -688,7 +711,7 @@
       // label6
       // 
       this.label6.AutoSize = true;
-      this.label6.Location = new System.Drawing.Point(423, 24);
+      this.label6.Location = new System.Drawing.Point(511, 22);
       this.label6.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
       this.label6.Name = "label6";
       this.label6.Size = new System.Drawing.Size(64, 25);
@@ -697,7 +720,7 @@
       // 
       // numericUpDownErrors
       // 
-      this.numericUpDownErrors.Location = new System.Drawing.Point(499, 22);
+      this.numericUpDownErrors.Location = new System.Drawing.Point(587, 20);
       this.numericUpDownErrors.Margin = new System.Windows.Forms.Padding(4);
       this.numericUpDownErrors.Maximum = new decimal(new int[] {
             10000000,
@@ -709,16 +732,16 @@
       this.numericUpDownErrors.Size = new System.Drawing.Size(142, 29);
       this.numericUpDownErrors.TabIndex = 3;
       // 
-      // checkBox2
+      // cbStressTest
       // 
-      this.checkBox2.AutoSize = true;
-      this.checkBox2.Location = new System.Drawing.Point(9, 30);
-      this.checkBox2.Margin = new System.Windows.Forms.Padding(4);
-      this.checkBox2.Name = "checkBox2";
-      this.checkBox2.Size = new System.Drawing.Size(22, 21);
-      this.checkBox2.TabIndex = 3;
-      this.checkBox2.UseVisualStyleBackColor = true;
-      this.checkBox2.CheckedChanged += new System.EventHandler(this.checkBox2_CheckedChanged);
+      this.cbStressTest.AutoSize = true;
+      this.cbStressTest.Location = new System.Drawing.Point(9, 30);
+      this.cbStressTest.Margin = new System.Windows.Forms.Padding(4);
+      this.cbStressTest.Name = "cbStressTest";
+      this.cbStressTest.Size = new System.Drawing.Size(22, 21);
+      this.cbStressTest.TabIndex = 3;
+      this.cbStressTest.UseVisualStyleBackColor = true;
+      this.cbStressTest.CheckedChanged += new System.EventHandler(this.cbStressTest_CheckedChanged);
       // 
       // panel1
       // 
@@ -813,14 +836,17 @@
       // 
       this.timer1.Tick += new System.EventHandler(this.timer1_Tick);
       // 
-      // lblSettingTyreType
+      // cbTestStartup
       // 
-      this.lblSettingTyreType.AutoSize = true;
-      this.lblSettingTyreType.Location = new System.Drawing.Point(242, 107);
-      this.lblSettingTyreType.Name = "lblSettingTyreType";
-      this.lblSettingTyreType.Size = new System.Drawing.Size(109, 25);
-      this.lblSettingTyreType.TabIndex = 4;
-      this.lblSettingTyreType.Text = "Setting to...";
+      this.cbTestStartup.AutoSize = true;
+      this.cbTestStartup.Location = new System.Drawing.Point(107, 22);
+      this.cbTestStartup.Name = "cbTestStartup";
+      this.cbTestStartup.Size = new System.Drawing.Size(145, 29);
+      this.cbTestStartup.TabIndex = 7;
+      this.cbTestStartup.Text = "Test Startup";
+      this.toolTip1.SetToolTip(this.cbTestStartup, "Test turning the menu on");
+      this.cbTestStartup.UseVisualStyleBackColor = true;
+      this.cbTestStartup.CheckedChanged += new System.EventHandler(this.cbTestStartup_CheckedChanged);
       // 
       // MainForm
       // 
@@ -893,7 +919,7 @@
     private System.Windows.Forms.Label label3;
     private System.Windows.Forms.Label label2;
     private System.Windows.Forms.ToolTip toolTip1;
-    private System.Windows.Forms.CheckBox checkBox2;
+    private System.Windows.Forms.CheckBox cbStressTest;
     private System.Windows.Forms.GroupBox groupBox7;
     private System.Windows.Forms.Label label6;
     private System.Windows.Forms.NumericUpDown numericUpDownErrors;
@@ -904,6 +930,8 @@
     private System.Windows.Forms.Label labelInitialDelay;
     private System.Windows.Forms.TrackBar trackBarInitialDelay;
     private System.Windows.Forms.Label lblSettingTyreType;
+    private System.Windows.Forms.Button btnStartUsingPitMenu;
+    private System.Windows.Forms.CheckBox cbTestStartup;
   }
 }
 

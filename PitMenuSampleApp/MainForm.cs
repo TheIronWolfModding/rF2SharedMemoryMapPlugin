@@ -149,47 +149,107 @@ namespace PitMenuSampleApp
       this.timer1.Start();
     }
 
-    private void checkBox2_CheckedChanged(object sender, EventArgs e)
+    private void btnStartUsingPitMenu_Click(object sender, EventArgs e)
     {
-      if (this.checkBox2.Checked)
+      this.Pmc.startUsingPitMenu();
+    }
+
+    private void cbStressTest_CheckedChanged(object sender, EventArgs e)
+    {
+      if (this.cbStressTest.Checked)
       {
-        this.Pmc.startUsingPitMenu();
+        this.cbTestStartup.Checked = false;
+        numericUpDownTests.Value = 0;
+        numericUpDownErrors.Value = 0;
         while (true)
         {
+          this.Pmc.startUsingPitMenu();
           foreach (string tyreType in new[] { "Wet", "Hard", "Medium", "Soft" })
           {
             foreach (string tyre in tyreCategories)
             {
-              this.Pmc.SetCategory(tyre);
-              this.Pmc.SetTyreType(ttDict[tyreType]);
+              this.Pmal.setCategoryAndChoice(tyre, ttDict[tyreType]);
+              //this.Pmc.SetCategory(tyre);
+              //this.Pmc.SetTyreType(ttDict[tyreType]);
               Application.DoEvents();
               var catName = this.Pmc.GetCategory();
               if (catName != tyre)
+              {
                 numericUpDownErrors.Value += 1;
+                this.Pmc.startUsingPitMenu();
+              }
               var choiceStr = this.Pmc.GetChoice();
               if (!choiceStr.Contains(ttDict[tyreType]))
+              {
                 numericUpDownErrors.Value += 1;
+                this.Pmc.startUsingPitMenu();
+              }
 
               numericUpDownTests.Value += 1;
 
-              if (!this.checkBox2.Checked)
+              Application.DoEvents();
+              if (!this.cbStressTest.Checked)
                 return;
             }
             //this.timer1.Start();
           }
 
-          this.Pmc.SetFuelLevel(65);
-          if (!this.checkBox2.Checked)
-            return;
-          this.Pmc.SetFuelLevel(5);
-          if (!this.checkBox2.Checked)
+          this.Pmc.SetFuelLevel(25);
+          if (!this.Pmc.GetChoice().Contains("25"))
+          {
+            numericUpDownErrors.Value += 1;
+            this.Pmc.startUsingPitMenu();
+          }
+          if (!this.cbStressTest.Checked)
             return;
           this.Pmc.SetCategory("FR TIRE:");
           this.Pmc.SetTyreType("No Change");
           this.Pmc.SetCategory("FL TIRE:");
           this.Pmc.SetTyreType("No Change");
+          Application.DoEvents();
           System.Threading.Thread.Sleep(1000);
           this.Pmc.startUsingPitMenu();
+          this.Pmc.SetFuelLevel(15);
+          if (!this.Pmc.GetChoice().Contains("15"))
+          {
+            numericUpDownErrors.Value += 1;
+            this.Pmc.startUsingPitMenu();
+          }
+          if (!this.cbStressTest.Checked)
+            return;
+        }
+      }
+    }
+
+    private void cbTestStartup_CheckedChanged(object sender, EventArgs e)
+    {
+      if (this.cbTestStartup.Checked)
+      {
+        this.cbStressTest.Checked = false;
+        numericUpDownTests.Value = 0;
+        numericUpDownErrors.Value = 0;
+        while (this.cbTestStartup.Checked)
+        {
+          Pmc.sendHWControl.SendHWControl("ToggleMFDA", true);
+          System.Threading.Thread.Sleep(trackBarInitialDelay.Value);
+          Pmc.sendHWControl.SendHWControl("ToggleMFDA", false);
+          System.Threading.Thread.Sleep(trackBarDelay.Value);
+          Pmc.sendHWControl.SendHWControl("ToggleMFDB", true); // Select rFactor Pit Menu
+          System.Threading.Thread.Sleep(trackBarDelay.Value);
+          Pmc.sendHWControl.SendHWControl("ToggleMFDB", false); // Select rFactor Pit Menu
+          System.Threading.Thread.Sleep(trackBarDelay.Value);
+          if (Pmc.SoftMatchCategory("TIRE") || Pmc.SoftMatchCategory("FUEL"))
+          {
+            numericUpDownTests.Value += 1;
+            this.Pmc.CategoryDown();
+          }
+          else
+          {
+            numericUpDownErrors.Value += 1;
+            System.Threading.Thread.Sleep(1000);
+          }
+          Application.DoEvents();
+          System.Threading.Thread.Sleep(100);
         }
       }
     }

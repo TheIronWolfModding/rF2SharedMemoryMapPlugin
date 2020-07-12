@@ -113,7 +113,7 @@ namespace PitMenuAPI
 
     public List<string> GetTyreTypeNames()
     {
-      Pmc.SetCategory(GetFrontTyreCategories()[0]);
+      //Pmc.SetCategory(GetFrontTyreCategories()[0]);
       return Pmc.GetTyreTypeNames();
     }
 
@@ -219,8 +219,28 @@ namespace PitMenuAPI
       return response;
     }
 
+    public bool setCategoryAndChoice(string category, string choice)
+    {
+      int tryNo = 5;
+      bool response;
+      while (tryNo-- > 0)
+      {
+        response = Pmc.SetCategory(category);
+        if (response)
+        {
+          response = Pmc.SetChoice(choice);
+          if (response)
+          {
+            return true;
+          }
+          Pmc.startUsingPitMenu();
+        }
+      }
+      return false;
+    }
+
     // Unit Test
-    public void setMenuDict(Dictionary<string, List<string>> dict)
+  public void setMenuDict(Dictionary<string, List<string>> dict)
     {
       menuDict = dict;
     }
