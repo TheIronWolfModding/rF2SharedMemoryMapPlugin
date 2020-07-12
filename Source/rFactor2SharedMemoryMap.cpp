@@ -278,13 +278,13 @@ void SharedMemoryPlugin::Startup(long version)
     return;
   }
 
-  if (SharedMemoryPlugin::msHWControlInputRequested
+  if (SharedMemoryPlugin::msHWControlInputRequested 
     && Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Scoring)) {
     DEBUG_MSG(DebugLevel::Errors, "HWControl input is disabled because Scoring update is turned off.");
 
     SharedMemoryPlugin::msHWControlInputRequested = false;
   }
-
+    
   if (!mHWControl.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
     DEBUG_MSG(DebugLevel::Errors, "Failed to initialize HWControl input mapping");
     return;
@@ -302,7 +302,7 @@ void SharedMemoryPlugin::Startup(long version)
       SharedMemoryPlugin::msWeatherControlInputRequested = false;
     }
   }
-
+  
   if (!mWeatherControl.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
     DEBUG_MSG(DebugLevel::Errors, "Failed to initialize Weather control input mapping");
     return;
@@ -953,6 +953,7 @@ void SharedMemoryPlugin::UpdateScoring(ScoringInfoV01 const& info)
   memcpy(mExtended.mpWriteBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
   mExtended.EndUpdate();
 
+  ReadHWControl();
   ReadWeatherControl();
   ReadRulesControl();
 }
@@ -999,7 +1000,7 @@ void SharedMemoryPlugin::ReadHWControl()
 
     strcpy_s(mHWControlRequest_mControlName, mHWControl.mReadBuff.mControlName);
     mHWControlRequest_mfRetVal = mHWControl.mReadBuff.mfRetVal;
-
+    
     if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::DevInfo) {
       char charBuff[200] = {};
       sprintf_s(charBuff, "HWControl: received:  '%s'  %1.1f", mHWControlRequest_mControlName, mHWControlRequest_mfRetVal);
@@ -1200,8 +1201,6 @@ bool SharedMemoryPlugin::AccessPitMenu(PitMenuV01& info)
   if (!mIsMapped)
     return false;
 
-  ReadHWControl();
-
   if (mPitMenuLastCategoryIndex == info.mCategoryIndex
     && mPitMenuLastChoiceIndex == info.mChoiceIndex
     && mPitMenuLastNumChoices == info.mNumChoices) {
@@ -1238,7 +1237,7 @@ bool SharedMemoryPlugin::CheckHWControl(char const* const controlName, double& f
     || !SharedMemoryPlugin::msHWControlInputRequested
     || !mExtStateTracker.mExtended.mHWControlInputEnabled)
     return false;
-
+ 
   DEBUG_MSG2(DebugLevel::Timing, "CheckHWControl - invoked for:", controlName);
 
   if (mHWControlRequest_mControlName[0] != '\0'
@@ -1269,7 +1268,7 @@ bool SharedMemoryPlugin::AccessWeather(double trackNodeSize, WeatherControlInfoV
 {
   if (!mIsMapped)
     return false;
-
+ 
   DEBUG_MSG(DebugLevel::Timing, "WEATHER - invoked.");
 
   mWeather.BeginUpdate();

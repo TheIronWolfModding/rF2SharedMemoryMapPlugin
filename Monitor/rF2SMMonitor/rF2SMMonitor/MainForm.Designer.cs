@@ -46,7 +46,7 @@ namespace rF2SMMonitor
       this.rainIntensityLabel = new System.Windows.Forms.Label();
       this.rainIntensityTextBox = new System.Windows.Forms.TextBox();
       this.applyRainIntensityButton = new System.Windows.Forms.Button();
-      ((System.ComponentModel.ISupportInitialize)(this.view)).BeginInit();
+    ((System.ComponentModel.ISupportInitialize)(this.view)).BeginInit();
       this.groupBoxFocus.SuspendLayout();
       this.globalGroupBox.SuspendLayout();
       this.loggingGroupBox.SuspendLayout();
