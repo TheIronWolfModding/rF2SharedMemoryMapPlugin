@@ -118,7 +118,7 @@ public:
   static char const* const MM_WEATHER_FILE_NAME;
 
   // Input buffers:
-  static char const* const MM_HWCONTROL_FILE_NAME; 
+  static char const* const MM_HWCONTROL_FILE_NAME;
   static char const* const MM_WEATHER_CONTROL_FILE_NAME;
   static char const* const MM_RULES_CONTROL_FILE_NAME;
   static char const* const MM_PLUGIN_CONTROL_FILE_NAME;
@@ -316,7 +316,10 @@ public:
   bool AccessPitMenu(PitMenuV01& info) override; // currently, the return code should always be false (because we may allow more direct editing in the future)
 
   // HW Control- action a control within the game
-  bool HasHardwareInputs() override { return SharedMemoryPlugin::msHWControlInputRequested && mExtStateTracker.mExtended.mHWControlInputEnabled; }
+  bool HasHardwareInputs() override {
+    return SharedMemoryPlugin::msHWControlInputRequested &&
+    mExtStateTracker.mExtended.mHWControlInputEnabled &&
+    SharedMemoryPlugin::mHWControlInputRequestReceived; }
   bool CheckHWControl(char const* const controlName, double& fRetVal) override;
 
   // CONDITIONS CONTROL
