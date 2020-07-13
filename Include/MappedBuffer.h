@@ -155,7 +155,6 @@ public:
     return true;
   }
 
-
   // Returns true if buffer is valid and updated since last read.
   bool ReadUpdate()
   {
