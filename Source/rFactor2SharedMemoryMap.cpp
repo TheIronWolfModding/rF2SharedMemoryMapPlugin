@@ -1017,7 +1017,7 @@ void SharedMemoryPlugin::ReadWeatherControl()
       return;
     }
 
-    DEBUG_MSG(DebugLevel::DevInfo, DebugSource::HWControlInput, "Weather control input received.");
+    DEBUG_MSG(DebugLevel::DevInfo, DebugSource::WeatherControlInput, "Weather control input received.");
     mWeatherControlInputRequestReceived = true;
   }
 }
