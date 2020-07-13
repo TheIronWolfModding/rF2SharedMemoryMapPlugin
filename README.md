@@ -18,7 +18,7 @@ rFactor 2 API has some limitations/bugs, and plugin tries to deal with that by d
 Vytautas Leonavičius
 ##### With contributions by:
 - Morten Roslev: parts of DMR implementation and teaching me various memory reading techniques and helping me to stay sane
-- Tony Whitley: pit info/HWControl prototyping
+- Tony Whitley: pit info/HWControl prototyping/bug fixes/proofreading
 
 ## Download:
 https://www.mediafire.com/file/hzlugtn3t7sc3gw/rf2_sm_tools_3.7.0.0.zip/file

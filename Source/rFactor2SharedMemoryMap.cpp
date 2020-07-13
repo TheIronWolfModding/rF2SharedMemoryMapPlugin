@@ -1362,17 +1362,20 @@ bool SharedMemoryPlugin::AccessPitMenu(PitMenuV01& info)
 
 
 // Invoked at 100FPS twice for each control (836 times per frame in my test).
-// Note that we disable this callback if there's no pending HWControl update.
 bool SharedMemoryPlugin::CheckHWControl(char const* const controlName, double& fRetVal)
 {
-  assert(mHWControlInputRequestReceived);
-
   if (!mIsMapped
-    || !mExtStateTracker.mExtended.mHWControlInputEnabled
-    || !mHWControlInputRequestReceived)
+    || !mExtStateTracker.mExtended.mHWControlInputEnabled)
     return false;
- 
+
   DEBUG_MSG(DebugLevel::Timing, DebugSource::HWControlInput, "CheckHWControl - invoked for: '%s'", controlName);
+
+  // Note that we disable this callback if there's no pending HWControl update.
+  // However, game checks if we have input to processs once per frame, so mHWControlInputRequestReceived can be false after we handled it.
+  if (!mHWControlInputRequestReceived) {
+    DEBUG_MSG(DebugLevel::Timing, DebugSource::HWControlInput, "CheckHWControl - skipping processing, no pending input.");
+    return false;
+  }
 
   if (_stricmp(controlName, mHWControl.mReadBuff.mControlName) == 0) {
     if (Utils::IsFlagOn(SharedMemoryPlugin::msDebugOutputLevel, DebugLevel::DevInfo)) {
