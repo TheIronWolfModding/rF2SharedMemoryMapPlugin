@@ -962,7 +962,7 @@ void SharedMemoryPlugin::ReadHWControl()
     return;
 
   // Control the rate of reads.
-  auto const needsBoost = ++mHWControlRequestBoostCounter < 5;  // 100ms boost.
+  auto const needsBoost = ++mHWControlRequestBoostCounter < 25;  // 500ms boost.
   ++mHWControlRequestReadCounter;
   if (!needsBoost
     && (mHWControlRequestReadCounter % 10) != 0) // Normal 200ms poll (this function is called at 20ms update rate))
@@ -993,7 +993,7 @@ void SharedMemoryPlugin::ReadHWControl()
   }
 
   // Guard against bad inputs, even though it is not plugin's job to do that really.
-  if (mHWControlRequestBoostCounter >= 5
+  if (mHWControlRequestBoostCounter >= 25
     && mHWControlInputRequestReceived) {
     mHWControlInputRequestReceived = false;
     DEBUG_MSG(DebugLevel::Errors, DebugSource::General, "Resetting mHWControlInputRequestReceived for input value: '%s'.  Bad input value?", mHWControl.mReadBuff.mControlName);
