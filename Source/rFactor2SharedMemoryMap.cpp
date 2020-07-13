@@ -39,12 +39,12 @@ Shared resources:
     * RulesControl - mapped view of rF2RulesControl structure
     * PluginControl - mapped view of rF2PluginControl structure
 
-  Aside from Extended (see below), output buffers are (with few exceptions) exact mirror of ISI structures, plugin constantly memcpy'es them
+  Aside from Extended (see below), output buffers are (with few exceptions) exact mirror of ISI structures, plugin constantly memcpy's them
   from game to memory mapped files.
 
   Plugin offers optional weak synchronization by using version variables on each of the output buffers.
 
-  Input buffers are meant to be filled out by the clients.  To avoid complex locking input buffers use version variables as well, and were
+  Input buffers are meant to be filled out by the clients.  To avoid complex locking input buffers use they version variables as well, and were
   designed with a single client in mind.  For more high level overview of the input buffers see "Input Buffers" section in the README.md.
  
 Output buffer refresh rates:
@@ -58,24 +58,24 @@ Output buffer refresh rates:
   Weather - 1FPS.
   Extended - every 200ms (5FPS) or on tracked function call.
 
-  Plugin does not add artificial delays, except:
+  The Plugin does not add artificial delays, except:
     - game calls UpdateTelemetry in bursts every 10ms.  However, as of 02/18 data changes only every 20ms, so one of those bursts is dropped.
     - telemetry updates with same game time are skipped
 
-  Plugin supports unsubscribing from buffer updates via UnsubscribedBuffersMask CustomPluginVariables.json flag.  Clients can also subscribe
+  The Plugin supports unsubscribing from buffer updates via UnsubscribedBuffersMask CustomPluginVariables.json flag.  Clients can also subscribe
   to the currently unsubscribed buffers via rF2PluginControl input buffer.
 
 Input buffer refresh rates:
 
-  HWControl - Read at 5FPS with 100ms boost to 50FPS once update is received.  Applied at 100FPS.
+  HWControl - Read at 5FPS with 500ms boost to 50FPS once update is received.  Applied at 100FPS.
   WeatherControl - Read at 5FPS.  Applied at 1FPS.
   RulesControl - Read at 5FPS.  Applied at 3FPS.
   PluginControl - Read at 5FPS.  Applied on read.
 
 
 Telemetry state:
-  rF2 calls UpdateTelemetry for each vehicle.  Plugin tries to guess when all vehicles received an update, and only after
-  that buffer write is marked as complete.
+  rF2 calls UpdateTelemetry for each vehicle.  The Plugin tries to guess when all vehicles have received an update, and only after
+  that the buffer write is marked as complete.
 
 
 Extended state:
@@ -93,22 +93,22 @@ Extended state:
 
   See SharedMemoryPlugin::ExtendedStateTracker struct for details.
 
-  Extended state exposes values obtaned via Direct Memory access.  This functionality is enabled via "EnableDirectMemoryAccess"
+  Extended state exposes values obtained via Direct Memory access.  This functionality is enabled via "EnableDirectMemoryAccess"
   plugin variable.  See DirectMemoryReader class for more details.
 
-  Lastly, active plugin configuration is exposed with the intent of clients to be able to detect missing features dynamically.
+  Lastly, active plugin configuration is exposed with the intent that clients will be able to detect missing features dynamically.
 
 
 Output buffer synchronization:
-  Plugin does not offer hard guarantees for mapped buffer synchronization, because using synchronization primitives opens door for misuse and
-  eventually, way of harming game FPS as number of clients grows.
+  The Plugin does not offer hard guarantees for mapped buffer synchronization, because using synchronization primitives opens door for misuse 
+  and eventually, way of harming game FPS as the number of clients grows.
 
   However, each of shared memory buffers begins with rF2MappedBufferVersionBlock structure.  If you would like to make sure you're not
   reading a torn (partially overwritten) frame, you can check rF2MappedBufferVersionBlock::mVersionUpdateBegin and
   rF2MappedBufferVersionBlock::mVersionUpdateEnd values. If they are equal, buffer is either not torn, or, in an extreme case,
   currently being written into.
   
-  Note: $rFactor2SMMP_ForceFeedback$ buffer consists of a single double variable.  Since write into double is atomic, version block
+  Note: $rFactor2SMMP_ForceFeedback$ buffer consists of a single double variable.  Since write into double is atomic, a version block
   is not used (I assume compiler aligned double member correctly for x64, and I am too lazy atm to check).
 
   Most clients (HUDs, Dashes, visualizers) won't need synchronization.  There are many ways on detecting torn frames,
@@ -118,17 +118,17 @@ Output buffer synchronization:
 
 
 Input buffer synchronization:
-  Input buffers are designed with a single client in mind.  Plugin detects that input buffer has changed if last saved value of
-  rF2MappedBufferVersionBlock::mVersionUpdateBegin has changed.  Plugin will attempt to detect "torn frame" situations, but won't attempt
-  any recovery.
+  Input buffers are designed with a single client in mind.  The Plugin detects that input buffer has changed if the last saved value of
+  rF2MappedBufferVersionBlock::mVersionUpdateBegin has changed.  The Plugin will attempt to detect "torn frame" situations, but won't 
+  attempt any recovery.
 
   See rF2SMMonitor.MappedBuffer<>.PutMappedData for sample client code.
 
 
 Dedicated server use:
-  If ran in dedicated server process, each shared memory buffer name has server PID appended.  If DedicatedServerMapGlobally
-  preference is set to 1, plugin will attempt creating shared memory buffers in the Global section.  Note that "Create Global Objects"
-  permission is needed on user account running dedicated server.
+  If run in a dedicated server process, each shared memory buffer name has the server PID appended.  If DedicatedServerMapGlobally
+  preference is set to 1, the plugin will attempt to create shared memory buffers in the Global section.  Note that "Create Global Objects"
+  permission is needed on the user account running the dedicated server.
 
 
 Configuration:
@@ -139,7 +139,7 @@ Limitations/Assumptions:
   - Negative mID is not supported.
   - Distance between max(mID) and min(mID) in a session cannot exceed rF2MappedBufferHeader::MAX_MAPPED_IDS.
   - Max mapped vehicles: rF2MappedBufferHeader::MAX_MAPPED_VEHICLES.
-  - Plugin assumes that delta Elapsed Time in a telemetry update frame cannot exceed 20ms (which effectively limits telemetry refresh rate to 50FPS).
+  - The Plugin assumes that delta Elapsed Time in a telemetry update frame cannot exceed 20ms (which effectively limits telemetry refresh rate to 50FPS).
 
 
 Sample consumption:
@@ -730,8 +730,8 @@ void SharedMemoryPlugin::TelemetryCompleteFrame()
 rF2 sends telemetry updates for each vehicle.  The problem is that we do not know when all vehicles received an update.
 Below I am trying to complete buffer update per-frame, where "frame" means all vehicles received telemetry update.
 
-I am detecting new frame by checking time distance between mElapsedTime.  It appears that rF2 sends vehicle telemetry every 20ms
-(every 10ms really, but most of the time contents are duplicated).  As a consquence, we do flip every 20ms (50FPS).
+I am detecting a new frame by checking time distance between mElapsedTime.  It appears that rF2 sends vehicle telemetry every 20ms
+(every 10ms really, but most of the time contents are duplicated).  As a consquence, we flip every 20ms (50FPS).
 
 Frame end is detected by either:
 - checking if number of vehicles in telemetry frame matching number of vehicles reported via scoring
