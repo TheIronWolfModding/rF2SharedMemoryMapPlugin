@@ -46,7 +46,7 @@ Shared resources:
 
   Input buffers are meant to be filled out by the clients.  To avoid complex locking input buffers use version variables as well, and were
   designed with a single client in mind.  For more high level overview of the input buffers see "Input Buffers" section in the README.md.
- 
+
 Output buffer refresh rates:
   Telemetry - updated every 10ms, but in practice only every other update contains updated data, so real update rate is around 50FPS (20ms).
   Scoring - every 200ms (5FPS).
@@ -107,7 +107,7 @@ Output buffer synchronization:
   reading a torn (partially overwritten) frame, you can check rF2MappedBufferVersionBlock::mVersionUpdateBegin and
   rF2MappedBufferVersionBlock::mVersionUpdateEnd values. If they are equal, buffer is either not torn, or, in an extreme case,
   currently being written into.
-  
+
   Note: $rFactor2SMMP_ForceFeedback$ buffer consists of a single double variable.  Since write into double is atomic, version block
   is not used (I assume compiler aligned double member correctly for x64, and I am too lazy atm to check).
 
@@ -316,10 +316,10 @@ void SharedMemoryPlugin::Startup(long version)
   RETURN_IF_FALSE(InitMappedInputBuffer(mWeatherControl, "Weather control"));
   RETURN_IF_FALSE(InitMappedInputBuffer(mRulesControl, "Rules control"));
   RETURN_IF_FALSE(InitMappedInputBuffer(mPluginControl, "Plugin control"));
-  
+
   // Extended buffer is initialized last and is an indicator of initialization completed.
   RETURN_IF_FALSE(InitMappedBuffer(mExtended, "Extended", SubscribedBuffer::All));
-  
+
   // Runtime asserts to ensure the correct layout of partially updated buffers.
   assert(sizeof(rF2Telemetry) == offsetof(rF2Telemetry, mVehicles[rF2MappedBufferHeader::MAX_MAPPED_VEHICLES]));
   assert(sizeof(rF2Scoring) == offsetof(rF2Scoring, mVehicles[rF2MappedBufferHeader::MAX_MAPPED_VEHICLES]));
@@ -359,7 +359,7 @@ void SharedMemoryPlugin::Startup(long version)
   mExtStateTracker.mExtended.mWeatherControlInputEnabled = SharedMemoryPlugin::msWeatherControlInputRequested && !weatherCtrlDependencyMissing;
   mExtStateTracker.mExtended.mRulesControlInputEnabled = SharedMemoryPlugin::msRulesControlInputRequested && !rulesCtrlDependencyMissing;
   mExtStateTracker.mExtended.mPluginControlInputEnabled = Utils::IsFlagOff(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Scoring);
-  
+
   if (!mExtStateTracker.mExtended.mPluginControlInputEnabled)
     DEBUG_MSG(DebugLevel::Warnings, DebugSource::General, "Plugin control is disabled due to Scoring updates being disabled.");
 
@@ -461,7 +461,7 @@ void SharedMemoryPlugin::ClearTimingsAndCounters()
 
   mHWControlRequestReadCounter = 0;
   mHWControlRequestBoostCounter = 0;
-  
+
   mHWControlInputRequestReceived = false;
   mWeatherControlInputRequestReceived = false;
   mRulesControlInputRequestReceived = false;
@@ -631,7 +631,7 @@ void SharedMemoryPlugin::TelemetryTraceSkipUpdate(TelemInfoV01 const& info, doub
       || info.mPos.z != prevBuff->mVehicles->mPos.z)
     {
       DEBUG_MSG(
-        DebugLevel::Timing, 
+        DebugLevel::Timing,
         DebugSource::Telemetry,
         "WARNING - Pos Mismatch on skip update!!!  New ET: %f  Prev ET:%f  mID(old):%ld  Prev Pos: %f %f %f  New Pos %f %f %f",
         info.mElapsedTime,
@@ -962,7 +962,7 @@ void SharedMemoryPlugin::ReadHWControl()
     return;
 
   // Control the rate of reads.
-  auto const needsBoost = ++mHWControlRequestBoostCounter < 5;  // 100ms boost.
+  auto const needsBoost = ++mHWControlRequestBoostCounter < 25;  // 500ms boost.
   ++mHWControlRequestReadCounter;
   if (!needsBoost
     && (mHWControlRequestReadCounter % 10) != 0) // Normal 200ms poll (this function is called at 20ms update rate))
@@ -986,14 +986,14 @@ void SharedMemoryPlugin::ReadHWControl()
     mHWControlRequestBoostCounter = 0;  // Boost refresh for the next 100ms.
 
     if (Utils::IsFlagOn(SharedMemoryPlugin::msDebugOutputLevel, DebugLevel::DevInfo)) {
-      DEBUG_MSG(DebugLevel::DevInfo, DebugSource::HWControlInput, "HWControl: received:  '%s'  %1.1f   boosted: '%s'", 
-        mHWControl.mReadBuff.mControlName, mHWControl.mReadBuff.mfRetVal, 
+      DEBUG_MSG(DebugLevel::DevInfo, DebugSource::HWControlInput, "HWControl: received:  '%s'  %1.1f   boosted: '%s'",
+        mHWControl.mReadBuff.mControlName, mHWControl.mReadBuff.mfRetVal,
         needsBoost ? "True" : "False");
     }
   }
 
   // Guard against bad inputs, even though it is not plugin's job to do that really.
-  if (mHWControlRequestBoostCounter >= 5
+  if (mHWControlRequestBoostCounter >= 25
     && mHWControlInputRequestReceived) {
     mHWControlInputRequestReceived = false;
     DEBUG_MSG(DebugLevel::Errors, DebugSource::General, "Resetting mHWControlInputRequestReceived for input value: '%s'.  Bad input value?", mHWControl.mReadBuff.mControlName);
@@ -1108,13 +1108,13 @@ void SharedMemoryPlugin::ReadPluginControl()
       DynamicallyEnableInputBuffer(IsHWControlInputDependencyMissing(), SharedMemoryPlugin::msHWControlInputRequested, mExtStateTracker.mExtended.mHWControlInputEnabled, "HWControl");
 
     if (!SharedMemoryPlugin::msWeatherControlInputRequested
-      && mPluginControl.mReadBuff.mRequestWeatherControlInput) 
+      && mPluginControl.mReadBuff.mRequestWeatherControlInput)
       DynamicallyEnableInputBuffer(IsWeatherControlInputDependencyMissing(), SharedMemoryPlugin::msWeatherControlInputRequested, mExtStateTracker.mExtended.mWeatherControlInputEnabled, "Weather control");
 
     if (!SharedMemoryPlugin::msRulesControlInputRequested
       && mPluginControl.mReadBuff.mRequestRulesControlInput)
       DynamicallyEnableInputBuffer(IsRulesControlInputDependencyMissing(), SharedMemoryPlugin::msRulesControlInputRequested, mExtStateTracker.mExtended.mRulesControlInputEnabled, "Rules control");
-  
+
     // Extended flip will happen in ScoringUpdate.
   }
 }
@@ -1234,7 +1234,7 @@ bool SharedMemoryPlugin::AccessTrackRules(TrackRulesV01& info)
 
     // Safely update arrays:
     auto const numActionsToUpdate = min(
-      min(info.mNumActions, rF2MappedBufferHeader::MAX_MAPPED_VEHICLES), 
+      min(info.mNumActions, rF2MappedBufferHeader::MAX_MAPPED_VEHICLES),
       mRulesControl.mReadBuff.mTrackRules.mNumActions);
 
     for (int i = 0; i < numActionsToUpdate; ++i)
@@ -1367,7 +1367,7 @@ bool SharedMemoryPlugin::CheckHWControl(char const* const controlName, double& f
   if (!mIsMapped
     || !mExtStateTracker.mExtended.mHWControlInputEnabled)
     return false;
- 
+
   DEBUG_MSG(DebugLevel::Timing, DebugSource::HWControlInput, "CheckHWControl - invoked for: '%s'", controlName);
 
   if (mHWControlInputRequestReceived
@@ -1393,7 +1393,7 @@ bool SharedMemoryPlugin::AccessWeather(double trackNodeSize, WeatherControlInfoV
 {
   if (!mIsMapped)
     return false;
- 
+
   DEBUG_MSG(DebugLevel::Timing, DebugSource::Weather, "WEATHER - invoked.");
 
   mWeather.BeginUpdate();

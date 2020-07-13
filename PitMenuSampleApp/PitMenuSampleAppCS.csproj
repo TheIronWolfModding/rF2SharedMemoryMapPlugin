@@ -1,17 +1,17 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="14.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{17FC2626-EA21-43ED-BC84-BE0B8545FC2D}</ProjectGuid>
+    <ProjectGuid>{1E442053-A7A5-4F48-9A58-F97F931DD74C}</ProjectGuid>
     <OutputType>WinExe</OutputType>
-    <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>rF2SMMonitor</RootNamespace>
-    <AssemblyName>rF2SMMonitor</AssemblyName>
-    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
+    <RootNamespace>PitMenuSampleApp</RootNamespace>
+    <AssemblyName>PitMenuSampleAppCS</AssemblyName>
+    <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <Deterministic>true</Deterministic>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -46,55 +46,51 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="..\..\..\rF2SharedMemory\MappedBuffer.cs" />
-    <Compile Include="..\rF2SMMonitor\IniFile.cs" />
-    <Compile Include="..\rF2SMMonitor\MainForm.cs">
+    <Compile Include="MainForm.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="..\rF2SMMonitor\MainForm.Designer.cs">
+    <Compile Include="MainForm.Designer.cs">
       <DependentUpon>MainForm.cs</DependentUpon>
     </Compile>
-    <Compile Include="..\rF2SMMonitor\Math.cs" />
-    <Compile Include="..\rF2SMMonitor\Program.cs" />
-    <Compile Include="..\rF2SMMonitor\Properties\AssemblyInfo.cs" />
-    <Compile Include="..\rF2SMMonitor\rF2Data.cs" />
-    <Compile Include="..\rF2SMMonitor\MappedBuffer.cs" />
-    <Compile Include="..\..\..\rF2SharedMemory\rF2Data.cs">
+    <Compile Include="PitMenuAPI\PitMenuAbstractionLayer.cs" />
+    <Compile Include="PitMenuAPI\PitMenuAPI.cs" />
+    <Compile Include="PitMenuAPI\PitMenuController.cs" />
+    <Compile Include="Program.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="..\rF2SharedMemory\rF2HWControl.cs">
+      <Link>rF2SharedMemory\rF2HWControl.cs</Link>
+    </Compile>
+    <Compile Include="..\rF2SharedMemory\MappedBuffer.cs">
+      <Link>rF2SharedMemory\MappedBuffer.cs</Link>
+    </Compile>
+    <Compile Include="..\rF2SharedMemory\rF2Data.cs">
       <Link>rF2SharedMemory\rF2Data.cs</Link>
     </Compile>
-    <Compile Include="..\rF2SMMonitor\TransitionTracker.cs" />
-    <EmbeddedResource Include="..\rF2SMMonitor\MainForm.resx">
+    <EmbeddedResource Include="MainForm.resx">
       <DependentUpon>MainForm.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="..\rF2SMMonitor\Properties\Resources.resx">
+    <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
       <SubType>Designer</SubType>
     </EmbeddedResource>
-    <Compile Include="..\rF2SMMonitor\Properties\Resources.Designer.cs">
+    <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
-    <None Include="..\rF2SMMonitor\Properties\Settings.settings">
+    <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
     </None>
-    <Compile Include="..\rF2SMMonitor\Properties\Settings.Designer.cs">
+    <Compile Include="Properties\Settings.Designer.cs">
       <AutoGen>True</AutoGen>
       <DependentUpon>Settings.settings</DependentUpon>
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
     </Compile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\rF2SMMonitor\App.config" />
+    <None Include="App.config" />
   </ItemGroup>
   <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
-       Other similar extension points exist, see Microsoft.Common.targets.
-  <Target Name="BeforeBuild">
-  </Target>
-  <Target Name="AfterBuild">
-  </Target>
-  -->
 </Project>

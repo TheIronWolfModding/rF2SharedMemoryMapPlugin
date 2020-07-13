@@ -1,12 +1,12 @@
 ﻿/*
-rF2SMMonitor is visual debugger for rF2 Shared Memory Plugin.
+rF2SharedMemory is visual debugger for rF2 Shared Memory Plugin.
 
 MainForm implementation, contains main loop and render calls.
 
 Author: The Iron Wolf (vleonavicius@hotmail.com)
 Website: thecrewchief.org
 */
-using rF2SMMonitor.rFactor2Data;
+using rF2SharedMemory.rFactor2Data;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -15,9 +15,9 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Windows.Forms;
-using static rF2SMMonitor.rFactor2Constants;
+using static rF2SharedMemory.rFactor2Constants;
 
-namespace rF2SMMonitor
+namespace rF2SharedMemory
 {
   public partial class MainForm : Form
   {
@@ -322,6 +322,7 @@ namespace rF2SMMonitor
       }
       else
         this.yOffsetTextBox.Text = this.yOffset.ToString();
+
     }
 
     private void XOffsetTextBox_LostFocus(object sender, EventArgs e)
@@ -1002,7 +1003,6 @@ namespace rF2SMMonitor
         {
           // Extended buffer is the last one constructed, so it is an indicator RF2SM is ready.
           this.extendedBuffer.Connect();
-
           this.telemetryBuffer.Connect();
           this.scoringBuffer.Connect();
           this.rulesBuffer.Connect();
@@ -1055,7 +1055,7 @@ namespace rF2SMMonitor
       try
       {
         // Alternatively, I could release resources and try re-acquiring them immidiately.
-        var processes = Process.GetProcessesByName(rF2SMMonitor.rFactor2Constants.RFACTOR2_PROCESS_NAME);
+        var processes = Process.GetProcessesByName(rF2SharedMemory.rFactor2Constants.RFACTOR2_PROCESS_NAME);
         if (processes.Length == 0)
           Disconnect();
       }
