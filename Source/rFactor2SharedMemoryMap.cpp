@@ -44,7 +44,7 @@ Shared resources:
 
   Plugin offers optional weak synchronization by using version variables on each of the output buffers.
 
-  Input buffers are meant to be filled out by the clients.  To avoid complex locking input buffers use they version variables as well, and were
+  Input buffers are meant to be filled out by the clients.  To avoid complex locking input buffers use their version variables as well, and were
   designed with a single client in mind.  For more high level overview of the input buffers see "Input Buffers" section in the README.md.
  
 Output buffer refresh rates:
@@ -1361,17 +1361,20 @@ bool SharedMemoryPlugin::AccessPitMenu(PitMenuV01& info)
 }
 
 
-// Invoked at 100FPS twice for each control (836 times per frame in my test)
+// Invoked at 100FPS twice for each control (836 times per frame in my test).
+// Note that we disable this callback if there's no pending HWControl update.
 bool SharedMemoryPlugin::CheckHWControl(char const* const controlName, double& fRetVal)
 {
+  assert(mHWControlInputRequestReceived);
+
   if (!mIsMapped
-    || !mExtStateTracker.mExtended.mHWControlInputEnabled)
+    || !mExtStateTracker.mExtended.mHWControlInputEnabled
+    || !mHWControlInputRequestReceived)
     return false;
  
   DEBUG_MSG(DebugLevel::Timing, DebugSource::HWControlInput, "CheckHWControl - invoked for: '%s'", controlName);
 
-  if (mHWControlInputRequestReceived
-    && _stricmp(controlName, mHWControl.mReadBuff.mControlName) == 0) {
+  if (_stricmp(controlName, mHWControl.mReadBuff.mControlName) == 0) {
     if (Utils::IsFlagOn(SharedMemoryPlugin::msDebugOutputLevel, DebugLevel::DevInfo)) {
       DEBUG_MSG(DebugLevel::DevInfo, DebugSource::HWControlInput, "CheckHWControl input applied:  '%s'  %1.1f .  Update version: %ld",
         mHWControl.mReadBuff.mControlName, mHWControl.mReadBuff.mfRetVal, mHWControl.mReadLastVersionUpdateBegin);
