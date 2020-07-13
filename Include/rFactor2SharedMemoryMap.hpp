@@ -326,8 +326,6 @@ public:
   bool WantsWeatherAccess() override { return Utils::IsFlagOff(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Weather); } // change to true in order to read or write weather with AccessWeather() call:
   bool AccessWeather(double trackNodeSize, WeatherControlInfoV01& info) override;
 
-  bool mHWControlInputRequestReceived = false;
-
 private:
   SharedMemoryPlugin(SharedMemoryPlugin const& rhs) = delete;
   SharedMemoryPlugin& operator =(SharedMemoryPlugin const& rhs) = delete;
@@ -402,6 +400,7 @@ private:
   // Boost counter, boost read rate after buffer update.
   int mHWControlRequestBoostCounter = 0;
 
+  bool mHWControlInputRequestReceived = false;
   bool mWeatherControlInputRequestReceived = false;
   bool mRulesControlInputRequestReceived = false;
 
