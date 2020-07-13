@@ -10,6 +10,7 @@ Acknowledgements:
     - rF2 Internals Plugin sample #7 by ISI/S397 found at: https://www.studio-397.com/modding-resources/
   Was inspired by:
     - rF1 Shared Memory Map Plugin by Dan Allongo found at: https://github.com/dallongo/rFactorSharedMemoryMap
+  With contributions by: Tony Whitley
 
 
 Shared resources:
@@ -22,19 +23,31 @@ Shared resources:
     - Global\\$rFactor2SMMP_<BUFFER_TYPE>$PID if running in dedicated server and DedicatedServerMapGlobally option is set to 1.
 
   where <BUFFER_TYPE> is one of the following:
+  Output buffers:
     * Telemetry - mapped view of rF2Telemetry structure
     * Scoring - mapped view of rF2Scoring structure
     * Rules - mapped view of rF2Rules structure
     * MultiRules - mapped view of rF2MultiRules structure
     * ForceFeedback - mapped view of rF2ForceFeedback structure
     * PitInfo - mapped view of rF2PitInfo structure
+    * Weather - mapped view of rF2Weather structure
     * Extended - mapped view of rF2Extended structure
 
-  Aside from Extended (see below), those types are (with few exceptions) exact mirror of ISI structures, plugin constantly memcpy'es them from game to memory mapped files.
+  Input buffers:
+    * HWControl - mapped view of rF2HWControl structure
+    * WeatherControl - mapped view of rF2WeatherControl structure
+    * RulesControl - mapped view of rF2RulesControl structure
+    * PluginControl - mapped view of rF2PluginControl structure
 
-  Plugin offers optional weak synchronization by using version variables on each of the buffers.
+  Aside from Extended (see below), output buffers are (with few exceptions) exact mirror of ISI structures, plugin constantly memcpy'es them
+  from game to memory mapped files.
 
-Refresh rates:
+  Plugin offers optional weak synchronization by using version variables on each of the output buffers.
+
+  Input buffers are meant to be filled out by the clients.  To avoid complex locking input buffers use version variables as well, and were
+  designed with a single client in mind.  For more high level overview of the input buffers see "Input Buffers" section in the README.md.
+ 
+Output buffer refresh rates:
   Telemetry - updated every 10ms, but in practice only every other update contains updated data, so real update rate is around 50FPS (20ms).
   Scoring - every 200ms (5FPS).
   Rules - every 300ms (3FPS).
@@ -42,16 +55,27 @@ Refresh rates:
   ForceFeedback - approximately every 2.5ms (400FPS).
   Graphics - approximately 400FPS.
   PitInfo - 100FPS.
-  Extended - every 200ms or on tracked function call.
+  Weather - 1FPS.
+  Extended - every 200ms (5FPS) or on tracked function call.
 
   Plugin does not add artificial delays, except:
     - game calls UpdateTelemetry in bursts every 10ms.  However, as of 02/18 data changes only every 20ms, so one of those bursts is dropped.
     - telemetry updates with same game time are skipped
 
-  Plugin supports unsubscribing from buffer updates via UnsubscribedBuffersMask CustomPluginVariables.json flag.
+  Plugin supports unsubscribing from buffer updates via UnsubscribedBuffersMask CustomPluginVariables.json flag.  Clients can also subscribe
+  to the currently unsubscribed buffers via rF2PluginControl input buffer.
+
+Input buffer refresh rates:
+
+  HWControl - Read at 5FPS with 100ms boost to 50FPS once update is received.  Applied at 100FPS.
+  WeatherControl - Read at 5FPS.  Applied at 1FPS.
+  RulesControl - Read at 5FPS.  Applied at 3FPS.
+  PluginControl - Read at 5FPS.  Applied on read.
+
 
 Telemetry state:
-  rF2 calls UpdateTelemetry for each vehicle.  Plugin tries to guess when all vehicles received an update, and only after that buffer write is marked as complete.
+  rF2 calls UpdateTelemetry for each vehicle.  Plugin tries to guess when all vehicles received an update, and only after
+  that buffer write is marked as complete.
 
 
 Extended state:
@@ -69,23 +93,36 @@ Extended state:
 
   See SharedMemoryPlugin::ExtendedStateTracker struct for details.
 
-  Also, Extended state exposes values obtaned via Direct Memory access.  This functionality is enabled via "EnableDirectMemoryAccess" plugin variable.  See DirectMemoryReader class for more details.
+  Extended state exposes values obtaned via Direct Memory access.  This functionality is enabled via "EnableDirectMemoryAccess"
+  plugin variable.  See DirectMemoryReader class for more details.
+
+  Lastly, active plugin configuration is exposed with the intent of clients to be able to detect missing features dynamically.
 
 
-Synchronization:
+Output buffer synchronization:
   Plugin does not offer hard guarantees for mapped buffer synchronization, because using synchronization primitives opens door for misuse and
   eventually, way of harming game FPS as number of clients grows.
 
   However, each of shared memory buffers begins with rF2MappedBufferVersionBlock structure.  If you would like to make sure you're not
-  reading a torn (partially overwritten) frame, you can check rF2MappedBufferVersionBlock::mVersionUpdateBegin and rF2MappedBufferVersionBlock::mVersionUpdateEnd values.
-  If they are equal, buffer is either not torn, or, in an extreme case, currently being written into.
-  Note: $rFactor2SMMP_ForceFeedback$ buffer consists of a single double variable.  Since write into double is atomic, version block is not used (I assume compiler aligned
-  double member correctly for x64, and I am too lazy atm to check).
+  reading a torn (partially overwritten) frame, you can check rF2MappedBufferVersionBlock::mVersionUpdateBegin and
+  rF2MappedBufferVersionBlock::mVersionUpdateEnd values. If they are equal, buffer is either not torn, or, in an extreme case,
+  currently being written into.
+  
+  Note: $rFactor2SMMP_ForceFeedback$ buffer consists of a single double variable.  Since write into double is atomic, version block
+  is not used (I assume compiler aligned double member correctly for x64, and I am too lazy atm to check).
 
-  Most clients (HUDs, Dashes, visualizers) won't need synchronization.  There are many ways on detecting torn frames, Monitor app contains sample approach
-  used in the Crew Chief app.
-  * For basic reading from C#, see: rF2SMMonitor.MainForm.MappedBuffer<>.GetMappedDataUnsynchronized.
-  * To see one of the ways to avoid torn frames, see: rF2SMMonitor.MainForm.MappedBuffer<>.GetMappedData.
+  Most clients (HUDs, Dashes, visualizers) won't need synchronization.  There are many ways on detecting torn frames,
+  Monitor app contains sample approach used in the Crew Chief app.
+  * For basic reading from C#, see: rF2SMMonitor.MappedBuffer<>.GetMappedDataUnsynchronized.
+  * To see one of the ways to avoid torn frames, see: rF2SMMonitor.MappedBuffer<>.GetMappedData.
+
+
+Input buffer synchronization:
+  Input buffers are designed with a single client in mind.  Plugin detects that input buffer has changed if last saved value of
+  rF2MappedBufferVersionBlock::mVersionUpdateBegin has changed.  Plugin will attempt to detect "torn frame" situations, but won't attempt
+  any recovery.
+
+  See rF2SMMonitor.MappedBuffer<>.PutMappedData for sample client code.
 
 
 Dedicated server use:
@@ -112,12 +149,19 @@ Sample consumption:
 #include <stdlib.h>
 #include <cstddef>                              // offsetof
 
-DebugLevel SharedMemoryPlugin::msDebugOutputLevel = DebugLevel::Off;
+long SharedMemoryPlugin::msDebugOutputLevel = static_cast<long>(DebugLevel::Off);
+static_assert(sizeof(long) <= sizeof(DebugLevel), "sizeof(long) <= sizeof(DebugLevel)");
+
+long SharedMemoryPlugin::msDebugOutputSource = static_cast<long>(DebugSource::General);
+static_assert(sizeof(long) <= sizeof(DebugSource), "sizeof(long) <= sizeof(DebugSource)");
 
 bool SharedMemoryPlugin::msDebugISIInternals = false;
 bool SharedMemoryPlugin::msDedicatedServerMapGlobally = false;
 bool SharedMemoryPlugin::msDirectMemoryAccessRequested = false;
+
 long SharedMemoryPlugin::msUnsubscribedBuffersMask = 0L;
+static_assert(sizeof(long) <= sizeof(SubscribedBuffer), "sizeof(long) <= sizeof(SubscribedBuffer)");
+
 bool SharedMemoryPlugin::msHWControlInputRequested = false;
 bool SharedMemoryPlugin::msWeatherControlInputRequested = false;
 bool SharedMemoryPlugin::msRulesControlInputRequested = false;
@@ -139,6 +183,7 @@ char const* const SharedMemoryPlugin::MM_WEATHER_FILE_NAME = "$rFactor2SMMP_Weat
 char const* const SharedMemoryPlugin::MM_HWCONTROL_FILE_NAME = "$rFactor2SMMP_HWControl$";
 char const* const SharedMemoryPlugin::MM_WEATHER_CONTROL_FILE_NAME = "$rFactor2SMMP_WeatherControl$";
 char const* const SharedMemoryPlugin::MM_RULES_CONTROL_FILE_NAME = "$rFactor2SMMP_RulesControl$";
+char const* const SharedMemoryPlugin::MM_PLUGIN_CONTROL_FILE_NAME = "$rFactor2SMMP_PluginControl$";
 
 char const* const SharedMemoryPlugin::INTERNALS_TELEMETRY_FILENAME = R"(UserData\Log\RF2SMMP_InternalsTelemetryOutput.txt)";
 char const* const SharedMemoryPlugin::INTERNALS_SCORING_FILENAME = R"(UserData\Log\RF2SMMP_InternalsScoringOutput.txt)";
@@ -146,7 +191,7 @@ char const* const SharedMemoryPlugin::DEBUG_OUTPUT_FILENAME = R"(UserData\Log\RF
 
 // plugin information
 extern "C" __declspec(dllexport)
-const char * __cdecl GetPluginName() { return PLUGIN_NAME_AND_VERSION; }
+char const* __cdecl GetPluginName() { return PLUGIN_NAME_AND_VERSION; }
 
 extern "C" __declspec(dllexport)
 PluginObjectType __cdecl GetPluginType() { return(PO_INTERNALS); }
@@ -178,9 +223,55 @@ SharedMemoryPlugin::SharedMemoryPlugin()
     , mHWControl(SharedMemoryPlugin::MM_HWCONTROL_FILE_NAME, rF2HWControl::SUPPORTED_LAYOUT_VERSION)
     , mWeatherControl(SharedMemoryPlugin::MM_WEATHER_CONTROL_FILE_NAME, rF2WeatherControl::SUPPORTED_LAYOUT_VERSION)
     , mRulesControl(SharedMemoryPlugin::MM_RULES_CONTROL_FILE_NAME, rF2HWControl::SUPPORTED_LAYOUT_VERSION)
+    , mPluginControl(SharedMemoryPlugin::MM_PLUGIN_CONTROL_FILE_NAME, rF2PluginControl::SUPPORTED_LAYOUT_VERSION)
 {
   memset(mParticipantTelemetryUpdated, 0, sizeof(mParticipantTelemetryUpdated));
-  memset(mHWControlRequest_mControlName, 0, sizeof(mHWControlRequest_mControlName));
+}
+
+
+bool SharedMemoryPlugin::IsHWControlInputDependencyMissing()
+{
+  if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Telemetry)) {
+    DEBUG_MSG(DebugLevel::Errors, DebugSource::General, "HWControl input cannot be enabled because Telemetry updates are turned off.");
+
+    return true;
+  }
+
+  return false;
+}
+
+
+bool SharedMemoryPlugin::IsWeatherControlInputDependencyMissing()
+{
+  if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Scoring)) {
+    DEBUG_MSG(DebugLevel::Errors, DebugSource::General, "Weather control input cannot be enabled because Scoring updates are turned off.");
+
+    return true;
+  }
+  else if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Weather)) {
+    DEBUG_MSG(DebugLevel::Errors, DebugSource::General, "Weather control input cannot be enabled because Weather updates are turned off.");
+
+    return true;
+  }
+
+  return false;
+}
+
+
+bool SharedMemoryPlugin::IsRulesControlInputDependencyMissing()
+{
+  if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Scoring)) {
+    DEBUG_MSG(DebugLevel::Errors, DebugSource::General, "Rules control input cannot be enabled because Scoring updates are turned off.");
+
+    return true;
+  }
+  else if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Rules)) {
+    DEBUG_MSG(DebugLevel::Errors, DebugSource::General, "Rules control input cannot be enabled because Weather updates are turned off.");
+
+    return true;
+  }
+
+  return false;
 }
 
 
@@ -189,48 +280,23 @@ void SharedMemoryPlugin::Startup(long version)
   // Print out configuration.
 #ifdef VERSION_AVX2
 #ifdef VERSION_MT
-  DEBUG_MSG2(DebugLevel::CriticalInfo, "Starting rFactor 2 Shared Memory Map Plugin 64bit Version:", SHARED_MEMORY_VERSION " AVX2+PGO+MT");
+  DEBUG_MSG(DebugLevel::CriticalInfo, DebugSource::General, "Starting rFactor 2 Shared Memory Map Plugin 64bit Version: %s", SHARED_MEMORY_VERSION " AVX2+PGO+MT");
 #else
-  DEBUG_MSG2(DebugLevel::CriticalInfo, "Starting rFactor 2 Shared Memory Map Plugin 64bit Version:", SHARED_MEMORY_VERSION " AVX2+PGO");
+  DEBUG_MSG(DebugLevel::CriticalInfo, DebugSource::General, "Starting rFactor 2 Shared Memory Map Plugin 64bit Version: %s", SHARED_MEMORY_VERSION " AVX2+PGO");
 #endif
 #else
-  DEBUG_MSG2(DebugLevel::CriticalInfo, "Starting rFactor 2 Shared Memory Map Plugin 64bit Version:", SHARED_MEMORY_VERSION);
+  DEBUG_MSG(DebugLevel::CriticalInfo, DebugSource::General, "Starting rFactor 2 Shared Memory Map Plugin 64bit Version: %s", SHARED_MEMORY_VERSION);
 #endif
-  DEBUG_MSG(DebugLevel::CriticalInfo, "Configuration:");
-  DEBUG_INT2(DebugLevel::CriticalInfo, "DebugOutputLevel:", SharedMemoryPlugin::msDebugOutputLevel);
-  DEBUG_INT2(DebugLevel::CriticalInfo, "DebugISIInternals:", SharedMemoryPlugin::msDebugISIInternals);
-  DEBUG_INT2(DebugLevel::CriticalInfo, "DedicatedServerMapGlobally:", SharedMemoryPlugin::msDedicatedServerMapGlobally);
-  DEBUG_INT2(DebugLevel::CriticalInfo, "EnableDirectMemoryAccess:", SharedMemoryPlugin::msDirectMemoryAccessRequested);
-  DEBUG_INT2(DebugLevel::CriticalInfo, "UnsubscribedBuffersMask:", SharedMemoryPlugin::msUnsubscribedBuffersMask);
-  DEBUG_INT2(DebugLevel::CriticalInfo, "EnableHWControlInput:", SharedMemoryPlugin::msHWControlInputRequested);
-  DEBUG_INT2(DebugLevel::CriticalInfo, "EnableWeatherControlInput:", SharedMemoryPlugin::msWeatherControlInputRequested);
-  DEBUG_INT2(DebugLevel::CriticalInfo, "EnableRulesControlInput:", SharedMemoryPlugin::msRulesControlInputRequested);
-
-  if (SharedMemoryPlugin::msUnsubscribedBuffersMask != 0L) {
-    if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Telemetry))
-      DEBUG_MSG(DebugLevel::CriticalInfo, "Unsubscribed from the Telemetry updates");
-
-    if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Scoring))
-      DEBUG_MSG(DebugLevel::CriticalInfo, "Unsubscribed from the Scoring updates");
-
-    if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Rules))
-      DEBUG_MSG(DebugLevel::CriticalInfo, "Unsubscribed from the Rules updates");
-
-    if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::MultiRules))
-      DEBUG_MSG(DebugLevel::CriticalInfo, "Unsubscribed from the Multi Rules updates");
-
-    if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::ForceFeedback))
-      DEBUG_MSG(DebugLevel::CriticalInfo, "Unsubscribed from the Force Feedback updates");
-
-    if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Graphics))
-      DEBUG_MSG(DebugLevel::CriticalInfo, "Unsubscribed from the Graphics updates");
-
-    if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::PitInfo))
-      DEBUG_MSG(DebugLevel::CriticalInfo, "Unsubscribed from the Pit Info updates");
-
-    if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Weather))
-      DEBUG_MSG(DebugLevel::CriticalInfo, "Unsubscribed from the Weather updates");
-  }
+  DEBUG_MSG(DebugLevel::CriticalInfo, DebugSource::General, "Configuration:");
+  DEBUG_MSG(DebugLevel::CriticalInfo, DebugSource::General, "DebugOutputLevel: %ld", SharedMemoryPlugin::msDebugOutputLevel);
+  DEBUG_MSG(DebugLevel::CriticalInfo, DebugSource::General, "DebugOutputSource: %ld", SharedMemoryPlugin::msDebugOutputSource);
+  DEBUG_MSG(DebugLevel::CriticalInfo, DebugSource::General, "DebugISIInternals: %d", SharedMemoryPlugin::msDebugISIInternals);
+  DEBUG_MSG(DebugLevel::CriticalInfo, DebugSource::General, "DedicatedServerMapGlobally: %d", SharedMemoryPlugin::msDedicatedServerMapGlobally);
+  DEBUG_MSG(DebugLevel::CriticalInfo, DebugSource::General, "EnableDirectMemoryAccess: %d", SharedMemoryPlugin::msDirectMemoryAccessRequested);
+  DEBUG_MSG(DebugLevel::CriticalInfo, DebugSource::General, "UnsubscribedBuffersMask: %ld", SharedMemoryPlugin::msUnsubscribedBuffersMask);
+  DEBUG_MSG(DebugLevel::CriticalInfo, DebugSource::General, "EnableHWControlInput: %d", SharedMemoryPlugin::msHWControlInputRequested);
+  DEBUG_MSG(DebugLevel::CriticalInfo, DebugSource::General, "EnableWeatherControlInput: %d", SharedMemoryPlugin::msWeatherControlInputRequested);
+  DEBUG_MSG(DebugLevel::CriticalInfo, DebugSource::General, "EnableRulesControlInput: %d", SharedMemoryPlugin::msRulesControlInputRequested);
 
   char charBuff[80] = {};
   sprintf(charBuff, "-STARTUP- (version %.3f)", (float)version / 1000.0f);
@@ -238,181 +304,45 @@ void SharedMemoryPlugin::Startup(long version)
 
   // Even if some buffers are unsubscribed from, create them all.  Unsubscribe simply
   // means buffer won't get updated.  This simplifies client code a bit.
-  if (!mTelemetry.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
-    DEBUG_MSG(DebugLevel::Errors, "Failed to initialize Telemetry mapping");
-    return;
-  }
-
-  if (!mScoring.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
-    DEBUG_MSG(DebugLevel::Errors, "Failed to initialize Scoring mapping");
-    return;
-  }
-
-  if (!mRules.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
-    DEBUG_MSG(DebugLevel::Errors, "Failed to initialize Rules mapping");
-    return;
-  }
-
-  if (!mMultiRules.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
-    DEBUG_MSG(DebugLevel::Errors, "Failed to initialize Multi Rules mapping");
-    return;
-  }
-
-  if (!mForceFeedback.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
-    DEBUG_MSG(DebugLevel::Errors, "Failed to initialize Force Feedback mapping");
-    return;
-  }
-
-  if (!mGraphics.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
-    DEBUG_MSG(DebugLevel::Errors, "Failed to initialize Graphics mapping");
-    return;
-  }
-
-  if (!mPitInfo.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
-    DEBUG_MSG(DebugLevel::Errors, "Failed to initialize Pit Info mapping");
-    return;
-  }
-
-  if (!mWeather.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
-    DEBUG_MSG(DebugLevel::Errors, "Failed to initialize Weather mapping");
-    return;
-  }
-
-  if (SharedMemoryPlugin::msHWControlInputRequested 
-    && Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Scoring)) {
-    DEBUG_MSG(DebugLevel::Errors, "HWControl input is disabled because Scoring update is turned off.");
-
-    SharedMemoryPlugin::msHWControlInputRequested = false;
-  }
-    
-  if (!mHWControl.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
-    DEBUG_MSG(DebugLevel::Errors, "Failed to initialize HWControl input mapping");
-    return;
-  }
-
-  if (SharedMemoryPlugin::msWeatherControlInputRequested) {
-    if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Scoring)) {
-      DEBUG_MSG(DebugLevel::Errors, "Weather Control input is disabled because Scoring update is turned off.");
-
-      SharedMemoryPlugin::msWeatherControlInputRequested = false;
-    }
-    else if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Weather)) {
-      DEBUG_MSG(DebugLevel::Errors, "Weather Control input is disabled because Weather update is turned off.");
-
-      SharedMemoryPlugin::msWeatherControlInputRequested = false;
-    }
-  }
+  RETURN_IF_FALSE(InitMappedBuffer(mTelemetry, "Telemetry",  SubscribedBuffer::Telemetry));
+  RETURN_IF_FALSE(InitMappedBuffer(mScoring, "Scoring", SubscribedBuffer::Scoring));
+  RETURN_IF_FALSE(InitMappedBuffer(mRules, "Rules", SubscribedBuffer::Rules));
+  RETURN_IF_FALSE(InitMappedBuffer(mMultiRules, "Multi Rules", SubscribedBuffer::MultiRules));
+  RETURN_IF_FALSE(InitMappedBuffer(mForceFeedback, "Force Feedback", SubscribedBuffer::ForceFeedback));
+  RETURN_IF_FALSE(InitMappedBuffer(mGraphics, "Graphics", SubscribedBuffer::Graphics));
+  RETURN_IF_FALSE(InitMappedBuffer(mPitInfo, "Pit Info", SubscribedBuffer::PitInfo));
+  RETURN_IF_FALSE(InitMappedBuffer(mWeather, "Weather", SubscribedBuffer::Weather));
+  RETURN_IF_FALSE(InitMappedInputBuffer(mHWControl, "HWControl"));
+  RETURN_IF_FALSE(InitMappedInputBuffer(mWeatherControl, "Weather control"));
+  RETURN_IF_FALSE(InitMappedInputBuffer(mRulesControl, "Rules control"));
+  RETURN_IF_FALSE(InitMappedInputBuffer(mPluginControl, "Plugin control"));
   
-  if (!mWeatherControl.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
-    DEBUG_MSG(DebugLevel::Errors, "Failed to initialize Weather control input mapping");
-    return;
-  }
-
-  if (SharedMemoryPlugin::msRulesControlInputRequested) {
-    if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Scoring)) {
-      DEBUG_MSG(DebugLevel::Errors, "Rules Control input is disabled because Scoring update is turned off.");
-
-      SharedMemoryPlugin::msRulesControlInputRequested = false;
-    }
-    else if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Rules)) {
-      DEBUG_MSG(DebugLevel::Errors, "Rules Control input is disabled because Rules update is turned off.");
-
-      SharedMemoryPlugin::msRulesControlInputRequested = false;
-    }
-  }
-
-  if (!mRulesControl.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
-    DEBUG_MSG(DebugLevel::Errors, "Failed to initialize Rules control input mapping");
-    return;
-  }
-
   // Extended buffer is initialized last and is an indicator of initialization completed.
-  if (!mExtended.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
-    DEBUG_MSG(DebugLevel::Errors, "Failed to initialize Extended mapping");
-    return;
-  }
+  RETURN_IF_FALSE(InitMappedBuffer(mExtended, "Extended", SubscribedBuffer::All));
+  
+  // Runtime asserts to ensure the correct layout of partially updated buffers.
+  assert(sizeof(rF2Telemetry) == offsetof(rF2Telemetry, mVehicles[rF2MappedBufferHeader::MAX_MAPPED_VEHICLES]));
+  assert(sizeof(rF2Scoring) == offsetof(rF2Scoring, mVehicles[rF2MappedBufferHeader::MAX_MAPPED_VEHICLES]));
+  assert(sizeof(rF2Rules) == offsetof(rF2Rules, mParticipants[rF2MappedBufferHeader::MAX_MAPPED_VEHICLES]));
+  assert(sizeof(rF2MultiRules) == offsetof(rF2MultiRules, mParticipants[rF2MappedBufferHeader::MAX_MAPPED_VEHICLES]));
 
-  mIsMapped = true;
+  // Figure out input buffer dependencies.
+  auto hwCtrlDependencyMissing = false;
+  if (SharedMemoryPlugin::msHWControlInputRequested)
+    hwCtrlDependencyMissing = IsHWControlInputDependencyMissing();
 
-  ClearState();
+  auto weatherCtrlDependencyMissing = false;
+  if (SharedMemoryPlugin::msWeatherControlInputRequested)
+    weatherCtrlDependencyMissing = IsWeatherControlInputDependencyMissing();
 
-  // Keep multi rules as a special case for now, zero initialize here.
-  mMultiRules.ClearState(nullptr /*pInitialContents*/);
-
-  DEBUG_MSG(DebugLevel::CriticalInfo, "Files mapped successfully");
-  if (SharedMemoryPlugin::msDebugOutputLevel != DebugLevel::Off) {
-    char sizeSz[20] = {};
-    auto size = static_cast<int>(sizeof(rF2Telemetry) + sizeof(rF2MappedBufferVersionBlock));
-    _itoa_s(size, sizeSz, 10);
-    DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the Telemetry buffer:", sizeSz, "bytes.");
-    assert(sizeof(rF2Telemetry) == offsetof(rF2Telemetry, mVehicles[rF2MappedBufferHeader::MAX_MAPPED_VEHICLES]));
-
-    sizeSz[0] = '\0';
-    size = static_cast<int>(sizeof(rF2Scoring) + sizeof(rF2MappedBufferVersionBlock));
-    _itoa_s(size, sizeSz, 10);
-    DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the Scoring buffer:", sizeSz, "bytes.");
-    assert(sizeof(rF2Scoring) == offsetof(rF2Scoring, mVehicles[rF2MappedBufferHeader::MAX_MAPPED_VEHICLES]));
-
-    sizeSz[0] = '\0';
-    size = static_cast<int>(sizeof(rF2Rules) + sizeof(rF2MappedBufferVersionBlock));
-    _itoa_s(size, sizeSz, 10);
-    DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the Rules buffer:", sizeSz, "bytes.");
-    assert(sizeof(rF2Rules) == offsetof(rF2Rules, mParticipants[rF2MappedBufferHeader::MAX_MAPPED_VEHICLES]));
-
-    sizeSz[0] = '\0';
-    size = static_cast<int>(sizeof(rF2MultiRules) + sizeof(rF2MappedBufferVersionBlock));
-    _itoa_s(size, sizeSz, 10);
-    DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the Multi Rules buffer:", sizeSz, "bytes.");
-    assert(sizeof(rF2MultiRules) == offsetof(rF2MultiRules, mParticipants[rF2MappedBufferHeader::MAX_MAPPED_VEHICLES]));
-
-    sizeSz[0] = '\0';
-    size = static_cast<int>(sizeof(rF2ForceFeedback) + sizeof(rF2MappedBufferVersionBlock));
-    _itoa_s(size, sizeSz, 10);
-    DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the Force Feedback buffer:", sizeSz, "bytes.");
-
-    sizeSz[0] = '\0';
-    size = static_cast<int>(sizeof(rF2GraphicsInfo) + sizeof(rF2MappedBufferVersionBlock));
-    _itoa_s(size, sizeSz, 10);
-    DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the Graphics buffer:", sizeSz, "bytes.");
-
-    sizeSz[0] = '\0';
-    size = static_cast<int>(sizeof(rF2PitInfo) + sizeof(rF2MappedBufferVersionBlock));
-    _itoa_s(size, sizeSz, 10);
-    DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the Pit Info buffer:", sizeSz, "bytes.");
-
-    sizeSz[0] = '\0';
-    size = static_cast<int>(sizeof(rF2Weather) + sizeof(rF2MappedBufferVersionBlock));
-    _itoa_s(size, sizeSz, 10);
-    DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the Weather buffer:", sizeSz, "bytes.");
-
-    sizeSz[0] = '\0';
-    size = static_cast<int>(sizeof(rF2HWControl) + sizeof(rF2MappedBufferVersionBlock));
-    _itoa_s(size, sizeSz, 10);
-    DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the HWControl input buffer:", sizeSz, "bytes.");
-    DEBUG_INT2(DebugLevel::CriticalInfo, "HWControl input buffer supported layout version:", rF2HWControl::SUPPORTED_LAYOUT_VERSION);
-
-    sizeSz[0] = '\0';
-    size = static_cast<int>(sizeof(rF2WeatherControl) + sizeof(rF2MappedBufferVersionBlock));
-    _itoa_s(size, sizeSz, 10);
-    DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the Weather control input buffer:", sizeSz, "bytes.");
-    DEBUG_INT2(DebugLevel::CriticalInfo, "Weather control input buffer supported layout version:", rF2WeatherControl::SUPPORTED_LAYOUT_VERSION);
-
-    sizeSz[0] = '\0';
-    size = static_cast<int>(sizeof(rF2RulesControl) + sizeof(rF2MappedBufferVersionBlock));
-    _itoa_s(size, sizeSz, 10);
-    DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the Rules control input buffer:", sizeSz, "bytes.");
-    DEBUG_INT2(DebugLevel::CriticalInfo, "Rules control input buffer supported layout version:", rF2RulesControl::SUPPORTED_LAYOUT_VERSION);
-
-    sizeSz[0] = '\0';
-    size = static_cast<int>(sizeof(rF2Extended) + sizeof(rF2MappedBufferVersionBlock));
-    _itoa_s(size, sizeSz, 10);
-    DEBUG_MSG3(DebugLevel::CriticalInfo, "Size of the Extended buffer:", sizeSz, "bytes.");
-  }
+  auto rulesCtrlDependencyMissing = false;
+  if (SharedMemoryPlugin::msRulesControlInputRequested)
+    rulesCtrlDependencyMissing = IsRulesControlInputDependencyMissing();
 
   mExtStateTracker.mExtended.mUnsubscribedBuffersMask = SharedMemoryPlugin::msUnsubscribedBuffersMask;
   if (SharedMemoryPlugin::msDirectMemoryAccessRequested) {
     if (!mDMR.Initialize()) {
-      DEBUG_MSG(DebugLevel::Errors, "ERROR: Failed to initialize DMA, disabling DMA.");
+      DEBUG_MSG(DebugLevel::Errors, DebugSource::General, "Failed to initialize DMA, disabling DMA.");
 
       // Disable DMA on failure.
       SharedMemoryPlugin::msDirectMemoryAccessRequested = false;
@@ -423,16 +353,29 @@ void SharedMemoryPlugin::Startup(long version)
       mExtStateTracker.mExtended.mSCRPluginEnabled = mDMR.IsSCRPluginEnabled();
       mExtStateTracker.mExtended.mSCRPluginDoubleFileType = mDMR.GetSCRPluginDoubleFileType();
     }
-
-    mExtStateTracker.mExtended.mHWControlInputEnabled = SharedMemoryPlugin::msHWControlInputRequested;
-    mExtStateTracker.mExtended.mWeatherControlInputEnabled = SharedMemoryPlugin::msWeatherControlInputRequested;
-    mExtStateTracker.mExtended.mRulesControlInputEnabled = SharedMemoryPlugin::msRulesControlInputRequested;
-
-    mExtended.BeginUpdate();
-    memcpy(mExtended.mpWriteBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
-    mExtended.EndUpdate();
   }
+
+  mExtStateTracker.mExtended.mHWControlInputEnabled = SharedMemoryPlugin::msHWControlInputRequested && !hwCtrlDependencyMissing;
+  mExtStateTracker.mExtended.mWeatherControlInputEnabled = SharedMemoryPlugin::msWeatherControlInputRequested && !weatherCtrlDependencyMissing;
+  mExtStateTracker.mExtended.mRulesControlInputEnabled = SharedMemoryPlugin::msRulesControlInputRequested && !rulesCtrlDependencyMissing;
+  mExtStateTracker.mExtended.mPluginControlInputEnabled = Utils::IsFlagOff(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Scoring);
+  
+  if (!mExtStateTracker.mExtended.mPluginControlInputEnabled)
+    DEBUG_MSG(DebugLevel::Warnings, DebugSource::General, "Plugin control is disabled due to Scoring updates being disabled.");
+
+  mIsMapped = true;
+  DEBUG_MSG(DebugLevel::CriticalInfo, DebugSource::General, "Files mapped successfully.");
+
+  ClearState();
+
+  // Keep multi rules as a special case for now, zero initialize here.
+  mMultiRules.ClearState(nullptr /*pInitialContents*/);
+
+  mExtended.BeginUpdate();
+  memcpy(mExtended.mpWriteBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
+  mExtended.EndUpdate();
 }
+
 
 void SharedMemoryPlugin::Shutdown()
 {
@@ -441,7 +384,7 @@ void SharedMemoryPlugin::Shutdown()
   if (mIsMapped)
     TelemetryCompleteFrame();
 
-  DEBUG_MSG(DebugLevel::CriticalInfo, "Shutting down");
+  DEBUG_MSG(DebugLevel::CriticalInfo, DebugSource::General, "Shutting down");
 
   if (msDebugFile != nullptr) {
     fclose(msDebugFile);
@@ -490,6 +433,7 @@ void SharedMemoryPlugin::Shutdown()
   mHWControl.ReleaseResources();
   mWeatherControl.ReleaseResources();
   mRulesControl.ReleaseResources();
+  mPluginControl.ReleaseResources();
 }
 
 void SharedMemoryPlugin::ClearTimingsAndCounters()
@@ -515,9 +459,10 @@ void SharedMemoryPlugin::ClearTimingsAndCounters()
   mPitMenuLastChoiceIndex = -1L;
   mPitMenuLastNumChoices = -1L;
 
-  memset(mHWControlRequest_mControlName, 0, sizeof(mHWControlRequest_mControlName));
-  mHWControlRequest_mfRetVal = 0.0;
-
+  mHWControlRequestReadCounter = 0;
+  mHWControlRequestBoostCounter = 0;
+  
+  mHWControlInputRequestReceived = false;
   mWeatherControlInputRequestReceived = false;
   mRulesControlInputRequestReceived = false;
 }
@@ -546,6 +491,7 @@ void SharedMemoryPlugin::ClearState()
   ClearTimingsAndCounters();
 }
 
+
 void SharedMemoryPlugin::StartSession()
 {
   WriteToAllExampleOutputFiles("a", "--STARTSESSION--");
@@ -553,7 +499,7 @@ void SharedMemoryPlugin::StartSession()
   if (!mIsMapped)
     return;
 
-  DEBUG_MSG(DebugLevel::Timing, "SESSION - Started.");
+  DEBUG_MSG(DebugLevel::Timing, DebugSource::General, "SESSION - Started.");
 
   mExtStateTracker.mExtended.mSessionStarted = true;
   mExtStateTracker.mExtended.mTicksSessionStarted = ::GetTickCount64();
@@ -566,7 +512,7 @@ void SharedMemoryPlugin::StartSession()
 
   if (SharedMemoryPlugin::msDirectMemoryAccessRequested) {
     if (!mDMR.ReadOnNewSession(mExtStateTracker.mExtended)) {
-      DEBUG_MSG(DebugLevel::Errors, "ERROR: DMA read failed, disabling.");
+      DEBUG_MSG(DebugLevel::Errors, DebugSource::General, "DMA read failed, disabling.");
 
       // Disable DMA on failure.
       SharedMemoryPlugin::msDirectMemoryAccessRequested = false;
@@ -588,7 +534,7 @@ void SharedMemoryPlugin::EndSession()
 
   TelemetryCompleteFrame();
 
-  DEBUG_MSG(DebugLevel::Timing, "SESSION - Ended.");
+  DEBUG_MSG(DebugLevel::Timing, DebugSource::General, "SESSION - Ended.");
 
   mExtStateTracker.mExtended.mSessionStarted = false;
   mExtStateTracker.mExtended.mTicksSessionEnded = ::GetTickCount64();
@@ -607,7 +553,7 @@ void SharedMemoryPlugin::UpdateInRealtimeFC(bool inRealTime)
   if (!mIsMapped)
     return;
 
-  DEBUG_MSG(DebugLevel::Synchronization, inRealTime ? "Entering Realtime" : "Exiting Realtime");
+  DEBUG_MSG(DebugLevel::Synchronization, DebugSource::General, inRealTime ? "Entering Realtime" : "Exiting Realtime");
 
   mExtStateTracker.mExtended.mInRealtimeFC = inRealTime;
   if (!inRealTime)
@@ -670,12 +616,10 @@ double TicksNow() {
 
 void SharedMemoryPlugin::TelemetryTraceSkipUpdate(TelemInfoV01 const& info, double deltaET)
 {
-  if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::Timing
+  if (Utils::IsFlagOn(SharedMemoryPlugin::msDebugOutputLevel, DebugLevel::Timing)
     && !mTelemetrySkipFrameReported) {
     mTelemetrySkipFrameReported = true;
-    char msg[512] = {};
-    sprintf(msg, "TELEMETRY - Skipping update due to no changes in the input data.  Delta ET: %f  New ET: %f  Prev ET:%f  mID(new):%ld", deltaET, info.mElapsedTime, mLastTelemetryUpdateET, info.mID);
-    DEBUG_MSG(DebugLevel::Timing, msg);
+    DEBUG_MSG(DebugLevel::Timing, DebugSource::Telemetry, "TELEMETRY - Skipping update due to no changes in the input data.  Delta ET: %f  New ET: %f  Prev ET:%f  mID(new):%ld", deltaET, info.mElapsedTime, mLastTelemetryUpdateET, info.mID);
 
     // We complete frame every 20ms, so on skip we need to compare to the current write buffer.
     // Below a  ssumes that we begin skip on the first vehicle, which is not guaranteed.  However, that's ok
@@ -686,13 +630,19 @@ void SharedMemoryPlugin::TelemetryTraceSkipUpdate(TelemInfoV01 const& info, doub
       || info.mPos.y != prevBuff->mVehicles->mPos.y
       || info.mPos.z != prevBuff->mVehicles->mPos.z)
     {
-      char msg[512] = {};
-      sprintf(msg, "WARNING - Pos Mismatch on skip update!!!  New ET: %f  Prev ET:%f  mID(old):%ld  Prev Pos: %f %f %f  New Pos %f %f %f", info.mElapsedTime, mLastTelemetryUpdateET, prevBuff->mVehicles->mID,
-        info.mPos.x, info.mPos.y, info.mPos.z,
+      DEBUG_MSG(
+        DebugLevel::Timing, 
+        DebugSource::Telemetry,
+        "WARNING - Pos Mismatch on skip update!!!  New ET: %f  Prev ET:%f  mID(old):%ld  Prev Pos: %f %f %f  New Pos %f %f %f",
+        info.mElapsedTime,
+        mLastTelemetryUpdateET,
+        prevBuff->mVehicles->mID,
+        info.mPos.x,
+        info.mPos.y,
+        info.mPos.z,
         prevBuff->mVehicles->mPos.x,
         prevBuff->mVehicles->mPos.y,
         prevBuff->mVehicles->mPos.z);
-      DEBUG_MSG(DebugLevel::Timing, msg);
     }
   }
 }
@@ -701,7 +651,7 @@ void SharedMemoryPlugin::TelemetryTraceSkipUpdate(TelemInfoV01 const& info, doub
 void SharedMemoryPlugin::TelemetryTraceBeginUpdate(double telUpdateET, double deltaET)
 {
   auto ticksNow = 0.0;
-  if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::Timing) {
+  if (Utils::IsFlagOn(SharedMemoryPlugin::msDebugOutputLevel, DebugLevel::Timing)) {
     ticksNow = TicksNow();
     auto const delta = ticksNow - mLastTelemetryUpdateMillis;
 
@@ -709,7 +659,7 @@ void SharedMemoryPlugin::TelemetryTraceBeginUpdate(double telUpdateET, double de
     sprintf(msg, "TELEMETRY - Begin Update:  ET:%f  ET delta:%f  Time delta since last update:%f  Version Begin:%ld  End:%ld",
       telUpdateET, deltaET, delta / MICROSECONDS_IN_SECOND, mTelemetry.mpWriteBuffVersionBlock->mVersionUpdateBegin, mTelemetry.mpWriteBuffVersionBlock->mVersionUpdateEnd);
 
-    DEBUG_MSG(DebugLevel::Timing, msg);
+    DEBUG_MSG(DebugLevel::Timing, DebugSource::Telemetry, msg);
   }
 
   mLastTelemetryUpdateMillis = ticksNow;
@@ -718,32 +668,28 @@ void SharedMemoryPlugin::TelemetryTraceBeginUpdate(double telUpdateET, double de
 
 void SharedMemoryPlugin::TelemetryTraceVehicleAdded(TelemInfoV01 const& info)
 {
-  if (SharedMemoryPlugin::msDebugOutputLevel == DebugLevel::Verbose) {
+  if (Utils::IsFlagOn(SharedMemoryPlugin::msDebugOutputLevel, DebugLevel::Verbose)) {
     auto const prevBuff = mTelemetry.mpWriteBuff;
     bool const samePos = info.mPos.x == prevBuff->mVehicles[mCurrTelemetryVehicleIndex].mPos.x
       && info.mPos.y == prevBuff->mVehicles[mCurrTelemetryVehicleIndex].mPos.y
       && info.mPos.z == prevBuff->mVehicles[mCurrTelemetryVehicleIndex].mPos.z;
-
-    char msg[512] = {};
-    sprintf(msg, "Telemetry added - mID:%ld  ET:%f  Pos Changed:%s", info.mID, info.mElapsedTime, samePos ? "Same" : "Changed");
-    DEBUG_MSG(DebugLevel::Verbose, msg);
+   DEBUG_MSG(DebugLevel::Verbose, DebugSource::Telemetry, "Telemetry added - mID:%ld  ET:%f  Pos Changed:%s", info.mID, info.mElapsedTime, samePos ? "Same" : "Changed");
   }
 
-  if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::Timing)
+  if (Utils::IsFlagOn(SharedMemoryPlugin::msDebugOutputLevel, DebugLevel::Timing))
     mLastTelemetryVehicleAddedMillis = TicksNow();
 }
 
 
-void SharedMemoryPlugin::TelemetryTraceEndUpdate(int numVehiclesInChain) const
+void SharedMemoryPlugin::TelemetryTraceEndUpdate(int numVehiclesInChain)
 {
-  if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::Timing) {
+  ReadHWControl();
+
+  if (Utils::IsFlagOn(SharedMemoryPlugin::msDebugOutputLevel, DebugLevel::Timing)) {
     auto const deltaSysTimeMicroseconds = mLastTelemetryVehicleAddedMillis - mLastTelemetryUpdateMillis;
 
-    char msg[512] = {};
-    sprintf(msg, "TELEMETRY - End Update.  Telemetry chain update took %f:  Vehicles in chain: %d  Version Begin:%ld  End:%ld",
+    DEBUG_MSG(DebugLevel::Timing, DebugSource::Telemetry, "TELEMETRY - End Update.  Telemetry chain update took %f:  Vehicles in chain: %d  Version Begin:%ld  End:%ld",
       deltaSysTimeMicroseconds / MICROSECONDS_IN_SECOND, numVehiclesInChain, mTelemetry.mpWriteBuffVersionBlock->mVersionUpdateBegin, mTelemetry.mpWriteBuffVersionBlock->mVersionUpdateEnd);
-
-    DEBUG_MSG(DebugLevel::Timing, msg);
   }
 }
 
@@ -834,12 +780,12 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
   }
 
   // See if we are in a cycle.
-  auto const participantIndex = max(info.mID, 0L) % rF2MappedBufferHeader::MAX_MAPPED_IDS;
+  auto const participantIndex = max(info.mID, 0L) % rF2Extended::MAX_MAPPED_IDS;
   auto const alreadyUpdated = mParticipantTelemetryUpdated[participantIndex];
 
   if (!alreadyUpdated) {
     if (mCurrTelemetryVehicleIndex >= rF2MappedBufferHeader::MAX_MAPPED_VEHICLES) {
-      DEBUG_MSG(DebugLevel::Errors, "TELEMETRY - Exceeded maximum of allowed mapped vehicles.");
+      DEBUG_MSG(DebugLevel::Errors, DebugSource::General, "TELEMETRY - Exceeded maximum of allowed mapped vehicles.");
       return;
     }
 
@@ -878,14 +824,44 @@ void SharedMemoryPlugin::UpdateTelemetry(TelemInfoV01 const& info)
 
 void SharedMemoryPlugin::ScoringTraceBeginUpdate()
 {
-  if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::Timing) {
+  if (Utils::IsFlagOn(SharedMemoryPlugin::msDebugOutputLevel, DebugLevel::Timing)) {
     TraceBeginUpdate(mScoring, mLastScoringUpdateMillis, "SCORING");
-
-    char msg[512] = {};
-    sprintf(msg, "SCORING - Scoring ET:%f  Telemetry ET:%f", mLastScoringUpdateET, mLastTelemetryUpdateET);
-
-    DEBUG_MSG(DebugLevel::Timing, msg);
+    DEBUG_MSG(DebugLevel::Timing, DebugSource::Scoring, "SCORING - Scoring ET:%f  Telemetry ET:%f", mLastScoringUpdateET, mLastTelemetryUpdateET);
   }
+}
+
+
+template<typename BuffT>
+bool SharedMemoryPlugin::InitMappedBuffer(BuffT& buffer, char const* const buffLogicalName, SubscribedBuffer sb)
+{
+  if (sb != SubscribedBuffer::All  // All indicates that buffer cannot be unsubscribed from.
+    && Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, sb))
+    DEBUG_MSG(DebugLevel::CriticalInfo, DebugSource::General, "Unsubscribed from the %s updates", buffLogicalName);
+
+  if (!buffer.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
+    DEBUG_MSG(DebugLevel::Errors, DebugSource::General, "Failed to initialize %s mapping", buffLogicalName);
+    return false;
+  }
+
+  auto size = static_cast<int>(sizeof(BuffT::BufferType) + sizeof(rF2MappedBufferVersionBlock));
+  DEBUG_MSG(DebugLevel::CriticalInfo, DebugSource::General, "Size of the %s buffer: %d bytes.", buffLogicalName, size);
+
+  return true;
+}
+
+
+template<typename BuffT>
+bool SharedMemoryPlugin::InitMappedInputBuffer(BuffT& buffer, char const* const buffLogicalName)
+{
+  if (!buffer.Initialize(SharedMemoryPlugin::msDedicatedServerMapGlobally)) {
+    DEBUG_MSG(DebugLevel::Errors, DebugSource::General, "Failed to initialize %s input mapping", buffLogicalName);
+    return false;
+  }
+
+  auto size = static_cast<int>(sizeof(BuffT::BufferType) + sizeof(rF2MappedBufferVersionBlock));
+  DEBUG_MSG(DebugLevel::CriticalInfo, DebugSource::General, "Size of the %s buffer: %d bytes.  %s input buffer supported layout version: '%ld'", buffLogicalName, size, buffLogicalName, BuffT::BufferType::SUPPORTED_LAYOUT_VERSION);
+
+  return true;
 }
 
 
@@ -893,15 +869,12 @@ template <typename BuffT>
 void SharedMemoryPlugin::TraceBeginUpdate(BuffT const& buffer, double& lastUpdateMillis, char const msgPrefix[]) const
 {
   auto ticksNow = 0.0;
-  if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::Timing) {
+  if (Utils::IsFlagOn(SharedMemoryPlugin::msDebugOutputLevel, DebugLevel::Timing)) {
     ticksNow = TicksNow();
     auto const delta = ticksNow - lastUpdateMillis;
 
-    char msg[512] = {};
-    sprintf(msg, "%s - Begin Update:  Delta since last update:%f  Version Begin:%ld  End:%ld", msgPrefix, delta / MICROSECONDS_IN_SECOND,
+    DEBUG_MSG(DebugLevel::Timing, DebugSource::Telemetry | DebugSource::Scoring, "%s - Begin Update:  Delta since last update:%f  Version Begin:%ld  End:%ld", msgPrefix, delta / MICROSECONDS_IN_SECOND,
       buffer.mpWriteBuffVersionBlock->mVersionUpdateBegin, buffer.mpWriteBuffVersionBlock->mVersionUpdateEnd);
-
-    DEBUG_MSG(DebugLevel::Timing, msg);
 
     lastUpdateMillis = ticksNow;
   }
@@ -922,14 +895,14 @@ void SharedMemoryPlugin::UpdateScoring(ScoringInfoV01 const& info)
   // Below apparently never happens, but let's keep it in case there's a regression in the game.
   // So far, this appears to only happen on session end, when telemetry is already zeroed out.
   if (mLastScoringUpdateET > mLastTelemetryUpdateET)
-    DEBUG_MSG(DebugLevel::Warnings, "WARNING: Scoring update is ahead of telemetry.");
+    DEBUG_MSG(DebugLevel::Warnings, DebugSource::General, "Scoring update is ahead of telemetry.");
 
   mScoring.BeginUpdate();
 
   memcpy(&(mScoring.mpWriteBuff->mScoringInfo), &info, sizeof(rF2ScoringInfo));
 
   if (info.mNumVehicles >= rF2MappedBufferHeader::MAX_MAPPED_VEHICLES)
-    DEBUG_MSG(DebugLevel::Errors, "ERROR: Scoring exceeded maximum of allowed mapped vehicles.");
+    DEBUG_MSG(DebugLevel::Errors, DebugSource::General, "Scoring exceeded maximum of allowed mapped vehicles.");
 
   auto const numScoringVehicles = min(info.mNumVehicles, rF2MappedBufferHeader::MAX_MAPPED_VEHICLES);
   for (int i = 0; i < numScoringVehicles; ++i)
@@ -946,16 +919,16 @@ void SharedMemoryPlugin::UpdateScoring(ScoringInfoV01 const& info)
 
   ReadDMROnScoringUpdate(info);
 
+  ReadWeatherControl();
+  ReadRulesControl();
+  ReadPluginControl();
+
   // Update extended state.
   mExtStateTracker.ProcessScoringUpdate(info);
 
   mExtended.BeginUpdate();
   memcpy(mExtended.mpWriteBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
   mExtended.EndUpdate();
-
-  ReadHWControl();
-  ReadWeatherControl();
-  ReadRulesControl();
 }
 
 
@@ -965,11 +938,12 @@ void SharedMemoryPlugin::ReadDMROnScoringUpdate(ScoringInfoV01 const& info)
     auto const LSIVisible = info.mYellowFlagState != 0 || info.mGamePhase == static_cast<unsigned char>(rF2GamePhase::Formation);
     if (!mDMR.Read(mExtStateTracker.mExtended)
       || (LSIVisible && !mDMR.ReadOnLSIVisible(mExtStateTracker.mExtended))) {  // Read on FCY or Formation lap.
-      DEBUG_MSG(DebugLevel::Errors, "ERROR: DMA read failed, disabling.");
+      DEBUG_MSG(DebugLevel::Errors, DebugSource::General, "DMA read failed, disabling.");
 
       // Disable DMA on failure.
       SharedMemoryPlugin::msDirectMemoryAccessRequested = false;
       mExtStateTracker.mExtended.mDirectMemoryAccessEnabled = false;
+      // Extended flip will happen in ScoringUpdate.
     }
     else {  // Read succeeded.
       if (mLastUpdateLSIWasVisible && !LSIVisible)
@@ -984,28 +958,45 @@ void SharedMemoryPlugin::ReadDMROnScoringUpdate(ScoringInfoV01 const& info)
 void SharedMemoryPlugin::ReadHWControl()
 {
   if (!mIsMapped
-    || !SharedMemoryPlugin::msHWControlInputRequested
     || !mExtStateTracker.mExtended.mHWControlInputEnabled)
     return;
+
+  // Control the rate of reads.
+  auto const needsBoost = ++mHWControlRequestBoostCounter < 5;  // 100ms boost.
+  ++mHWControlRequestReadCounter;
+  if (!needsBoost
+    && (mHWControlRequestReadCounter % 10) != 0) // Normal 200ms poll (this function is called at 20ms update rate))
+    return;  // Skip read attempt.
 
   // Read input buffers.
   if (mHWControl.ReadUpdate()) {
     if (mHWControl.mReadBuff.mLayoutVersion != rF2HWControl::SUPPORTED_LAYOUT_VERSION) {
-      DEBUG_INT2(DebugLevel::Errors, "HWControl: unsupported input buffer layout version  ", mHWControl.mReadBuff.mLayoutVersion);
-      DEBUG_MSG(DebugLevel::Errors, "HWControl: disabling HWControl.");
+      DEBUG_MSG(DebugLevel::Errors, DebugSource::General, "HWControl: unsupported input buffer layout version: %ld.  Disabling.", mHWControl.mReadBuff.mLayoutVersion);
 
       mExtStateTracker.mExtended.mHWControlInputEnabled = false;
+
+      mExtended.BeginUpdate();
+      memcpy(mExtended.mpWriteBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
+      mExtended.EndUpdate();
+
       return;
     }
 
-    strcpy_s(mHWControlRequest_mControlName, mHWControl.mReadBuff.mControlName);
-    mHWControlRequest_mfRetVal = mHWControl.mReadBuff.mfRetVal;
-    
-    if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::DevInfo) {
-      char charBuff[200] = {};
-      sprintf_s(charBuff, "HWControl: received:  '%s'  %1.1f", mHWControlRequest_mControlName, mHWControlRequest_mfRetVal);
-      DEBUG_MSG(DebugLevel::DevInfo, charBuff);
+    mHWControlInputRequestReceived = true;
+    mHWControlRequestBoostCounter = 0;  // Boost refresh for the next 100ms.
+
+    if (Utils::IsFlagOn(SharedMemoryPlugin::msDebugOutputLevel, DebugLevel::DevInfo)) {
+      DEBUG_MSG(DebugLevel::DevInfo, DebugSource::HWControlInput, "HWControl: received:  '%s'  %1.1f   boosted: '%s'", 
+        mHWControl.mReadBuff.mControlName, mHWControl.mReadBuff.mfRetVal, 
+        needsBoost ? "True" : "False");
     }
+  }
+
+  // Guard against bad inputs, even though it is not plugin's job to do that really.
+  if (mHWControlRequestBoostCounter >= 5
+    && mHWControlInputRequestReceived) {
+    mHWControlInputRequestReceived = false;
+    DEBUG_MSG(DebugLevel::Errors, DebugSource::General, "Resetting mHWControlInputRequestReceived for input value: '%s'.  Bad input value?", mHWControl.mReadBuff.mControlName);
   }
 }
 
@@ -1013,21 +1004,20 @@ void SharedMemoryPlugin::ReadHWControl()
 void SharedMemoryPlugin::ReadWeatherControl()
 {
   if (!mIsMapped
-    || !SharedMemoryPlugin::msWeatherControlInputRequested
     || !mExtStateTracker.mExtended.mWeatherControlInputEnabled)
     return;
 
   // Read input buffers.
   if (mWeatherControl.ReadUpdate()) {
     if (mWeatherControl.mReadBuff.mLayoutVersion != rF2WeatherControl::SUPPORTED_LAYOUT_VERSION) {
-      DEBUG_INT2(DebugLevel::Errors, "Weather control: unsupported input buffer layout version  ", mHWControl.mReadBuff.mLayoutVersion);
-      DEBUG_MSG(DebugLevel::Errors, "Weather control: disabling HWControl.");
+      DEBUG_MSG(DebugLevel::Errors, DebugSource::General, "Weather control: unsupported input buffer layout version: %ld.  Disabling.", mWeatherControl.mReadBuff.mLayoutVersion);
 
       mExtStateTracker.mExtended.mWeatherControlInputEnabled = false;
+      // Extended flip will happen in ScoringUpdate.
       return;
     }
 
-    DEBUG_MSG(DebugLevel::DevInfo, "Weather control input received.");
+    DEBUG_MSG(DebugLevel::DevInfo, DebugSource::HWControlInput, "Weather control input received.");
     mWeatherControlInputRequestReceived = true;
   }
 }
@@ -1036,22 +1026,96 @@ void SharedMemoryPlugin::ReadWeatherControl()
 void SharedMemoryPlugin::ReadRulesControl()
 {
   if (!mIsMapped
-    || !SharedMemoryPlugin::msRulesControlInputRequested
     || !mExtStateTracker.mExtended.mRulesControlInputEnabled)
     return;
 
   // Read input buffers.
   if (mRulesControl.ReadUpdate()) {
     if (mRulesControl.mReadBuff.mLayoutVersion != rF2RulesControl::SUPPORTED_LAYOUT_VERSION) {
-      DEBUG_INT2(DebugLevel::Errors, "Rules control: unsupported input buffer layout version  ", mHWControl.mReadBuff.mLayoutVersion);
-      DEBUG_MSG(DebugLevel::Errors, "Rules control: disabling HWControl.");
+      DEBUG_MSG(DebugLevel::Errors, DebugSource::General, "Rules control: unsupported input buffer layout version: %ld.  Disabling.", mRulesControl.mReadBuff.mLayoutVersion);
 
       mExtStateTracker.mExtended.mRulesControlInputEnabled = false;
+      // Extended flip will happen in ScoringUpdate.
       return;
     }
 
-    DEBUG_MSG(DebugLevel::DevInfo, "Rules control input received.");
+    DEBUG_MSG(DebugLevel::DevInfo, DebugSource::RulesControlInput, "Rules control input received.");
     mRulesControlInputRequestReceived = true;
+  }
+}
+
+
+// TODO: if STL is added eventually, use map SubscribedBuffer -> buffLogicalName
+void SharedMemoryPlugin::DynamicallySubscribeToBuffer(SubscribedBuffer sb, long requestedBuffMask, char const* const buffLogicalName)
+{
+  if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, sb)
+    && Utils::IsFlagOn(requestedBuffMask, sb)) {
+    DEBUG_MSG(DebugLevel::CriticalInfo, DebugSource::General, "Subscribing to the %s updates based on the dynamic request.", buffLogicalName);
+
+    SharedMemoryPlugin::msUnsubscribedBuffersMask ^= static_cast<long>(sb);
+  }
+}
+
+
+void SharedMemoryPlugin::DynamicallyEnableInputBuffer(bool dependencyMissing, bool& controlInputRequested, bool& controlIputEnabled, char const* const buffLogicalName)
+{
+  if (!dependencyMissing) {
+    DEBUG_MSG(DebugLevel::CriticalInfo, DebugSource::General, "Enabling %s input updates based on the dynamic request.", buffLogicalName);
+
+    // Dynamic enable is allowed only once.
+    controlInputRequested = controlIputEnabled = true;
+  }
+}
+
+
+void SharedMemoryPlugin::ReadPluginControl()
+{
+  if (!mIsMapped
+    || !mExtStateTracker.mExtended.mPluginControlInputEnabled)
+    return;
+
+  // Read the input buffer.
+  if (mPluginControl.ReadUpdate()) {
+    if (mPluginControl.mReadBuff.mLayoutVersion != rF2PluginControl::SUPPORTED_LAYOUT_VERSION) {
+      DEBUG_MSG(DebugLevel::Errors, DebugSource::General, "Plugin control: unsupported input buffer layout version: %ld.  Disabling.", mPluginControl.mReadBuff.mLayoutVersion);
+
+      // Re-enable not supported.
+      mExtStateTracker.mExtended.mPluginControlInputEnabled = false;
+      // Extended flip will happen in ScoringUpdate.
+      return;
+    }
+
+    auto const prevUBM =  SharedMemoryPlugin::msUnsubscribedBuffersMask;
+    auto const rebm = mPluginControl.mReadBuff.mRequestEnableBuffersMask;
+    DEBUG_MSG(DebugLevel::CriticalInfo, DebugSource::General, "Plugin control input received.");
+
+    DynamicallySubscribeToBuffer(SubscribedBuffer::Telemetry, rebm, "Telemetry");
+    // Scoring cannot be re-enabled.  If it is disabled, plugin is pretty much off anyway.
+    DynamicallySubscribeToBuffer(SubscribedBuffer::Rules, rebm, "Rules");
+    DynamicallySubscribeToBuffer(SubscribedBuffer::MultiRules, rebm, "Multi Rules");
+    DynamicallySubscribeToBuffer(SubscribedBuffer::ForceFeedback, rebm, "Force Feedback");
+    DynamicallySubscribeToBuffer(SubscribedBuffer::Graphics, rebm, "Graphics");
+    DynamicallySubscribeToBuffer(SubscribedBuffer::PitInfo, rebm, "PitInfo");
+    DynamicallySubscribeToBuffer(SubscribedBuffer::Weather, rebm, "Weather");
+
+    mExtStateTracker.mExtended.mUnsubscribedBuffersMask = SharedMemoryPlugin::msUnsubscribedBuffersMask;
+
+    if (prevUBM != SharedMemoryPlugin::msUnsubscribedBuffersMask)
+      DEBUG_MSG(DebugLevel::CriticalInfo, DebugSource::General, "Updated UnsubscribedBuffersMask: %ld", SharedMemoryPlugin::msUnsubscribedBuffersMask);
+
+    if (!SharedMemoryPlugin::msHWControlInputRequested
+      && mPluginControl.mReadBuff.mRequestHWControlInput)
+      DynamicallyEnableInputBuffer(IsHWControlInputDependencyMissing(), SharedMemoryPlugin::msHWControlInputRequested, mExtStateTracker.mExtended.mHWControlInputEnabled, "HWControl");
+
+    if (!SharedMemoryPlugin::msWeatherControlInputRequested
+      && mPluginControl.mReadBuff.mRequestWeatherControlInput) 
+      DynamicallyEnableInputBuffer(IsWeatherControlInputDependencyMissing(), SharedMemoryPlugin::msWeatherControlInputRequested, mExtStateTracker.mExtended.mWeatherControlInputEnabled, "Weather control");
+
+    if (!SharedMemoryPlugin::msRulesControlInputRequested
+      && mPluginControl.mReadBuff.mRequestRulesControlInput)
+      DynamicallyEnableInputBuffer(IsRulesControlInputDependencyMissing(), SharedMemoryPlugin::msRulesControlInputRequested, mExtStateTracker.mExtended.mRulesControlInputEnabled, "Rules control");
+  
+    // Extended flip will happen in ScoringUpdate.
   }
 }
 
@@ -1062,7 +1126,7 @@ bool SharedMemoryPlugin::ForceFeedback(double& forceValue)
   if (Utils::IsFlagOn(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::ForceFeedback) || !mIsMapped)
     return false;
 
-  DEBUG_MSG(DebugLevel::Timing, "FORCE FEEDBACK - Updated");
+  DEBUG_MSG(DebugLevel::Timing, DebugSource::ForceFeedback, "FORCE FEEDBACK - Updated");
 
   // If I understand correctly, this is atomic operation.  Since this is a single value buffer, no need to do anything else.
   mForceFeedback.mpWriteBuff->mForceValue = forceValue;
@@ -1087,7 +1151,7 @@ void SharedMemoryPlugin::ThreadStarted(long type)
   if (!mIsMapped)
     return;
 
-  DEBUG_MSG(DebugLevel::Synchronization, type == 0 ? "Multimedia thread started" : "Simulation thread started");
+  DEBUG_MSG(DebugLevel::Synchronization, DebugSource::General, type == 0 ? "Multimedia thread started" : "Simulation thread started");
   UpdateThreadState(type, true /*starting*/);
 }
 
@@ -1097,7 +1161,7 @@ void SharedMemoryPlugin::ThreadStopping(long type)
   if (!mIsMapped)
     return;
 
-  DEBUG_MSG(DebugLevel::Synchronization, type == 0 ? "Multimedia thread stopped" : "Simulation thread stopped");
+  DEBUG_MSG(DebugLevel::Synchronization, DebugSource::General, type == 0 ? "Multimedia thread stopped" : "Simulation thread stopped");
   UpdateThreadState(type, false /*starting*/);
 }
 
@@ -1117,7 +1181,7 @@ bool SharedMemoryPlugin::AccessTrackRules(TrackRulesV01& info)
 
   // Copy actions.
   if (info.mNumActions >= rF2MappedBufferHeader::MAX_MAPPED_VEHICLES)
-    DEBUG_MSG(DebugLevel::Errors, "ERROR: Rules exceeded maximum of allowed actions.");
+    DEBUG_MSG(DebugLevel::Errors, DebugSource::General, "Rules exceeded maximum of allowed actions.");
 
   auto const numActions = min(info.mNumActions, rF2MappedBufferHeader::MAX_MAPPED_VEHICLES);
   for (int i = 0; i < numActions; ++i)
@@ -1125,16 +1189,87 @@ bool SharedMemoryPlugin::AccessTrackRules(TrackRulesV01& info)
 
   // Copy participants.
   if (info.mNumParticipants >= rF2MappedBufferHeader::MAX_MAPPED_VEHICLES)
-    DEBUG_MSG(DebugLevel::Errors, "ERROR: Rules exceeded maximum of allowed mapped vehicles.");
+    DEBUG_MSG(DebugLevel::Errors, DebugSource::General, "Rules exceeded maximum of allowed mapped vehicles.");
 
   auto const numRulesVehicles = min(info.mNumParticipants, rF2MappedBufferHeader::MAX_MAPPED_VEHICLES);
-  for (int i = 0; i < numRulesVehicles; ++i) {
+  for (int i = 0; i < numRulesVehicles; ++i)
     memcpy(&(mRules.mpWriteBuff->mParticipants[i]), &(info.mParticipant[i]), sizeof(rF2TrackRulesParticipant));
-  }
 
   mRules.mpWriteBuff->mBytesUpdatedHint = static_cast<int>(offsetof(rF2Rules, mParticipants[numRulesVehicles]));
 
   mRules.EndUpdate();
+
+  if (mRulesControlInputRequestReceived) {
+    // Note: all experimental/WIP.
+    // Try to keep updated input safe and try to keep it close to the current state/frame.
+    auto const currentET = info.mCurrentET;
+    auto const numActions = info.mNumActions;
+    auto const pAction = info.mAction;
+    auto const numParticipants = info.mNumParticipants;
+    auto const safetyCarExists = info.mSafetyCarExists;
+    auto const safetyCarThreshold = info.mSafetyCarThreshold;
+    auto const safetyCarLapDist = info.mSafetyCarLapDist;
+    auto const safetyCarLapDistAtStart = info.mSafetyCarLapDistAtStart;
+    auto const pitLaneStartDist = info.mPitLaneStartDist;
+    auto const pParticipant = info.mParticipant;
+
+    memcpy(&info, &(mRulesControl.mReadBuff.mTrackRules), sizeof(TrackRulesV01));
+
+    if (info.mNumActions != numActions)
+        DEBUG_MSG(DebugLevel::Warnings, DebugSource::General, "Rules control input: mNumActions mismatch.");
+
+    if (info.mNumParticipants != numParticipants)
+        DEBUG_MSG(DebugLevel::Warnings, DebugSource::General, "Rules control input: mNumParticipants mismatch.");
+
+    info.mCurrentET = currentET;
+    info.mNumActions = numActions;
+    info.mAction =  pAction;
+    info.mNumParticipants = numParticipants;
+    info.mSafetyCarExists = safetyCarExists;
+    info.mSafetyCarThreshold = safetyCarThreshold;
+    info.mSafetyCarLapDist = safetyCarLapDist;
+    info.mSafetyCarLapDistAtStart = safetyCarLapDistAtStart;
+    info.mPitLaneStartDist = pitLaneStartDist;
+    info.mParticipant = pParticipant;
+
+    // Safely update arrays:
+    auto const numActionsToUpdate = min(
+      min(info.mNumActions, rF2MappedBufferHeader::MAX_MAPPED_VEHICLES), 
+      mRulesControl.mReadBuff.mTrackRules.mNumActions);
+
+    for (int i = 0; i < numActionsToUpdate; ++i)
+      memcpy(&(info.mAction[i]), &(mRulesControl.mReadBuff.mActions[i]), sizeof(TrackRulesActionV01));  // Note: this overwrites mET, not sure if that's right.
+
+    auto const numParticipantsToUpdate = min(
+      min(info.mNumParticipants, rF2MappedBufferHeader::MAX_MAPPED_VEHICLES),
+      mRulesControl.mReadBuff.mTrackRules.mNumParticipants);
+
+    for (int i = 0; i < numParticipantsToUpdate; ++i) {
+      // Save input only vars (per ISI comment).
+      auto const ID = info.mParticipant[i].mID;
+      auto const frozenOrder = info.mParticipant[i].mFrozenOrder;
+      auto const place = info.mParticipant[i].mPlace;
+      auto const yellowSeverity = info.mParticipant[i].mYellowSeverity;
+      auto const currentRelativeDistance = info.mParticipant[i].mCurrentRelativeDistance;
+
+      memcpy(&(info.mParticipant[i]), &(mRulesControl.mReadBuff.mParticipants[i]), sizeof(TrackRulesParticipantV01));
+
+      if (info.mParticipant[i].mID != ID)
+        DEBUG_MSG(DebugLevel::Warnings, DebugSource::General, "Rules control input: participant mID mismatch at index: %d", i);
+
+      // Restore input only vars.
+      info.mParticipant[i].mID = ID;
+      info.mParticipant[i].mFrozenOrder = frozenOrder;
+      info.mParticipant[i].mPlace = place;
+      info.mParticipant[i].mYellowSeverity = yellowSeverity;
+      info.mParticipant[i].mCurrentRelativeDistance = currentRelativeDistance;
+    }
+
+    mRulesControlInputRequestReceived = false;
+
+    DEBUG_MSG(DebugLevel::DevInfo, DebugSource::Rules | DebugSource::RulesControlInput, "Rules control input: applied.  Update version: %ld", mRulesControl.mReadLastVersionUpdateBegin);
+    return true;
+  }
 
   return false;
 }
@@ -1145,7 +1280,7 @@ void SharedMemoryPlugin::SetPhysicsOptions(PhysicsOptionsV01& options)
   if (!mIsMapped)
     return;
 
-  DEBUG_MSG(DebugLevel::Timing, "PHYSICS - Updated.");
+  DEBUG_MSG(DebugLevel::Timing, DebugSource::Extended, "PHYSICS - Updated.");
 
   memcpy(&(mExtStateTracker.mExtended.mPhysics), &options, sizeof(rF2PhysicsOptions));
 
@@ -1168,7 +1303,7 @@ bool SharedMemoryPlugin::AccessMultiSessionRules(MultiSessionRulesV01& info)
 
   // Copy participants.
   if (info.mNumParticipants >= rF2MappedBufferHeader::MAX_MAPPED_VEHICLES)
-    DEBUG_MSG(DebugLevel::Errors, "ERROR: Multi rules exceeded maximum of allowed mapped vehicles.");
+    DEBUG_MSG(DebugLevel::Errors, DebugSource::General, "Multi rules exceeded maximum of allowed mapped vehicles.");
 
   auto const numMultiRulesVehicles = min(info.mNumParticipants, rF2MappedBufferHeader::MAX_MAPPED_VEHICLES);
   for (int i = 0; i < numMultiRulesVehicles; ++i)
@@ -1188,7 +1323,7 @@ void SharedMemoryPlugin::UpdateGraphics(GraphicsInfoV02 const& info)
   if (!mIsMapped)
     return;
 
-  DEBUG_MSG(DebugLevel::Timing, "GRAPHICS - updated.");
+  DEBUG_MSG(DebugLevel::Timing, DebugSource::Graphics, "GRAPHICS - updated.");
 
   // Do not version Graphics buffer, as it is asynchronous by the nature anyway.
   memcpy(&(mGraphics.mpWriteBuff->mGraphicsInfo), &info, sizeof(rF2GraphicsInfo));
@@ -1204,16 +1339,12 @@ bool SharedMemoryPlugin::AccessPitMenu(PitMenuV01& info)
   if (mPitMenuLastCategoryIndex == info.mCategoryIndex
     && mPitMenuLastChoiceIndex == info.mChoiceIndex
     && mPitMenuLastNumChoices == info.mNumChoices) {
-    DEBUG_MSG(DebugLevel::Timing, "PIT MENU - no changes.");
+    DEBUG_MSG(DebugLevel::Timing, DebugSource::PitInfo, "PIT MENU - no changes.");
     return false;
   }
 
-  if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::DevInfo)
-  {
-    char charBuff[80] = {};
-    sprintf(charBuff, "PIT MENU - Updated.  Category: '%s'  Value: '%s'", info.mCategoryName, info.mChoiceString);
-    DEBUG_MSG(DebugLevel::DevInfo, charBuff);
-  }
+  if (Utils::IsFlagOn(SharedMemoryPlugin::msDebugOutputLevel, DebugLevel::DevInfo))
+    DEBUG_MSG(DebugLevel::DevInfo, DebugSource::PitInfo, "PIT MENU - Updated.  Category: '%s'  Value: '%s'", info.mCategoryName, info.mChoiceString);
 
   mPitInfo.BeginUpdate();
 
@@ -1234,27 +1365,21 @@ bool SharedMemoryPlugin::AccessPitMenu(PitMenuV01& info)
 bool SharedMemoryPlugin::CheckHWControl(char const* const controlName, double& fRetVal)
 {
   if (!mIsMapped
-    || !SharedMemoryPlugin::msHWControlInputRequested
     || !mExtStateTracker.mExtended.mHWControlInputEnabled)
     return false;
  
-  DEBUG_MSG2(DebugLevel::Timing, "CheckHWControl - invoked for:", controlName);
+  DEBUG_MSG(DebugLevel::Timing, DebugSource::HWControlInput, "CheckHWControl - invoked for: '%s'", controlName);
 
-  if (mHWControlRequest_mControlName[0] != '\0'
-    && _stricmp(controlName, mHWControlRequest_mControlName) == 0) {
-    if (SharedMemoryPlugin::msDebugOutputLevel >= DebugLevel::DevInfo) {
-      char charBuff[200] = {};
-      sprintf_s(charBuff, "CheckHWControl input applied:  '%s'  %1.1f .  Update version: %ld",
-        mHWControlRequest_mControlName, mHWControlRequest_mfRetVal, mHWControl.mReadLastVersionUpdateBegin);
-
-      DEBUG_MSG(DebugLevel::DevInfo, charBuff);
+  if (mHWControlInputRequestReceived
+    && _stricmp(controlName, mHWControl.mReadBuff.mControlName) == 0) {
+    if (Utils::IsFlagOn(SharedMemoryPlugin::msDebugOutputLevel, DebugLevel::DevInfo)) {
+      DEBUG_MSG(DebugLevel::DevInfo, DebugSource::HWControlInput, "CheckHWControl input applied:  '%s'  %1.1f .  Update version: %ld",
+        mHWControl.mReadBuff.mControlName, mHWControl.mReadBuff.mfRetVal, mHWControl.mReadLastVersionUpdateBegin);
     }
 
-    fRetVal = mHWControlRequest_mfRetVal;
+    fRetVal = mHWControl.mReadBuff.mfRetVal;
 
-    // Mark cached vars as handled.
-    mHWControlRequest_mControlName[0] ='\0';
-    mHWControlRequest_mfRetVal = 0.0;
+    mHWControlInputRequestReceived = false;
 
     return true;
   }
@@ -1269,7 +1394,7 @@ bool SharedMemoryPlugin::AccessWeather(double trackNodeSize, WeatherControlInfoV
   if (!mIsMapped)
     return false;
  
-  DEBUG_MSG(DebugLevel::Timing, "WEATHER - invoked.");
+  DEBUG_MSG(DebugLevel::Timing, DebugSource::Weather, "WEATHER - invoked.");
 
   mWeather.BeginUpdate();
 
@@ -1282,28 +1407,17 @@ bool SharedMemoryPlugin::AccessWeather(double trackNodeSize, WeatherControlInfoV
     memcpy(&info, &(mWeatherControl.mReadBuff.mWeatherInfo), sizeof(WeatherControlInfoV01));
     mWeatherControlInputRequestReceived = false;
 
-    DEBUG_INT2(DebugLevel::DevInfo, "Weather control input applied.  Update version:", mWeatherControl.mReadLastVersionUpdateBegin);
+    DEBUG_MSG(DebugLevel::DevInfo, DebugSource::Weather | DebugSource::WeatherControlInput, "Weather control input applied.  Update version: %ld", mWeatherControl.mReadLastVersionUpdateBegin);
     return true;
   }
 
-  /*static int counter = 0;
-  if (counter < 1)
-  {
-    info.mET += 20;
-    DEBUG_FLOAT2(DebugLevel::CriticalInfo, "et ", info.mET);
-    info.mRaining[1][1] = 0.5;
-    //memset(info.mRaining, 1.0, sizeof(info.mRaining));
-    ++counter;
-    return true;
-  }
-  */
   return false;
 }
 
 
 bool SharedMemoryPlugin::GetCustomVariable(long i, CustomVariableV01& var)
 {
-  DEBUG_MSG2(DebugLevel::Timing, "GetCustomVariable - Invoked:  mCaption - ", var.mCaption);
+  DEBUG_MSG(DebugLevel::Timing, DebugSource::General, "GetCustomVariable - Invoked:  mCaption - '%s'", var.mCaption);
 
   if (i == 0) {
     // rF2 will automatically create this variable and default it to 1 (true) unless we create it first, in which case we can choose the default.
@@ -1314,7 +1428,7 @@ bool SharedMemoryPlugin::GetCustomVariable(long i, CustomVariableV01& var)
   }
   else if (i == 1) {
     strcpy_s(var.mCaption, "DebugOutputLevel");
-    var.mNumSettings = 9;
+    var.mNumSettings = 1;
     var.mCurrentSetting = 0;
     return true;
   }
@@ -1364,6 +1478,12 @@ bool SharedMemoryPlugin::GetCustomVariable(long i, CustomVariableV01& var)
     var.mCurrentSetting = 0;
     return true;
   }
+  else if (i == 9) {
+    strcpy_s(var.mCaption, "DebugOutputSource");
+    var.mNumSettings = 1;
+    var.mCurrentSetting = 1;
+    return true;
+  }
 
   return false;
 }
@@ -1371,16 +1491,16 @@ bool SharedMemoryPlugin::GetCustomVariable(long i, CustomVariableV01& var)
 
 void SharedMemoryPlugin::AccessCustomVariable(CustomVariableV01& var)
 {
-  DEBUG_MSG(DebugLevel::Timing, "AccessCustomVariable - Invoked.");
+  DEBUG_MSG(DebugLevel::Timing, DebugSource::General, "AccessCustomVariable - Invoked.");
 
   if (_stricmp(var.mCaption, " Enabled") == 0)
     ; // Do nothing; this variable is just for rF2 to know whether to keep the plugin loaded.
   else if (_stricmp(var.mCaption, "DebugOutputLevel") == 0) {
-    auto sanitized = min(max(var.mCurrentSetting, 0L), static_cast<long>(DebugLevel::Verbose));
-    SharedMemoryPlugin::msDebugOutputLevel = static_cast<DebugLevel>(sanitized);
+    auto sanitized = min(max(var.mCurrentSetting, 0L), static_cast<long>(DebugLevel::All));
+    SharedMemoryPlugin::msDebugOutputLevel = sanitized;
 
     // Remove previous debug output.
-    if (SharedMemoryPlugin::msDebugOutputLevel != DebugLevel::Off)
+    if (SharedMemoryPlugin::msDebugOutputLevel != static_cast<long>(DebugLevel::Off))
       remove(SharedMemoryPlugin::DEBUG_OUTPUT_FILENAME);
   }
   else if (_stricmp(var.mCaption, "DebugISIInternals") == 0)
@@ -1399,12 +1519,16 @@ void SharedMemoryPlugin::AccessCustomVariable(CustomVariableV01& var)
     SharedMemoryPlugin::msWeatherControlInputRequested = var.mCurrentSetting != 0;
   else if (_stricmp(var.mCaption, "EnableRulesControlInput") == 0)
     SharedMemoryPlugin::msRulesControlInputRequested = var.mCurrentSetting != 0;
+  else if (_stricmp(var.mCaption, "DebugOutputSource") == 0) {
+    auto sanitized = min(max(var.mCurrentSetting, 1L), static_cast<long>(DebugSource::All));
+    SharedMemoryPlugin::msDebugOutputSource = sanitized;
+  }
 }
 
 
 void SharedMemoryPlugin::GetCustomVariableSetting(CustomVariableV01& var, long i, CustomSettingV01& setting)
 {
-  DEBUG_MSG(DebugLevel::Timing, "GetCustomVariableSetting - Invoked.");
+  DEBUG_MSG(DebugLevel::Timing, DebugSource::General, "GetCustomVariableSetting - Invoked.");
 
   if (_stricmp(var.mCaption, " Enabled") == 0) {
     if (i == 0)
@@ -1412,8 +1536,6 @@ void SharedMemoryPlugin::GetCustomVariableSetting(CustomVariableV01& var, long i
     else
       strcpy_s(setting.mName, "True");
   }
-  else if (_stricmp(var.mCaption, "DebugOutputLevel") == 0)
-    sprintf_s(setting.mName, "%ld%%", i);
   else if (_stricmp(var.mCaption, "DebugISIInternals") == 0) {
     if (i == 0)
       strcpy_s(setting.mName, "False");
@@ -1457,7 +1579,7 @@ void SharedMemoryPlugin::GetCustomVariableSetting(CustomVariableV01& var, long i
 // Debug output helpers.
 ////////////////////////////////////////////
 
-void SharedMemoryPlugin::WriteToAllExampleOutputFiles(const char * const openStr, const char * const msg)
+void SharedMemoryPlugin::WriteToAllExampleOutputFiles(char const* const openStr, char const* const msg)
 {
   if (!SharedMemoryPlugin::msDebugISIInternals)
     return;
@@ -1476,9 +1598,16 @@ void SharedMemoryPlugin::WriteToAllExampleOutputFiles(const char * const openStr
 }
 
 
-void SharedMemoryPlugin::WriteDebugMsg(DebugLevel lvl, const char* const format, ...)
+void SharedMemoryPlugin::WriteDebugMsg(
+  DebugLevel lvl,
+  long src,
+  char const* const functionName,
+  int line,
+  char const* const msg,
+  ...)
 {
-  if (lvl > SharedMemoryPlugin::msDebugOutputLevel)
+  if (Utils::IsFlagOff(SharedMemoryPlugin::msDebugOutputLevel, lvl)
+    || Utils::IsFlagOff(SharedMemoryPlugin::msDebugOutputSource, src))
     return;
 
   va_list argList;
@@ -1490,12 +1619,21 @@ void SharedMemoryPlugin::WriteDebugMsg(DebugLevel lvl, const char* const format,
   SYSTEMTIME st = {};
   ::GetLocalTime(&st);
 
-  fprintf(SharedMemoryPlugin::msDebugFile, "%.2d:%.2d:%.2d.%.3d TID:0x%04lx  ", st.wHour, st.wMinute, st.wSecond , st.wMilliseconds, ::GetCurrentThreadId());
+  fprintf_s(SharedMemoryPlugin::msDebugFile, "%.2d:%.2d:%.2d.%.3d TID:0x%04lx  ", st.wHour, st.wMinute, st.wSecond , st.wMilliseconds, ::GetCurrentThreadId());
+  fprintf_s(SharedMemoryPlugin::msDebugFile, "%s(%d) : ", functionName, line);
+
+  if (lvl == DebugLevel::Errors)
+    fprintf_s(SharedMemoryPlugin::msDebugFile, "ERROR: ");
+  else if (lvl == DebugLevel::Warnings)
+    fprintf_s(SharedMemoryPlugin::msDebugFile, "WARNING: ");
+
   if (SharedMemoryPlugin::msDebugFile != nullptr) {
-    va_start(argList, format);
-    vfprintf(SharedMemoryPlugin::msDebugFile, format, argList);
+    va_start(argList, msg);
+    vfprintf_s(SharedMemoryPlugin::msDebugFile, msg, argList);
     va_end(argList);
   }
+
+  fprintf_s(SharedMemoryPlugin::msDebugFile, "\n");
 
   // Flush periodically for low volume messages.
   static ULONGLONG lastFlushTicks = 0uLL;
@@ -1509,7 +1647,7 @@ void SharedMemoryPlugin::WriteDebugMsg(DebugLevel lvl, const char* const format,
 
 void SharedMemoryPlugin::TraceLastWin32Error()
 {
-  if (SharedMemoryPlugin::msDebugOutputLevel < DebugLevel::Errors)
+  if (Utils::IsFlagOn(SharedMemoryPlugin::msDebugOutputLevel, DebugLevel::Errors))
     return;
 
   auto const lastError = ::GetLastError();
@@ -1521,10 +1659,10 @@ void SharedMemoryPlugin::TraceLastWin32Error()
     nullptr  /*lpSource*/, lastError, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), reinterpret_cast<LPSTR>(&messageBuffer),
     0  /*nSize*/, nullptr  /*argunments*/);
 
-  DEBUG_INT2(DebugLevel::Errors, "Win32 error code:", lastError);
+  DEBUG_MSG(DebugLevel::Errors, DebugSource::General, "Win32 error code: %d", lastError);
 
   if (retChars > 0 && messageBuffer != nullptr)
-    DEBUG_MSG2(DebugLevel::Errors, "Win32 error description:", messageBuffer);
+    DEBUG_MSG(DebugLevel::Errors, DebugSource::General, "Win32 error description: %s", messageBuffer);
 
   ::LocalFree(messageBuffer);
 }

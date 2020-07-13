@@ -46,6 +46,8 @@ namespace rF2SharedMemory
     // Write buffers:
     MappedBuffer<rF2HWControl> hwControlBuffer = new MappedBuffer<rF2HWControl>(rFactor2Constants.MM_HWCONTROL_FILE_NAME);
     MappedBuffer<rF2WeatherControl> weatherControlBuffer = new MappedBuffer<rF2WeatherControl>(rFactor2Constants.MM_WEATHER_CONTROL_FILE_NAME);
+    MappedBuffer<rF2RulesControl> rulesControlBuffer = new MappedBuffer<rF2RulesControl>(rFactor2Constants.MM_RULES_CONTROL_FILE_NAME);
+    MappedBuffer<rF2PluginControl> pluginControlBuffer = new MappedBuffer<rF2PluginControl>(rFactor2Constants.MM_PLUGIN_CONTROL_FILE_NAME);
 
     // Marshalled views:
     rF2Telemetry telemetry;
@@ -60,6 +62,8 @@ namespace rF2SharedMemory
     // Marashalled output views:
     rF2HWControl hwControl;
     rF2WeatherControl weatherControl;
+    rF2RulesControl rulesControl;
+    rF2PluginControl pluginControl;
 
     // Track rF2 transitions.
     TransitionTracker tracker = new TransitionTracker();
@@ -193,13 +197,34 @@ namespace rF2SharedMemory
       var fRetVal = 1.0;
 
       if (MainForm.GetAsyncKeyState(Keys.U) != 0)
-          commandStr = Encoding.Default.GetBytes("PitMenuIncrementValue");
+        commandStr = Encoding.Default.GetBytes("PitMenuIncrementValue");
       else if (MainForm.GetAsyncKeyState(Keys.Y) != 0)
         commandStr = Encoding.Default.GetBytes("PitMenuDecrementValue");
       else if (MainForm.GetAsyncKeyState(Keys.P) != 0)
         commandStr = Encoding.Default.GetBytes("PitMenuUp");
       else if (MainForm.GetAsyncKeyState(Keys.O) != 0)
         commandStr = Encoding.Default.GetBytes("PitMenuDown");
+      // rough sample for rule input buffer.
+      /*else if (MainForm.GetAsyncKeyState(Keys.T) != 0)
+      {
+        if (this.extended.mRulesControlInputEnabled == 0)
+          return;
+
+        this.rulesControl.mVersionUpdateBegin = this.rulesControl.mVersionUpdateEnd = this.rulesControl.mVersionUpdateBegin + 1;
+
+        // First, copy current state into control buffer.
+        // This is not a deep copy. Values in rules buffer wwill change.  If that is not desired, deep copy needs to be performed.
+        this.rulesControl.mTrackRules = this.rules.mTrackRules;
+        this.rulesControl.mActions = this.rules.mActions;
+        this.rulesControl.mParticipants = this.rules.mParticipants;
+
+        this.rulesControl.mTrackRules.mMessage = new byte[96];
+        var msg = Encoding.Default.GetBytes("Hello!");  // should be visible in LSI during FCY?
+        for (int i = 0; i < msg.Length; ++i)
+          this.rulesControl.mTrackRules.mMessage[i] = msg[i];
+
+        this.rulesControlBuffer.PutMappedData(ref this.rulesControl);
+      }*/
 
       this.SendPitMenuCmd(commandStr, fRetVal);
     }
@@ -365,7 +390,7 @@ namespace rF2SharedMemory
       float result = 0.0f;
       if (float.TryParse(this.scaleTextBox.Text, out result))
       {
-        this.scale = result;
+        this.scale = Math.Max(result, 0.05f);
         this.config.Write("scale", this.scale.ToString());
       }
       else
@@ -541,13 +566,14 @@ namespace rF2SharedMemory
         this.maxFFBValue = Math.Max(Math.Abs(this.forceFeedback.mForceValue), this.maxFFBValue);
 
         gameStateText.Append(
-          $"Plugin Version:    Expected: 3.7.4.0 64bit   Actual: {MainForm.GetStringFromBytes(this.extended.mVersion)}"
-          + $"{(this.extended.is64bit == 1 ? "64bit" : "32bit")}"
+          $"Plugin Version:    Expected: 3.7.13.2 64bit   Actual: {MainForm.GetStringFromBytes(this.extended.mVersion)}"
+          + $"{(this.extended.is64bit == 1 ? " 64bit" : " 32bit")}"
           + $"{(this.extended.mSCRPluginEnabled == 1 ? "    SCR Plugin enabled" : "")}"
           + $"{(this.extended.mDirectMemoryAccessEnabled == 1 ? "    DMA enabled" : "")}"
           + $"{(this.extended.mHWControlInputEnabled == 1 ? "    HWCI enabled" : "")}"
           + $"{(this.extended.mWeatherControlInputEnabled == 1 ? "    WCI enabled" : "")}"
           + $"{(this.extended.mRulesControlInputEnabled == 1 ? "    RCI enabled" : "")}"
+          + $"{(this.extended.mPluginControlInputEnabled == 1 ? "    PCI enabled" : "")}"
           + $"    UBM: {this.extended.mUnsubscribedBuffersMask}"
           + $"    FPS: {this.fps}"
           + $"    FFB Curr: {this.forceFeedback.mForceValue:N3} Max: {this.maxFFBValue:N3}");
@@ -993,6 +1019,23 @@ namespace rF2SharedMemory
           this.weatherControlBuffer.GetMappedData(ref this.weatherControl);
           this.weatherControl.mLayoutVersion = rFactor2Constants.MM_WEATHER_CONTROL_LAYOUT_VERSION;
 
+          this.rulesControlBuffer.Connect();
+          this.rulesControlBuffer.GetMappedData(ref this.rulesControl);
+          this.rulesControl.mLayoutVersion = rFactor2Constants.MM_RULES_CONTROL_LAYOUT_VERSION;
+
+          this.pluginControlBuffer.Connect();
+          this.pluginControlBuffer.GetMappedData(ref this.pluginControl);
+          this.pluginControl.mLayoutVersion = rFactor2Constants.MM_PLUGIN_CONTROL_LAYOUT_VERSION;
+
+          // Scoring cannot be enabled on demand.
+          this.pluginControl.mRequestEnableBuffersMask = /*(int)SubscribedBuffer.Scoring | */(int)SubscribedBuffer.Telemetry | (int)SubscribedBuffer.Rules
+            | (int)SubscribedBuffer.ForceFeedback | (int)SubscribedBuffer.Graphics | (int)SubscribedBuffer.Weather | (int)SubscribedBuffer.PitInfo;
+          this.pluginControl.mRequestHWControlInput = 1;
+          this.pluginControl.mRequestRulesControlInput = 1;
+          this.pluginControl.mRequestWeatherControlInput = 1;
+          this.pluginControl.mVersionUpdateBegin = this.pluginControl.mVersionUpdateEnd = this.pluginControl.mVersionUpdateBegin + 1;
+          this.pluginControlBuffer.PutMappedData(ref this.pluginControl);
+
           this.connected = true;
 
           this.EnableControls(true);
@@ -1035,6 +1078,8 @@ namespace rF2SharedMemory
 
       this.hwControlBuffer.Disconnect();
       this.weatherControlBuffer.Disconnect();
+      this.rulesControlBuffer.Disconnect();
+      this.pluginControlBuffer.Disconnect();
 
       this.connected = false;
 

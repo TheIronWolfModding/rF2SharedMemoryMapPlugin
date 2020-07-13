@@ -30,12 +30,12 @@ private:
   float* mpCurrPitSpeedLimit = nullptr;
   char* mpLSIMessages = nullptr;
 
-  char mPrevStatusMessage[rF2MappedBufferHeader::MAX_STATUS_MSG_LEN];
-  char mPrevLastHistoryMessage[rF2MappedBufferHeader::MAX_STATUS_MSG_LEN];
-  char mPrevLSIPhaseMessage[rF2MappedBufferHeader::MAX_RULES_INSTRUCTION_MSG_LEN];
-  char mPrevLSIPitStateMessage[rF2MappedBufferHeader::MAX_RULES_INSTRUCTION_MSG_LEN];
-  char mPrevLSIOrderInstructionMessage[rF2MappedBufferHeader::MAX_RULES_INSTRUCTION_MSG_LEN];
-  char mPrevLSIRulesInstructionMessage[rF2MappedBufferHeader::MAX_RULES_INSTRUCTION_MSG_LEN];
+  char mPrevStatusMessage[rF2Extended::MAX_STATUS_MSG_LEN];
+  char mPrevLastHistoryMessage[rF2Extended::MAX_STATUS_MSG_LEN];
+  char mPrevLSIPhaseMessage[rF2Extended::MAX_RULES_INSTRUCTION_MSG_LEN];
+  char mPrevLSIPitStateMessage[rF2Extended::MAX_RULES_INSTRUCTION_MSG_LEN];
+  char mPrevLSIOrderInstructionMessage[rF2Extended::MAX_RULES_INSTRUCTION_MSG_LEN];
+  char mPrevLSIRulesInstructionMessage[rF2Extended::MAX_RULES_INSTRUCTION_MSG_LEN];
 
   bool mSCRPluginEnabled = false;
   long mSCRPluginDoubleFileType = -1L;
