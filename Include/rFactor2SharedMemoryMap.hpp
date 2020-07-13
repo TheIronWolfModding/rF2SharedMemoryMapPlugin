@@ -28,7 +28,7 @@ Website: thecrewchief.org
 // Each component can be in [0:99] range.
 // Note: each time major version changes, that means layout has changed, and clients might need an update.
 #define PLUGIN_VERSION_MAJOR "3.7"
-#define PLUGIN_VERSION_MINOR "13.3"
+#define PLUGIN_VERSION_MINOR "13.2"
 
 #ifdef VERSION_AVX2
 #ifdef VERSION_MT
@@ -118,7 +118,7 @@ public:
   static char const* const MM_WEATHER_FILE_NAME;
 
   // Input buffers:
-  static char const* const MM_HWCONTROL_FILE_NAME; 
+  static char const* const MM_HWCONTROL_FILE_NAME;
   static char const* const MM_WEATHER_CONTROL_FILE_NAME;
   static char const* const MM_RULES_CONTROL_FILE_NAME;
   static char const* const MM_PLUGIN_CONTROL_FILE_NAME;
@@ -316,12 +316,17 @@ public:
   bool AccessPitMenu(PitMenuV01& info) override; // currently, the return code should always be false (because we may allow more direct editing in the future)
 
   // HW Control- action a control within the game
-  bool HasHardwareInputs() override { return SharedMemoryPlugin::msHWControlInputRequested && mExtStateTracker.mExtended.mHWControlInputEnabled; }
+  bool HasHardwareInputs() override {
+    return SharedMemoryPlugin::msHWControlInputRequested &&
+    mExtStateTracker.mExtended.mHWControlInputEnabled &&
+    SharedMemoryPlugin::mHWControlInputRequestReceived; }
   bool CheckHWControl(char const* const controlName, double& fRetVal) override;
 
   // CONDITIONS CONTROL
   bool WantsWeatherAccess() override { return Utils::IsFlagOff(SharedMemoryPlugin::msUnsubscribedBuffersMask, SubscribedBuffer::Weather); } // change to true in order to read or write weather with AccessWeather() call:
   bool AccessWeather(double trackNodeSize, WeatherControlInfoV01& info) override;
+
+  bool mHWControlInputRequestReceived = false;
 
 private:
   SharedMemoryPlugin(SharedMemoryPlugin const& rhs) = delete;
@@ -397,7 +402,6 @@ private:
   // Boost counter, boost read rate after buffer update.
   int mHWControlRequestBoostCounter = 0;
 
-  bool mHWControlInputRequestReceived = false;
   bool mWeatherControlInputRequestReceived = false;
   bool mRulesControlInputRequestReceived = false;
 
