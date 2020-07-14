@@ -44,7 +44,7 @@ Shared resources:
 
   Plugin offers optional weak synchronization by using version variables on each of the output buffers.
 
-  Input buffers are meant to be filled out by the clients.  To avoid complex locking input buffers use their version variables as well, and were
+  Input buffers are meant to be filled out by the clients.  To avoid complex locking input buffers they use version variables as well, and were
   designed with a single client in mind.  For more high level overview of the input buffers see "Input Buffers" section in the README.md.
  
 Output buffer refresh rates:
