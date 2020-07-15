@@ -72,7 +72,7 @@ Allows dynamically subscirbing to buffers that might've been unsubscribed by `Cu
 * RulesControl - Read at 5FPS.  Applied at 3FPS.
 * PluginControl - Read at 5FPS.  Applied on read.
 
-Note: only `PluginControl` and `HWControl` buffers are enabled by default.  They can be enabled via `CustomPluginVariables.json` settings.
+Note: only `PluginControl` and `HWControl` buffers are enabled by default.  Other buffers can be enabled via `CustomPluginVariables.json` settings.
 
 ## Unsubscribing from the buffer updatdes
 It is possible to configure which buffers get updated and which don't.  This is done via `UnsubscribedBuffersMask` value in the `CustomPluginVariables.json` file.  To specify buffers to unsubscribe from, add desired flag values up.
@@ -87,7 +87,7 @@ PitInfo = 64,
 Weather = 128
 All = 255`
 
-So, to unsubscribe from `Multi Rules` and `Graphics` buffeers set `UnsubscribedBuffersMask` to 40 (8 + 32).
+So, to unsubscribe from `Multi Rules` and `Graphics` buffers set `UnsubscribedBuffersMask` to 40 (8 + 32).
 
 - Note: unsubscribing from `Extended` buffer updates is not supported.
 - Note: usubscribing from `Scoring` will disable `Plugin Control` input.
@@ -102,9 +102,9 @@ So, to unsubscribe from `Multi Rules` and `Graphics` buffeers set `UnsubscribedB
 Plugin comes with rF2SMMonitor program that shows how to access exposed internals from C# program.  It is also useful for visualization of shared memory contents and general understanding of rFactor 2 internals.
 
 ## Memory Buffer Uses
-  * Basic:   Most clients (HUDs, Dashes, visualizers) won't need synchronization, see `rF2SMMonitor.MainForm.MappedBuffer<>.GetMappedDataUnsynchronized` for sample implementation.
+  * Basic:   Most clients (HUDs, Dashes, visualizers) won't need synchronization, see `rF2SMMonitor.MappedBuffer<>.GetMappedDataUnsynchronized` for sample implementation.
   * Advanced:  If you would like to make sure you're not 
-  reading a torn (partially overwritten) frame, see `rF2SMMonitor.MainForm.MappedBuffer<>.GetMappedData` for sample implementation.
+  reading a torn (partially overwritten) frame, see `rF2SMMonitor.MappedBuffer<>.GetMappedData` for sample implementation.
 
 ## Dedicated server use
 If ran in dedicated server process, each shared memory buffer name has server PID appended.  If DedicatedServerMapGlobally preference is set to 1, plugin will attempt creating shared memory buffers in the Global section.  Note that "Create Global Objects" permission is needed on user account running dedicated server.
@@ -129,6 +129,21 @@ Please also be aware, that Crew Chief will always ship with the latest version o
 If you would like to support this project, you can donate [here.](http://thecrewchief.org/misc.php?do=donate)
 
 # Release history
+
+**11/10/2019 - v3.7.13.2**
+
+This version introduces input buffers.  See "Input Buffers" readme section for more info.
+
+  Plugin:
+  * Expose `rF2PitInfo` and `rF2Weather` buffers.  Special thanks for prototyping `AccessPitMenu` and `CheckHWControl` plugin functionality go to Tony Whitley.
+  * Expose `rF2HWControl` input buffer, which allows sending limited number of inputs into the game.
+  * Expose `rF2WeatherControl` input buffer, which allows changing weather conditions dynamically.
+  * Expose `rF2PluginControl` input buffer.  Allows requesting additional plugin features dynamically.
+  * Experimental: Expose `rF2RulesControl` input buffer, which allows sending rules input into the game.
+  * Intenral: rework tracing and reduce code duplication.
+  
+Monitor:
+* Updated to demo newly added features.
 
 **11/10/2019 - v3.7.1.0**
 

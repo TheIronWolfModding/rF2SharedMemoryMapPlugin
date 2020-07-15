@@ -24,16 +24,19 @@ class MappedBuffer
 {
 public:
 
+  // Write buffer constructor.
   MappedBuffer(char const* mmFileName)
     : MM_FILE_NAME(mmFileName)
     , READ_BUFFER_SUPPORTED_LAYOUT_VERSION(0L)
   {}
 
+  // Read buffer constructor.
   MappedBuffer(char const* mmFileName, long mLayoutVersion)
     : MM_FILE_NAME(mmFileName)
     , READ_BUFFER_SUPPORTED_LAYOUT_VERSION(mLayoutVersion)
-  {}
-
+  {
+    memset(&mReadBuff, 0, sizeof(BuffT));
+  }
 
   ~MappedBuffer()
   {
@@ -70,6 +73,11 @@ public:
       return;
     }
 
+    if (READ_BUFFER_SUPPORTED_LAYOUT_VERSION != 0L) {
+      DEBUG_MSG(DebugLevel::Warnings, DebugSource::General, "BeginUpdate: skipping as it does not apply to Read buffer");
+      return;
+    }
+
     // Fix up out of sync situation.
     if (mpWriteBuffVersionBlock->mVersionUpdateBegin != mpWriteBuffVersionBlock->mVersionUpdateEnd) {
       if (Utils::IsFlagOn(SharedMemoryPlugin::msDebugOutputLevel, DebugLevel::Synchronization)) {
@@ -89,12 +97,17 @@ public:
       return;
     }
 
+    if (READ_BUFFER_SUPPORTED_LAYOUT_VERSION != 0L) {
+      DEBUG_MSG(DebugLevel::Warnings, DebugSource::General, "EndUpdate: skipping as it does not apply to Read buffer");
+      return;
+    }
+
     ::InterlockedIncrement(&mpWriteBuffVersionBlock->mVersionUpdateEnd);
 
     // Fix up out of sync situation.
     if (mpWriteBuffVersionBlock->mVersionUpdateBegin != mpWriteBuffVersionBlock->mVersionUpdateEnd) {
       if (Utils::IsFlagOn(SharedMemoryPlugin::msDebugOutputLevel, DebugLevel::Synchronization)) {
-         DEBUG_MSG(DebugLevel::Synchronization, DebugSource::MappedBufferSource, "EndUpdate: versions out of sync.  Version Begin:%ld  End:%ld",
+        DEBUG_MSG(DebugLevel::Synchronization, DebugSource::MappedBufferSource, "EndUpdate: versions out of sync.  Version Begin:%ld  End:%ld",
           mpWriteBuffVersionBlock->mVersionUpdateBegin, mpWriteBuffVersionBlock->mVersionUpdateEnd);
       }
       ::InterlockedExchange(&mpWriteBuffVersionBlock->mVersionUpdateBegin, mpWriteBuffVersionBlock->mVersionUpdateEnd);
@@ -106,6 +119,11 @@ public:
     if (!mMapped)
       return;
 
+    if (READ_BUFFER_SUPPORTED_LAYOUT_VERSION != 0L) {
+      DEBUG_MSG(DebugLevel::Warnings, DebugSource::General, "ClearState: skipping as it does not apply to Read buffer");
+      return;
+    }
+
     BeginUpdate();
 
     if (pInitialContents != nullptr)
@@ -114,12 +132,6 @@ public:
       memset(mpWriteBuff, 0, sizeof(BuffT));
 
     EndUpdate();
-
-    if (READ_BUFFER_SUPPORTED_LAYOUT_VERSION != 0L) {
-      memset(&mReadBuff, 0, sizeof(BuffT));
-
-      mReadLastVersionUpdateBegin = 0uL;
-    }
   }
 
   /////////////////////////////////////////////////////////////////
@@ -142,7 +154,6 @@ public:
    
     return true;
   }
-
 
   // Returns true if buffer is valid and updated since last read.
   bool ReadUpdate()
