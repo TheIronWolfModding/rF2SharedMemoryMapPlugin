@@ -7,6 +7,7 @@ using rF2SharedMemory;
 
 namespace PitMenuSampleApp
 {
+  using Pmal = PitMenuAbstractionLayer;
   public partial class MainForm : Form
   {
     SendrF2HWControl SendControl = new SendrF2HWControl();
@@ -21,19 +22,23 @@ namespace PitMenuSampleApp
     string LastControl;
     bool Connected = false;
     PitMenuController Pmc = new PitMenuController();
-    PitMenuAbstractionLayer Pmal = new PitMenuAbstractionLayer();
     Dictionary<string, string> ttDict;
     List<string> tyreCategories;
-    //Dictionary<string, List<string>> MenuDict;
 
     public MainForm()
     {
       InitializeComponent();
+      trackBarInitialDelay.Value = 230;
+      trackBarDelay.Value = 60;
+      object sender = null; EventArgs e = null;
+      trackBarInitialDelay_ValueChanged(sender, e);
+      trackBarDelay_ValueChanged(sender, e);
+
       this.Connected = this.SendControl.Connect();
       this.checkBox1.Checked = this.Connected;
       if (this.Connected)
       {
-        this.Pmal.Connect();
+        Pmal.Connect();
         Pmc.startUsingPitMenu();
         Pmal.GetMenuDict();
         List<string> _tyreTypes = Pmal.GetTyreTypeNames();
@@ -138,7 +143,7 @@ namespace PitMenuSampleApp
       this.Pmc.startUsingPitMenu();
       this.lblSettingTyreType.Text = "Setting to " +
         ttDict[this.comboBoxAllTyres.SelectedItem.ToString()];
-      this.Pmal.SetAllTyreTypes(ttDict[this.comboBoxAllTyres.SelectedItem.ToString()]);
+      Pmal.SetAllTyreTypes(ttDict[this.comboBoxAllTyres.SelectedItem.ToString()]);
       this.timer1.Start();
     }
 
@@ -168,7 +173,7 @@ namespace PitMenuSampleApp
           {
             foreach (string tyre in tyreCategories)
             {
-              this.Pmal.setCategoryAndChoice(tyre, ttDict[tyreType]);
+              Pmal.setCategoryAndChoice(tyre, ttDict[tyreType]);
               //this.Pmc.SetCategory(tyre);
               //this.Pmc.SetTyreType(ttDict[tyreType]);
               Application.DoEvents();

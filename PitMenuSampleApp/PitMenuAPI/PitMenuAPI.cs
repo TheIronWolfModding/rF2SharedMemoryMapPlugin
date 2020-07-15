@@ -33,10 +33,10 @@ namespace PitMenuAPI
     // Delay in mS after sending a HW control to rFactor before sending another,
     // set by experiment
     // 20 works for category selection and tyres but fuel needs it slower
-    int delay = 100;
+    int delay = 60;
     // Shared memory scans slowly until the first control is received. It
     // returns to scanning slowly when it hasn't received a control for a while.
-    int initialDelay = 200;
+    int initialDelay = 230;
 
     ///////////////////////////////////////////////////////////////////////////
     /// Setup

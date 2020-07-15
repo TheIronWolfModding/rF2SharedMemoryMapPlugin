@@ -7,10 +7,10 @@ using PitMenuAPI;
 
 namespace csUnitTestPitMenuAbstractionLayer
 {
+  using Pmal = PitMenuAbstractionLayer;
   [TestClass]
   public class UnitTest
   {
-    private PitMenuAbstractionLayer Pmal;
     private PitMenuController Pmc;
 
     ///////////////////////////////////////////////////////////////////////////
@@ -113,7 +113,6 @@ namespace csUnitTestPitMenuAbstractionLayer
     [TestInitialize]
     public void testInit()
     {
-      Pmal = new PitMenuAbstractionLayer();
       Pmc = new PitMenuController();
     }
 
