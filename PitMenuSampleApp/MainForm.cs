@@ -21,7 +21,6 @@ namespace PitMenuSampleApp
 
     string LastControl;
     bool Connected = false;
-    PitMenuController Pmc = new PitMenuController();
     Dictionary<string, string> ttDict;
     List<string> tyreCategories;
 
@@ -29,7 +28,7 @@ namespace PitMenuSampleApp
     {
       InitializeComponent();
       trackBarInitialDelay.Value = 230;
-      trackBarDelay.Value = 60;
+      trackBarDelay.Value = 30;
       object sender = null; EventArgs e = null;
       trackBarInitialDelay_ValueChanged(sender, e);
       trackBarDelay_ValueChanged(sender, e);
@@ -39,13 +38,11 @@ namespace PitMenuSampleApp
       if (this.Connected)
       {
         Pmal.Connect();
-        Pmc.startUsingPitMenu();
-        Pmal.GetMenuDict();
         List<string> _tyreTypes = Pmal.GetTyreTypeNames();
         ttDict = Pmal.TranslateTyreTypes(
           PitMenuAbstractionLayer.SampleTyreDict,
           _tyreTypes);
-        tyreCategories = Pmc.GetTyreChangeCategories();
+        tyreCategories = Pmal.GetAllTyreCategories();
       }
       this.timer1.Start();
     }
@@ -71,14 +68,11 @@ namespace PitMenuSampleApp
     {
       if (this.Connected)
       {
-        //this.SendControl.SendHWControl(this.LastControl, false);
-
-        //this.Pmc.startUsingPitMenu();
-        var catName = this.Pmc.GetCategory();
+        var catName = Pmal.Pmc.GetCategory();
         this.cbCategory.SelectedItem = catName;
-        var choiceStr = this.Pmc.GetChoice();
+        var choiceStr = Pmal.Pmc.GetChoice();
         this.textBox1.Text = catName + " " + choiceStr;
-        int fuel = this.Pmc.GetFuelLevel();
+        int fuel = Pmal.Pmc.GetFuelLevel();
         if (fuel >= 0)
           this.tbCurrentFuelLevel.Text = fuel.ToString();
       }
@@ -87,15 +81,15 @@ namespace PitMenuSampleApp
 
     private void cbCategory_ChangeCommitted(object sender, EventArgs e)
     {
-      this.Pmc.startUsingPitMenu();
-      this.Pmc.SetCategory(this.cbCategory.SelectedItem.ToString());
+      Pmal.Pmc.startUsingPitMenu();
+      Pmal.Pmc.SetCategory(this.cbCategory.SelectedItem.ToString());
       this.timer1.Start();
     }
 
     private void cbChoices_SelectionChangeCommitted(object sender, EventArgs e)
     {
-      this.Pmc.startUsingPitMenu();
-      this.Pmc.SetChoice(this.cbChoices.SelectedItem.ToString());
+      Pmal.Pmc.startUsingPitMenu();
+      Pmal.Pmc.SetChoice(this.cbChoices.SelectedItem.ToString());
       this.timer1.Start();
     }
 
@@ -107,8 +101,8 @@ namespace PitMenuSampleApp
         bool parsed = Int16.TryParse(tbSetFuel.Text, out level);
         if (parsed && level >= 0)
         {
-          this.Pmc.startUsingPitMenu();
-          this.Pmc.SetFuelLevel(level);
+          Pmal.Pmc.startUsingPitMenu();
+          Pmal.Pmc.SetFuelLevel(level);
           this.timer1.Start();
         }
       }
@@ -116,8 +110,8 @@ namespace PitMenuSampleApp
 
     private void cbTyreChoice_SelectionChangeCommitted(object sender, EventArgs e)
     {
-      this.Pmc.startUsingPitMenu();
-      this.Pmc.SetTyreType(ttDict[this.cbTyreChoice.SelectedItem.ToString()]);
+      Pmal.Pmc.startUsingPitMenu();
+      Pmal.Pmc.SetTyreType(ttDict[this.cbTyreChoice.SelectedItem.ToString()]);
       this.timer1.Start();
     }
 
@@ -129,18 +123,18 @@ namespace PitMenuSampleApp
 
     private void trackBarDelay_ValueChanged(object sender, EventArgs e)
     {
-      this.Pmc.setDelay(this.trackBarDelay.Value, this.trackBarInitialDelay.Value);
+      Pmal.Pmc.setDelay(this.trackBarDelay.Value, this.trackBarInitialDelay.Value);
       this.labelDelay.Text = this.trackBarDelay.Value.ToString() + " mS";
     }
     private void trackBarInitialDelay_ValueChanged(object sender, EventArgs e)
     {
-      this.Pmc.setDelay(this.trackBarDelay.Value, this.trackBarInitialDelay.Value);
+      Pmal.Pmc.setDelay(this.trackBarDelay.Value, this.trackBarInitialDelay.Value);
       this.labelInitialDelay.Text = this.trackBarInitialDelay.Value.ToString() + " mS";
     }
 
     private void comboBoxAllTyres_SelectionChangeCommitted(object sender, EventArgs e)
     {
-      this.Pmc.startUsingPitMenu();
+      Pmal.Pmc.startUsingPitMenu();
       this.lblSettingTyreType.Text = "Setting to " +
         ttDict[this.comboBoxAllTyres.SelectedItem.ToString()];
       Pmal.SetAllTyreTypes(ttDict[this.comboBoxAllTyres.SelectedItem.ToString()]);
@@ -156,7 +150,7 @@ namespace PitMenuSampleApp
 
     private void btnStartUsingPitMenu_Click(object sender, EventArgs e)
     {
-      this.Pmc.startUsingPitMenu();
+      Pmal.Pmc.startUsingPitMenu();
     }
 
     private void cbStressTest_CheckedChanged(object sender, EventArgs e)
@@ -168,26 +162,30 @@ namespace PitMenuSampleApp
         numericUpDownErrors.Value = 0;
         while (true)
         {
-          this.Pmc.startUsingPitMenu();
-          foreach (string tyreType in new[] { "Wet", "Hard", "Medium", "Soft" })
+          Pmal.Pmc.startUsingPitMenu();
+          foreach (string tyreType in Pmal.GetTyreTypeNames())
           {
+            if (tyreType == "No Change")
+            {
+              continue;
+            }
             foreach (string tyre in tyreCategories)
             {
-              Pmal.setCategoryAndChoice(tyre, ttDict[tyreType]);
-              //this.Pmc.SetCategory(tyre);
-              //this.Pmc.SetTyreType(ttDict[tyreType]);
+              Pmal.setCategoryAndChoice(tyre, tyreType);
               Application.DoEvents();
-              var catName = this.Pmc.GetCategory();
+              var catName = Pmal.Pmc.GetCategory();
               if (catName != tyre)
               {
                 numericUpDownErrors.Value += 1;
-                this.Pmc.startUsingPitMenu();
+                System.Threading.Thread.Sleep(1000);
+                Pmal.Pmc.startUsingPitMenu();
               }
-              var choiceStr = this.Pmc.GetChoice();
-              if (!choiceStr.Contains(ttDict[tyreType]))
+              var choiceStr = Pmal.Pmc.GetChoice();
+              if (!choiceStr.Contains(tyreType))
               {
                 numericUpDownErrors.Value += 1;
-                this.Pmc.startUsingPitMenu();
+                System.Threading.Thread.Sleep(1000);
+                Pmal.Pmc.startUsingPitMenu();
               }
 
               numericUpDownTests.Value += 1;
@@ -196,29 +194,29 @@ namespace PitMenuSampleApp
               if (!this.cbStressTest.Checked)
                 return;
             }
-            //this.timer1.Start();
           }
 
-          this.Pmc.SetFuelLevel(25);
-          if (!this.Pmc.GetChoice().Contains("25"))
+          Pmal.Pmc.SetFuelLevel(25);
+          if (!Pmal.Pmc.GetChoice().Contains("25"))
           {
             numericUpDownErrors.Value += 1;
-            this.Pmc.startUsingPitMenu();
+            System.Threading.Thread.Sleep(1000);
+            Pmal.Pmc.startUsingPitMenu();
           }
           if (!this.cbStressTest.Checked)
             return;
-          this.Pmc.SetCategory("FR TIRE:");
-          this.Pmc.SetTyreType("No Change");
-          this.Pmc.SetCategory("FL TIRE:");
-          this.Pmc.SetTyreType("No Change");
+          foreach (string tyre in Pmal.GetFrontTyreCategories())
+          {
+            Pmal.setCategoryAndChoice(tyre, "No Change");
+          }
           Application.DoEvents();
-          System.Threading.Thread.Sleep(1000);
-          this.Pmc.startUsingPitMenu();
-          this.Pmc.SetFuelLevel(15);
-          if (!this.Pmc.GetChoice().Contains("15"))
+          Pmal.Pmc.startUsingPitMenu();
+          Pmal.Pmc.SetFuelLevel(15);
+          if (!Pmal.Pmc.GetChoice().Contains("15"))
           {
             numericUpDownErrors.Value += 1;
-            this.Pmc.startUsingPitMenu();
+            System.Threading.Thread.Sleep(1000);
+            Pmal.Pmc.startUsingPitMenu();
           }
           if (!this.cbStressTest.Checked)
             return;
@@ -235,18 +233,18 @@ namespace PitMenuSampleApp
         numericUpDownErrors.Value = 0;
         while (this.cbTestStartup.Checked)
         {
-          Pmc.sendHWControl.SendHWControl("ToggleMFDA", true);
+          Pmal.Pmc.sendHWControl.SendHWControl("ToggleMFDA", true);
           System.Threading.Thread.Sleep(trackBarInitialDelay.Value);
-          Pmc.sendHWControl.SendHWControl("ToggleMFDA", false);
+          Pmal.Pmc.sendHWControl.SendHWControl("ToggleMFDA", false);
           System.Threading.Thread.Sleep(trackBarDelay.Value);
-          Pmc.sendHWControl.SendHWControl("ToggleMFDB", true); // Select rFactor Pit Menu
+          Pmal.Pmc.sendHWControl.SendHWControl("ToggleMFDB", true); // Select rFactor Pit Menu
           System.Threading.Thread.Sleep(trackBarDelay.Value);
-          Pmc.sendHWControl.SendHWControl("ToggleMFDB", false); // Select rFactor Pit Menu
+          Pmal.Pmc.sendHWControl.SendHWControl("ToggleMFDB", false); // Select rFactor Pit Menu
           System.Threading.Thread.Sleep(trackBarDelay.Value);
-          if (Pmc.SoftMatchCategory("TIRE") || Pmc.SoftMatchCategory("FUEL"))
+          if (Pmal.Pmc.SoftMatchCategory("TIRE") || Pmal.Pmc.SoftMatchCategory("FUEL"))
           {
             numericUpDownTests.Value += 1;
-            this.Pmc.CategoryDown();
+            Pmal.Pmc.CategoryDown();
           }
           else
           {

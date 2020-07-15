@@ -14,7 +14,7 @@ namespace PitMenuAPI
     /// </summary>
     public static class PitMenuAbstractionLayer // : PitMenuController
     {
-        static PitMenuController Pmc = new PitMenuController();
+        public static PitMenuController Pmc = new PitMenuController();
         //static MenuLayout menuLayout = new MenuLayout();
 
         /// <summary>
@@ -102,11 +102,28 @@ namespace PitMenuAPI
         /// set of compounds available
         /// </summary>
         /// <returns>
-        /// A list of the front tyre changes provided for this vehicle
+        /// A sorted list of the front tyre changes provided for this vehicle
         /// </returns>
         public static List<string> GetFrontTyreCategories()
         {
-            return frontTyreCategories.Intersect(MenuLayout.getKeys()).ToList();
+            List<string> result =
+                frontTyreCategories.Intersect(MenuLayout.getKeys()).ToList();
+            result.Sort();
+            return result;
+        }
+
+        /// <summary>
+        /// Get a list of all the tyre changes provided for this vehicle.
+        /// </summary>
+        /// <returns>
+        /// A sorted list of all the tyre changes provided for this vehicle
+        /// </returns>
+        public static List<string> GetAllTyreCategories()
+        {
+            List<string> result =
+                tyreCategories.Intersect(MenuLayout.getKeys()).ToList();
+            result.Sort();
+            return result;
         }
 
         public static string GetCurrentTyreType()
