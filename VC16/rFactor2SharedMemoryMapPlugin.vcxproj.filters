@@ -46,14 +46,6 @@
     <None Include="..\README.md" />
   </ItemGroup>
   <ItemGroup>
-    <Image Include="..\Documentation\rF2SharedMemoryHWControl.jpg">
-      <Filter>Documentation</Filter>
-    </Image>
-  </ItemGroup>
-  <ItemGroup>
-    <Text Include="..\Documentation\rF2SharedMemoryHWControl.txt">
-      <Filter>Documentation</Filter>
-    </Text>
     <Text Include="..\Documentation\CheckHWControl_strings.txt">
       <Filter>Documentation</Filter>
     </Text>
