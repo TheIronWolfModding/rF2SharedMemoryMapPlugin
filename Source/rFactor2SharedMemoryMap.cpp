@@ -10,7 +10,7 @@ Acknowledgements:
     - rF2 Internals Plugin sample #7 by ISI/S397 found at: https://www.studio-397.com/modding-resources/
   Was inspired by:
     - rF1 Shared Memory Map Plugin by Dan Allongo found at: https://github.com/dallongo/rFactorSharedMemoryMap
-  With contributions by: Tony Whitley
+  With contributions by: Morten Roslev and Tony Whitley
 
 
 Shared resources:
@@ -222,7 +222,7 @@ SharedMemoryPlugin::SharedMemoryPlugin()
     , mWeather(SharedMemoryPlugin::MM_WEATHER_FILE_NAME)
     , mHWControl(SharedMemoryPlugin::MM_HWCONTROL_FILE_NAME, rF2HWControl::SUPPORTED_LAYOUT_VERSION)
     , mWeatherControl(SharedMemoryPlugin::MM_WEATHER_CONTROL_FILE_NAME, rF2WeatherControl::SUPPORTED_LAYOUT_VERSION)
-    , mRulesControl(SharedMemoryPlugin::MM_RULES_CONTROL_FILE_NAME, rF2HWControl::SUPPORTED_LAYOUT_VERSION)
+    , mRulesControl(SharedMemoryPlugin::MM_RULES_CONTROL_FILE_NAME, rF2RulesControl::SUPPORTED_LAYOUT_VERSION)
     , mPluginControl(SharedMemoryPlugin::MM_PLUGIN_CONTROL_FILE_NAME, rF2PluginControl::SUPPORTED_LAYOUT_VERSION)
 {
   memset(mParticipantTelemetryUpdated, 0, sizeof(mParticipantTelemetryUpdated));
@@ -326,7 +326,7 @@ void SharedMemoryPlugin::Startup(long version)
   assert(sizeof(rF2Rules) == offsetof(rF2Rules, mParticipants[rF2MappedBufferHeader::MAX_MAPPED_VEHICLES]));
   assert(sizeof(rF2MultiRules) == offsetof(rF2MultiRules, mParticipants[rF2MappedBufferHeader::MAX_MAPPED_VEHICLES]));
 
-  // Figure out input buffer dependencies.
+  // Figure out the input buffer dependency state.
   auto hwCtrlDependencyMissing = false;
   if (SharedMemoryPlugin::msHWControlInputRequested)
     hwCtrlDependencyMissing = IsHWControlInputDependencyMissing();
@@ -403,6 +403,9 @@ void SharedMemoryPlugin::Shutdown()
 
   mIsMapped = false;
 
+  mExtended.ClearState(nullptr /*pInitialContents*/);
+  mExtended.ReleaseResources();
+
   mTelemetry.ClearState(nullptr /*pInitialContents*/);
   mTelemetry.ReleaseResources();
 
@@ -420,9 +423,6 @@ void SharedMemoryPlugin::Shutdown()
 
   mGraphics.ClearState(nullptr /*pInitialContents*/);
   mGraphics.ReleaseResources();
-
-  mExtended.ClearState(nullptr /*pInitialContents*/);
-  mExtended.ReleaseResources();
 
   mPitInfo.ClearState(nullptr /*pInitialContents*/);
   mPitInfo.ReleaseResources();
@@ -479,14 +479,13 @@ void SharedMemoryPlugin::ClearState()
   mForceFeedback.ClearState(nullptr /*pInitialContents*/);
   mGraphics.ClearState(nullptr /*pInitialContents*/);
   // Do not clear mMultiRules as they're updated in between sessions.
+  mPitInfo.ClearState(nullptr /*pInitialContents*/);
+  mWeather.ClearState(nullptr /*pInitialContents*/);
 
   // Certain members of the extended state persist between restarts/sessions.
   // So, clear the state but pass persisting state as initial state.
   mExtStateTracker.ClearState();
   mExtended.ClearState(&(mExtStateTracker.mExtended));
-
-  mPitInfo.ClearState(nullptr /*pInitialContents*/);
-  mWeather.ClearState(nullptr /*pInitialContents*/);
 
   ClearTimingsAndCounters();
 }
@@ -843,7 +842,7 @@ bool SharedMemoryPlugin::InitMappedBuffer(BuffT& buffer, char const* const buffL
     return false;
   }
 
-  auto size = static_cast<int>(sizeof(BuffT::BufferType) + sizeof(rF2MappedBufferVersionBlock));
+  auto const size = static_cast<int>(sizeof(BuffT::BufferType) + sizeof(rF2MappedBufferVersionBlock));
   DEBUG_MSG(DebugLevel::CriticalInfo, DebugSource::General, "Size of the %s buffer: %d bytes.", buffLogicalName, size);
 
   return true;
@@ -858,7 +857,7 @@ bool SharedMemoryPlugin::InitMappedInputBuffer(BuffT& buffer, char const* const 
     return false;
   }
 
-  auto size = static_cast<int>(sizeof(BuffT::BufferType) + sizeof(rF2MappedBufferVersionBlock));
+  auto const size = static_cast<int>(sizeof(BuffT::BufferType) + sizeof(rF2MappedBufferVersionBlock));
   DEBUG_MSG(DebugLevel::CriticalInfo, DebugSource::General, "Size of the %s buffer: %d bytes.  %s input buffer supported layout version: '%ld'", buffLogicalName, size, buffLogicalName, BuffT::BufferType::SUPPORTED_LAYOUT_VERSION);
 
   return true;
@@ -961,8 +960,10 @@ void SharedMemoryPlugin::ReadHWControl()
     || !mExtStateTracker.mExtended.mHWControlInputEnabled)
     return;
 
+  static auto const BOOST_COUNTER_THRESHOULD_END = 500 / 20;  // 500ms boost.
+
   // Control the rate of reads.
-  auto const needsBoost = ++mHWControlRequestBoostCounter < 25;  // 500ms boost.
+  auto const needsBoost = ++mHWControlRequestBoostCounter < BOOST_COUNTER_THRESHOULD_END;
   ++mHWControlRequestReadCounter;
   if (!needsBoost
     && (mHWControlRequestReadCounter % 10) != 0) // Normal 200ms poll (this function is called at 20ms update rate))
@@ -983,7 +984,7 @@ void SharedMemoryPlugin::ReadHWControl()
     }
 
     mHWControlInputRequestReceived = true;
-    mHWControlRequestBoostCounter = 0;  // Boost refresh for the next 100ms.
+    mHWControlRequestBoostCounter = 0;  // Boost refresh for the next 500ms.
 
     if (Utils::IsFlagOn(SharedMemoryPlugin::msDebugOutputLevel, DebugLevel::DevInfo)) {
       DEBUG_MSG(DebugLevel::DevInfo, DebugSource::HWControlInput, "HWControl: received:  '%s'  %1.1f   boosted: '%s'", 
@@ -993,7 +994,7 @@ void SharedMemoryPlugin::ReadHWControl()
   }
 
   // Guard against bad inputs, even though it is not plugin's job to do that really.
-  if (mHWControlRequestBoostCounter >= 25
+  if (mHWControlRequestBoostCounter >= BOOST_COUNTER_THRESHOULD_END
     && mHWControlInputRequestReceived) {
     mHWControlInputRequestReceived = false;
     DEBUG_MSG(DebugLevel::Errors, DebugSource::General, "Resetting mHWControlInputRequestReceived for input value: '%s'.  Bad input value?", mHWControl.mReadBuff.mControlName);
@@ -1216,10 +1217,10 @@ bool SharedMemoryPlugin::AccessTrackRules(TrackRulesV01& info)
     memcpy(&info, &(mRulesControl.mReadBuff.mTrackRules), sizeof(TrackRulesV01));
 
     if (info.mNumActions != numActions)
-        DEBUG_MSG(DebugLevel::Warnings, DebugSource::General, "Rules control input: mNumActions mismatch.");
+      DEBUG_MSG(DebugLevel::Warnings, DebugSource::General, "Rules control input: mNumActions mismatch.");
 
     if (info.mNumParticipants != numParticipants)
-        DEBUG_MSG(DebugLevel::Warnings, DebugSource::General, "Rules control input: mNumParticipants mismatch.");
+      DEBUG_MSG(DebugLevel::Warnings, DebugSource::General, "Rules control input: mNumParticipants mismatch.");
 
     info.mCurrentET = currentET;
     info.mNumActions = numActions;
@@ -1317,7 +1318,6 @@ bool SharedMemoryPlugin::AccessMultiSessionRules(MultiSessionRulesV01& info)
 }
 
 
-
 void SharedMemoryPlugin::UpdateGraphics(GraphicsInfoV02 const& info)
 {
   if (!mIsMapped)
@@ -1371,7 +1371,8 @@ bool SharedMemoryPlugin::CheckHWControl(char const* const controlName, double& f
   DEBUG_MSG(DebugLevel::Timing, DebugSource::HWControlInput, "CheckHWControl - invoked for: '%s'", controlName);
 
   // Note that we disable this callback if there's no pending HWControl update.
-  // However, game checks if we have input to processs once per frame, so mHWControlInputRequestReceived can be false after we handled it.
+  // However, game checks if we have input to processs once per frame, so mHWControlInputRequestReceived can still be false after we handled it
+  // (until the next HasHardwareInputs() test).
   if (!mHWControlInputRequestReceived) {
     DEBUG_MSG(DebugLevel::Timing, DebugSource::HWControlInput, "CheckHWControl - skipping processing, no pending input.");
     return false;

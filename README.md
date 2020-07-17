@@ -44,7 +44,7 @@ Note: `Graphics` and `Weather` are unsbscribed from by default.
 ## Input Buffers
 Note to cheaters who dare to contact me with questions: none of this can be used to control vehicle.
 
-Plugin supports sending input to the game (using rFactor 2 API).  Please use this stuff with extreme care - it can cause game freezes and unexpected behavior.
+Plugin supports sending input to the game (using rFactor 2 API).  Please use this stuff with extreme care - it can cause game freezes and unexpected behavior.  When working with the input buffers, make sure to set `DebugOutputLevel` to `15` and `DebugOutputSource` to `32767` and review `UserData\Log\RF2SMMP_DebugOutput.txt` for errors and warnings.
 
 Monitor app includes sample code that uses Input buffers.
 
