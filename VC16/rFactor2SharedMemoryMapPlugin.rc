@@ -67,8 +67,8 @@ BEGIN
     BEGIN
         BLOCK "080904b0"
         BEGIN
-            VALUE "CompanyName", "The Iron Wolf Enterprises"
-            VALUE "FileDescription", "words"
+            VALUE "CompanyName", "The Iron Wolf Modding"
+            VALUE "FileDescription", "rFactor 2 Shared Memory Map Plugin that gives clients access to rFactor 2's shared memory and HWControl."
             VALUE "FileVersion", "3.7.13.3"
             VALUE "InternalName", "rFactor2SharedMemoryMapPlugin64.dll"
             VALUE "LegalCopyright", "Copyright (C) 2020 TheIronWolf. All rights reserved."

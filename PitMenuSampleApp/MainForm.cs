@@ -39,9 +39,11 @@ namespace PitMenuSampleApp
       {
         Pmal.Connect();
         List<string> _tyreTypes = Pmal.GetTyreTypeNames();
+#if false
         ttDict = Pmal.TranslateTyreTypes(
           PitMenuAbstractionLayer.SampleTyreDict,
           _tyreTypes);
+#endif
         tyreCategories = Pmal.GetAllTyreCategories();
       }
       this.timer1.Start();
