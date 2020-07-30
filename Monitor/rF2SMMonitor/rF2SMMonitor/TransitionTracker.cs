@@ -1327,7 +1327,6 @@ namespace rF2SMMonitor
       public float SafetyCarSpeed = -1.0f;
     }
 
-    //pitmenu
     internal void TrackRules(ref rF2Scoring scoring, ref rF2Telemetry telemetry, ref rF2Rules rules, ref rF2Extended extended, Graphics g, bool logToFile)
     {
       if (logToFile)

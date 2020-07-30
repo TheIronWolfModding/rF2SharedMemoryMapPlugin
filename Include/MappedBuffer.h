@@ -304,8 +304,8 @@ private:
 
     // Set pointers up.
     pBufVersionBlock = static_cast<rF2MappedBufferVersionBlock*>(mpMappedView);
-    pBuf = reinterpret_cast<BuffT*>(static_cast<char*>(pMappedView) + sizeof(pBufVersionBlock));
-    assert((reinterpret_cast<char*>(pBufVersionBlock) + sizeof(pBufVersionBlock)) == reinterpret_cast<char*>(pBuf));
+    pBuf = reinterpret_cast<BuffT*>(static_cast<char*>(pMappedView) + sizeof(rF2MappedBufferVersionBlock));
+    assert((reinterpret_cast<char*>(pBufVersionBlock) + sizeof(rF2MappedBufferVersionBlock)) == reinterpret_cast<char*>(pBuf));
 
     return hMap;
   }

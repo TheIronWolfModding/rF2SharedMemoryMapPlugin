@@ -1080,8 +1080,7 @@ namespace rF2SMMonitor
       public uint mVersionUpdateBegin;          // Incremented right before buffer is written to.
       public uint mVersionUpdateEnd;            // Incremented after buffer write is done.
 
-      public int mLayoutVersion;             // How many bytes of the structure were written during the last update.
-                                             // 0 means unknown (whole buffer should be considered as updated).
+      public int mLayoutVersion;
 
       public rF2TrackRules mTrackRules;
 
