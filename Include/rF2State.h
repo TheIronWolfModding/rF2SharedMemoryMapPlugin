@@ -716,7 +716,7 @@ struct rF2TrackRules
   float mMaximumSpeed;                  // maximum speed that anybody should be driving (-1 to indicate no limit)
 
   char mMessage[ 96 ];                  // a message for everybody to explain what is going on (which will get run through translator on client machines)
-  
+
   // MM_NOT_USED
   // TrackRulesParticipantV01 *mParticipant;         // array of partipants (vehicles)
   // MM_NEW
@@ -794,6 +794,53 @@ struct rF2MultiSessionRules
 static_assert(sizeof(rF2MultiSessionRules) == sizeof(MultiSessionRulesV01), "rF2MultiSessionRules and MultiSessionRulesV01 structs are out of sync");
 
 
+//////////////////////////////////////////////////////////////////////////////////////////
+// Identical to PitMenuV01, except where noted by MM_NEW/MM_NOT_USED comments.
+//////////////////////////////////////////////////////////////////////////////////////////
+struct rF2PitMenu
+{
+  long mCategoryIndex;                  // index of the current category
+  char mCategoryName[32];               // name of the current category (untranslated)
+
+  long mChoiceIndex;                    // index of the current choice (within the current category)
+  char mChoiceString[32];               // name of the current choice (may have some translated words)
+  long mNumChoices;                     // total number of choices (0 <= mChoiceIndex < mNumChoices)
+
+  unsigned char mExpansion[256];        // for future use
+};
+static_assert(sizeof(rF2PitMenu) == sizeof(PitMenuV01), "rF2PitMenu and PitMenuV0 structs are out of sync");
+
+
+//////////////////////////////////////////////////////////////////////////////////////////
+// Identical to WeatherControlInfoV01, except where noted by MM_NEW/MM_NOT_USED comments.
+//////////////////////////////////////////////////////////////////////////////////////////
+struct rF2WeatherControlInfo
+{
+  // The current conditions are passed in with the API call. The following ET (Elapsed Time) value should typically be far
+  // enough in the future that it can be interpolated smoothly, and allow clouds time to roll in before rain starts. In
+  // other words you probably shouldn't have mCloudiness and mRaining suddenly change from 0.0 to 1.0 and expect that
+  // to happen in a few seconds without looking crazy.
+  double mET;                           // when you want this weather to take effect
+
+  // mRaining[1][1] is at the origin (2013.12.19 - and currently the only implemented node), while the others
+  // are spaced at <trackNodeSize> meters where <trackNodeSize> is the maximum absolute value of a track vertex
+  // coordinate (and is passed into the API call).
+  double mRaining[3][3];            // rain (0.0-1.0) at different nodes
+
+  double mCloudiness;                   // general cloudiness (0.0=clear to 1.0=dark), will be automatically overridden to help ensure clouds exist over rainy areas
+  double mAmbientTempK;                 // ambient temperature (Kelvin)
+  double mWindMaxSpeed;                 // maximum speed of wind (ground speed, but it affects how fast the clouds move, too)
+
+  bool mApplyCloudinessInstantly;       // preferably we roll the new clouds in, but you can instantly change them now
+  bool mUnused1;                        //
+  bool mUnused2;                        //
+  bool mUnused3;                        //
+
+  unsigned char mExpansion[508];      // future use (humidity, pressure, air density, etc.)
+};
+static_assert(sizeof(rF2WeatherControlInfo) == sizeof(WeatherControlInfoV01), "rF2WeatherControlInfo and WeatherControlInfoV01 structs are out of sync");
+
+
 ///////////////////////////////////////////
 // Mapped wrapper structures
 ///////////////////////////////////////////
@@ -808,9 +855,6 @@ struct rF2MappedBufferVersionBlock
 struct rF2MappedBufferHeader
 {
   static int const MAX_MAPPED_VEHICLES = 128;
-  static int const MAX_MAPPED_IDS = 512;
-  static int const MAX_STATUS_MSG_LEN = 128;
-  static int const MAX_RULES_INSTRUCTION_MSG_LEN = 96;
 };
 
 
@@ -866,6 +910,12 @@ struct rF2Graphics : public rF2MappedBufferHeader
 };
 
 
+struct rF2PitInfo : public rF2MappedBufferHeader
+{
+  rF2PitMenu mPitMenu;
+};
+
+
 struct rF2TrackedDamage
 {
   double mMaxImpactMagnitude;                 // Max impact magnitude.  Tracked on every telemetry update, and reset on visit to pits or Session restart.
@@ -895,16 +945,27 @@ struct rF2SessionTransitionCapture
 };
 
 
+struct rF2Weather : public rF2MappedBufferHeader
+{
+  double mTrackNodeSize;
+  rF2WeatherControlInfo mWeatherInfo;
+};
+
+
 struct rF2Extended : public rF2MappedBufferHeader
 {
+  static int const MAX_MAPPED_IDS = 512;
+  static int const MAX_STATUS_MSG_LEN = 128;
+  static int const MAX_RULES_INSTRUCTION_MSG_LEN = 96;
+
   char mVersion[12];                           // API version
   bool is64bit;                                // Is 64bit plugin?
 
   // Physics options (updated on session start):
   rF2PhysicsOptions mPhysics;
 
-  // Damage tracking for each vehicle (indexed by mID % rF2MappedBufferHeader::MAX_MAPPED_IDS):
-  rF2TrackedDamage mTrackedDamages[rF2MappedBufferHeader::MAX_MAPPED_IDS];
+  // Damage tracking for each vehicle (indexed by mID % rF2Extended::MAX_MAPPED_IDS):
+  rF2TrackedDamage mTrackedDamages[rF2Extended::MAX_MAPPED_IDS];
 
   // Function call based flags:
   bool mInRealtimeFC;                         // in realtime as opposed to at the monitor (reported via last EnterRealtime/ExitRealtime calls).
@@ -925,10 +986,10 @@ struct rF2Extended : public rF2MappedBufferHeader
   bool mDirectMemoryAccessEnabled;
 
   ULONGLONG mTicksStatusMessageUpdated;             // Ticks when status message was updated;
-  char mStatusMessage[rF2MappedBufferHeader::MAX_STATUS_MSG_LEN];
+  char mStatusMessage[rF2Extended::MAX_STATUS_MSG_LEN];
 
   ULONGLONG mTicksLastHistoryMessageUpdated;        // Ticks when last message history message was updated;
-  char mLastHistoryMessage[rF2MappedBufferHeader::MAX_STATUS_MSG_LEN];
+  char mLastHistoryMessage[rF2Extended::MAX_STATUS_MSG_LEN];
 
   float mCurrentPitSpeedLimit;                      // speed limit m/s.
 
@@ -936,18 +997,75 @@ struct rF2Extended : public rF2MappedBufferHeader
   long mSCRPluginDoubleFileType;                    // Stock Car Rules plugin DoubleFileType value, only meaningful if mSCRPluginEnabled is true.
 
   ULONGLONG mTicksLSIPhaseMessageUpdated;           // Ticks when last LSI phase message was updated.
-  char mLSIPhaseMessage[rF2MappedBufferHeader::MAX_RULES_INSTRUCTION_MSG_LEN];
+  char mLSIPhaseMessage[rF2Extended::MAX_RULES_INSTRUCTION_MSG_LEN];
 
   ULONGLONG mTicksLSIPitStateMessageUpdated;        // Ticks when last LSI pit state message was updated.
-  char mLSIPitStateMessage[rF2MappedBufferHeader::MAX_RULES_INSTRUCTION_MSG_LEN];
+  char mLSIPitStateMessage[rF2Extended::MAX_RULES_INSTRUCTION_MSG_LEN];
 
   ULONGLONG mTicksLSIOrderInstructionMessageUpdated;     // Ticks when last LSI order instruction message was updated.
-  char mLSIOrderInstructionMessage[rF2MappedBufferHeader::MAX_RULES_INSTRUCTION_MSG_LEN];
+  char mLSIOrderInstructionMessage[rF2Extended::MAX_RULES_INSTRUCTION_MSG_LEN];
 
   ULONGLONG mTicksLSIRulesInstructionMessageUpdated;     // Ticks when last FCY rules message was updated.  Currently, only SCR plugin sets that.
-  char mLSIRulesInstructionMessage[rF2MappedBufferHeader::MAX_RULES_INSTRUCTION_MSG_LEN];
+  char mLSIRulesInstructionMessage[rF2Extended::MAX_RULES_INSTRUCTION_MSG_LEN];
 
   long mUnsubscribedBuffersMask;                  // Currently active UnsbscribedBuffersMask value.  This will be allowed for clients to write to in the future, but not yet.
+
+  bool mHWControlInputEnabled;                    // HWControl input buffer is enabled.
+  bool mWeatherControlInputEnabled;               // Weather Control input buffer is enabled.
+  bool mRulesControlInputEnabled;                 // Rules Control input buffer is enabled.
+  bool mPluginControlInputEnabled;                // Plugin Control input buffer is enabled.
 };
+
+
+struct rF2MappedInputBufferHeader : public rF2MappedBufferHeader
+{
+  long mLayoutVersion;
+};
+
+struct rF2HWControl : public rF2MappedInputBufferHeader
+{
+  static int const MAX_HWCONTROL_NAME_LEN = 96;
+
+  // Version supported by the _current_ plugin.
+  static long const SUPPORTED_LAYOUT_VERSION = 1L;
+
+  char mControlName[rF2HWControl::MAX_HWCONTROL_NAME_LEN];
+  double mfRetVal;
+};
+
+
+struct rF2WeatherControl : public rF2MappedInputBufferHeader
+{
+  // Version supported by the _current_ plugin.
+  static long const SUPPORTED_LAYOUT_VERSION = 1L;
+
+  rF2WeatherControlInfo mWeatherInfo;
+};
+
+
+struct rF2RulesControl : public rF2MappedInputBufferHeader
+{
+  // Version supported by the _current_ plugin.
+  static long const SUPPORTED_LAYOUT_VERSION = 1L;
+
+  rF2TrackRules mTrackRules;
+
+  rF2TrackRulesAction mActions[rF2MappedBufferHeader::MAX_MAPPED_VEHICLES];
+  rF2TrackRulesParticipant mParticipants[rF2MappedBufferHeader::MAX_MAPPED_VEHICLES];
+};
+
+
+struct rF2PluginControl : public rF2MappedInputBufferHeader
+{
+  // Version supported by the _current_ plugin.
+  static long const SUPPORTED_LAYOUT_VERSION = 1L;
+
+  // Note: turning Scoring update on cannot be requested
+  long mRequestEnableBuffersMask;
+  bool mRequestHWControlInput;
+  bool mRequestWeatherControlInput;
+  bool mRequestRulesControlInput;
+};
+
 
 #pragma pack(pop)

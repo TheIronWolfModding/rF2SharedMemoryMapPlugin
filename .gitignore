@@ -139,7 +139,7 @@ publish/
 # Publish Web Output
 *.[Pp]ublish.xml
 *.azurePubxml
-# TODO: Comment the next line if you want to checkin your web deploy settings
+# TO DO: Comment the next line if you want to checkin your web deploy settings
 # but database connection strings (with potential passwords) will be unencrypted
 *.pubxml
 *.publishproj
@@ -249,3 +249,6 @@ paket-files/
 # JetBrains Rider
 .idea/
 *.sln.iml
+/UnitTest/pch.h
+/UnitTest/pch.cpp
+/Monitor/rF2SMMonitor/rF2SMMonitor/MainForm.cs.new

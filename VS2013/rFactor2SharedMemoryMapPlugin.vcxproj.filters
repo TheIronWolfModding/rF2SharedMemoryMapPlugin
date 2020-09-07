@@ -2,9 +2,9 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="..\Source\rFactor2SharedMemoryMap.cpp" />
-    <ClCompile Include="ISIInternalsDump.cpp" />
     <ClCompile Include="..\source\DirectMemoryReader.cpp" />
     <ClCompile Include="..\source\Utils.cpp" />
+    <ClCompile Include="..\source\ISIInternalsDump.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Include\InternalsPlugin.hpp">

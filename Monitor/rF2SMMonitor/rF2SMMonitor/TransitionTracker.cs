@@ -69,7 +69,6 @@ namespace rF2SMMonitor
     }
 
 
-    // TODO: Telemetry section
     // Telemetry values (separate section)
 
     internal class PhaseAndState
@@ -1996,10 +1995,7 @@ namespace rF2SMMonitor
             action = FrozenOrderAction.AllowToPass;
           }
           else
-          {
-            // TODO: print msg.
             Debug.Assert(false, "unhandled action");
-          }
 
           if (!string.IsNullOrWhiteSpace(prefix))
           {

@@ -11,8 +11,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
-using System.IO;
-using System.IO.MemoryMappedFiles;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
@@ -35,277 +33,21 @@ namespace rF2SMMonitor
     System.Windows.Forms.Timer disconnectTimer = new System.Windows.Forms.Timer();
     bool connected = false;
 
-    private class MappedBuffer<MappedBufferT>
-    {
-      const int NUM_MAX_RETRIEES = 10;
-      readonly int RF2_BUFFER_VERSION_BLOCK_SIZE_BYTES = Marshal.SizeOf(typeof(rF2MappedBufferVersionBlock));
-      readonly int RF2_BUFFER_VERSION_BLOCK_WITH_SIZE_SIZE_BYTES = Marshal.SizeOf(typeof(rF2MappedBufferVersionBlockWithSize));
-
-      readonly int BUFFER_SIZE_BYTES;
-      readonly string BUFFER_NAME;
-
-      // Holds the entire byte array that can be marshalled to a MappedBufferT.  Partial updates
-      // only read changed part of buffer, ignoring trailing uninteresting bytes.  However,
-      // to marshal we still need to supply entire structure size.  So, on update new bytes are copied
-      // (outside of the mutex).
-      byte[] fullSizeBuffer = null;
-
-      MemoryMappedFile memoryMappedFile = null;
-
-      bool partial = false;
-      bool skipUnchanged = false;
-      public MappedBuffer(string buffName, bool partial, bool skipUnchanged)
-      {
-        this.BUFFER_SIZE_BYTES = Marshal.SizeOf(typeof(MappedBufferT));
-        this.BUFFER_NAME = buffName;
-        this.partial = partial;
-        this.skipUnchanged = skipUnchanged;
-      }
-
-      public void Connect()
-      {
-        this.memoryMappedFile = MemoryMappedFile.OpenExisting(this.BUFFER_NAME);
-
-        // NOTE: Make sure that BUFFER_SIZE matches the structure size in the plugin (debug mode prints that).
-        this.fullSizeBuffer = new byte[this.BUFFER_SIZE_BYTES];
-      }
-
-      public void Disconnect()
-      {
-        if (this.memoryMappedFile != null)
-          this.memoryMappedFile.Dispose();
-
-        this.memoryMappedFile = null;
-        this.fullSizeBuffer = null;
-
-	this.ClearStats();
-      }
-
-      // Read success statistics.
-      int numReadRetriesPreCheck = 0;
-      int numReadRetries = 0;
-      int numReadRetriesOnCheck = 0;
-      int numReadFailures = 0;
-      int numStuckFrames = 0;
-      int numReadsSucceeded = 0;
-      int numSkippedNoChange = 0;
-      uint stuckVersionBegin = 0;
-      uint stuckVersionEnd = 0;
-      uint lastSuccessVersionBegin = 0;
-      uint lastSuccessVersionEnd = 0;
-      int maxRetries = 0;
-
-      public string GetStats()
-      {
-        return string.Format("R1: {0}    R2: {1}    R3: {2}    F: {3}    ST: {4}    MR: {5}    SK:{6}    S:{7}", this.numReadRetriesPreCheck, this.numReadRetries, this.numReadRetriesOnCheck, this.numReadFailures, this.numStuckFrames, this.maxRetries, this.numSkippedNoChange, this.numReadsSucceeded);
-      }
-
-      public void ClearStats()
-      {
-        this.numReadRetriesPreCheck = 0;
-        this.numReadRetries = 0;
-        this.numReadRetriesOnCheck = 0;
-        this.numReadFailures = 0;
-        this.numStuckFrames = 0;
-        this.numReadsSucceeded = 0;
-        this.numSkippedNoChange = 0;
-        this.maxRetries = 0;
-      }
-
-      public void GetMappedDataUnsynchronized(ref MappedBufferT mappedData)
-      {
-        using (var sharedMemoryStreamView = this.memoryMappedFile.CreateViewStream())
-        {
-          var sharedMemoryStream = new BinaryReader(sharedMemoryStreamView);
-          var sharedMemoryReadBuffer = sharedMemoryStream.ReadBytes(this.BUFFER_SIZE_BYTES);
-
-          var handleBuffer = GCHandle.Alloc(sharedMemoryReadBuffer, GCHandleType.Pinned);
-          mappedData = (MappedBufferT)Marshal.PtrToStructure(handleBuffer.AddrOfPinnedObject(), typeof(MappedBufferT));
-          handleBuffer.Free();
-        }
-      }
-
-      private void GetHeaderBlock<HeaderBlockT>(BinaryReader sharedMemoryStream, int headerBlockBytes, ref HeaderBlockT headerBlock)
-      {
-        sharedMemoryStream.BaseStream.Position = 0;
-        var sharedMemoryReadBufferHeader = sharedMemoryStream.ReadBytes(headerBlockBytes);
-
-        var handleBufferHeader = GCHandle.Alloc(sharedMemoryReadBufferHeader, GCHandleType.Pinned);
-        headerBlock = (HeaderBlockT)Marshal.PtrToStructure(handleBufferHeader.AddrOfPinnedObject(), typeof(HeaderBlockT));
-        handleBufferHeader.Free();
-      }
-
-      public void GetMappedData(ref MappedBufferT mappedData)
-      {
-        // This method tries to ensure we read consistent buffer view in three steps.
-        // 1. Pre-Check:
-        //       - read version header and retry reading this buffer if begin/end versions don't match.  This reduces a chance of 
-        //         reading torn frame during full buffer read.  This saves CPU time.
-        //       - return if version matches last failed read version (stuck frame).
-        //       - return if version matches previously successfully read buffer.  This saves CPU time by avoiding the full read of most likely identical data.
-        //
-        // 2. Main Read: reads the main buffer + version block.  If versions don't match, retry.
-        //
-        // 3. Post-Check: read version header again and retry reading this buffer if begin/end versions don't match.  This covers corner case
-        //                where buffer is being written to during the Main Read.
-        //
-        // While retrying, this method tries to avoid running CPU at 100%.
-        //
-        // There are multiple alternatives on what to do here:
-        // * keep retrying - drawback is CPU being kept busy, but absolute minimum latency.
-        // * Thread.Sleep(0)/Yield - drawback is CPU being kept busy, but almost minimum latency.  Compared to first option, gives other threads a chance to execute.
-        // * Thread.Sleep(N) - relaxed approach, less CPU saturation but adds a bit of latency.
-        // there are other options too.  Bearing in mind that minimum sleep on windows is ~16ms, which is around 66FPS, I doubt delay added matters much for Crew Chief at least.
-        using (var sharedMemoryStreamView = this.memoryMappedFile.CreateViewStream())
-        {
-          uint currVersionBegin = 0;
-          uint currVersionEnd = 0;
-
-          var retry = 0;
-          var sharedMemoryStream = new BinaryReader(sharedMemoryStreamView);
-          byte[] sharedMemoryReadBuffer = null;
-          var versionHeaderWithSize = new rF2MappedBufferVersionBlockWithSize();
-          var versionHeader = new rF2MappedBufferVersionBlock();
-
-          for (retry = 0; retry < MappedBuffer<MappedBufferT>.NUM_MAX_RETRIEES; ++retry)
-          {
-            var bufferSizeBytes = this.BUFFER_SIZE_BYTES;
-            // Read current buffer versions.
-            if (this.partial)
-            {
-              this.GetHeaderBlock<rF2MappedBufferVersionBlockWithSize>(sharedMemoryStream, this.RF2_BUFFER_VERSION_BLOCK_WITH_SIZE_SIZE_BYTES, ref versionHeaderWithSize);
-              currVersionBegin = versionHeaderWithSize.mVersionUpdateBegin;
-              currVersionEnd = versionHeaderWithSize.mVersionUpdateEnd;
-
-              bufferSizeBytes = versionHeaderWithSize.mBytesUpdatedHint != 0 ? versionHeaderWithSize.mBytesUpdatedHint : bufferSizeBytes;
-            }
-            else
-            {
-              this.GetHeaderBlock<rF2MappedBufferVersionBlock>(sharedMemoryStream, this.RF2_BUFFER_VERSION_BLOCK_SIZE_BYTES, ref versionHeader);
-              currVersionBegin = versionHeader.mVersionUpdateBegin;
-              currVersionEnd = versionHeader.mVersionUpdateEnd;
-            }
-
-            // If this is stale "out of sync" situation, that is, we're stuck in, no point in retrying here.
-            // Could be a bug in a game, plugin or a game crash.
-            if (currVersionBegin == this.stuckVersionBegin
-              && currVersionEnd == this.stuckVersionEnd)
-            {
-              ++this.numStuckFrames;
-              return;  // Failed.
-            }
-
-            // If version is the same as previously successfully read, do nothing.
-            if (this.skipUnchanged
-              && currVersionBegin == this.lastSuccessVersionBegin
-              && currVersionEnd == this.lastSuccessVersionEnd)
-            {
-              ++this.numSkippedNoChange;
-              return;
-            }
-
-            // Buffer version pre-check.  Verify if Begin/End versions match.
-            if (currVersionBegin != currVersionEnd)
-            {
-             Thread.Sleep(1);
-              ++numReadRetriesPreCheck;
-              continue;
-            }
-
-            // Read the mapped data.
-            sharedMemoryStream.BaseStream.Position = 0;
-            sharedMemoryReadBuffer = sharedMemoryStream.ReadBytes(bufferSizeBytes);
-
-            // Marshal version block.
-            var handleVersionBlock = GCHandle.Alloc(sharedMemoryReadBuffer, GCHandleType.Pinned);
-            versionHeader = (rF2MappedBufferVersionBlock)Marshal.PtrToStructure(handleVersionBlock.AddrOfPinnedObject(), typeof(rF2MappedBufferVersionBlock));
-            handleVersionBlock.Free();
-
-            currVersionBegin = versionHeader.mVersionUpdateBegin;
-            currVersionEnd = versionHeader.mVersionUpdateEnd;
-
-            // Verify if Begin/End versions match:
-            if (versionHeader.mVersionUpdateBegin != versionHeader.mVersionUpdateEnd)
-            {
-              Thread.Sleep(1);
-              ++numReadRetries;
-              continue;
-            }
-
-            // Read the version header one last time.  This is for the case, that might not be even possible in reality,
-            // but it is possible in my head.  Since it is cheap, no harm reading again really, aside from retry that
-            // sometimes will be required if buffer is updated between checks.
-            //
-            // Anyway, the case is
-            // * Reader thread reads updateBegin version and continues to read buffer. 
-            // * Simultaneously, Writer thread begins overwriting the buffer.
-            // * If Reader thread reads updateEnd before Writer thread finishes, it will look 
-            //   like updateBegin == updateEnd.But we actually just read a partially overwritten buffer.
-            //
-            // Hence, this second check is needed here.  Even if writer thread still hasn't finished writing,
-            // we still will be able to detect this case because now updateBegin version changed, so we
-            // know Writer is updating the buffer.
-
-            this.GetHeaderBlock<rF2MappedBufferVersionBlock>(sharedMemoryStream, this.RF2_BUFFER_VERSION_BLOCK_SIZE_BYTES, ref versionHeader);
-
-            if (currVersionBegin != versionHeader.mVersionUpdateBegin
-              || currVersionEnd != versionHeader.mVersionUpdateEnd)
-            {
-              Thread.Sleep(1);
-              ++this.numReadRetriesOnCheck;
-              continue;
-            }
-
-            // Marshal rF2 State buffer
-            this.MarshalDataBuffer(this.partial, sharedMemoryReadBuffer, ref mappedData);
-
-            // Success.
-            this.maxRetries = Math.Max(this.maxRetries, retry);
-            ++this.numReadsSucceeded;
-            this.stuckVersionBegin = this.stuckVersionEnd = 0;
-
-            // Save succeessfully read version to avoid re-reading.
-            this.lastSuccessVersionBegin = currVersionBegin;
-            this.lastSuccessVersionEnd = currVersionEnd;
-
-            return;
-          }
-
-          // Failure.  Save the frame version.
-          this.stuckVersionBegin = currVersionBegin;
-          this.stuckVersionEnd = currVersionEnd;
-
-          this.maxRetries = Math.Max(this.maxRetries, retry);
-          ++this.numReadFailures;
-        }
-      }
-
-      private void MarshalDataBuffer(bool partial, byte[] sharedMemoryReadBuffer, ref MappedBufferT mappedData)
-      {
-        if (partial)
-        {
-          // For marshalling to succeed we need to copy partial buffer into full size buffer.  While it is a bit of a waste, it still gives us gain
-          // of shorter time window for version collisions while reading game data.
-          Array.Copy(sharedMemoryReadBuffer, this.fullSizeBuffer, sharedMemoryReadBuffer.Length);
-          var handlePartialBuffer = GCHandle.Alloc(this.fullSizeBuffer, GCHandleType.Pinned);
-          mappedData = (MappedBufferT)Marshal.PtrToStructure(handlePartialBuffer.AddrOfPinnedObject(), typeof(MappedBufferT));
-          handlePartialBuffer.Free();
-        }
-        else
-        {
-          var handleBuffer = GCHandle.Alloc(sharedMemoryReadBuffer, GCHandleType.Pinned);
-          mappedData = (MappedBufferT)Marshal.PtrToStructure(handleBuffer.AddrOfPinnedObject(), typeof(MappedBufferT));
-          handleBuffer.Free();
-        }
-      }
-    }
-
+    // Read buffers:
     MappedBuffer<rF2Telemetry> telemetryBuffer = new MappedBuffer<rF2Telemetry>(rFactor2Constants.MM_TELEMETRY_FILE_NAME, true /*partial*/, true /*skipUnchanged*/);
     MappedBuffer<rF2Scoring> scoringBuffer = new MappedBuffer<rF2Scoring>(rFactor2Constants.MM_SCORING_FILE_NAME, true /*partial*/, true /*skipUnchanged*/);
     MappedBuffer<rF2Rules> rulesBuffer = new MappedBuffer<rF2Rules>(rFactor2Constants.MM_RULES_FILE_NAME, true /*partial*/, true /*skipUnchanged*/);
     MappedBuffer<rF2ForceFeedback> forceFeedbackBuffer = new MappedBuffer<rF2ForceFeedback>(rFactor2Constants.MM_FORCE_FEEDBACK_FILE_NAME, false /*partial*/, false /*skipUnchanged*/);
     MappedBuffer<rF2Graphics> graphicsBuffer = new MappedBuffer<rF2Graphics>(rFactor2Constants.MM_GRAPHICS_FILE_NAME, false /*partial*/, false /*skipUnchanged*/);
+    MappedBuffer<rF2PitInfo> pitInfoBuffer = new MappedBuffer<rF2PitInfo>(rFactor2Constants.MM_PITINFO_FILE_NAME, false /*partial*/, true /*skipUnchanged*/);
+    MappedBuffer<rF2Weather> weatherBuffer = new MappedBuffer<rF2Weather>(rFactor2Constants.MM_WEATHER_FILE_NAME, false /*partial*/, true /*skipUnchanged*/);
     MappedBuffer<rF2Extended> extendedBuffer = new MappedBuffer<rF2Extended>(rFactor2Constants.MM_EXTENDED_FILE_NAME, false /*partial*/, true /*skipUnchanged*/);
+
+    // Write buffers:
+    MappedBuffer<rF2HWControl> hwControlBuffer = new MappedBuffer<rF2HWControl>(rFactor2Constants.MM_HWCONTROL_FILE_NAME);
+    MappedBuffer<rF2WeatherControl> weatherControlBuffer = new MappedBuffer<rF2WeatherControl>(rFactor2Constants.MM_WEATHER_CONTROL_FILE_NAME);
+    MappedBuffer<rF2RulesControl> rulesControlBuffer = new MappedBuffer<rF2RulesControl>(rFactor2Constants.MM_RULES_CONTROL_FILE_NAME);
+    MappedBuffer<rF2PluginControl> pluginControlBuffer = new MappedBuffer<rF2PluginControl>(rFactor2Constants.MM_PLUGIN_CONTROL_FILE_NAME);
 
     // Marshalled views:
     rF2Telemetry telemetry;
@@ -313,7 +55,15 @@ namespace rF2SMMonitor
     rF2Rules rules;
     rF2ForceFeedback forceFeedback;
     rF2Graphics graphics;
+    rF2PitInfo pitInfo;
+    rF2Weather weather;
     rF2Extended extended;
+
+    // Marashalled output views:
+    rF2HWControl hwControl;
+    rF2WeatherControl weatherControl;
+    rF2RulesControl rulesControl;
+    rF2PluginControl pluginControl;
 
     // Track rF2 transitions.
     TransitionTracker tracker = new TransitionTracker();
@@ -331,9 +81,13 @@ namespace rF2SMMonitor
     bool logTiming = true;
     bool logRules = true;
     bool logLightMode = false;
-    
+    bool enablePitInputs = false;
+
     // Capture of the max FFB force.
     double maxFFBValue = 0.0;
+
+    // Last applied value for the rain intensity.
+    double rainIntensityRequested = 0.0;
 
     [StructLayout(LayoutKind.Sequential)]
     public struct NativeMessage
@@ -358,49 +112,148 @@ namespace rF2SMMonitor
       this.Location = new Point(0, 0);
 
       this.EnableControls(false);
-      this.scaleTextBox.KeyDown += TextBox_KeyDown;
-      this.scaleTextBox.LostFocus += ScaleTextBox_LostFocus;
-      this.xOffsetTextBox.KeyDown += TextBox_KeyDown;
-      this.xOffsetTextBox.LostFocus += XOffsetTextBox_LostFocus;
-      this.yOffsetTextBox.KeyDown += TextBox_KeyDown;
-      this.yOffsetTextBox.LostFocus += YOffsetTextBox_LostFocus;
-      this.focusVehTextBox.KeyDown += TextBox_KeyDown;
-      this.focusVehTextBox.LostFocus += FocusVehTextBox_LostFocus;
-      this.setAsOriginCheckBox.CheckedChanged += SetAsOriginCheckBox_CheckedChanged;
-      this.rotateAroundCheckBox.CheckedChanged += RotateAroundCheckBox_CheckedChanged;
-      this.checkBoxLogPhaseAndState.CheckedChanged += CheckBoxLogPhaseAndState_CheckedChanged;
-      this.checkBoxLogDamage.CheckedChanged += CheckBoxLogDamage_CheckedChanged;
-      this.checkBoxLogTiming.CheckedChanged += CheckBoxLogTiming_CheckedChanged;
-      this.checkBoxLogRules.CheckedChanged += CheckBoxLogRules_CheckedChanged;
-      this.checkBoxLightMode.CheckedChanged += CheckBoxLightMode_CheckedChanged;
-      this.MouseWheel += MainForm_MouseWheel;
+      this.scaleTextBox.KeyDown += this.TextBox_KeyDown;
+      this.scaleTextBox.LostFocus += this.ScaleTextBox_LostFocus;
+      this.xOffsetTextBox.KeyDown += this.TextBox_KeyDown;
+      this.xOffsetTextBox.LostFocus += this.XOffsetTextBox_LostFocus;
+      this.yOffsetTextBox.KeyDown += this.TextBox_KeyDown;
+      this.yOffsetTextBox.LostFocus += this.YOffsetTextBox_LostFocus;
+      this.focusVehTextBox.KeyDown += this.TextBox_KeyDown;
+      this.focusVehTextBox.LostFocus += this.FocusVehTextBox_LostFocus;
+      this.setAsOriginCheckBox.CheckedChanged += this.SetAsOriginCheckBox_CheckedChanged;
+      this.rotateAroundCheckBox.CheckedChanged += this.RotateAroundCheckBox_CheckedChanged;
+      this.logPhaseAndStateCheckBox.CheckedChanged += this.CheckBoxLogPhaseAndState_CheckedChanged;
+      this.logDamageCheckBox.CheckedChanged += this.CheckBoxLogDamage_CheckedChanged;
+      this.logTimingCheckBox.CheckedChanged += this.CheckBoxLogTiming_CheckedChanged;
+      this.logRulesCheckBox.CheckedChanged += this.CheckBoxLogRules_CheckedChanged;
+      this.lightModeCheckBox.CheckedChanged += this.CheckBoxLightMode_CheckedChanged;
+      this.enablePitInputsCheckBox.CheckedChanged += this.CheckBoxEnablePitInputs_CheckedChanged;
+      this.MouseWheel += this.MainForm_MouseWheel;
+
+      this.rainIntensityTextBox.LostFocus += this.RainIntensityTextBox_LostFocus;
+      this.rainIntensityTextBox.Text = "0.0";
+      this.applyRainIntensityButton.Click += this.ApplyRainIntensityButton_Click;
 
       this.LoadConfig();
-      this.connectTimer.Interval = CONNECTION_RETRY_INTERVAL_MS;
-      this.connectTimer.Tick += ConnectTimer_Tick;
-      this.disconnectTimer.Interval = DISCONNECTED_CHECK_INTERVAL_MS;
-      this.disconnectTimer.Tick += DisconnectTimer_Tick;
+      this.connectTimer.Interval = MainForm.CONNECTION_RETRY_INTERVAL_MS;
+      this.connectTimer.Tick += this.ConnectTimer_Tick;
+      this.disconnectTimer.Interval = MainForm.DISCONNECTED_CHECK_INTERVAL_MS;
+      this.disconnectTimer.Tick += this.DisconnectTimer_Tick;
       this.connectTimer.Start();
       this.disconnectTimer.Start();
 
       this.view.BorderStyle = BorderStyle.Fixed3D;
-      this.view.Paint += View_Paint;
-      this.MouseClick += MainForm_MouseClick;
-      this.view.MouseClick += MainForm_MouseClick;
+      this.view.Paint += this.View_Paint;
+      this.MouseClick += this.MainForm_MouseClick;
+      this.view.MouseClick += this.MainForm_MouseClick;
 
-      Application.Idle += HandleApplicationIdle;
+      Application.Idle += this.HandleApplicationIdle;
     }
 
+    private void ApplyRainIntensityButton_Click(object sender, EventArgs e)
+    {
+      if (!this.connected
+        || this.extended.mWeatherControlInputEnabled == 0)
+        return;
+
+      this.weatherControl.mVersionUpdateBegin = this.weatherControl.mVersionUpdateEnd = this.weatherControl.mVersionUpdateBegin + 1;
+
+      // First, copy current state into control buffer.
+      // This is not a deep copy. Values in weather buffer wwill change.  If that is not desired, deep copy needs to be performed.
+      this.weatherControl.mWeatherInfo = this.weather.mWeatherInfo;
+
+      this.weatherControl.mWeatherInfo.mET += 5.0;  // Apply in 5 seconds.
+      // Apply requested rain intensity.
+      this.weatherControl.mWeatherInfo.mRaining[4] = this.rainIntensityRequested;
+
+      this.weatherControlBuffer.PutMappedData(ref this.weatherControl);
+      this.applyRainIntensityButton.Enabled = false;
+    }
+
+    private void CheckBoxEnablePitInputs_CheckedChanged(object sender, EventArgs e)
+    {
+      this.enablePitInputs = this.enablePitInputsCheckBox.Checked;
+      this.config.Write("enablePitInputs", this.enablePitInputs ? "1" : "0");
+    }
+
+    [DllImport("user32.dll")]
+    static extern short GetAsyncKeyState(System.Windows.Forms.Keys vKey);
+
+    private DateTime nextKeyHandlingTime = DateTime.MinValue;
+    private void ProcessKeys()
+    {
+      if (!this.connected 
+        || !this.enablePitInputs
+        || this.extended.mHWControlInputEnabled == 0)
+        return;
+
+      var now = DateTime.Now;
+      if (now < this.nextKeyHandlingTime)
+        return;
+
+      this.nextKeyHandlingTime = now + TimeSpan.FromMilliseconds(100);
+
+      byte[] commandStr = null;
+      var fRetVal = 1.0;
+
+      if (MainForm.GetAsyncKeyState(Keys.U) != 0)
+        commandStr = Encoding.Default.GetBytes("PitMenuIncrementValue");
+      else if (MainForm.GetAsyncKeyState(Keys.Y) != 0)
+        commandStr = Encoding.Default.GetBytes("PitMenuDecrementValue");
+      else if (MainForm.GetAsyncKeyState(Keys.P) != 0)
+        commandStr = Encoding.Default.GetBytes("PitMenuUp");
+      else if (MainForm.GetAsyncKeyState(Keys.O) != 0)
+        commandStr = Encoding.Default.GetBytes("PitMenuDown");
+      // rough sample for rule input buffer.
+      /*else if (MainForm.GetAsyncKeyState(Keys.T) != 0)
+      {
+        if (this.extended.mRulesControlInputEnabled == 0)
+          return;
+
+        this.rulesControl.mVersionUpdateBegin = this.rulesControl.mVersionUpdateEnd = this.rulesControl.mVersionUpdateBegin + 1;
+
+        // First, copy current state into control buffer.
+        // This is not a deep copy. Values in rules buffer wwill change.  If that is not desired, deep copy needs to be performed.
+        this.rulesControl.mTrackRules = this.rules.mTrackRules;
+        this.rulesControl.mActions = this.rules.mActions;
+        this.rulesControl.mParticipants = this.rules.mParticipants;
+
+        this.rulesControl.mTrackRules.mMessage = new byte[96];
+        var msg = Encoding.Default.GetBytes("Hello!");  // should be visible in LSI during FCY?
+        for (int i = 0; i < msg.Length; ++i)
+          this.rulesControl.mTrackRules.mMessage[i] = msg[i];
+
+        this.rulesControlBuffer.PutMappedData(ref this.rulesControl);
+      }*/
+
+      this.SendPitMenuCmd(commandStr, fRetVal);
+    }
+
+    private void SendPitMenuCmd(byte[] commandStr, double fRetVal)
+    {
+      if (commandStr != null)
+      {
+        this.hwControl.mVersionUpdateBegin = this.hwControl.mVersionUpdateEnd = this.hwControl.mVersionUpdateBegin + 1;
+
+        this.hwControl.mControlName = new byte[rFactor2Constants.MAX_HWCONTROL_NAME_LEN];
+        for (int i = 0; i < commandStr.Length; ++i)
+          this.hwControl.mControlName[i] = commandStr[i];
+
+        this.hwControl.mfRetVal = fRetVal;
+
+        this.hwControlBuffer.PutMappedData(ref this.hwControl);
+      }
+    }
     private void CheckBoxLogRules_CheckedChanged(object sender, EventArgs e)
     {
-      this.logRules = this.checkBoxLogRules.Checked;
+      this.logRules = this.logRulesCheckBox.Checked;
       this.config.Write("logRules", this.logRules ? "1" : "0");
     }
 
     private void CheckBoxLightMode_CheckedChanged(object sender, EventArgs e)
     {
-      this.logLightMode = this.checkBoxLightMode.Checked;
-      
+      this.logLightMode = this.lightModeCheckBox.Checked;
+
       // Disable/enable rendering options
       this.globalGroupBox.Enabled = !this.logLightMode;
       this.groupBoxFocus.Enabled = !this.logLightMode;
@@ -410,19 +263,19 @@ namespace rF2SMMonitor
 
     private void CheckBoxLogDamage_CheckedChanged(object sender, EventArgs e)
     {
-      this.logDamage = this.checkBoxLogDamage.Checked;
+      this.logDamage = this.logDamageCheckBox.Checked;
       this.config.Write("logDamage", this.logDamage ? "1" : "0");
     }
 
     private void CheckBoxLogTiming_CheckedChanged(object sender, EventArgs e)
     {
-      this.logTiming = this.checkBoxLogTiming.Checked;
+      this.logTiming = this.logTimingCheckBox.Checked;
       this.config.Write("logTiming", this.logTiming ? "1" : "0");
     }
 
     private void CheckBoxLogPhaseAndState_CheckedChanged(object sender, EventArgs e)
     {
-      this.logPhaseAndState = this.checkBoxLogPhaseAndState.Checked;
+      this.logPhaseAndState = this.logPhaseAndStateCheckBox.Checked;
       this.config.Write("logPhaseAndState", this.logPhaseAndState ? "1" : "0");
     }
 
@@ -444,6 +297,21 @@ namespace rF2SMMonitor
       }
     }
 
+    private void RainIntensityTextBox_LostFocus(object sender, EventArgs e)
+    {
+      var result = 0.0;
+      if (double.TryParse(this.rainIntensityTextBox.Text, out result)
+        && result >= 0.0 && result <= 1.0)
+      {
+        if (this.rainIntensityRequested != result)
+          this.applyRainIntensityButton.Enabled = true;
+
+        this.rainIntensityRequested = result;
+      }
+
+      this.rainIntensityTextBox.Text = this.rainIntensityRequested.ToString("0.0");
+    }
+
     private void YOffsetTextBox_LostFocus(object sender, EventArgs e)
     {
       float result = 0.0f;
@@ -454,7 +322,6 @@ namespace rF2SMMonitor
       }
       else
         this.yOffsetTextBox.Text = this.yOffset.ToString();
-
     }
 
     private void XOffsetTextBox_LostFocus(object sender, EventArgs e)
@@ -522,7 +389,7 @@ namespace rF2SMMonitor
       float result = 0.0f;
       if (float.TryParse(this.scaleTextBox.Text, out result))
       {
-        this.scale = result;
+        this.scale = Math.Max(result, 0.05f);
         this.config.Write("scale", this.scale.ToString());
       }
       else
@@ -534,12 +401,11 @@ namespace rF2SMMonitor
       if (e.KeyCode == Keys.Enter)
         this.view.Focus();
     }
-
     protected override void Dispose(bool disposing)
     {
       if (disposing && (components != null))
         components.Dispose();
-      
+
       if (disposing)
         Disconnect();
 
@@ -575,6 +441,8 @@ namespace rF2SMMonitor
             this.MainRender();
           }
 
+          this.ProcessKeys();
+
           if (this.logLightMode)
             Thread.Sleep(LIGHT_MODE_REFRESH_MS);
         }
@@ -603,6 +471,8 @@ namespace rF2SMMonitor
         rulesBuffer.GetMappedData(ref rules);
         forceFeedbackBuffer.GetMappedDataUnsynchronized(ref forceFeedback);
         graphicsBuffer.GetMappedDataUnsynchronized(ref graphics);
+        pitInfoBuffer.GetMappedData(ref pitInfo);
+        weatherBuffer.GetMappedData(ref weather);
 
         watch.Stop();
         var microseconds = watch.ElapsedTicks * 1000000 / System.Diagnostics.Stopwatch.Frequency;
@@ -654,7 +524,7 @@ namespace rF2SMMonitor
       var nullIdx = Array.IndexOf(bytes, (byte)0);
 
       return nullIdx >= 0
-        ? Encoding.Default.GetString(bytes, 0, nullIdx) 
+        ? Encoding.Default.GetString(bytes, 0, nullIdx)
         : Encoding.Default.GetString(bytes);
     }
 
@@ -677,7 +547,7 @@ namespace rF2SMMonitor
       if (!this.connected)
       {
         var brush = new SolidBrush(System.Drawing.Color.Black);
-        g.DrawString("Not connected", SystemFonts.DefaultFont, brush, 3.0f, 3.0f);
+        g.DrawString("Not connected.", SystemFonts.DefaultFont, brush, 3.0f, 3.0f);
 
         if (this.logLightMode)
           return;
@@ -695,14 +565,24 @@ namespace rF2SMMonitor
         this.maxFFBValue = Math.Max(Math.Abs(this.forceFeedback.mForceValue), this.maxFFBValue);
 
         gameStateText.Append(
-          $"Plugin Version:    Expected: 3.7.1.0 64bit   Actual: {MainForm.GetStringFromBytes(this.extended.mVersion)} {(this.extended.is64bit == 1 ? "64bit" : "32bit")}{(this.extended.mSCRPluginEnabled == 1 ? "    SCR Plugin enabled" : "")}{(this.extended.mDirectMemoryAccessEnabled == 1 ? "    DMA enabled" : "")}    UBM: {this.extended.mUnsubscribedBuffersMask}    FPS: {this.fps}    FFB Curr: {this.forceFeedback.mForceValue:N3}  Max: {this.maxFFBValue:N3}");
+          $"Plugin Version:    Expected: 3.7.14.2 64bit   Actual: {MainForm.GetStringFromBytes(this.extended.mVersion)}"
+          + $"{(this.extended.is64bit == 1 ? " 64bit" : " 32bit")}"
+          + $"{(this.extended.mSCRPluginEnabled == 1 ? "    SCR Plugin enabled" : "")}"
+          + $"{(this.extended.mDirectMemoryAccessEnabled == 1 ? "    DMA enabled" : "")}"
+          + $"{(this.extended.mHWControlInputEnabled == 1 ? "    HWCI enabled" : "")}"
+          + $"{(this.extended.mWeatherControlInputEnabled == 1 ? "    WCI enabled" : "")}"
+          + $"{(this.extended.mRulesControlInputEnabled == 1 ? "    RCI enabled" : "")}"
+          + $"{(this.extended.mPluginControlInputEnabled == 1 ? "    PCI enabled" : "")}"
+          + $"    UBM: {this.extended.mUnsubscribedBuffersMask}"
+          + $"    FPS: {this.fps}"
+          + $"    FFB Curr: {this.forceFeedback.mForceValue:N3} Max: {this.maxFFBValue:N3}");
 
         // Draw header
         g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, brush, currX, currY);
 
         gameStateText.Clear();
 
-        // Build map of mID -> telemetry.mVehicles[i]. 
+        // Build map of mID -> telemetry.mVehicles[i].
         // They are typically matching values, however, we need to handle online cases and dropped vehicles (mID can be reused).
         var idsToTelIndices = new Dictionary<long, int>();
         for (int i = 0; i < this.telemetry.mNumVehicles; ++i)
@@ -788,6 +668,8 @@ namespace rF2SMMonitor
           + "Scoring:\n"
           + "Rules:\n"
           + "Extended:\n"
+          + "Pit Info:\n"
+          + "Weather:\n"
           + "Avg read:");
 
         g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Black, 1500, 570);
@@ -797,14 +679,15 @@ namespace rF2SMMonitor
           this.telemetryBuffer.GetStats() + '\n'
           + this.scoringBuffer.GetStats() + '\n'
           + this.rulesBuffer.GetStats() + '\n'
-          + this.extendedBuffer.GetStats() + '\n' 
+          + this.pitInfoBuffer.GetStats() + '\n'
+          + this.weatherBuffer.GetStats() + '\n'
+          + this.extendedBuffer.GetStats() + '\n'
           + this.avgDelayMicroseconds.ToString("0.000") + " microseconds");
 
         g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Black, 1560, 570);
 
         if (this.extended.mDirectMemoryAccessEnabled == 1)
         {
-          // Print buffer stats.
           gameStateText.Clear();
           gameStateText.Append(
             "Status:\n"
@@ -813,9 +696,10 @@ namespace rF2SMMonitor
             + "Last LSI Phase:\n"
             + "Last LSI Pit:\n"
             + "Last LSI Order:\n"
-            + "Last SCR Instr.:\n");
+            + "Last SCR Instr.:\n"
+            );
 
-          g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Purple, 1500, 640);
+          g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Purple, 1500, 660);
 
           gameStateText.Clear();
           gameStateText.Append(
@@ -825,9 +709,10 @@ namespace rF2SMMonitor
             + MainForm.GetStringFromBytes(this.extended.mLSIPhaseMessage) + '\n'
             + MainForm.GetStringFromBytes(this.extended.mLSIPitStateMessage) + '\n'
             + MainForm.GetStringFromBytes(this.extended.mLSIOrderInstructionMessage) + '\n'
-            + MainForm.GetStringFromBytes(this.extended.mLSIRulesInstructionMessage) + '\n');
+            + MainForm.GetStringFromBytes(this.extended.mLSIRulesInstructionMessage) + '\n'
+            );
 
-          g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Purple, 1580, 640);
+          g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Purple, 1580, 660);
 
           gameStateText.Clear();
           gameStateText.Append(
@@ -839,8 +724,37 @@ namespace rF2SMMonitor
             + "updated: " + this.extended.mTicksLSIOrderInstructionMessageUpdated + '\n'
             + "updated: " + this.extended.mTicksLSIRulesInstructionMessageUpdated + '\n');
 
+          g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Purple, 1800, 660);
+        }
 
-          g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Purple, 1800, 640);
+        if ((this.extended.mUnsubscribedBuffersMask & (long)SubscribedBuffer.PitInfo) == 0)
+        {
+          // Print pit info:
+          gameStateText.Clear();
+
+          gameStateText.Append(
+            "PI Cat Index:\n"
+            + "PI Cat Name:\n"
+            + "PI Choice Index:\n"
+            + "PI Choice String:\n"
+            + "PI Num Choices:\n"
+            );
+
+          g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Orange, 1500, 750);
+
+          gameStateText.Clear();
+          var catName = MainForm.GetStringFromBytes(this.pitInfo.mPitMneu.mCategoryName);
+          var choiceStr = MainForm.GetStringFromBytes(this.pitInfo.mPitMneu.mChoiceString);
+
+          gameStateText.Append(
+            this.pitInfo.mPitMneu.mCategoryIndex + "\n"
+            + (string.IsNullOrWhiteSpace(catName) ? "<empty>" : catName) + "\n"
+            + this.pitInfo.mPitMneu.mChoiceIndex + "\n"
+            + (string.IsNullOrWhiteSpace(choiceStr) ? "<empty>" : choiceStr) + "\n"
+            + this.pitInfo.mPitMneu.mNumChoices + "\n"
+            );
+
+          g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Orange, 1600, 750);
         }
 
         if (this.scoring.mScoringInfo.mNumVehicles == 0
@@ -1086,12 +1000,41 @@ namespace rF2SMMonitor
       {
         try
         {
+          // Extended buffer is the last one constructed, so it is an indicator RF2SM is ready.
+          this.extendedBuffer.Connect();
+
           this.telemetryBuffer.Connect();
           this.scoringBuffer.Connect();
           this.rulesBuffer.Connect();
           this.forceFeedbackBuffer.Connect();
           this.graphicsBuffer.Connect();
-          this.extendedBuffer.Connect();
+          this.pitInfoBuffer.Connect();
+          this.weatherBuffer.Connect();
+
+          this.hwControlBuffer.Connect();
+          this.hwControlBuffer.GetMappedData(ref this.hwControl);
+          this.hwControl.mLayoutVersion = rFactor2Constants.MM_HWCONTROL_LAYOUT_VERSION;
+
+          this.weatherControlBuffer.Connect();
+          this.weatherControlBuffer.GetMappedData(ref this.weatherControl);
+          this.weatherControl.mLayoutVersion = rFactor2Constants.MM_WEATHER_CONTROL_LAYOUT_VERSION;
+
+          this.rulesControlBuffer.Connect();
+          this.rulesControlBuffer.GetMappedData(ref this.rulesControl);
+          this.rulesControl.mLayoutVersion = rFactor2Constants.MM_RULES_CONTROL_LAYOUT_VERSION;
+
+          this.pluginControlBuffer.Connect();
+          this.pluginControlBuffer.GetMappedData(ref this.pluginControl);
+          this.pluginControl.mLayoutVersion = rFactor2Constants.MM_PLUGIN_CONTROL_LAYOUT_VERSION;
+
+          // Scoring cannot be enabled on demand.
+          this.pluginControl.mRequestEnableBuffersMask = /*(int)SubscribedBuffer.Scoring | */(int)SubscribedBuffer.Telemetry | (int)SubscribedBuffer.Rules
+            | (int)SubscribedBuffer.ForceFeedback | (int)SubscribedBuffer.Graphics | (int)SubscribedBuffer.Weather | (int)SubscribedBuffer.PitInfo;
+          this.pluginControl.mRequestHWControlInput = 1;
+          this.pluginControl.mRequestRulesControlInput = 1;
+          this.pluginControl.mRequestWeatherControlInput = 1;
+          this.pluginControl.mVersionUpdateBegin = this.pluginControl.mVersionUpdateEnd = this.pluginControl.mVersionUpdateBegin + 1;
+          this.pluginControlBuffer.PutMappedData(ref this.pluginControl);
 
           this.connected = true;
 
@@ -1099,7 +1042,7 @@ namespace rF2SMMonitor
         }
         catch (Exception)
         {
-          Disconnect();
+          this.Disconnect();
         }
       }
     }
@@ -1129,7 +1072,14 @@ namespace rF2SMMonitor
       this.rulesBuffer.Disconnect();
       this.telemetryBuffer.Disconnect();
       this.forceFeedbackBuffer.Disconnect();
+      this.pitInfoBuffer.Disconnect();
+      this.weatherBuffer.Disconnect();
       this.graphicsBuffer.Disconnect();
+
+      this.hwControlBuffer.Disconnect();
+      this.weatherControlBuffer.Disconnect();
+      this.rulesControlBuffer.Disconnect();
+      this.pluginControlBuffer.Disconnect();
 
       this.connected = false;
 
@@ -1140,7 +1090,8 @@ namespace rF2SMMonitor
     {
       this.globalGroupBox.Enabled = enable;
       this.groupBoxFocus.Enabled = enable;
-      this.groupBoxLogging.Enabled = enable;
+      this.loggingGroupBox.Enabled = enable;
+      this.inputsGroupBox.Enabled = enable;
 
       this.focusVehLabel.Enabled = false;
       this.focusVehTextBox.Enabled = false;
@@ -1209,37 +1160,43 @@ namespace rF2SMMonitor
       if (int.TryParse(this.config.Read("logLightMode"), out intResult) && intResult == 1)
         this.logLightMode = true;
 
-      this.checkBoxLightMode.Checked = this.logLightMode;
+      this.lightModeCheckBox.Checked = this.logLightMode;
 
       intResult = 0;
       this.logPhaseAndState = true;
       if (int.TryParse(this.config.Read("logPhaseAndState"), out intResult) && intResult == 0)
         this.logPhaseAndState = false;
 
-      this.checkBoxLogPhaseAndState.Checked = this.logPhaseAndState;
+      this.logPhaseAndStateCheckBox.Checked = this.logPhaseAndState;
 
       intResult = 0;
       this.logDamage = true;
       if (int.TryParse(this.config.Read("logDamage"), out intResult) && intResult == 0)
         this.logDamage = false;
 
-      this.checkBoxLogDamage.Checked = this.logDamage;
+      this.logDamageCheckBox.Checked = this.logDamage;
 
       intResult = 0;
       this.logTiming = true;
       if (int.TryParse(this.config.Read("logTiming"), out intResult) && intResult == 0)
         this.logTiming = false;
-      
-      this.checkBoxLogTiming.Checked = this.logTiming;
+
+      this.logTimingCheckBox.Checked = this.logTiming;
 
       intResult = 0;
       this.logRules = true;
       if (int.TryParse(this.config.Read("logRules"), out intResult) && intResult == 0)
         this.logRules = false;
 
-      this.checkBoxLogRules.Checked = this.logRules;
+      this.logRulesCheckBox.Checked = this.logRules;
 
       intResult = 0;
+      this.enablePitInputs = true;
+      if (int.TryParse(this.config.Read("enablePitInputs"), out intResult) && intResult == 0)
+        this.enablePitInputs = false;
+
+      this.enablePitInputsCheckBox.Checked = this.enablePitInputs;
+
       MainForm.useStockCarRulesPlugin = false;
     }
   }

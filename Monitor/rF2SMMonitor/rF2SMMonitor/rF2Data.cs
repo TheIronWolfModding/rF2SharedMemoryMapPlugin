@@ -30,12 +30,27 @@ namespace rF2SMMonitor
     public const string MM_RULES_FILE_NAME = "$rFactor2SMMP_Rules$";
     public const string MM_FORCE_FEEDBACK_FILE_NAME = "$rFactor2SMMP_ForceFeedback$";
     public const string MM_GRAPHICS_FILE_NAME = "$rFactor2SMMP_Graphics$";
+    public const string MM_PITINFO_FILE_NAME = "$rFactor2SMMP_PitInfo$";
+    public const string MM_WEATHER_FILE_NAME = "$rFactor2SMMP_Weather$";
     public const string MM_EXTENDED_FILE_NAME = "$rFactor2SMMP_Extended$";
-    
+
+    public const string MM_HWCONTROL_FILE_NAME = "$rFactor2SMMP_HWControl$";
+    public const int MM_HWCONTROL_LAYOUT_VERSION = 1;
+
+    public const string MM_WEATHER_CONTROL_FILE_NAME = "$rFactor2SMMP_WeatherControl$";
+    public const int MM_WEATHER_CONTROL_LAYOUT_VERSION = 1;
+
+    public const string MM_RULES_CONTROL_FILE_NAME = "$rFactor2SMMP_RulesControl$";
+    public const int MM_RULES_CONTROL_LAYOUT_VERSION = 1;
+
+    public const string MM_PLUGIN_CONTROL_FILE_NAME = "$rFactor2SMMP_PluginControl$";
+    public const int MM_PLUGIN_CONTROL_LAYOUT_VERSION = 1;
+
     public const int MAX_MAPPED_VEHICLES = 128;
     public const int MAX_MAPPED_IDS = 512;
     public const int MAX_STATUS_MSG_LEN = 128;
     public const int MAX_RULES_INSTRUCTION_MSG_LEN = 96;
+    public const int MAX_HWCONTROL_NAME_LEN = 96;
     public const string RFACTOR2_PROCESS_NAME = "rFactor2";
 
     public const byte RowX = 0;
@@ -721,8 +736,65 @@ namespace rF2SMMonitor
       // future input/output expansion
       [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = 256)]
       public byte[] mInputOutputExpansion;
-    };
+    }
 
+
+    //////////////////////////////////////////////////////////////////////////////////////////
+    // Identical to PitMenuV01, except where noted by MM_NEW/MM_NOT_USED comments.
+    //////////////////////////////////////////////////////////////////////////////////////////
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
+    public struct rF2PitMenu
+    {
+      public int mCategoryIndex;                    // index of the current category
+
+      [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = 32)]
+      public byte[] mCategoryName;                 // name of the current category (untranslated)
+      public int mChoiceIndex;                     // index of the current choice (within the current category)
+
+      [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = 32)]
+      public byte[] mChoiceString;                 // name of the current choice (may have some translated words)
+      public int mNumChoices;                      // total number of choices (0 <= mChoiceIndex < mNumChoices)
+
+      [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = 256)]
+      public byte[] mExpansion;                    // for future use
+    }
+
+
+    //////////////////////////////////////////////////////////////////////////////////////////
+    // Identical to WeatherControlInfoV01, except where noted by MM_NEW/MM_NOT_USED comments.
+    //////////////////////////////////////////////////////////////////////////////////////////
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
+    public struct rF2WeatherControlInfo
+    {
+      // The current conditions are passed in with the API call. The following ET (Elapsed Time) value should typically be far
+      // enough in the future that it can be interpolated smoothly, and allow clouds time to roll in before rain starts. In
+      // other words you probably shouldn't have mCloudiness and mRaining suddenly change from 0.0 to 1.0 and expect that
+      // to happen in a few seconds without looking crazy.
+      public double mET;                           // when you want this weather to take effect
+
+      // mRaining[1][1] is at the origin (2013.12.19 - and currently the only implemented node), while the others
+      // are spaced at <trackNodeSize> meters where <trackNodeSize> is the maximum absolute value of a track vertex
+      // coordinate (and is passed into the API call).
+      [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = 9)]
+      public double[] mRaining;            // rain (0.0-1.0) at different nodes
+
+      public double mCloudiness;                   // general cloudiness (0.0=clear to 1.0=dark), will be automatically overridden to help ensure clouds exist over rainy areas
+      public double mAmbientTempK;                 // ambient temperature (Kelvin)
+      public double mWindMaxSpeed;                 // maximum speed of wind (ground speed, but it affects how fast the clouds move, too)
+
+      public bool mApplyCloudinessInstantly;       // preferably we roll the new clouds in, but you can instantly change them now
+      public bool mUnused1;                        //
+      public bool mUnused2;                        //
+      public bool mUnused3;                        //
+
+      [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = 508)]
+      public byte[] mExpansion;      // future use (humidity, pressure, air density, etc.)
+    }
+
+
+    ///////////////////////////////////////////
+    // Mapped wrapper structures
+    ///////////////////////////////////////////
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
     public struct rF2MappedBufferVersionBlock
@@ -850,6 +922,27 @@ namespace rF2SMMonitor
     }
 
 
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
+    public struct rF2PitInfo
+    {
+      public uint mVersionUpdateBegin;          // Incremented right before buffer is written to.
+      public uint mVersionUpdateEnd;            // Incremented after buffer write is done.
+
+      public rF2PitMenu mPitMneu;
+    }
+
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
+    struct rF2Weather
+    {
+      public uint mVersionUpdateBegin;          // Incremented right before buffer is written to.
+      public uint mVersionUpdateEnd;            // Incremented after buffer write is done.
+
+      public double mTrackNodeSize;
+      public rF2WeatherControlInfo mWeatherInfo;
+    }
+
+
     [StructLayout(LayoutKind.Sequential, Pack = 4)]
     public struct rF2TrackedDamage
     {
@@ -946,7 +1039,85 @@ namespace rF2SMMonitor
       [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = rFactor2Constants.MAX_RULES_INSTRUCTION_MSG_LEN)]
       public byte[] mLSIRulesInstructionMessage;
 
-      public long mUnsubscribedBuffersMask;                     // Currently active UnsbscribedBuffersMask value.  This will be allowed for clients to write to in the future, but not yet.
+      public int mUnsubscribedBuffersMask;                     // Currently active UnsbscribedBuffersMask value.  This will be allowed for clients to write to in the future, but not yet.
+
+      public byte mHWControlInputEnabled;                       // HWControl input buffer is enabled.
+      public byte mWeatherControlInputEnabled;                  // WeatherControl input buffer is enabled.
+      public byte mRulesControlInputEnabled;                    // RulesControl input buffer is enabled.
+      public byte mPluginControlInputEnabled;                   // Plugin control input buffer is enabled.
     }
+
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
+    public struct rF2HWControl
+    {
+      public uint mVersionUpdateBegin;          // Incremented right before buffer is written to.
+      public uint mVersionUpdateEnd;            // Incremented after buffer write is done.
+
+      public int mLayoutVersion;
+
+      [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = rFactor2Constants.MAX_HWCONTROL_NAME_LEN)]
+      public byte[] mControlName;
+      public double mfRetVal;
+    }
+
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
+    public struct rF2WeatherControl
+    {
+      public uint mVersionUpdateBegin;          // Incremented right before buffer is written to.
+      public uint mVersionUpdateEnd;            // Incremented after buffer write is done.
+
+      public int mLayoutVersion;
+
+      public rF2WeatherControlInfo mWeatherInfo;
+    }
+
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
+    public struct rF2RulesControl
+    {
+      public uint mVersionUpdateBegin;          // Incremented right before buffer is written to.
+      public uint mVersionUpdateEnd;            // Incremented after buffer write is done.
+
+      public int mLayoutVersion;
+
+      public rF2TrackRules mTrackRules;
+
+      [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = rFactor2Constants.MAX_MAPPED_VEHICLES)]
+      public rF2TrackRulesAction[] mActions;
+
+      [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = rFactor2Constants.MAX_MAPPED_VEHICLES)]
+      public rF2TrackRulesParticipant[] mParticipants;
+    }
+
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
+    struct rF2PluginControl
+    {
+      public uint mVersionUpdateBegin;          // Incremented right before buffer is written to.
+      public uint mVersionUpdateEnd;            // Incremented after buffer write is done.
+
+      public int mLayoutVersion;
+
+      public int mRequestEnableBuffersMask;
+      public byte mRequestHWControlInput;
+      public byte mRequestWeatherControlInput;
+      public byte mRequestRulesControlInput;
+    }
+
+
+    enum SubscribedBuffer
+    {
+      Telemetry = 1,
+      Scoring = 2,
+      Rules = 4,
+      MultiRules = 8,
+      ForceFeedback = 16,
+      Graphics = 32,
+      PitInfo = 64,
+      Weather = 128,
+      All = 255
+    };
   }
 }

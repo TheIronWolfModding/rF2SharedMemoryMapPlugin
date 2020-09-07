@@ -1,3 +1,10 @@
+/*
+Original ISI V7 internals dump code, tweaked to use buffered output and to match overall
+code stlye of the rf2sm plugin.
+
+Author: ISI
+*/
+
 #include "rFactor2SharedMemoryMap.hpp"
 
 
@@ -18,7 +25,7 @@ void SharedMemoryPlugin::WriteTelemetryInternals(TelemInfoV01 const& info)
   {
     // Delta time is variable, as we send out the info once per frame
     fprintf(fo, "DT=%.4f  ET=%.4f\n", info.mDeltaTime, info.mElapsedTime);
-    fprintf(fo, "Lap=%d StartET=%.3f\n", info.mLapNumber, info.mLapStartET);
+    fprintf(fo, "Lap=%ld StartET=%.3f\n", info.mLapNumber, info.mLapStartET);
     fprintf(fo, "Vehicle=%s\n", info.mVehicleName);
     fprintf(fo, "Track=%s\n", info.mTrackName);
     fprintf(fo, "Pos=(%.3f,%.3f,%.3f)\n", info.mPos.x, info.mPos.y, info.mPos.z);
@@ -35,7 +42,7 @@ void SharedMemoryPlugin::WriteTelemetryInternals(TelemInfoV01 const& info)
     fprintf(fo, "LocalRotAccel=(%.2f,%.2f,%.2f)\n", info.mLocalRotAccel.x, info.mLocalRotAccel.y, info.mLocalRotAccel.z);
 
     // Vehicle status
-    fprintf(fo, "Gear=%d RPM=%.1f RevLimit=%.1f\n", info.mGear, info.mEngineRPM, info.mEngineMaxRPM);
+    fprintf(fo, "Gear=%ld RPM=%.1f RevLimit=%.1f\n", info.mGear, info.mEngineRPM, info.mEngineMaxRPM);
     fprintf(fo, "Water=%.1f Oil=%.1f\n", info.mEngineWaterTemp, info.mEngineOilTemp);
     fprintf(fo, "ClutchRPM=%.1f\n", info.mClutchRPM);
 
@@ -121,8 +128,8 @@ void SharedMemoryPlugin::WriteScoringInternals(ScoringInfoV01 const& info)
   {
     // Print general scoring info
     fprintf(fo, "TrackName=%s\n", info.mTrackName);
-    fprintf(fo, "Session=%d NumVehicles=%d CurET=%.3f\n", info.mSession, info.mNumVehicles, info.mCurrentET);
-    fprintf(fo, "EndET=%.3f MaxLaps=%d LapDist=%.1f\n", info.mEndET, info.mMaxLaps, info.mLapDist);
+    fprintf(fo, "Session=%ld NumVehicles=%ld CurET=%.3f\n", info.mSession, info.mNumVehicles, info.mCurrentET);
+    fprintf(fo, "EndET=%.3f MaxLaps=%ld LapDist=%.1f\n", info.mEndET, info.mMaxLaps, info.mLapDist);
 
     // Note that only one plugin can use the stream (by enabling scoring updates) ... sorry if any clashes result
     fprintf(fo, "START STREAM\n");
@@ -143,8 +150,8 @@ void SharedMemoryPlugin::WriteScoringInternals(ScoringInfoV01 const& info)
     for (long i = 0; i < info.mNumVehicles; ++i)
     {
       VehicleScoringInfoV01 &vinfo = info.mVehicle[i];
-      fprintf(fo, "Driver %d: %s\n", i, vinfo.mDriverName);
-      fprintf(fo, " ID=%d Vehicle=%s\n", vinfo.mID, vinfo.mVehicleName);
+      fprintf(fo, "Driver %ld: %s\n", i, vinfo.mDriverName);
+      fprintf(fo, " ID=%ld Vehicle=%s\n", vinfo.mID, vinfo.mVehicleName);
       fprintf(fo, " Laps=%d Sector=%d FinishStatus=%d\n", vinfo.mTotalLaps, vinfo.mSector, vinfo.mFinishStatus);
       fprintf(fo, " LapDist=%.1f PathLat=%.2f RelevantTrackEdge=%.2f\n", vinfo.mLapDist, vinfo.mPathLateral, vinfo.mTrackEdge);
       fprintf(fo, " Best=(%.3f, %.3f, %.3f)\n", vinfo.mBestSector1, vinfo.mBestSector2, vinfo.mBestLapTime);
@@ -155,8 +162,8 @@ void SharedMemoryPlugin::WriteScoringInternals(ScoringInfoV01 const& info)
       // New version 2 stuff
       fprintf(fo, " IsPlayer=%d Control=%d InPits=%d LapStartET=%.3f\n", vinfo.mIsPlayer, vinfo.mControl, vinfo.mInPits, vinfo.mLapStartET);
       fprintf(fo, " Place=%d VehicleClass=%s\n", vinfo.mPlace, vinfo.mVehicleClass);
-      fprintf(fo, " TimeBehindNext=%.3f LapsBehindNext=%d\n", vinfo.mTimeBehindNext, vinfo.mLapsBehindNext);
-      fprintf(fo, " TimeBehindLeader=%.3f LapsBehindLeader=%d\n", vinfo.mTimeBehindLeader, vinfo.mLapsBehindLeader);
+      fprintf(fo, " TimeBehindNext=%.3f LapsBehindNext=%ld\n", vinfo.mTimeBehindNext, vinfo.mLapsBehindNext);
+      fprintf(fo, " TimeBehindLeader=%.3f LapsBehindLeader=%ld\n", vinfo.mTimeBehindLeader, vinfo.mLapsBehindLeader);
       fprintf(fo, " Pos=(%.3f,%.3f,%.3f)\n", vinfo.mPos.x, vinfo.mPos.y, vinfo.mPos.z);
 
       // Forward is roughly in the -z direction (although current pitch of car may cause some y-direction velocity)

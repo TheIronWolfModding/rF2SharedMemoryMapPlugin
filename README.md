@@ -1,34 +1,78 @@
-# rFactor 2 Internals Shared Memory Map Plugin
+﻿# rFactor 2 Internals Shared Memory Plugin
 
-This plugin mirrors exposed rFactor 2 internal state into shared memory buffers.  Essentially, this is direct memcpy of rFactor 2 internals.
+This plugin mirrors exposed rFactor 2 internal state into shared memory buffers.  Essentially, this is direct memcpy of rFactor 2 internals (except for extended stuff implemented to workaround API limitations/bugs).  Plugin also allows some level of input back into the rFactor 2 API.
 
-Reading shared memory allows creating external tools running outside of rFactor 2 and written in languages other than C++ (C# sample is included).  It also allows keeping CPU time impact in rFactor 2 plugin threads to the minimum.
+Reading and writing shared memory allows creating external tools running outside of rFactor 2 and written in languages other than C++ (C# sample is included).  It also allows keeping CPU time impact in rFactor 2 plugin threads to the minimum.
 
-This plugin is carefully implemented with an intent of becoming a shared component for reading rF2 internals.  It can handle any number of clients without slowing down rF2 plugin thread.  A lot of work was done to ensure it is as efficient and reliable as possible.
+This plugin is carefully implemented with an intent of becoming a shared component for reading rF2 internals.  For read operations, it can handle any number of clients without slowing down rF2 plugin thread.  A lot of work was done to ensure it is as efficient and reliable as possible.
 
-#### This work is based on:
+rFactor 2 API has some limitations/bugs, and plugin tries to deal with that by deriving some information: basic accumulated damage info, tracking session transitions and optionally reading game memory directly.
+
+# Acknowledgements
+##### This work is based on:
   * rF2 Internals Plugin sample #7 by ISI/S397 found at: https://www.studio-397.com/modding-resources/
-#### Was inspired by:
+##### Was inspired by:
   * rF1 Shared Memory Map Plugin by Dan Allongo found at: https://github.com/dallongo/rFactorSharedMemoryMap
+
+### Authors: 
+Vytautas Leonavičius
+##### With contributions by:
+- Morten Roslev: parts of DMR implementation and teaching me various memory reading techniques and helping me to stay sane
+- Tony Whitley: pit info/HWControl prototyping/bug fixes/proofreading
 
 ## Download:
 https://www.mediafire.com/file/hzlugtn3t7sc3gw/rf2_sm_tools_3.7.0.0.zip/file
 
 ## Features
-Plugin offers optional weak synchronization by using version variables on each of the buffers.
+Plugin offers optional weak synchronization by using version variables on each of the output buffers.
 
-Plugin is built using VS 2015 Community Edition, targeting VC12 (VS 2013) runtime, since rF2 comes with VC12 redist.
+Plugin is built using VS Community Edition, targeting VC12 (VS 2013) runtime, since rF2 comes with VC12 redist.
 
-## Refresh Rates:
+## Output Refresh Rates:
 * Telemetry - 50FPS.
 * Scoring - 5FPS.
 * Rules - 3FPS.
 * Multi Rules - on callback from a game, usually once a session and in between sessions.
 * ForceFeedback - 400FPS.
 * Graphics - 400FPS.
+* Pit Info - 100FPS.
+* Weather - 1FPS.
 * Extended - 5FPS and on tracked callback by the game.
 
-Note: Graphics buffer is unsbscribed by default.
+Note: `Graphics` and `Weather` are unsbscribed from by default.
+
+## Input Buffers
+Note to cheaters who dare to contact me with questions: none of this can be used to control vehicle.
+
+Plugin supports sending input to the game (using rFactor 2 API).  Please use this stuff with extreme care - it can cause game freezes and unexpected behavior.  When working with the input buffers, make sure to set `DebugOutputLevel` to `15` and `DebugOutputSource` to `32767` and review `UserData\Log\RF2SMMP_DebugOutput.txt` for errors and warnings.
+
+Monitor app includes sample code that uses Input buffers.
+
+Note: designed with only one write client in mind.  Although multiple clients should be able to coexist fine, they will need to be mindful of buffer update clashes, plugin does not moderate that part.
+
+### HWControl input
+Allows sending restricted set of inputs to rF2.  Mostly useful for pit menu interaction.
+
+### Weather Control input
+Allows sending weather input.  This might be useful in keeping internet queries/thread synchronization out of rF2 plugin thread and inside of a standalone weather control app.
+
+### Rules Control input
+This is experimental control buffer.  It allows sending Rules input to the game.  The idea was that it might make developing custom rules plugin easier, by being able to change logic in an external app/script without rebuilding plugin/restarting rF2.  
+
+However, this is experimental, because I am not positive this approach is going to "fly"/is reliable.  The reason for that is that when done inside of a plugin, rules are applied synchronously: game sends rules input, and allows updating that input in the same callback, meaning synchronously.  Using shared memory plugin this process is not synchronous: game sends rules in a function call, plugin picks up rules update from the input buffer in a separate function call, and will apply update next time game calls rule update function.  So there's a gap between game ouput rules and requested input rules.
+
+I tried to minimize the impact of this processing gap by copying some of the latest rules state onto the updated state, but I do not know how reliably would that work.  That said, I am very passionate about autosport rules, so if you try to use this plugin for rules development and need help/changes (with the plugin part), feel free to reach out.
+
+### Plugin Control input
+Allows dynamically subscirbing to buffers that might've been unsubscribed by `CustomPluginVariables.json` configuration.  Also, allows enabling control input buffers.  The idea here is to allow client to turn missing functionality on if it is missing due to misconfiguration.
+
+## Input Refresh Rates:
+* HWControl - Read at 5FPS with 100ms boost to 50FPS once update is received.  Applied at 100FPS.
+* WeatherControl - Read at 5FPS.  Applied at 1FPS.
+* RulesControl - Read at 5FPS.  Applied at 3FPS.
+* PluginControl - Read at 5FPS.  Applied on read.
+
+Note: only `PluginControl` and `HWControl` buffers are enabled by default.  Other buffers can be enabled via `CustomPluginVariables.json` settings.
 
 ## Unsubscribing from the buffer updatdes
 It is possible to configure which buffers get updated and which don't.  This is done via `UnsubscribedBuffersMask` value in the `CustomPluginVariables.json` file.  To specify buffers to unsubscribe from, add desired flag values up.
@@ -38,11 +82,15 @@ Scoring = 2,
 Rules = 4,
 MultiRules = 8,
 ForceFeedback = 16,
-Graphics = 32`
+Graphics = 32,
+PitInfo = 64,
+Weather = 128
+All = 255`
 
-So, to unsubscribe from `Multi Rules` and `Graphics` buffeers set `UnsubscribedBuffersMask` to 40 (8 + 32).
+So, to unsubscribe from `Multi Rules` and `Graphics` buffers set `UnsubscribedBuffersMask` to 40 (8 + 32).
 
-Note: unsubscribing from `Extended` buffer updates is not supported.
+- Note: unsubscribing from `Extended` buffer updates is not supported.
+- Note: usubscribing from `Scoring` will disable `Plugin Control` input.
 
 ## Limitations/Assumptions:
 * Negative mID is not supported.
@@ -54,9 +102,9 @@ Note: unsubscribing from `Extended` buffer updates is not supported.
 Plugin comes with rF2SMMonitor program that shows how to access exposed internals from C# program.  It is also useful for visualization of shared memory contents and general understanding of rFactor 2 internals.
 
 ## Memory Buffer Uses
-  * Basic:   Most clients (HUDs, Dashes, visualizers) won't need synchronization, see `rF2SMMonitor.MainForm.MappedBuffer<>.GetMappedDataUnsynchronized` for sample implementation.
+  * Basic:   Most clients (HUDs, Dashes, visualizers) won't need synchronization, see `rF2SMMonitor.MappedBuffer<>.GetMappedDataUnsynchronized` for sample implementation.
   * Advanced:  If you would like to make sure you're not 
-  reading a torn (partially overwritten) frame, see `rF2SMMonitor.MainForm.MappedBuffer<>.GetMappedData` for sample implementation.
+  reading a torn (partially overwritten) frame, see `rF2SMMonitor.MappedBuffer<>.GetMappedData` for sample implementation.
 
 ## Dedicated server use
 If ran in dedicated server process, each shared memory buffer name has server PID appended.  If DedicatedServerMapGlobally preference is set to 1, plugin will attempt creating shared memory buffers in the Global section.  Note that "Create Global Objects" permission is needed on user account running dedicated server.
@@ -67,7 +115,7 @@ You are allowed to include this .dll with your distribution, as long as it is:
 * Readme is included
 * You had my permission via email
 
-Please also be aware, that Crew Chief will always ship with the latest version of the .dll and will overwrite .dll to match its version.  I do not expect compatibility to break without game changing its model, aside from rF2Extended buffer, which contains stuff not directly exposed by the game.  Every time layout of memory changes, either of the first two digits in the Plugin version is incremented, which means clients might need an update.  Monitor app is kept in sync with plugin.
+Please also be aware, that Crew Chief will always ship with the latest version of the .dll and will overwrite .dll to match its version.  I do not expect compatibility to break without game changing its model, aside from `rF2Extended` buffer, which contains stuff not directly exposed by the game.  Every time layout of memory changes, either of the first two digits in the Plugin version is incremented, which means clients might need an update.  Monitor app is kept in sync with plugin.
 
 ## Current known clients
 * Crew Chief: https://github.com/mrbelowski/CrewChiefV4 
@@ -81,6 +129,21 @@ Please also be aware, that Crew Chief will always ship with the latest version o
 If you would like to support this project, you can donate [here.](http://thecrewchief.org/misc.php?do=donate)
 
 # Release history
+
+**11/10/2019 - v3.7.13.2**
+
+This version introduces input buffers.  See "Input Buffers" readme section for more info.
+
+  Plugin:
+  * Expose `rF2PitInfo` and `rF2Weather` buffers.  Special thanks for prototyping `AccessPitMenu` and `CheckHWControl` plugin functionality go to Tony Whitley.
+  * Expose `rF2HWControl` input buffer, which allows sending limited number of inputs into the game.
+  * Expose `rF2WeatherControl` input buffer, which allows changing weather conditions dynamically.
+  * Expose `rF2PluginControl` input buffer.  Allows requesting additional plugin features dynamically.
+  * Experimental: Expose `rF2RulesControl` input buffer, which allows sending rules input into the game.
+  * Intenral: rework tracing and reduce code duplication.
+  
+Monitor:
+* Updated to demo newly added features.
 
 **11/10/2019 - v3.7.1.0**
 
@@ -226,6 +289,5 @@ So, to unsubscribe from `Multi Rules` and `Graphics` buffers set `UnsubscribedBu
 **01/31/2017 - v1.0.0.0**
   * Plugin: Added damage and invulnerability tracking
   * Monitor: Added phase and damage tracking and logging
-
 
 **1/18/2017 v0.5.0.0 - Initial release**

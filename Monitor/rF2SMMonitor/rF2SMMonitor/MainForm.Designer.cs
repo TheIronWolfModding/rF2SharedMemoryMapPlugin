@@ -34,16 +34,22 @@ namespace rF2SMMonitor
       this.yOffsetLabel = new System.Windows.Forms.Label();
       this.xOffsetTextBox = new System.Windows.Forms.TextBox();
       this.xOffsetLabel = new System.Windows.Forms.Label();
-      this.groupBoxLogging = new System.Windows.Forms.GroupBox();
-      this.checkBoxLogRules = new System.Windows.Forms.CheckBox();
-      this.checkBoxLogTiming = new System.Windows.Forms.CheckBox();
-      this.checkBoxLogDamage = new System.Windows.Forms.CheckBox();
-      this.checkBoxLogPhaseAndState = new System.Windows.Forms.CheckBox();
-      this.checkBoxLightMode = new System.Windows.Forms.CheckBox();
-      ((System.ComponentModel.ISupportInitialize)(this.view)).BeginInit();
+      this.loggingGroupBox = new System.Windows.Forms.GroupBox();
+      this.logRulesCheckBox = new System.Windows.Forms.CheckBox();
+      this.logTimingCheckBox = new System.Windows.Forms.CheckBox();
+      this.logDamageCheckBox = new System.Windows.Forms.CheckBox();
+      this.logPhaseAndStateCheckBox = new System.Windows.Forms.CheckBox();
+      this.lightModeCheckBox = new System.Windows.Forms.CheckBox();
+      this.inputsGroupBox = new System.Windows.Forms.GroupBox();
+      this.enablePitInputsCheckBox = new System.Windows.Forms.CheckBox();
+      this.enablePitInputsToolTip = new System.Windows.Forms.ToolTip();
+      this.rainIntensityLabel = new System.Windows.Forms.Label();
+      this.rainIntensityTextBox = new System.Windows.Forms.TextBox();
+      this.applyRainIntensityButton = new System.Windows.Forms.Button();
+    ((System.ComponentModel.ISupportInitialize)(this.view)).BeginInit();
       this.groupBoxFocus.SuspendLayout();
       this.globalGroupBox.SuspendLayout();
-      this.groupBoxLogging.SuspendLayout();
+      this.loggingGroupBox.SuspendLayout();
       this.SuspendLayout();
       // 
       // view
@@ -169,76 +175,127 @@ namespace rF2SMMonitor
       // 
       // groupBoxLogging
       // 
-      this.groupBoxLogging.Controls.Add(this.checkBoxLogRules);
-      this.groupBoxLogging.Controls.Add(this.checkBoxLogTiming);
-      this.groupBoxLogging.Controls.Add(this.checkBoxLogDamage);
-      this.groupBoxLogging.Controls.Add(this.checkBoxLogPhaseAndState);
-      this.groupBoxLogging.Location = new System.Drawing.Point(706, -1);
-      this.groupBoxLogging.Name = "groupBoxLogging";
-      this.groupBoxLogging.Size = new System.Drawing.Size(256, 54);
-      this.groupBoxLogging.TabIndex = 9;
-      this.groupBoxLogging.TabStop = false;
-      this.groupBoxLogging.Text = "File Logging";
+      this.loggingGroupBox.Controls.Add(this.logRulesCheckBox);
+      this.loggingGroupBox.Controls.Add(this.logTimingCheckBox);
+      this.loggingGroupBox.Controls.Add(this.logDamageCheckBox);
+      this.loggingGroupBox.Controls.Add(this.logPhaseAndStateCheckBox);
+      this.loggingGroupBox.Location = new System.Drawing.Point(706, -1);
+      this.loggingGroupBox.Name = "groupBoxLogging";
+      this.loggingGroupBox.Size = new System.Drawing.Size(256, 54);
+      this.loggingGroupBox.TabIndex = 9;
+      this.loggingGroupBox.TabStop = false;
+      this.loggingGroupBox.Text = "File Logging";
       // 
       // checkBoxLogRules
       // 
-      this.checkBoxLogRules.AutoSize = true;
-      this.checkBoxLogRules.Location = new System.Drawing.Point(109, 32);
-      this.checkBoxLogRules.Name = "checkBoxLogRules";
-      this.checkBoxLogRules.Size = new System.Drawing.Size(53, 17);
-      this.checkBoxLogRules.TabIndex = 12;
-      this.checkBoxLogRules.Text = "Rules";
-      this.checkBoxLogRules.UseVisualStyleBackColor = true;
+      this.logRulesCheckBox.AutoSize = true;
+      this.logRulesCheckBox.Location = new System.Drawing.Point(109, 32);
+      this.logRulesCheckBox.Name = "checkBoxLogRules";
+      this.logRulesCheckBox.Size = new System.Drawing.Size(53, 17);
+      this.logRulesCheckBox.TabIndex = 12;
+      this.logRulesCheckBox.Text = "Rules";
+      this.logRulesCheckBox.UseVisualStyleBackColor = true;
       // 
       // checkBoxLogTiming
       // 
-      this.checkBoxLogTiming.AutoSize = true;
-      this.checkBoxLogTiming.Location = new System.Drawing.Point(109, 13);
-      this.checkBoxLogTiming.Name = "checkBoxLogTiming";
-      this.checkBoxLogTiming.Size = new System.Drawing.Size(57, 17);
-      this.checkBoxLogTiming.TabIndex = 11;
-      this.checkBoxLogTiming.Text = "Timing";
-      this.checkBoxLogTiming.UseVisualStyleBackColor = true;
+      this.logTimingCheckBox.AutoSize = true;
+      this.logTimingCheckBox.Location = new System.Drawing.Point(109, 13);
+      this.logTimingCheckBox.Name = "checkBoxLogTiming";
+      this.logTimingCheckBox.Size = new System.Drawing.Size(57, 17);
+      this.logTimingCheckBox.TabIndex = 11;
+      this.logTimingCheckBox.Text = "Timing";
+      this.logTimingCheckBox.UseVisualStyleBackColor = true;
       // 
       // checkBoxLogDamage
       // 
-      this.checkBoxLogDamage.AutoSize = true;
-      this.checkBoxLogDamage.Location = new System.Drawing.Point(7, 32);
-      this.checkBoxLogDamage.Name = "checkBoxLogDamage";
-      this.checkBoxLogDamage.Size = new System.Drawing.Size(66, 17);
-      this.checkBoxLogDamage.TabIndex = 10;
-      this.checkBoxLogDamage.Text = "Damage";
-      this.checkBoxLogDamage.UseVisualStyleBackColor = true;
+      this.logDamageCheckBox.AutoSize = true;
+      this.logDamageCheckBox.Location = new System.Drawing.Point(7, 32);
+      this.logDamageCheckBox.Name = "checkBoxLogDamage";
+      this.logDamageCheckBox.Size = new System.Drawing.Size(66, 17);
+      this.logDamageCheckBox.TabIndex = 10;
+      this.logDamageCheckBox.Text = "Damage";
+      this.logDamageCheckBox.UseVisualStyleBackColor = true;
       // 
       // checkBoxLogPhaseAndState
       // 
-      this.checkBoxLogPhaseAndState.AutoSize = true;
-      this.checkBoxLogPhaseAndState.Location = new System.Drawing.Point(7, 13);
-      this.checkBoxLogPhaseAndState.Name = "checkBoxLogPhaseAndState";
-      this.checkBoxLogPhaseAndState.Size = new System.Drawing.Size(105, 17);
-      this.checkBoxLogPhaseAndState.TabIndex = 9;
-      this.checkBoxLogPhaseAndState.Text = "Phase and State";
-      this.checkBoxLogPhaseAndState.UseVisualStyleBackColor = true;
+      this.logPhaseAndStateCheckBox.AutoSize = true;
+      this.logPhaseAndStateCheckBox.Location = new System.Drawing.Point(7, 13);
+      this.logPhaseAndStateCheckBox.Name = "checkBoxLogPhaseAndState";
+      this.logPhaseAndStateCheckBox.Size = new System.Drawing.Size(105, 17);
+      this.logPhaseAndStateCheckBox.TabIndex = 9;
+      this.logPhaseAndStateCheckBox.Text = "Phase and State";
+      this.logPhaseAndStateCheckBox.UseVisualStyleBackColor = true;
       // 
       // checkBoxLightMode
       // 
-      this.checkBoxLightMode.AutoSize = true;
-      this.checkBoxLightMode.Location = new System.Drawing.Point(5, 6);
-      this.checkBoxLightMode.Name = "checkBoxLightMode";
-      this.checkBoxLightMode.Size = new System.Drawing.Size(78, 17);
-      this.checkBoxLightMode.TabIndex = 11;
-      this.checkBoxLightMode.Text = "Light mode";
-      this.checkBoxLightMode.UseVisualStyleBackColor = true;
+      this.lightModeCheckBox.AutoSize = true;
+      this.lightModeCheckBox.Location = new System.Drawing.Point(5, 6);
+      this.lightModeCheckBox.Name = "checkBoxLightMode";
+      this.lightModeCheckBox.Size = new System.Drawing.Size(78, 17);
+      this.lightModeCheckBox.TabIndex = 11;
+      this.lightModeCheckBox.Text = "Light mode";
+      this.lightModeCheckBox.UseVisualStyleBackColor = true;
+      // 
+      // groupBoxInputs
+      // 
+      this.inputsGroupBox.Controls.Add(this.enablePitInputsCheckBox);
+      this.inputsGroupBox.Controls.Add(this.rainIntensityLabel);
+      this.inputsGroupBox.Controls.Add(this.rainIntensityTextBox);
+      this.inputsGroupBox.Controls.Add(this.applyRainIntensityButton);
+      this.inputsGroupBox.Location = new System.Drawing.Point(972, -1);
+      this.inputsGroupBox.Name = "groupBoxInputs";
+      this.inputsGroupBox.Size = new System.Drawing.Size(256, 54);
+      this.inputsGroupBox.TabIndex = 15;
+      this.inputsGroupBox.TabStop = false;
+      this.inputsGroupBox.Text = "Inputs";
+      // 
+      // checkBoxEnablePitInputs
+      // 
+      this.enablePitInputsCheckBox.AutoSize = true;
+      this.enablePitInputsCheckBox.Location = new System.Drawing.Point(7, 13);
+      this.enablePitInputsCheckBox.Name = "checkBoxEnablePitInputs";
+      this.enablePitInputsCheckBox.Size = new System.Drawing.Size(53, 17);
+      this.enablePitInputsCheckBox.TabIndex = 20;
+      this.enablePitInputsCheckBox.Text = "Enable Pit Inputs";
+      this.enablePitInputsCheckBox.UseVisualStyleBackColor = true;
+      this.enablePitInputsCheckBox.Checked = false;
+      this.enablePitInputsToolTip.SetToolTip(this.enablePitInputsCheckBox, "Control rF2 Pit menu using Y, U, O and P keys.  Note that Pit Menu buffer and EnableHWControlInput should be enabled.");
+      // 
+      // rainIntensityLabel
+      // 
+      this.rainIntensityLabel.AutoSize = true;
+      this.rainIntensityLabel.Location = new System.Drawing.Point(5, 32);
+      this.rainIntensityLabel.Name = "rainIntensityLabel";
+      this.rainIntensityLabel.Size = new System.Drawing.Size(44, 13);
+      this.rainIntensityLabel.TabIndex = 25;
+      this.rainIntensityLabel.Text = "Rain intensity:";
+      // 
+      // rainIntensityTextBox
+      // 
+      this.rainIntensityTextBox.Location = new System.Drawing.Point(80, 30);
+      this.rainIntensityTextBox.Name = "rainIntensityTextBox";
+      this.rainIntensityTextBox.Size = new System.Drawing.Size(40, 20);
+      this.rainIntensityTextBox.TabIndex = 30;
+      // 
+      // applyRainIntensityButton
+      // 
+      this.applyRainIntensityButton.Location = new System.Drawing.Point(125, 29);
+      this.applyRainIntensityButton.Name = "applyRainIntensityButton";
+      this.applyRainIntensityButton.Size = new System.Drawing.Size(70, 22);
+      this.applyRainIntensityButton.TabIndex = 35;
+      this.applyRainIntensityButton.Text = "Apply";
+      this.applyRainIntensityButton.Enabled = false;
       // 
       // MainForm
       // 
       this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
       this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
       this.ClientSize = new System.Drawing.Size(1902, 1033);
-      this.Controls.Add(this.checkBoxLightMode);
-      this.Controls.Add(this.groupBoxLogging);
+      this.Controls.Add(this.lightModeCheckBox);
+      this.Controls.Add(this.loggingGroupBox);
       this.Controls.Add(this.globalGroupBox);
       this.Controls.Add(this.groupBoxFocus);
+      this.Controls.Add(this.inputsGroupBox);
       this.Controls.Add(this.view);
       this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.Fixed3D;
       this.MaximizeBox = false;
@@ -249,8 +306,8 @@ namespace rF2SMMonitor
       this.groupBoxFocus.PerformLayout();
       this.globalGroupBox.ResumeLayout(false);
       this.globalGroupBox.PerformLayout();
-      this.groupBoxLogging.ResumeLayout(false);
-      this.groupBoxLogging.PerformLayout();
+      this.loggingGroupBox.ResumeLayout(false);
+      this.loggingGroupBox.PerformLayout();
       this.ResumeLayout(false);
       this.PerformLayout();
 
@@ -272,12 +329,18 @@ namespace rF2SMMonitor
     private System.Windows.Forms.Label xOffsetLabel;
     private System.Windows.Forms.TextBox yOffsetTextBox;
     private System.Windows.Forms.Label yOffsetLabel;
-    private System.Windows.Forms.GroupBox groupBoxLogging;
-    private System.Windows.Forms.CheckBox checkBoxLogPhaseAndState;
-    private System.Windows.Forms.CheckBox checkBoxLightMode;
-    private System.Windows.Forms.CheckBox checkBoxLogDamage;
-    private System.Windows.Forms.CheckBox checkBoxLogTiming;
-    private System.Windows.Forms.CheckBox checkBoxLogRules;
+    private System.Windows.Forms.GroupBox loggingGroupBox;
+    private System.Windows.Forms.CheckBox logPhaseAndStateCheckBox;
+    private System.Windows.Forms.CheckBox lightModeCheckBox;
+    private System.Windows.Forms.CheckBox logDamageCheckBox;
+    private System.Windows.Forms.CheckBox logTimingCheckBox;
+    private System.Windows.Forms.CheckBox logRulesCheckBox;
+    private System.Windows.Forms.GroupBox inputsGroupBox;
+    private System.Windows.Forms.CheckBox enablePitInputsCheckBox;
+    private System.Windows.Forms.ToolTip enablePitInputsToolTip;
+    private System.Windows.Forms.Label rainIntensityLabel;
+    private System.Windows.Forms.TextBox rainIntensityTextBox;
+    private System.Windows.Forms.Button applyRainIntensityButton;
   }
 }
 
