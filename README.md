@@ -130,7 +130,7 @@ If you would like to support this project, you can donate [here.](http://thecrew
 
 # Release history
 
-**11/10/2019 - v3.7.14.2**
+**09/07/2020 - v3.7.14.2**
 
 This version introduces input buffers.  See "Input Buffers" readme section for more info.
 
