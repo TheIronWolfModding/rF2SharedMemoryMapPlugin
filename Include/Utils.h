@@ -9,15 +9,15 @@ Website: thecrewchief.org
 
 #pragma once
 
-namespace Utils
-{
+namespace Utils {
 
 // Lazy man's ScopeGuard.
-template <typename Lambda>
+template<typename Lambda>
 class ScopeGuard
 {
 public:
-  ScopeGuard(Lambda const& scopeExitLambda) : mScopeExitLambda(scopeExitLambda)
+  ScopeGuard(Lambda const& scopeExitLambda)
+    : mScopeExitLambda(scopeExitLambda)
   {}
 
   ~ScopeGuard()
@@ -26,26 +26,24 @@ public:
       mScopeExitLambda();
   }
 
-  void Dismiss()
-  {
-    mCommitted = true;
-  }
+  void Dismiss() { mCommitted = true; }
 
 private:
   bool mCommitted = false;
   Lambda mScopeExitLambda;
 };
 
-template <typename Lambda>
-ScopeGuard<Lambda> MakeScopeGuard(Lambda const& l)
+template<typename Lambda>
+ScopeGuard<Lambda>
+MakeScopeGuard(Lambda const& l)
 {
   return ScopeGuard<Lambda>(l);
 };
 
-#define LOWORD(_dw)     ((WORD)(((DWORD_PTR)(_dw)) & 0xffff))
-#define HIWORD(_dw)     ((WORD)((((DWORD_PTR)(_dw)) >> 16) & 0xffff))
-#define LODWORD(_qw)    ((DWORD)(_qw))
-#define HIDWORD(_qw)    ((DWORD)(((_qw) >> 32) & 0xffffffff))
+#define LOWORD(_dw) ((WORD)(((DWORD_PTR)(_dw)) & 0xffff))
+#define HIWORD(_dw) ((WORD)((((DWORD_PTR)(_dw)) >> 16) & 0xffff))
+#define LODWORD(_qw) ((DWORD)(_qw))
+#define HIDWORD(_qw) ((DWORD)(((_qw) >> 32) & 0xffffffff))
 
 /// <summary>
 /// Searches for the first pattern in the memory region.
@@ -55,7 +53,8 @@ ScopeGuard<Lambda> MakeScopeGuard(Lambda const& l)
 /// <param name="pattern">The pattern (Example: "\x12\xAB\x34")</param>
 /// <param name="mask">The mask (Example: "x?x")</param>
 /// <returns>The address of the found pattern or -1 if the pattern was not found.</returns>
-uintptr_t FindPattern(uintptr_t start, size_t length, unsigned char const* pattern, char const* mask);
+uintptr_t
+FindPattern(uintptr_t start, size_t length, unsigned char const* pattern, char const* mask);
 
 /// <summary>
 /// Searches for the first pattern in the module.
@@ -63,22 +62,28 @@ uintptr_t FindPattern(uintptr_t start, size_t length, unsigned char const* patte
 /// <param name="module">The module to scan.</param>
 /// <param name="pattern">The pattern (Example: "\x12\xAB\x34")</param>
 /// <param name="mask">The mask (Example: "x?x")</param>
-/// <param name="bytedIntoPatternToFindOffset">nr bytes into found address to add to get the pointer offset (Example: -?+?)</param>
-/// <returns>The address of the found pattern or -1 if the pattern was not found.</returns>
-uintptr_t* FindPatternForPointerInMemory(HMODULE module, unsigned char const* pattern, char const* mask, size_t bytedIntoPatternToFindPointer);
+/// <param name="bytedIntoPatternToFindOffset">nr bytes into found address to add to get the pointer offset (Example:
+/// -?+?)</param> <returns>The address of the found pattern or -1 if the pattern was not found.</returns>
+uintptr_t*
+FindPatternForPointerInMemory(HMODULE module,
+                              unsigned char const* pattern,
+                              char const* mask,
+                              size_t bytedIntoPatternToFindPointer);
 
-char* GetFileContents(char const* const filePath);
+char*
+GetFileContents(char const* const filePath);
 
-template <typename E, typename F>
-bool IsFlagOn(E value, F flag)
+template<typename E, typename F>
+bool
+IsFlagOn(E value, F flag)
 {
   return (value & static_cast<E>(flag)) != static_cast<E>(0);
 }
 
-template <typename E, typename F>
-bool IsFlagOff(E value, F flag)
+template<typename E, typename F>
+bool
+IsFlagOff(E value, F flag)
 {
   return !IsFlagOn(value, flag);
 }
-
 }

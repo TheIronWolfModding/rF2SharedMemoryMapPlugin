@@ -1,22 +1,12 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="..\Source\rFactor2SharedMemoryMap.cpp" />
+    <ClCompile Include="..\Source\CrewChiefPlugin.cpp" />
     <ClCompile Include="..\source\DirectMemoryReader.cpp" />
     <ClCompile Include="..\source\Utils.cpp" />
-    <ClCompile Include="..\source\ISIInternalsDump.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\Include\InternalsPlugin.hpp">
-      <Filter>rf2_includes</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Include\PluginObjects.hpp">
-      <Filter>rf2_includes</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Include\rFactor2SharedMemoryMap.hpp">
-      <Filter>includes</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Include\rF2State.h">
+    <ClInclude Include="..\Include\GTR2State.h">
       <Filter>includes</Filter>
     </ClInclude>
     <ClInclude Include="..\Include\Utils.h">
@@ -28,9 +18,12 @@
     <ClInclude Include="..\Include\DirectMemoryReader.h">
       <Filter>includes</Filter>
     </ClInclude>
+    <ClInclude Include="..\Include\InternalsPlugin.hpp" />
+    <ClInclude Include="..\Include\CrewChiefPlugin.h" />
+    <ClInclude Include="..\Include\RFPluginObjects.hpp" />
   </ItemGroup>
   <ItemGroup>
-    <Filter Include="rf2_includes">
+    <Filter Include="gtr2_includes">
       <UniqueIdentifier>{34840d6d-c063-44e4-b500-d70edb6917bc}</UniqueIdentifier>
     </Filter>
     <Filter Include="includes">
@@ -41,5 +34,6 @@
     <None Include="..\.gitignore" />
     <None Include="..\LICENSE" />
     <None Include="..\README.md" />
+    <None Include="..\Source\CrewChief.ini" />
   </ItemGroup>
 </Project>
