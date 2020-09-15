@@ -1,14 +1,11 @@
 #include <windows.h>
 #include <psapi.h>
 #include "Utils.h"
-#include "CrewChiefPlugin.h"
+#include "rFactor2SharedMemoryMap.hpp"
 
-namespace Utils {
-uintptr_t*
-FindPatternForPointerInMemory(HMODULE module,
-                              unsigned char const* pattern,
-                              char const* mask,
-                              size_t bytedIntoPatternToFindOffset)
+namespace Utils
+{
+uintptr_t* FindPatternForPointerInMemory(HMODULE module, unsigned char const* pattern, char const* mask, size_t bytedIntoPatternToFindOffset)
 {
   MODULEINFO info = {};
   ::GetModuleInformation(::GetCurrentProcess(), module, &info, sizeof(MODULEINFO));
@@ -21,8 +18,8 @@ FindPatternForPointerInMemory(HMODULE module,
   return reinterpret_cast<uintptr_t*>(addressAbsoluteRIP + offsetFromRIP);
 }
 
-uintptr_t
-FindPattern(uintptr_t start, size_t length, unsigned char const* pattern, char const* mask)
+
+uintptr_t FindPattern(uintptr_t start, size_t length, unsigned char const* pattern, char const* mask)
 {
   size_t maskPos = 0u;
   auto const maskLength = strlen(reinterpret_cast<char const*>(mask)) - 1;
@@ -31,7 +28,7 @@ FindPattern(uintptr_t start, size_t length, unsigned char const* pattern, char c
   for (auto currAddress = startAdress; currAddress < startAdress + length; ++currAddress) {
     if (*reinterpret_cast<unsigned char*>(currAddress) == pattern[maskPos] || mask[maskPos] == '?') {
       if (mask[maskPos + 1u] == '\0')
-        return currAddress - maskLength;
+         return currAddress - maskLength;
 
       ++maskPos;
     } else
@@ -41,12 +38,13 @@ FindPattern(uintptr_t start, size_t length, unsigned char const* pattern, char c
   return 0uLL;
 }
 
-char*
-GetFileContents(char const* const filePath)
+
+char* GetFileContents(char const* const filePath)
 {
   FILE* fileHandle = nullptr;
 
-  auto onExit = MakeScopeGuard([&]() {
+  auto onExit = MakeScopeGuard(
+    [&]() {
     if (fileHandle != nullptr) {
       auto ret = fclose(fileHandle);
       if (ret != 0)
@@ -83,4 +81,6 @@ GetFileContents(char const* const filePath)
 
   return fileContents;
 }
+
+
 }
