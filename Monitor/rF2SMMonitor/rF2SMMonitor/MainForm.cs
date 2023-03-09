@@ -182,7 +182,7 @@ namespace rF2SMMonitor
     private DateTime nextKeyHandlingTime = DateTime.MinValue;
     private void ProcessKeys()
     {
-      if (!this.connected 
+      if (!this.connected
         || !this.enablePitInputs
         || this.extended.mHWControlInputEnabled == 0)
         return;
@@ -565,7 +565,7 @@ namespace rF2SMMonitor
         this.maxFFBValue = Math.Max(Math.Abs(this.forceFeedback.mForceValue), this.maxFFBValue);
 
         gameStateText.Append(
-          $"Plugin Version:    Expected: 3.7.14.2 64bit   Actual: {MainForm.GetStringFromBytes(this.extended.mVersion)}"
+          $"Plugin Version:    Expected: 3.7.15.0 64bit   Actual: {MainForm.GetStringFromBytes(this.extended.mVersion)}"
           + $"{(this.extended.is64bit == 1 ? " 64bit" : " 32bit")}"
           + $"{(this.extended.mSCRPluginEnabled == 1 ? "    SCR Plugin enabled" : "")}"
           + $"{(this.extended.mDirectMemoryAccessEnabled == 1 ? "    DMA enabled" : "")}"
