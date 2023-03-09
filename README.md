@@ -21,7 +21,7 @@ Vytautas Leonavičius
 - Tony Whitley: pit info/HWControl prototyping/bug fixes/proofreading
 
 ## Download:
-http://www.mediafire.com/file/ TBD /rf2_sm_tools_3.7.15.0.zip/file
+https://www.mediafire.com/file/45kvt7p3lb23gww/rf2_sm_tools_3.7.15.0.zip/file
 
 ## Features
 Plugin offers optional weak synchronization by using version variables on each of the output buffers.

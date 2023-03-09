@@ -33,7 +33,7 @@ VSVersionInfo(
         StringStruct(u'FileDescription', u'rFactor 2 Shared Memory Map Plugin'),
         StringStruct(u'FileVersion', u'3.7.15.0'),
         StringStruct(u'InternalName', u'rF2SharedMemoryMapPlugin'),
-        #StringStruct(u'LegalCopyright', u'(c) 2017-2023 Vytautas Leonavicius. All rights reserved.'),
+        StringStruct(u'LegalCopyright', u'GNU General Public License v3.0'),
         StringStruct(u'OriginalFilename', u'rF2SharedMemoryMapPlugin64.dll'),
         StringStruct(u'ProductName', u'rF2SharedMemoryMapPlugin'),
         StringStruct(u'ProductVersion', u'3.7.0.0')])
