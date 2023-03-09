@@ -1,18 +1,18 @@
-//ÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜ
-//İ                                                                         Ş
-//İ Module: Header file for internals plugin                                Ş
-//İ                                                                         Ş
-//İ Description: Interface declarations for internals plugin                Ş
-//İ                                                                         Ş
-//İ This source code module, and all information, data, and algorithms      Ş
-//İ associated with it, are part of isiMotor Technology (tm).               Ş
-//İ                 PROPRIETARY AND CONFIDENTIAL                            Ş
-//İ Copyright (c) 1996-2015 Image Space Incorporated.  All rights reserved. Ş
-//İ                                                                         Ş
-//İ Change history:                                                         Ş
-//İ   tag.2005.11.29: created                                               Ş
-//İ                                                                         Ş
-//ßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßß
+//###########################################################################
+//#                                                                         #
+//# Module: Header file for internals plugin                                #
+//#                                                                         #
+//# Description: Interface declarations for internals plugin                #
+//#                                                                         #
+//# This source code module, and all information, data, and algorithms      #
+//# associated with it, are part of isiMotor Technology (tm).               #
+//#                 PROPRIETARY AND CONFIDENTIAL                            #
+//# Copyright (c) 2017 Studio 397 B.V.  All rights reserved.               #
+//#                                                                         #
+//# Change history:                                                         #
+//#   tag.2005.11.29: created                                               #
+//#                                                                         #
+//###########################################################################
 
 #ifndef _INTERNALS_PLUGIN_HPP_
 #define _INTERNALS_PLUGIN_HPP_
@@ -27,9 +27,9 @@
 #pragma pack( push, 4 )
 
 
-//ÚÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ¿
-//³ Version01 Structures                                                   ³
-//ÀÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÙ
+//#########################################################################
+//# Version01 Structures                                                   #
+//##########################################################################
 
 struct TelemVect3
 {
@@ -263,8 +263,17 @@ struct TelemInfoV01
   float mPhysicsToGraphicsOffset[3];       // offset from static CG to graphical center
   float mPhysicalSteeringWheelRange;       // the *physical* steering wheel range
 
+  double mBatteryChargeFraction; // Battery charge as fraction [0.0-1.0]
+
+  // electric boost motor
+  double mElectricBoostMotorTorque; // current torque of boost motor (can be negative when in regenerating mode)
+  double mElectricBoostMotorRPM; // current rpm of boost motor
+  double mElectricBoostMotorTemperature; // current temperature of boost motor
+  double mElectricBoostWaterTemperature; // current water temperature of boost motor cooler if present (0 otherwise)
+  unsigned char mElectricBoostMotorState; // 0=unavailable 1=inactive, 2=propulsion, 3=regeneration
+
   // Future use
-  unsigned char mExpansion[152]; // for future use (note that the slot ID has been moved to mID above)
+  unsigned char mExpansion[111]; // for future use (note that the slot ID has been moved to mID above)
 
   // keeping this at the end of the structure to make it easier to replace in future versions
   TelemWheelV01 mWheel[4];       // wheel info (front left, front right, rear left, rear right)
@@ -435,7 +444,7 @@ struct ScoringInfoV01
   // 7 Session stopped
   // 8 Session over
   // 9 Paused (tag.2015.09.14 - this is new, and indicates that this is a heartbeat call to the plugin)
-  unsigned char mGamePhase;   
+  unsigned char mGamePhase;
 
   // Yellow flag states (applies to full-course only)
   // -1 Invalid
@@ -498,9 +507,9 @@ struct CommentaryRequestInfoV01
 };
 
 
-//ÚÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ¿
-//³ Version02 Structures                                                   ³
-//ÀÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÙ
+//#########################################################################
+//# Version02 Structures                                                   #
+//##########################################################################
 
 struct PhysicsOptionsV01
 {
@@ -612,9 +621,9 @@ struct WeatherControlInfoV01
 };
 
 
-//ÚÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ¿
-//³ Version07 Structures                                                   ³
-//ÀÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÙ
+//#########################################################################
+//# Version07 Structures                                                   #
+//##########################################################################
 
 struct CustomVariableV01
 {
@@ -812,9 +821,9 @@ struct PitMenuV01
 };
 
 
-//ÚÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ¿
-//³ Plugin classes used to access internals                                ³
-//ÀÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÙ
+//#########################################################################
+//# Plugin classes used to access internals                                #
+//##########################################################################
 
 // Note: use class InternalsPluginV01 and have exported function GetPluginVersion() return 1, or
 //       use class InternalsPluginV02 and have exported function GetPluginVersion() return 2, etc.
@@ -983,8 +992,8 @@ class InternalsPluginV07 : public InternalsPluginV06  // V07 contains everything
 };
 
 
-//ÚÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ¿
-//ÀÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÙ
+//#########################################################################
+//##########################################################################
 
 // See #pragma at top of file
 #pragma pack( pop )

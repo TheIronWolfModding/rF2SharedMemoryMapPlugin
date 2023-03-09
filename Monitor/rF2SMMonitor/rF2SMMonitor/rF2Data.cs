@@ -348,8 +348,18 @@ namespace rF2SMMonitor
       public float[] mPhysicsToGraphicsOffset;       // offset from static CG to graphical center
       public float mPhysicalSteeringWheelRange;       // the *physical* steering wheel range
 
+
+      public double mBatteryChargeFraction;                        // Battery charge as fraction [0.0-1.0]
+
+      // electric boost motor
+      public double mElectricBoostMotorTorque;                     // current torque of boost motor (can be negative when in regenerating mode)
+      public double mElectricBoostMotorRPM;                        // current rpm of boost motor
+      public double mElectricBoostMotorTemperature;                // current temperature of boost motor
+      public double mElectricBoostWaterTemperature;                // current water temperature of boost motor cooler if present (0 otherwise)
+      public byte mElectricBoostMotorState;                        // 0=unavailable 1=inactive, 2=propulsion, 3=regeneration
+
       // Future use
-      [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = 152)]
+      [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = 111)]
       public byte[] mExpansion;           // for future use (note that the slot ID has been moved to mID above)
 
       // keeping this at the end of the structure to make it easier to replace in future versions

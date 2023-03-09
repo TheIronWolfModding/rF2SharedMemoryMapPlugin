@@ -308,8 +308,18 @@ struct rF2VehicleTelemetry
   float mPhysicsToGraphicsOffset[3];       // offset from static CG to graphical center
   float mPhysicalSteeringWheelRange;       // the *physical* steering wheel range
 
+  double mBatteryChargeFraction; // Battery charge as fraction [0.0-1.0]
+
+  // electric boost motor
+  double mElectricBoostMotorTorque; // current torque of boost motor (can be negative when in regenerating mode)
+  double mElectricBoostMotorRPM; // current rpm of boost motor
+  double mElectricBoostMotorTemperature; // current temperature of boost motor
+  double mElectricBoostWaterTemperature; // current water temperature of boost motor cooler if present (0 otherwise)
+  unsigned char mElectricBoostMotorState; // 0=unavailable 1=inactive, 2=propulsion, 3=regeneration
+
   // Future use
-  unsigned char mExpansion[152];           // for future use (note that the slot ID has been moved to mID above)
+  unsigned char mExpansion[111]; // for future use (note that the slot ID has been moved to mID above)
+
 
   // keeping this at the end of the structure to make it easier to replace in future versions
   rF2Wheel mWheels[4];                     // wheel info (front left, front right, rear left, rear right)

@@ -10,7 +10,7 @@ rFactor 2 API has some limitations/bugs, and plugin tries to deal with that by d
 
 # Acknowledgements
 ##### This work is based on:
-  * rF2 Internals Plugin sample #7 by ISI/S397 found at: https://www.studio-397.com/modding-resources/
+  * rF2 Internals Plugin sample #8 by ISI/S397 found at: https://www.studio-397.com/modding-resources/
 ##### Was inspired by:
   * rF1 Shared Memory Map Plugin by Dan Allongo found at: https://github.com/dallongo/rFactorSharedMemoryMap
 
@@ -21,7 +21,7 @@ Vytautas Leonavičius
 - Tony Whitley: pit info/HWControl prototyping/bug fixes/proofreading
 
 ## Download:
-http://www.mediafire.com/file/qir5xkb7fqbqa2s/rf2_sm_tools_3.7.14.2.zip/file
+http://www.mediafire.com/file/ TBD /rf2_sm_tools_3.7.15.0.zip/file
 
 ## Features
 Plugin offers optional weak synchronization by using version variables on each of the output buffers.
@@ -129,6 +129,13 @@ Please also be aware, that Crew Chief will always ship with the latest version o
 If you would like to support this project, you can donate [here.](http://thecrewchief.org/misc.php?do=donate)
 
 # Release history
+
+**09/03/2023 - v3.7.15.0**
+
+This version just uses the updated InternalsPlugin.hpp
+
+  Plugin:
+  * Adds battery/electric motor items to the `rF2Telemetry` buffer.
 
 **09/07/2020 - v3.7.14.2**
 
