@@ -21,7 +21,7 @@ Vytautas Leonavičius
 - Tony Whitley: pit info/HWControl prototyping/bug fixes/proofreading
 
 ## Download:
-https://www.mediafire.com/file/45kvt7p3lb23gww/rf2_sm_tools_3.7.15.0.zip/file
+https://www.mediafire.com/file/s6ojcr9zrs6q9ls/rf2_sm_tools_3.7.15.1.zip/file
 
 ## Features
 Plugin offers optional weak synchronization by using version variables on each of the output buffers.
@@ -129,6 +129,13 @@ Please also be aware, that Crew Chief will always ship with the latest version o
 If you would like to support this project, you can donate [here.](http://thecrewchief.org/misc.php?do=donate)
 
 # Release history
+
+**25/03/2023 - v3.7.15.1**
+
+This version corrects the updated InternalsPlugin.hpp
+
+  Plugin:
+  * Inserts DeltaBest into the `rF2Telemetry` buffer.
 
 **09/03/2023 - v3.7.15.0**
 

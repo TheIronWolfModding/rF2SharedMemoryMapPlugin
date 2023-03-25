@@ -13,7 +13,8 @@
 //#   tag.2005.11.29: created                                               #
 //#                                                                         #
 //###########################################################################
-
+// From https://www.studio-397.com/modding-resources/ with a the fix from here
+// https://forum.studio-397.com/index.php?threads/melectricboostmotorstate-data-from-latest-api-plugin-does-not-return-correct-value.74006/#post-1124738
 #ifndef _INTERNALS_PLUGIN_HPP_
 #define _INTERNALS_PLUGIN_HPP_
 
@@ -263,6 +264,8 @@ struct TelemInfoV01
   float mPhysicsToGraphicsOffset[3];       // offset from static CG to graphical center
   float mPhysicalSteeringWheelRange;       // the *physical* steering wheel range
 
+  double mDeltaBest;					   // (omitted in error by S397)
+
   double mBatteryChargeFraction; // Battery charge as fraction [0.0-1.0]
 
   // electric boost motor
@@ -273,7 +276,7 @@ struct TelemInfoV01
   unsigned char mElectricBoostMotorState; // 0=unavailable 1=inactive, 2=propulsion, 3=regeneration
 
   // Future use
-  unsigned char mExpansion[111]; // for future use (note that the slot ID has been moved to mID above)
+  unsigned char mExpansion[103]; // for future use (note that the slot ID has been moved to mID above)
 
   // keeping this at the end of the structure to make it easier to replace in future versions
   TelemWheelV01 mWheel[4];       // wheel info (front left, front right, rear left, rear right)
