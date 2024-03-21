@@ -6,21 +6,15 @@ MainForm implementation, contains main loop and render calls.
 Author: The Iron Wolf (vleonavicius@hotmail.com)
 Website: thecrewchief.org
 */
-using Newtonsoft.Json;
-
-using NoSuchStudio.Common;
-
 using rF2SMMonitor.rFactor2Data;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
-using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Windows.Forms;
-using Newtonsoft;
 using static rF2SMMonitor.rFactor2Constants;
 
 namespace rF2SMMonitor
@@ -534,8 +528,6 @@ namespace rF2SMMonitor
         : Encoding.Default.GetString(bytes);
     }
 
-    private static string dumpExtendedText;
-    private bool dumpExtended = false;
     // Corrdinate conversion:
     // rF2 +x = screen +x
     // rF2 +z = screen -z
@@ -665,12 +657,6 @@ namespace rF2SMMonitor
                 + $"{(rFactor2Constants.rF2FinishStatus)playerSessionEndInfo.mFinishStatus}\n"
                 + $"{MainForm.GetStringFromBytes(this.extended.mDisplayedMessageUpdateCapture)}\n"
                 );
-        if (dumpExtended) // Poke this true to dump this.extended once.
-        {
-          dumpExtendedText = JsonConvert.SerializeObject(this.extended, Formatting.Indented);
-          File.WriteAllText(@"ExtendedDump.json", dumpExtendedText);
-          dumpExtended = false;
-        }
 
         // Col1 values
         g.DrawString(gameStateText.ToString(), SystemFonts.DefaultFont, Brushes.Purple, currX + 145, currY);
