@@ -1184,7 +1184,7 @@ bool SharedMemoryPlugin::AccessTrackRules(TrackRulesV01& info)
   if (info.mNumActions >= rF2MappedBufferHeader::MAX_MAPPED_VEHICLES)
     DEBUG_MSG(DebugLevel::Errors, DebugSource::General, "Rules exceeded maximum of allowed actions.");
 
-  auto const numActions = min(info.mNumActions, rF2MappedBufferHeader::MAX_MAPPED_VEHICLES);
+  decltype(info.mNumActions) const numActions = min(info.mNumActions, rF2MappedBufferHeader::MAX_MAPPED_VEHICLES);
   for (int i = 0; i < numActions; ++i)
     memcpy(&(mRules.mpWriteBuff->mActions[i]), &(info.mAction[i]), sizeof(rF2TrackRulesAction));
 
@@ -1204,7 +1204,7 @@ bool SharedMemoryPlugin::AccessTrackRules(TrackRulesV01& info)
     // Note: all experimental/WIP.
     // Try to keep updated input safe and try to keep it close to the current state/frame.
     auto const currentET = info.mCurrentET;
-    auto const numActions = info.mNumActions;
+    auto const numActions2 = info.mNumActions;
     auto const pAction = info.mAction;
     auto const numParticipants = info.mNumParticipants;
     auto const safetyCarExists = info.mSafetyCarExists;
@@ -1216,14 +1216,14 @@ bool SharedMemoryPlugin::AccessTrackRules(TrackRulesV01& info)
 
     memcpy(&info, &(mRulesControl.mReadBuff.mTrackRules), sizeof(TrackRulesV01));
 
-    if (info.mNumActions != numActions)
+    if (info.mNumActions != numActions2)
       DEBUG_MSG(DebugLevel::Warnings, DebugSource::General, "Rules control input: mNumActions mismatch.");
 
     if (info.mNumParticipants != numParticipants)
       DEBUG_MSG(DebugLevel::Warnings, DebugSource::General, "Rules control input: mNumParticipants mismatch.");
 
     info.mCurrentET = currentET;
-    info.mNumActions = numActions;
+    info.mNumActions = numActions2;
     info.mAction =  pAction;
     info.mNumParticipants = numParticipants;
     info.mSafetyCarExists = safetyCarExists;

@@ -46,7 +46,6 @@ Website: thecrewchief.org
 #define RETURN_IF_FALSE(expression) if (!expression) { DEBUG_MSG(DebugLevel::Errors, DebugSource::General, "Operation failed"); return; }
 
 #include "rF2State.h"
-#include "MappedBuffer.h"
 #include "DirectMemoryReader.h"
 
 enum class DebugLevel : long
@@ -102,6 +101,8 @@ double TicksNow();
 static double const MILLISECONDS_IN_SECOND = 1000.0;
 static double const MICROSECONDS_IN_MILLISECOND = 1000.0;
 static double const MICROSECONDS_IN_SECOND = MILLISECONDS_IN_SECOND * MICROSECONDS_IN_MILLISECOND;
+
+#include "MappedBuffer.h" //requires macro above and is needed below
 
 // This is used for the app to use the plugin for its intended purpose
 class SharedMemoryPlugin : public InternalsPluginV07  // REMINDER: exported function GetPluginVersion() should return 1 if you are deriving from this InternalsPluginV01, 2 for InternalsPluginV02, etc.

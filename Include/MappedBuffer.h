@@ -18,6 +18,7 @@ Description:
 #pragma once
 #include <sddl.h>
 #include "Utils.h"
+class SharedMemoryPlugin;
 
 template <typename BuffT>
 class MappedBuffer
