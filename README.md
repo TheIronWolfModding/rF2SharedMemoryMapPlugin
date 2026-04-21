@@ -123,6 +123,7 @@ Please also be aware, that Crew Chief will always ship with the latest version o
 * Sim Racing Studio tools: https://www.simracingstudio.com/download
 * Second Monitor: https://github.com/Winzarten/SecondMonitor
 * Realistic Gearshift: https://forum.studio-397.com/index.php?threads/realistic-gearshift-version-2.62996/
+* Race Element: https://github.com/RiddleTime/Race-Element
 
 ## Support this project
 If you would like to support this project, you can donate [here.](http://thecrewchief.org/misc.php?do=donate)
