@@ -42,6 +42,7 @@ Website: thecrewchief.org
 
 #define SHARED_MEMORY_VERSION PLUGIN_VERSION_MAJOR "." PLUGIN_VERSION_MINOR
 
+//TODO: this macro requires /Zc:preprocessor-
 #define DEBUG_MSG(lvl, src, msg, ...) SharedMemoryPlugin::WriteDebugMsg(lvl, src, __FUNCTION__, __LINE__, msg, __VA_ARGS__)
 #define RETURN_IF_FALSE(expression) if (!expression) { DEBUG_MSG(DebugLevel::Errors, DebugSource::General, "Operation failed"); return; }
 
@@ -98,9 +99,9 @@ enum class SubscribedBuffer : long
 
 double TicksNow();
 
-static double const MILLISECONDS_IN_SECOND = 1000.0;
-static double const MICROSECONDS_IN_MILLISECOND = 1000.0;
-static double const MICROSECONDS_IN_SECOND = MILLISECONDS_IN_SECOND * MICROSECONDS_IN_MILLISECOND;
+static unsigned const MILLISECONDS_IN_SECOND = 1000;
+static unsigned const MICROSECONDS_IN_MILLISECOND = 1000;
+static unsigned const MICROSECONDS_IN_SECOND = MILLISECONDS_IN_SECOND * MICROSECONDS_IN_MILLISECOND;
 
 #include "MappedBuffer.h" //requires macro above and is needed below
 

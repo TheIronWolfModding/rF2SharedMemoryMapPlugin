@@ -27,13 +27,15 @@ public:
 
   // Write buffer constructor.
   MappedBuffer(char const* mmFileName)
-    : MM_FILE_NAME(mmFileName)
+    : mReadBuff()
+    , MM_FILE_NAME(mmFileName)
     , READ_BUFFER_SUPPORTED_LAYOUT_VERSION(0L)
   {}
 
   // Read buffer constructor.
   MappedBuffer(char const* mmFileName, long mLayoutVersion)
-    : MM_FILE_NAME(mmFileName)
+    : mReadBuff()
+    , MM_FILE_NAME(mmFileName)
     , READ_BUFFER_SUPPORTED_LAYOUT_VERSION(mLayoutVersion)
   {
     memset(&mReadBuff, 0, sizeof(BuffT));

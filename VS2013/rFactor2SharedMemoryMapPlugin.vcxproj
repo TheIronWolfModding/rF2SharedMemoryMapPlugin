@@ -81,126 +81,126 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
     <TargetName>rFactor2SharedMemoryMapPlugin32</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
     <TargetName>rFactor2SharedMemoryMapPlugin64</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
     <TargetName>rFactor2SharedMemoryMapPlugin32</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_MT|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
     <TargetName>rFactor2SharedMemoryMapPlugin32</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_PDBGEN_MT|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
     <TargetName>rFactor2SharedMemoryMapPlugin32</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_PDBGEN|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
     <TargetName>rFactor2SharedMemoryMapPlugin32</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_AVX2|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
     <TargetName>rFactor2SharedMemoryMapPlugin32</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_AVX2_MT|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
     <TargetName>rFactor2SharedMemoryMapPlugin32</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_PGOGEN|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
     <TargetName>rFactor2SharedMemoryMapPlugin32</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_PGOGEN_MT|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
     <TargetName>rFactor2SharedMemoryMapPlugin32</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
     <TargetName>rFactor2SharedMemoryMapPlugin64</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_MT|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
     <TargetName>rFactor2SharedMemoryMapPlugin64</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_PDBGEN_MT|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
     <TargetName>rFactor2SharedMemoryMapPlugin64</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_PDBGEN|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
     <TargetName>rFactor2SharedMemoryMapPlugin64</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_AVX2|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
     <TargetName>rFactor2SharedMemoryMapPlugin64</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_AVX2_MT|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
     <TargetName>rFactor2SharedMemoryMapPlugin64</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_PGOGEN|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
     <TargetName>rFactor2SharedMemoryMapPlugin64</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_PGOGEN_MT|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
     <TargetName>rFactor2SharedMemoryMapPlugin64</TargetName>
@@ -647,6 +647,7 @@
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <FloatingPointModel>Fast</FloatingPointModel>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <IntelJCCErratum>true</IntelJCCErratum>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -783,10 +784,20 @@
       <WarningLevel>EnableAllWarnings</WarningLevel>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <FloatingPointModel>Fast</FloatingPointModel>
-      <IntrinsicFunctions>false</IntrinsicFunctions>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
       <DisableSpecificWarnings>4514;4820;4668;4711;4710</DisableSpecificWarnings>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
+      <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
+      <RuntimeTypeInfo>false</RuntimeTypeInfo>
+      <OpenMPSupport>false</OpenMPSupport>
+      <CompileAsManaged>false</CompileAsManaged>
+      <CompileAsWinRT>false</CompileAsWinRT>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <OmitFramePointers>true</OmitFramePointers>
+      <UseStandardPreprocessor>false</UseStandardPreprocessor>
+      <StructMemberAlignment>Default</StructMemberAlignment>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -832,11 +843,21 @@
       <WarningLevel>EnableAllWarnings</WarningLevel>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <FloatingPointModel>Fast</FloatingPointModel>
-      <IntrinsicFunctions>false</IntrinsicFunctions>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
       <DisableSpecificWarnings>4514;4820;4668;4711;4710</DisableSpecificWarnings>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
+      <RuntimeTypeInfo>false</RuntimeTypeInfo>
+      <OpenMPSupport>false</OpenMPSupport>
+      <CompileAsManaged>false</CompileAsManaged>
+      <CompileAsWinRT>false</CompileAsWinRT>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <OmitFramePointers>true</OmitFramePointers>
+      <UseStandardPreprocessor>false</UseStandardPreprocessor>
+      <StructMemberAlignment>Default</StructMemberAlignment>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -881,11 +902,21 @@
       <WarningLevel>EnableAllWarnings</WarningLevel>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <FloatingPointModel>Fast</FloatingPointModel>
-      <IntrinsicFunctions>false</IntrinsicFunctions>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
       <DisableSpecificWarnings>4514;4820;4668;4711;4710</DisableSpecificWarnings>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
+      <RuntimeTypeInfo>false</RuntimeTypeInfo>
+      <OpenMPSupport>false</OpenMPSupport>
+      <CompileAsManaged>false</CompileAsManaged>
+      <CompileAsWinRT>false</CompileAsWinRT>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <OmitFramePointers>true</OmitFramePointers>
+      <UseStandardPreprocessor>false</UseStandardPreprocessor>
+      <StructMemberAlignment>Default</StructMemberAlignment>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -930,10 +961,20 @@
       <WarningLevel>EnableAllWarnings</WarningLevel>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <FloatingPointModel>Fast</FloatingPointModel>
-      <IntrinsicFunctions>false</IntrinsicFunctions>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
       <DisableSpecificWarnings>4514;4820;4668;4711;4710</DisableSpecificWarnings>
       <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
+      <RuntimeTypeInfo>false</RuntimeTypeInfo>
+      <OpenMPSupport>false</OpenMPSupport>
+      <CompileAsManaged>false</CompileAsManaged>
+      <CompileAsWinRT>false</CompileAsWinRT>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <OmitFramePointers>true</OmitFramePointers>
+      <UseStandardPreprocessor>false</UseStandardPreprocessor>
+      <StructMemberAlignment>Default</StructMemberAlignment>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -983,10 +1024,20 @@
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <WholeProgramOptimization>true</WholeProgramOptimization>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
-      <ExceptionHandling>false</ExceptionHandling>
+      <ExceptionHandling>Sync</ExceptionHandling>
       <SDLCheck>false</SDLCheck>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
+      <IntelJCCErratum>true</IntelJCCErratum>
+      <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
+      <RuntimeTypeInfo>false</RuntimeTypeInfo>
+      <OpenMPSupport>false</OpenMPSupport>
+      <CompileAsManaged>false</CompileAsManaged>
+      <CompileAsWinRT>false</CompileAsWinRT>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <OmitFramePointers>true</OmitFramePointers>
+      <UseStandardPreprocessor>false</UseStandardPreprocessor>
+      <StructMemberAlignment>Default</StructMemberAlignment>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -1043,11 +1094,21 @@
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <WholeProgramOptimization>true</WholeProgramOptimization>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
-      <ExceptionHandling>false</ExceptionHandling>
+      <ExceptionHandling>Sync</ExceptionHandling>
       <SDLCheck>false</SDLCheck>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
+      <IntelJCCErratum>true</IntelJCCErratum>
+      <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
+      <RuntimeTypeInfo>false</RuntimeTypeInfo>
+      <OpenMPSupport>false</OpenMPSupport>
+      <CompileAsManaged>false</CompileAsManaged>
+      <CompileAsWinRT>false</CompileAsWinRT>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <OmitFramePointers>true</OmitFramePointers>
+      <UseStandardPreprocessor>false</UseStandardPreprocessor>
+      <StructMemberAlignment>Default</StructMemberAlignment>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -1103,10 +1164,19 @@
       <WholeProgramOptimization>true</WholeProgramOptimization>
       <SDLCheck>false</SDLCheck>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
-      <ExceptionHandling>false</ExceptionHandling>
+      <ExceptionHandling>Sync</ExceptionHandling>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
       <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
+      <RuntimeTypeInfo>false</RuntimeTypeInfo>
+      <OpenMPSupport>false</OpenMPSupport>
+      <CompileAsManaged>false</CompileAsManaged>
+      <CompileAsWinRT>false</CompileAsWinRT>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <OmitFramePointers>true</OmitFramePointers>
+      <UseStandardPreprocessor>false</UseStandardPreprocessor>
+      <StructMemberAlignment>Default</StructMemberAlignment>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -1159,11 +1229,20 @@
       <WholeProgramOptimization>true</WholeProgramOptimization>
       <SDLCheck>false</SDLCheck>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
-      <ExceptionHandling>false</ExceptionHandling>
+      <ExceptionHandling>Sync</ExceptionHandling>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
+      <RuntimeTypeInfo>false</RuntimeTypeInfo>
+      <OpenMPSupport>false</OpenMPSupport>
+      <CompileAsManaged>false</CompileAsManaged>
+      <CompileAsWinRT>false</CompileAsWinRT>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <OmitFramePointers>true</OmitFramePointers>
+      <UseStandardPreprocessor>false</UseStandardPreprocessor>
+      <StructMemberAlignment>Default</StructMemberAlignment>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -1245,7 +1324,7 @@
       </HeaderFileName>
     </Midl>
     <ClCompile>
-      <Optimization>Disabled</Optimization>
+      <Optimization>MaxSpeed</Optimization>
       <AdditionalIncludeDirectories>..\include;$(ProjectDir)..\Include</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;INTERNALSPLUGIN_EXPORTS;_CRT_SECURE_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
@@ -1258,10 +1337,22 @@
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <FloatingPointModel>Fast</FloatingPointModel>
-      <IntrinsicFunctions>false</IntrinsicFunctions>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <FunctionLevelLinking>false</FunctionLevelLinking>
       <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
+      <StringPooling>true</StringPooling>
+      <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
+      <RuntimeTypeInfo>false</RuntimeTypeInfo>
+      <OpenMPSupport>false</OpenMPSupport>
+      <CompileAsManaged>false</CompileAsManaged>
+      <CompileAsWinRT>false</CompileAsWinRT>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <OmitFramePointers>true</OmitFramePointers>
+      <UseStandardPreprocessor>false</UseStandardPreprocessor>
+      <StructMemberAlignment>Default</StructMemberAlignment>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -1289,7 +1380,51 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\source\DirectMemoryReader.cpp" />
-    <ClCompile Include="..\Source\rFactor2SharedMemoryMap.cpp" />
+    <ClCompile Include="..\Source\rFactor2SharedMemoryMap.cpp">
+      <StructMemberAlignment Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Default</StructMemberAlignment>
+      <StructMemberAlignment Condition="'$(Configuration)|$(Platform)'=='Release_PGOGEN_MT|x64'">Default</StructMemberAlignment>
+      <StructMemberAlignment Condition="'$(Configuration)|$(Platform)'=='Release_AVX2_MT|x64'">Default</StructMemberAlignment>
+      <StructMemberAlignment Condition="'$(Configuration)|$(Platform)'=='Release_MT|x64'">Default</StructMemberAlignment>
+      <StructMemberAlignment Condition="'$(Configuration)|$(Platform)'=='Release_PDBGEN_MT|x64'">Default</StructMemberAlignment>
+      <StructMemberAlignment Condition="'$(Configuration)|$(Platform)'=='Release_PDBGEN|x64'">Default</StructMemberAlignment>
+      <StructMemberAlignment Condition="'$(Configuration)|$(Platform)'=='Release_AVX2|x64'">Default</StructMemberAlignment>
+      <StructMemberAlignment Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Default</StructMemberAlignment>
+      <StructMemberAlignment Condition="'$(Configuration)|$(Platform)'=='Release_PGOGEN|x64'">Default</StructMemberAlignment>
+      <ControlFlowGuard Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ControlFlowGuard>
+      <FloatingPointExceptions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</FloatingPointExceptions>
+      <IntelJCCErratum Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</IntelJCCErratum>
+      <GuardEHContMetadata Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</GuardEHContMetadata>
+      <ControlFlowGuard Condition="'$(Configuration)|$(Platform)'=='Release_PGOGEN_MT|x64'">false</ControlFlowGuard>
+      <FloatingPointExceptions Condition="'$(Configuration)|$(Platform)'=='Release_PGOGEN_MT|x64'">false</FloatingPointExceptions>
+      <IntelJCCErratum Condition="'$(Configuration)|$(Platform)'=='Release_PGOGEN_MT|x64'">true</IntelJCCErratum>
+      <GuardEHContMetadata Condition="'$(Configuration)|$(Platform)'=='Release_PGOGEN_MT|x64'">false</GuardEHContMetadata>
+      <ControlFlowGuard Condition="'$(Configuration)|$(Platform)'=='Release_AVX2_MT|x64'">false</ControlFlowGuard>
+      <FloatingPointExceptions Condition="'$(Configuration)|$(Platform)'=='Release_AVX2_MT|x64'">false</FloatingPointExceptions>
+      <GuardEHContMetadata Condition="'$(Configuration)|$(Platform)'=='Release_AVX2_MT|x64'">false</GuardEHContMetadata>
+      <ControlFlowGuard Condition="'$(Configuration)|$(Platform)'=='Release_MT|x64'">false</ControlFlowGuard>
+      <FloatingPointExceptions Condition="'$(Configuration)|$(Platform)'=='Release_MT|x64'">false</FloatingPointExceptions>
+      <IntelJCCErratum Condition="'$(Configuration)|$(Platform)'=='Release_MT|x64'">true</IntelJCCErratum>
+      <GuardEHContMetadata Condition="'$(Configuration)|$(Platform)'=='Release_MT|x64'">false</GuardEHContMetadata>
+      <ControlFlowGuard Condition="'$(Configuration)|$(Platform)'=='Release_PDBGEN_MT|x64'">false</ControlFlowGuard>
+      <FloatingPointExceptions Condition="'$(Configuration)|$(Platform)'=='Release_PDBGEN_MT|x64'">false</FloatingPointExceptions>
+      <IntelJCCErratum Condition="'$(Configuration)|$(Platform)'=='Release_PDBGEN_MT|x64'">true</IntelJCCErratum>
+      <GuardEHContMetadata Condition="'$(Configuration)|$(Platform)'=='Release_PDBGEN_MT|x64'">false</GuardEHContMetadata>
+      <ControlFlowGuard Condition="'$(Configuration)|$(Platform)'=='Release_PDBGEN|x64'">false</ControlFlowGuard>
+      <FloatingPointExceptions Condition="'$(Configuration)|$(Platform)'=='Release_PDBGEN|x64'">false</FloatingPointExceptions>
+      <IntelJCCErratum Condition="'$(Configuration)|$(Platform)'=='Release_PDBGEN|x64'">true</IntelJCCErratum>
+      <GuardEHContMetadata Condition="'$(Configuration)|$(Platform)'=='Release_PDBGEN|x64'">false</GuardEHContMetadata>
+      <ControlFlowGuard Condition="'$(Configuration)|$(Platform)'=='Release_AVX2|x64'">false</ControlFlowGuard>
+      <FloatingPointExceptions Condition="'$(Configuration)|$(Platform)'=='Release_AVX2|x64'">false</FloatingPointExceptions>
+      <GuardEHContMetadata Condition="'$(Configuration)|$(Platform)'=='Release_AVX2|x64'">false</GuardEHContMetadata>
+      <ControlFlowGuard Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ControlFlowGuard>
+      <FloatingPointExceptions Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</FloatingPointExceptions>
+      <IntelJCCErratum Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</IntelJCCErratum>
+      <GuardEHContMetadata Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</GuardEHContMetadata>
+      <ControlFlowGuard Condition="'$(Configuration)|$(Platform)'=='Release_PGOGEN|x64'">false</ControlFlowGuard>
+      <FloatingPointExceptions Condition="'$(Configuration)|$(Platform)'=='Release_PGOGEN|x64'">false</FloatingPointExceptions>
+      <IntelJCCErratum Condition="'$(Configuration)|$(Platform)'=='Release_PGOGEN|x64'">true</IntelJCCErratum>
+      <GuardEHContMetadata Condition="'$(Configuration)|$(Platform)'=='Release_PGOGEN|x64'">false</GuardEHContMetadata>
+    </ClCompile>
     <ClCompile Include="..\source\Utils.cpp" />
     <ClCompile Include="..\source\ISIInternalsDump.cpp" />
   </ItemGroup>

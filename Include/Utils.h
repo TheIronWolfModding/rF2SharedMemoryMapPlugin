@@ -19,6 +19,8 @@ class ScopeGuard
 public:
   ScopeGuard(Lambda const& scopeExitLambda) : mScopeExitLambda(scopeExitLambda)
   {}
+  ScopeGuard(ScopeGuard&) = delete;
+  ScopeGuard& operator=(ScopeGuard&) = delete;
 
   ~ScopeGuard()
   {
